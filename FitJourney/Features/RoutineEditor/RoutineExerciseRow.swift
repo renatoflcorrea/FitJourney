@@ -40,15 +40,11 @@ struct RoutineExerciseRow: View {
                 HStack {
                     FJTag(LocalizedStringKey(GroupLabel.name(forCount: groupCount)), systemImage: "link", area: .training)
                     Spacer(minLength: 0)
-                    Menu {
-                        Button("Desagrupar", systemImage: "link.badge.minus", action: actions.ungroup)
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .frame(width: FJSize.minTap, height: FJSize.minTap)
-                            .contentShape(Rectangle())
-                    }
-                    .accessibilityLabel(Text("Ações do \(GroupLabel.name(forCount: groupCount))"))
-                    .id(gid)
+                    Button("Desagrupar", systemImage: "link.badge.minus", action: actions.ungroup)
+                        .font(FJFont.label)
+                        .buttonStyle(.borderless)
+                        .frame(minHeight: FJSize.minTap)
+                        .id(gid)
                 }
             }
 
