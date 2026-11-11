@@ -147,7 +147,10 @@ struct AIHealthSummaryTests {
         #expect(today["activeKcal"] == .null)
         #expect(today["status"]?["activeKcal"] == .string("no_data"))
         #expect(today["workoutMinutes"] == .null)
+        #expect(today["workouts"] == .null)
         #expect(today["status"]?["workouts"] == .string("no_data"))
+        #expect(today["partial"] == .bool(true))
+        #expect(yesterday["partial"] == nil)
         // Nenhum campo de saúde vira zero.
         for day in days {
             for key in ["steps", "activeKcal", "restingHR"] { #expect(day[key] != .number(0), "\(key)") }
@@ -186,7 +189,10 @@ struct AIHealthSummaryTests {
         #expect(json["days"]?.arrayValue?.count == 3)
 
         for bad in [#"{"from":"2026-11-10","to":"2026-11-01"}"#, #"{"from":"ontem","to":null}"#,
-                    #"{"from":"2026-12-01","to":null}"#, #"{"from":null,"to":"2026-02-30"}"#] {
+                    #"{"from":"2026-12-01","to":null}"#, #"{"from":null,"to":"2026-02-30"}"#,
+                    #"{"from":"2026-11-5","to":null}"#, #"{"from":" 2026-11-05","to":null}"#,
+                    #"{"from":"2026-11-05T00","to":null}"#, #"{"from":"+2026-11-05","to":null}"#,
+                    #"{"from":"2026-1-105","to":null}"#] {
             (json, outcome) = try await fixture.run(box, "get_health_summary", bad)
             #expect(outcome.isError, "\(bad)")
             #expect(json["error"] == .string("invalid_arguments"), "\(bad)")
@@ -239,13 +245,123 @@ struct AIHealthSummaryTests {
         #expect(uncertain["minutesByType"]?["aerobic"] == .number(60))
         #expect(uncertain["minutesByType"]?["strength"] == .number(60))
 
-        #expect(json["period"]?["workouts"] == .number(4))
+        // O par incerto conta 1 no total do período (os minutos já são pela união).
+        #expect(json["period"]?["workouts"] == .number(3))
         #expect(json["period"]?["workoutMinutes"] == .number(210))
+        #expect(json["appSessionsOmitted"] == nil)
+    }
 
-        // Sem compartilhar treinos, o nome da ficha não aparece.
+    @Test("sem compartilhar treinos: sessões do app e treinos ligados a elas saem; só outras fontes")
+    func appSessionsOmittedWithoutWorkoutSharing() async throws {
+        var fixture = try ToolboxFixture(seed: false)
+        fixture.profile.sharing.health = true
         fixture.profile.sharing.workouts = false
-        let (hidden, _) = try await fixture.run(fixture.toolbox(), "get_health_summary", #"{"from":"2026-11-10","to":"2026-11-10"}"#)
-        #expect(hidden["days"]?.arrayValue?.first?["workouts"]?.arrayValue?.first?["name"] == nil)
+        let linkedSession = try fixture.addSession(daysAgo: 1)
+        let ownSession = try fixture.addSession(daysAgo: 2)
+        let uncertainSession = try fixture.addSession(daysAgo: 3)
+        var own = watchWorkout(start: ownSession.startedAt, minutes: 60, heartRate: 120)
+        own.isFromThisApp = true
+        own.sourceBundleID = "br.com.renatocorrea.fitjourney"
+        own.externalUUID = ownSession.id.uuidString
+        var reader = ToolboxHealthReader(calendar: fixture.calendar)
+        reader.workouts = .available([
+            watchWorkout(start: linkedSession.startedAt.addingTimeInterval(120), minutes: 55),
+            own,
+            watchWorkout(start: uncertainSession.startedAt.addingTimeInterval(30 * 60), minutes: 60,
+                         category: .aerobic, type: .running, heartRate: 150),
+        ])
+        fixture.healthReader = reader
+        let (json, _) = try await fixture.run(fixture.toolbox(), "get_health_summary", #"{"from":"2026-11-08","to":"2026-11-10"}"#)
+        let days = try #require(json["days"]?.arrayValue)
+        for date in ["2026-11-10", "2026-11-09"] {
+            let day = try #require(days.first { $0["date"] == .string(date) })
+            #expect(day["workouts"] == .null, "\(date)")
+            #expect(day["status"]?["workouts"] == .string("no_data"), "\(date)")
+        }
+        let other = try #require(days.first { $0["date"] == .string("2026-11-08") })
+        let list = try #require(other["workouts"]?.arrayValue)
+        #expect(list.count == 1)
+        #expect(list.first?["origin"] == .string("watch"))
+        #expect(list.first?["maybeSameAsAppSession"] == nil)
+        #expect(list.first?["name"] == nil)
+        #expect(other["workoutMinutes"] == .number(60))
+        #expect(json["period"]?["workouts"] == .number(1))
+        #expect(json["appSessionsOmitted"] == .bool(true))
+        #expect(json["note"]?.stringValue?.contains("omitidas") == true)
+    }
+
+    @Test("leitura de treinos indisponível: sessões do app aparecem com status unavailable; dias vazios não viram 0")
+    func workoutsUnavailableWithAppSession() async throws {
+        var fixture = try ToolboxFixture(seed: false)
+        fixture.profile.sharing.health = true
+        try fixture.addSession(daysAgo: 1)
+        var reader = ToolboxHealthReader(calendar: fixture.calendar)
+        reader.workouts = .unavailable
+        reader.stepsByDay = [startOfDay(fixture, -1): 5_000]
+        fixture.healthReader = reader
+        let (json, _) = try await fixture.run(fixture.toolbox(), "get_health_summary", #"{"from":"2026-11-09","to":"2026-11-10"}"#)
+        let days = try #require(json["days"]?.arrayValue)
+        let withSession = try #require(days.first { $0["date"] == .string("2026-11-10") })
+        #expect(withSession["workouts"]?.arrayValue?.first?["origin"] == .string("app"))
+        #expect(withSession["status"]?["workouts"] == .string("unavailable"))
+        let empty = try #require(days.first { $0["date"] == .string("2026-11-09") })
+        #expect(empty["workouts"] == .null)
+        #expect(empty["workoutMinutes"] == .null)
+        #expect(empty["status"]?["workouts"] == .string("unavailable"))
+        #expect(json["period"]?["workouts"] == .number(1))
+        #expect(json["period"]?["status"]?["workouts"] == .string("unavailable"))
+
+        // Sem sessão e sem leitura: agregado null + unavailable (nunca 0 treinos).
+        let (none, _) = try await fixture.run(fixture.toolbox(), "get_health_summary", #"{"from":"2026-11-08","to":"2026-11-09"}"#)
+        #expect(none["period"]?["workouts"] == .null)
+        #expect(none["period"]?["workoutMinutes"] == .null)
+        #expect(none["period"]?["status"]?["workouts"] == .string("unavailable"))
+    }
+
+    @Test("período sem dado nenhum: agregados null com no_data; hoje parcial fica fora das médias")
+    func noDataPeriodAndPartialToday() async throws {
+        var (fixture, reader) = try makeFixture()
+        var json = try await fixture.run(fixture.toolbox(), "get_health_summary", #"{"from":null,"to":null}"#).0
+        var period = try #require(json["period"])
+        #expect(period["workouts"] == .null)
+        #expect(period["status"]?["workouts"] == .string("no_data"))
+        #expect(period["workoutMinutes"] == .null)
+        #expect(period["avgSteps"] == .null)
+        #expect(period["status"]?["avgSteps"] == .string("no_data"))
+
+        // Só hoje tem passos (parcial): aparece no dia, mas não entra na média.
+        reader.stepsByDay = [startOfDay(fixture, 0): 2_000, startOfDay(fixture, -1): 9_000]
+        fixture.healthReader = reader
+        json = try await fixture.run(fixture.toolbox(), "get_health_summary", #"{"from":null,"to":null}"#).0
+        period = try #require(json["period"])
+        #expect(period["avgSteps"] == .number(9_000))
+        #expect(period["daysWithData"]?["steps"] == .number(1))
+        let today = try #require(json["days"]?.arrayValue?.last)
+        #expect(today["partial"] == .bool(true))
+        #expect(today["steps"] == .number(2_000))
+        #expect(json["note"]?.stringValue?.contains("parcial") == true)
+    }
+
+    @Test("FC média: gravada no treino; senão estimada pelos baldes (avgHRApprox); falha = null com status")
+    func averageHeartRateSources() async throws {
+        var fixture = try ToolboxFixture(seed: false)
+        fixture.profile.sharing.health = true
+        let session = try fixture.addSession(daysAgo: 1)
+        var reader = ToolboxHealthReader(calendar: fixture.calendar)
+        reader.buckets = .available([HeartRateBucket(interval: DateInterval(start: session.startedAt, duration: 3_600),
+                                                     average: 118, minimum: 90, maximum: 150)])
+        fixture.healthReader = reader
+        let args = #"{"from":"2026-11-10","to":"2026-11-10"}"#
+        var item = try await fixture.run(fixture.toolbox(), "get_health_summary", args).0["days"]?.arrayValue?.first?["workouts"]?.arrayValue?.first
+        #expect(item?["avgHR"] == .number(118))
+        #expect(item?["avgHRApprox"] == .bool(true))
+
+        reader.buckets = .unavailable
+        fixture.healthReader = reader
+        item = try await fixture.run(fixture.toolbox(), "get_health_summary", args).0["days"]?.arrayValue?.first?["workouts"]?.arrayValue?.first
+        #expect(item?["avgHR"] == .null)
+        #expect(item?["avgHRStatus"] == .string("unavailable"))
+        #expect(item?["avgHRApprox"] == nil)
     }
 
     @Test("tendência da FC em repouso: primeira × segunda metade; poucos dias = null com motivo")
@@ -256,9 +372,11 @@ struct AIHealthSummaryTests {
         var (json, _) = try await fixture.run(fixture.toolbox(), "get_health_summary", #"{"from":"2026-10-29","to":"2026-11-11"}"#)
         let trend = try #require(json["period"]?["restingHRTrend"])
         #expect(trend["direction"] == .string("down"))
+        // Hoje (55) fica fora: 13 dias completos, metades de 6 (62…67 × 56…61).
         #expect(trend["firstHalfAvg"] == .number(65))
-        #expect(trend["secondHalfAvg"] == .number(58))
+        #expect(trend["secondHalfAvg"] == .number(59))
         #expect(json["period"]?["avgRestingHR"] == .number(62))
+        #expect(json["period"]?["daysWithData"]?["restingHR"] == .number(13))
 
         (json, _) = try await fixture.run(fixture.toolbox(), "get_health_summary", #"{"from":"2026-11-08","to":"2026-11-11"}"#)
         #expect(json["period"]?["restingHRTrend"]?["direction"] == .null)
@@ -294,7 +412,8 @@ struct AIHealthSummaryTests {
         #expect(json["period"]?["avgSteps"] != nil)
         if let days = json["days"]?.arrayValue {
             #expect(days.count == 31)
-            #expect(days.first?["workouts"] == .number(14)) // só a contagem
+            #expect(days.first?["workoutCount"] == .number(14)) // só a contagem
+            #expect(days.first?["workouts"] == nil)
         }
 
         // Período curto com a mesma carga: detalhe completo, com o teto de 10 treinos por dia.

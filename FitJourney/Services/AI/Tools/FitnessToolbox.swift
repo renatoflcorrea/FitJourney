@@ -45,7 +45,10 @@ final class FitnessToolbox {
     let context: ModelContext
     private let profile: @MainActor () -> CoachProfile
     let now: @MainActor () -> Date
-    let calendar: Calendar
+    private let fixedCalendar: Calendar?
+    /// Calendário do app resolvido a cada uso (`AppCalendar.current`: a preferência de início da semana
+    /// vale na hora) ou o fixo dos testes.
+    var calendar: Calendar { fixedCalendar ?? AppCalendar.current }
     /// Leitor do Saúde (`HealthQueries.live` no app; fake nos testes).
     let health: any HealthDataReading
     /// Estado da conexão com o Saúde, consultado a cada chamada de `get_health_summary`.
@@ -56,13 +59,13 @@ final class FitnessToolbox {
     ///   - healthAccess: conexão/aparelho; o padrão lê `HKHealthStore` e a preferência "Conectar ao Saúde".
     ///     No app, prefira `HealthToolAccess.from(_:)` com a `HealthAuthorization` compartilhada.
     init(context: ModelContext, profile: @escaping @MainActor () -> CoachProfile = { CoachProfileStore().load() },
-         now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar = .current,
+         now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar? = nil,
          health: (any HealthDataReading)? = nil,
          healthAccess: @escaping @MainActor () -> HealthToolAccess = HealthToolAccess.system) {
         self.context = context
         self.profile = profile
         self.now = now
-        self.calendar = calendar
+        self.fixedCalendar = calendar
         self.health = health ?? HealthQueries.live
         self.healthAccess = healthAccess
     }
@@ -526,7 +529,12 @@ final class FitnessToolbox {
         return DateRange(start: from, end: end, lastDay: to, clamped: false)
     }
 
+    /// Estrito: exatamente `AAAA-MM-DD` (dígitos ASCII) e data existente no calendário.
     static func parseDay(_ text: String, _ calendar: Calendar) -> Date? {
+        let chars = Array(text.utf8)
+        guard chars.count == 10, chars[4] == UInt8(ascii: "-"), chars[7] == UInt8(ascii: "-"),
+              chars.enumerated().allSatisfy({ $0.offset == 4 || $0.offset == 7 || (UInt8(ascii: "0") ... UInt8(ascii: "9")).contains($0.element) })
+        else { return nil }
         let parts = text.split(separator: "-").compactMap { Int($0) }
         guard parts.count == 3, (1 ... 12).contains(parts[1]), (1 ... 31).contains(parts[2]) else { return nil }
         let components = DateComponents(year: parts[0], month: parts[1], day: parts[2])

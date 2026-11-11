@@ -222,6 +222,8 @@ final class CoachConversationService {
             for call in calls {
                 try Task.checkCancellation()
                 let outcome = await toolbox.execute(call)
+                // Parado durante a ferramenta (ex.: leitura do Saúde): nada de "cancelled" gravado.
+                try Task.checkCancellation()
                 let result = ChatMessage(role: .tool, content: Self.limitToolResult(outcome.content),
                                          sortIndex: conversation.nextSortIndex)
                 result.toolCallID = call.id
