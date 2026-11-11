@@ -175,12 +175,12 @@ struct ActiveSetView: View {
         }
     }
 
-    private func stepButton(_ symbol: String, delta: Double, label: String) -> some View {
+    private func stepButton(_ symbol: String, delta: Double, label: LocalizedStringResource) -> some View {
         Button { model.adjustLoad(setID: set.id, by: delta) } label: {
             Image(systemName: symbol).frame(minWidth: 44, minHeight: 44)
         }
         .buttonStyle(.glass)
-        .accessibilityLabel(label)
+        .accessibilityLabel(Text(label))
     }
 
     private var target: some View {
@@ -296,7 +296,7 @@ struct RestDoneView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
-        .onAppear { AccessibilityNotification.Announcement("Descanso concluído").post() }
+        .onAppear { AccessibilityNotification.Announcement(String(localized: "Descanso concluído")).post() }
     }
 }
 

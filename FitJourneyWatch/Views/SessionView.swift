@@ -62,7 +62,7 @@ struct ControlsPage: View {
                 if (model.display?.metrics.completedSets ?? 0) == 0 { confirmDiscard = true } else { finishing = true }
             }
             control("Próximo", "forward.end.fill") { model.focusNextExercise() }
-            control("Pular", "arrow.uturn.forward") {
+            control("Pular", "arrow.uturn.forward", accessibilityLabel: "Pular exercício") {
                 if let id = model.display?.currentExerciseID { model.skip(exerciseID: id) }
             }
             if model.canOfferWatchRecording {
@@ -80,7 +80,7 @@ struct ControlsPage: View {
         }
     }
 
-    private func control(_ title: String, _ symbol: String, prominent: Bool = false, action: @escaping () -> Void) -> some View {
+    private func control(_ title: LocalizedStringResource, _ symbol: String, prominent: Bool = false, accessibilityLabel: LocalizedStringResource? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: symbol).font(.title3)
@@ -90,7 +90,7 @@ struct ControlsPage: View {
         }
         .buttonStyle(.glass)
         .tint(prominent ? WF.trainingFill : nil)
-        .accessibilityLabel(title == "Pular" ? "Pular exercício" : title)
+        .accessibilityLabel(Text(accessibilityLabel ?? title))
     }
 }
 
@@ -139,15 +139,15 @@ struct MetricsPage: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(model.liveMetrics.heartRate.map { "Frequência cardíaca \($0) batimentos por minuto" } ?? "Frequência cardíaca indisponível")
+        .accessibilityLabel(model.liveMetrics.heartRate.map { String(localized: "Frequência cardíaca \($0) batimentos por minuto") } ?? String(localized: "Frequência cardíaca indisponível"))
     }
 
     private func position(_ display: SessionSnapshot) -> String {
         guard let id = display.currentExerciseID, let index = display.exercises.firstIndex(where: { $0.id == id }) else {
-            return "\(display.metrics.completedSets) de \(display.metrics.totalSets) séries"
+            return String(localized: "\(display.metrics.completedSets) de \(display.metrics.totalSets) séries")
         }
-        var text = "Exercício \(index + 1) de \(display.exercises.count)"
-        if let position = display.currentSetPosition { text += " · série \(position.index) de \(position.of)" }
-        return text
+        let exercise = String(localized: "Exercício \(index + 1) de \(display.exercises.count)")
+        guard let position = display.currentSetPosition else { return exercise }
+        return String(localized: "\(exercise) · série \(position.index) de \(position.of)")
     }
 }

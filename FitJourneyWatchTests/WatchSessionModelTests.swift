@@ -316,8 +316,9 @@ struct WatchSessionModelTests {
         let load = WatchLoad(value: 0, isBodyweight: true)
         #expect(WatchLoadStepping.clamp(-10, for: load) == -10)
         #expect(WatchLoadStepping.clamp(-500, for: load) == -150)
-        #expect(WatchFormat.load(WatchLoad(value: -10, isBodyweight: true)) == "PC −10 kg")
-        #expect(WatchFormat.load(WatchLoad(value: 0, isBodyweight: true)) == "PC")
+        let bodyweight = String(localized: "PC")
+        #expect(WatchFormat.load(WatchLoad(value: -10, isBodyweight: true)) == "\(bodyweight) −10 kg")
+        #expect(WatchFormat.load(WatchLoad(value: 0, isBodyweight: true)) == bodyweight)
     }
 
     @Test func restNextLoadFollowsCurrentSetAfterCompletion() throws {

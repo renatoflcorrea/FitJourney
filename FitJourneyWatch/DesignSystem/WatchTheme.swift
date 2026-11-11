@@ -77,9 +77,9 @@ enum WatchLayout {
 
 /// Botão principal em largura total (Concluir, Iniciar, Começar, Salvar…): vidro laranja.
 struct WatchPrimaryButton: View {
-    let title: String
+    let title: LocalizedStringResource
     var systemImage: String?
-    var accessibilityLabel: String?
+    var accessibilityLabel: LocalizedStringResource?
     var action: () -> Void
 
     var body: some View {
@@ -95,6 +95,6 @@ struct WatchPrimaryButton: View {
         .buttonStyle(.glassProminent)
         .tint(WF.trainingFill)
         .handGestureShortcut(.primaryAction)
-        .accessibilityLabel(accessibilityLabel ?? title)
+        .accessibilityLabel(Text(accessibilityLabel ?? title))
     }
 }

@@ -41,7 +41,7 @@ struct RoutineListView: View {
             }
             ProgramFooter(digest: digest).listRowBackground(Color.clear)
             if let issue = model.incompatibility {
-                Text(issue.peerIsOutdated ? "Atualize o FitJourney no iPhone." : "Atualize o app do relógio.")
+                Text(issue.peerIsOutdated ? String(localized: "Atualize o FitJourney no iPhone.") : String(localized: "Atualize o app do relógio."))
                     .font(.footnote).foregroundStyle(WF.attention).listRowBackground(Color.clear)
             }
         }
@@ -53,9 +53,9 @@ struct RoutineListView: View {
 
     private func overline(for mode: String) -> String {
         switch mode {
-        case "weekly": "HOJE"
-        case "sequential": "PRÓXIMA"
-        default: "HÁ MAIS TEMPO"
+        case "weekly": String(localized: "HOJE")
+        case "sequential": String(localized: "PRÓXIMA")
+        default: String(localized: "HÁ MAIS TEMPO")
         }
     }
 }
@@ -80,7 +80,7 @@ struct RoutineRow: View {
                 }
                 Text(routine.name).font(.subheadline.weight(.semibold)).lineLimit(2)
                 if highlighted {
-                    Text("\(routine.exercises.count) exercícios · ~\(routine.estimatedDurationSeconds / 60) min")
+                    Text("\(String(localized: "\(routine.exercises.count) exercícios")) · ~\(routine.estimatedDurationSeconds / 60) min")
                         .font(.caption2).foregroundStyle(WF.textSecondary)
                 }
             }

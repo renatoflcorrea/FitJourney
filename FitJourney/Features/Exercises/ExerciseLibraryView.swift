@@ -41,8 +41,8 @@ struct ExerciseRow: View {
     }
 
     private func accessibilityText(mediaCount count: Int) -> String {
-        let media = count > 0 ? ", " + String(localized: "\(count) mídias") : ""
-        return "\(exercise.name), \(exercise.summaryLine)\(media)"
+        let base = "\(exercise.name), \(exercise.summaryLine)"
+        return count > 0 ? String(localized: "\(base), \(String(localized: "\(count) mídias"))") : base
     }
 }
 

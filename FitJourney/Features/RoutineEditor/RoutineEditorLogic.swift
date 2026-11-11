@@ -365,34 +365,35 @@ enum PrescriptionSummary {
     static func spoken(sets: [SetDraft], measurement: MeasurementKind, effectiveRest: (SetDraft) -> Int) -> String {
         guard !sets.isEmpty else { return String(localized: "Sem séries definidas") }
         let parts = runs(sets).map { run -> String in
-            var text = run.count == 1 ? String(localized: "1 série") : String(localized: "\(run.count) séries")
+            let count = run.count == 1 ? String(localized: "1 série") : String(localized: "\(run.count) séries")
+            var text = count
             switch measurement {
             case .isometric:
-                if let h = run.set.holdSeconds { text += String(localized: " de \(h) segundos") }
+                if let h = run.set.holdSeconds { text = String(localized: "\(count) de \(h) segundos") }
             case .timeOrDistance:
                 if let c = run.set.cardio {
                     let t = PrescriptionFormat.cardioText(c)
-                    if !t.isEmpty { text += " de " + t }
+                    if !t.isEmpty { text = String(localized: "\(count) de \(t)") }
                 }
             default:
                 switch run.set.repTarget {
-                case .some(.fixed(let r)): text += String(localized: " de \(r) repetições")
-                case .some(.range(let lo, let hi)): text += String(localized: " de \(lo) a \(hi) repetições")
-                case .some(.amrap): text += String(localized: " até o máximo de repetições")
+                case .some(.fixed(let r)): text = String(localized: "\(count) de \(r) repetições")
+                case .some(.range(let lo, let hi)): text = String(localized: "\(count) de \(lo) a \(hi) repetições")
+                case .some(.amrap): text = String(localized: "\(count) até o máximo de repetições")
                 case .none: break
                 }
             }
-            if run.set.kind != .working { text += ", " + run.set.kind.localizedName }
+            if run.set.kind != .working { text = String(localized: "\(text), \(run.set.kind.localizedName)") }
             if let load = run.set.initialLoad {
                 switch load {
                 case .weight(let v, let u):
                     let unit = u == .kg ? String(localized: "quilos") : String(localized: "libras")
-                    text += String(localized: ", com \(FJFormat.number(v)) \(unit)")
+                    text = String(localized: "\(text), com \(FJFormat.number(v)) \(unit)")
                 case .bodyweight(let d, let u):
                     let unit = u == .kg ? String(localized: "quilos") : String(localized: "libras")
-                    if d == 0 { text += String(localized: ", peso corporal") }
-                    else if d > 0 { text += String(localized: ", peso corporal mais \(FJFormat.number(d)) \(unit)") }
-                    else { text += String(localized: ", peso corporal com \(FJFormat.number(-d)) \(unit) de assistência") }
+                    if d == 0 { text = String(localized: "\(text), peso corporal") }
+                    else if d > 0 { text = String(localized: "\(text), peso corporal mais \(FJFormat.number(d)) \(unit)") }
+                    else { text = String(localized: "\(text), peso corporal com \(FJFormat.number(-d)) \(unit) de assistência") }
                 }
             }
             return text
@@ -400,7 +401,7 @@ enum PrescriptionSummary {
         var sentence = parts.joined(separator: "; ")
         let rests = Set(sets.map(effectiveRest))
         if rests.count == 1, let r = rests.first {
-            sentence += String(localized: ". Descanso de \(FJFormat.spokenDuration(r))")
+            sentence = String(localized: "\(sentence). Descanso de \(FJFormat.spokenDuration(r))")
         }
         return sentence
     }

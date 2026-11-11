@@ -1,0 +1,86 @@
+{
+  "sourceLanguage" : "pt-BR",
+  "strings" : {
+    "NSHealthShareUsageDescription" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O FitJourney lê frequência cardíaca, FC em repouso, treinos, energia ativa, passos e massa corporal para mostrar seus treinos e seu dia com os dados do Apple Watch e estimar a energia gasta."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FitJourney reads heart rate, resting heart rate, workouts, active energy, steps and body mass to show your workouts and your day with Apple Watch data and to estimate energy burned."
+          }
+        }
+      }
+    },
+    "NSHealthUpdateUsageDescription" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O FitJourney grava seus treinos e a energia ativa deles no app Saúde."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FitJourney saves your workouts and their active energy to the Health app."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryUsageDescription" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O FitJourney usa fotos e vídeos da galeria para ilustrar exercícios."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FitJourney uses photos and videos from your library to illustrate exercises."
+          }
+        }
+      }
+    },
+    "NSCameraUsageDescription" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O FitJourney usa a câmera para fotografar exercícios."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FitJourney uses the camera to photograph exercises."
+          }
+        }
+      }
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O FitJourney acessa a rede local só se você configurar o Coach com um servidor de IA no seu computador (ex.: Ollama)."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FitJourney accesses the local network only if you set up the Coach with an AI server on your computer (e.g., Ollama)."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
