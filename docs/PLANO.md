@@ -37,7 +37,7 @@ P0.1 ∥ P0.3 (caminhos disjuntos). P0.4 após P0.1.
 
 | Pacote | Agente | Depende |
 |---|---|---|
-| P2.1 Motor da sessão: snapshot, estado, relógio por datas, descanso, retomada após fechar o app | core-engineer | P0.3 |
+| P2.1 Motor da sessão: snapshot, estado, relógio por datas, descanso, retomada após fechar o app; API por **comandos idempotentes** + snapshot (base do Watch) | core-engineer | P0.3 |
 | P2.2 Tela da sessão: séries, check, editar carga/reps, isométrico, cardio, pular/trocar/adicionar | ios-implementation | P2.1 |
 | P2.3 Encerrar: resumo, PRs, RPE da sessão, atualizar carga atual | ios-implementation | P2.2 |
 | P2.4 Histórico e evolução por exercício (Charts) | ios-implementation | P2.3 |
@@ -61,6 +61,18 @@ P0.1 ∥ P0.3 (caminhos disjuntos). P0.4 após P0.1.
 
 Validação real exige iPhone + Apple Watch.
 
+## Ciclo 4b — App do Apple Watch (SPEC §6.4)
+
+| Pacote | Agente | Depende | Entrega |
+|---|---|---|---|
+| W0 Design do relógio | ios-design (Fable) | P0.1 | Fluxos e telas watchOS em `DESIGN_DIRECTION.md` + quadros no protótipo |
+| W1 Protocolo `Shared/WatchLink/` | core-engineer | P2.1 | Comandos idempotentes, snapshot versionado, resumo do programa, codec + testes puros |
+| W2 Lado iPhone | core-engineer | W1, P4.1 | Espelhamento de `HKWorkoutSession`, aplicar comandos via `SessionStore`, `applicationContext` |
+| W3 App watchOS | core-engineer (sessão/HealthKit) + ios-implementation (telas) | W1 | Alvo watchOS (XcodeGen), lista de fichas, sessão, descanso, Crown, métricas, finalizar |
+| W4 QA em aparelho | qa-accessibility | W2, W3 | iPhone + Watch reais: alcance, offline, retomada, latência |
+
+Obs.: o motor da sessão (P2.1) já nasce com comandos idempotentes e snapshot, pensando no relógio.
+
 ## Ciclo 5 — Coach IA (fase 2)
 
 | Pacote | Agente | Depende |
@@ -76,7 +88,7 @@ Live Activity de descanso, exportar/importar JSON, localização en, acessibilid
 
 ## Futuro
 
-Plugin/app do ChatGPT (servidor MCP), Android (avaliar KMP), interop HealthProject, iCloud, companion Watch, widgets.
+Plugin/app do ChatGPT (servidor MCP), Android (avaliar KMP), interop HealthProject, iCloud, complicações do Watch, widgets.
 
 ## Estrutura alvo
 

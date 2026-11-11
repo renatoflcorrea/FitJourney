@@ -16,6 +16,7 @@ Termos: "deve" = requisito da v1; "fase 2" = entra depois da v1; "futuro" = fora
 | O2 | Executar uma ficha no dia: marcar séries/exercícios, ajustar carga, cronometrar descanso, encerrar com intensidade percebida | v1 |
 | O3 | Guardar histórico: cada sessão, cada série, evolução de carga; ficha sabe a "carga atual" | v1 |
 | O4 | Cadastrar dieta por horário, registrar refeições do plano e qualquer item fora do plano | v1 |
+| O5b | App do Apple Watch para controlar a sessão (iniciar, ficha, séries, descanso, pausa, finalizar) | v1 (ciclo 4b) |
 | O5 | Apple Health: gravar treinos, ler frequência cardíaca, gráfico por sessão com os exercícios marcados, distinguir força x aeróbico | v1 (ciclo 4) |
 | O6 | Coach IA em aba própria (chat), com acesso a todo o histórico, que propõe treinos/dietas como rascunho aplicável | fase 2 |
 | O7 | Plugin/app do ChatGPT (objetivo, calorias ingeridas/gastas) | futuro |
@@ -81,7 +82,7 @@ Cada `RoutineExercise` tem uma lista de `SetPrescription` (pode ser "N séries i
 | Tipo de série | aquecimento, preparatória, válida (padrão), drop-set, rest-pause, até a falha, back-off |
 | Repetições | número fixo **ou faixa** (mín–máx, ex.: 8–12; o mínimo é o "piso"); "AMRAP" (máximo possível) |
 | Tempo de sustentação | para isométricos (s); opcional também por série |
-| Carga | valor + unidade (kg/lb, preferência global) ou "peso corporal" (com ± lastro/assistência); **% de 1RM** opcional (futuro) |
+| Carga | valor + unidade (kg/lb, preferência global; botões −/+ com passo padrão **0,5 kg**, configurável) ou "peso corporal" (com ± lastro/assistência); **% de 1RM** opcional (futuro) |
 | Descanso | segundos após a série (padrão por exercício, sobrescrevível por série) |
 | Cadência | texto "3-1-1-0" opcional |
 | Esforço alvo | RIR (0–5) ou RPE (1–10) opcional |
@@ -103,7 +104,7 @@ Cada `RoutineExercise` tem uma lista de `SetPrescription` (pode ser "N séries i
 ### 4.2 Durante
 - Tela de sessão: cabeçalho com tempo decorrido, progresso (exercícios concluídos/total), FC atual quando disponível (§6).
 - Lista de exercícios; o atual expandido mostrando séries com campos pré-preenchidos (carga atual, reps alvo). Mídia do exercício acessível em 1 toque.
-- **Marcar série**: um toque no check conclui a série com os valores exibidos; editar reps/carga/tempo antes ou depois. Concluir série dispara o **cronômetro de descanso** (do descanso prescrito), com +15 s / −15 s / pular, aviso háptico + som opcional ao terminar, e Live Activity/Dynamic Island (ciclo 6).
+- **Marcar série**: um toque no check conclui a série com a carga exibida. **Repetições não são obrigatórias** (decisão 11/11): a série sempre exibe o alvo como prescrito ("8–12", "10", "máx."); o campo de reps realizadas começa vazio e é opcional. Série concluída sem reps = "feita dentro do alvo". Editar reps/carga/tempo antes ou depois. Concluir série dispara o **cronômetro de descanso** (do descanso prescrito), com +15 s / −15 s / pular, aviso háptico + som opcional ao terminar, e Live Activity/Dynamic Island (ciclo 6).
 - Isométrico: botão "Iniciar sustentação" com contagem regressiva do tempo alvo e registro do tempo real.
 - Cardio: cronômetro e campos de distância/nível.
 - **Marcar exercício** como concluído (automático quando todas as séries estiverem concluídas; manual permitido com séries pendentes = "concluído parcialmente"). Pular exercício (com motivo opcional: equipamento ocupado, dor, tempo).
@@ -163,8 +164,26 @@ Cada `RoutineExercise` tem uma lista de `SetPrescription` (pode ser "N séries i
 - **Por dia** (aba Saúde): treinos do dia (do app e de outros, ex.: corrida do Watch), FC ao longo do dia com os treinos sobrepostos, energia ativa, tipo **força x aeróbico** (por `HKWorkoutActivityType`), comparação com dias anteriores (semana).
 - Resumos: minutos por tipo, FC média por treino, tendência de FC em repouso.
 
-### 6.4 Apple Watch app próprio
-- **Futuro.** A v1 usa o Watch apenas como fonte de dados do HealthKit (o usuário pode iniciar "Força Tradicional" no Watch; o app vincula). Companion watchOS para marcar séries vem depois.
+### 6.4 App do Apple Watch — controle da sessão (decisão 11/11, ciclo 4b)
+Objetivo: durante o treino o iPhone pode ficar no bolso/armário; **todo o controle da sessão acontece no Watch**.
+
+**Funções no relógio**
+- Ver o programa ativo e as fichas (a do dia em destaque, conforme a agenda §3.1); abrir uma ficha e ver seus exercícios e prescrição.
+- **Iniciar treino** pelo relógio (ou continuar o que foi iniciado no iPhone — e vice-versa).
+- Exercício atual: nome, "série 2 de 4", alvo como prescrito ("8–12 · 32,5 kg · RIR 2"), carga ajustável pela **Digital Crown** (passo 0,5 kg), reps opcionais.
+- **Concluir série** (botão grande; também gesto de toque duplo) → inicia o **descanso**: contagem regressiva, háptico forte ao terminar, +15 s / pular.
+- Isométrico: iniciar sustentação com contagem; cardio: cronômetro.
+- Próximo exercício / pular / ver lista da ficha; marcar exercício como concluído.
+- **Pausar / retomar** a sessão; **finalizar** com RPE 1–10 pela Crown e confirmação de cargas (detalhe completo pode ficar para o iPhone).
+- Página de métricas: tempo, FC ao vivo e zona, calorias ativas.
+
+**Arquitetura**
+- O relógio roda a `HKWorkoutSession` (FC e calorias nativas, treino gravado com o tipo certo) e a **espelha no iPhone** (`startMirroringToCompanionDevice`); o canal de dados do espelhamento (`sendToRemoteWorkoutSession`) carrega comandos e estado nos dois sentidos durante a sessão.
+- **iPhone é a fonte de verdade** (SwiftData). O relógio envia **comandos idempotentes** (`commandID`, `sessionID`, timestamp: concluir série, ajustar carga, iniciar/ajustar/pular descanso, pular exercício, pausar, finalizar); o iPhone aplica pelo mesmo `SessionStore` e devolve um **snapshot versionado** do estado. O relógio renderiza o snapshot e aplica otimisticamente o próprio comando.
+- Fora de sessão: `WatchConnectivity` (`applicationContext`) leva um resumo compacto do programa ativo (fichas, exercícios, prescrição, cargas atuais) para o relógio abrir a lista sem o iPhone.
+- iPhone fora de alcance: o relógio continua a sessão localmente com o último snapshot, enfileira comandos (`transferUserInfo`) e reconcilia ao reconectar (tempos derivados de timestamps, nunca de contadores).
+- Protocolo versionado em código compartilhado (`Shared/WatchLink/`, só Foundation), testável sem aparelho — mesmo padrão do Manylens.
+- Validação real exige iPhone + Apple Watch pareados.
 
 ---
 
@@ -186,7 +205,7 @@ Cada `RoutineExercise` tem uma lista de `SetPrescription` (pode ser "N séries i
 - **Android** (O8): domínio sem dependência de UI; contratos JSON versionados; regras puras testáveis (agenda, progressão, totais) isoladas em `Domain/` para portar (ou migrar para KMP como o HealthProject).
 - **HealthProject** (O9): exportação/importação JSON versionada (`contracts/fitjourney-export-v1`) alinhada a `TrainingPlanVersion`/`WorkoutSession`/`NutritionPlanVersion`/`FoodEntry`; candidata a provedor das ferramentas `get_workout_history`/`get_nutrition_summary` do HealthProject.
 - Sincronização iCloud (CloudKit): modelos SwiftData já compatíveis (propriedades opcionais ou com padrão, sem `@Attribute(.unique)`, relações opcionais).
-- Companion Apple Watch, widgets, Live Activities de descanso (Live Activity entra no ciclo 6).
+- Complicações/Smart Stack no Watch, widgets, Live Activities de descanso (Live Activity entra no ciclo 6).
 
 ---
 
@@ -227,5 +246,10 @@ Tab bar (Liquid Glass): **Hoje** · **Treinos** · **Dieta** · **Saúde** · **
 | R4 | SwiftData + CloudKit exige modelos sem `unique` e relações opcionais. | Modelar assim desde já |
 | R5 | IA BYOK: custo e chave ficam com o usuário; um proxy próprio entra junto com o plugin do ChatGPT. | BYOK na fase 2 |
 | R6 | Android/KMP: hoje Swift puro; migração de `Domain/` para KMP decidida quando o Android começar (ADR). | Swift puro |
+| D1 | Cor do treino/app | **laranja** (decisão 11/11); zona Z4 de FC muda de cor |
+| D2 | Reps na sessão | sempre exibir o alvo ("8–12"); reps realizadas opcionais (decisão 11/11) |
+| D3 | Passo de carga | 0,5 kg (decisão 11/11) |
+| D4 | Propostas de design aprovadas | treino esquecido aberto (> 4 h); exemplo ABC no 1º uso; notificação de fim de descanso; refeição passada sem registro = "Sem registro". **Recusada**: manter tela ligada |
+| D5 | App do Apple Watch | controle completo da sessão no relógio (§6.4), ciclo 4b |
 | Q1 | Unidade padrão de carga | kg |
 | Q2 | Semana começa em | segunda-feira |
