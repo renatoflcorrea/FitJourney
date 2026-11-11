@@ -175,11 +175,11 @@ struct LoadField: View {
         case .weight:
             // Passo de 0,5 kg (D3; 1 lb); a digitação aceita qualquer valor.
             NumberStepperField(perSide ? "Carga por lado" : "Carga", value: weightValue,
-                               unit: PrescriptionFormat.unitText(unit), step: LoadDisplay.step(for: unit, stored: loadStep),
+                               unit: PrescriptionFormat.unitText(unit), step: LoadDisplay.step(forLoadIn: unit, preferred: preferredUnit, stored: loadStep),
                                range: 0...999, fractionDigits: 1)
         case .bodyweight:
             NumberStepperField("Lastro (+) ou assistência (−)", value: delta,
-                               unit: PrescriptionFormat.unitText(unit), step: LoadDisplay.step(for: unit, stored: loadStep),
+                               unit: PrescriptionFormat.unitText(unit), step: LoadDisplay.step(forLoadIn: unit, preferred: preferredUnit, stored: loadStep),
                                range: -300...300, fractionDigits: 1, showsSign: true)
             Text("0 = só o peso do corpo")
                 .font(FJFont.caption)

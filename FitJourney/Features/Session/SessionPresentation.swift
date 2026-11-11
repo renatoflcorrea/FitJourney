@@ -39,10 +39,11 @@ enum SessionPresentation {
     // MARK: Cargas
 
     /// "26 kg", "+10 kg" / "−20 kg" (peso corporal com lastro/assistência), "Peso corporal".
-    static func loadText(_ load: WatchLoad?) -> String? {
+    static func loadText(_ load: WatchLoad?, display: WeightUnit = WeightUnitPreference.current) -> String? {
         guard let load else { return nil }
-        let unit = load.unit == .kg ? "kg" : "lb"
-        let number = FJFormat.number(abs(load.value), maxFractionDigits: 2)
+        let shown = displayed(load, display: display)
+        let unit = shown.unit == .kg ? "kg" : "lb"
+        let number = FJFormat.number(abs(shown.value), maxFractionDigits: 2)
         if load.isBodyweight {
             if load.value == 0 { return String(localized: "Peso corporal") }
             return load.value > 0 ? "+\(number) \(unit)" : "−\(number) \(unit)"
@@ -50,11 +51,18 @@ enum SessionPresentation {
         return "\(number) \(unit)"
     }
 
+    /// Valor/unidade na unidade de exibição (conversão só na exibição).
+    private static func displayed(_ load: WatchLoad, display: WeightUnit) -> (value: Double, unit: WeightUnit) {
+        let native = WeightUnit(rawValue: load.unit.rawValue) ?? .kg
+        return LoadDisplay.shown(load.value, unit: native, display: display)
+    }
+
     /// "26 quilos", "peso corporal mais 10 quilos".
-    static func spokenLoad(_ load: WatchLoad?) -> String? {
+    static func spokenLoad(_ load: WatchLoad?, display: WeightUnit = WeightUnitPreference.current) -> String? {
         guard let load else { return nil }
-        let unit = load.unit == .kg ? String(localized: "quilos") : String(localized: "libras")
-        let number = FJFormat.number(abs(load.value), maxFractionDigits: 2)
+        let shown = displayed(load, display: display)
+        let unit = shown.unit == .kg ? String(localized: "quilos") : String(localized: "libras")
+        let number = FJFormat.number(abs(shown.value), maxFractionDigits: 2)
         if load.isBodyweight {
             if load.value == 0 { return String(localized: "peso corporal") }
             return load.value > 0
@@ -142,8 +150,8 @@ enum SessionPresentation {
         guard !done.isEmpty else { return nil }
         let top = done.compactMap(\.load).max { $0.externalKilograms < $1.externalKilograms }
         let loadText: String? = top.flatMap { load in
-            if load.isBodyweight { return load.externalKilograms > 0 ? "+\(FJFormat.number(load.externalKilograms)) kg" : nil }
-            return "\(FJFormat.number(load.externalKilograms)) kg"
+            if load.isBodyweight { return load.externalKilograms > 0 ? "+\(LoadDisplay.kgText(load.externalKilograms, maxFractionDigits: 2))" : nil }
+            return LoadDisplay.kgText(load.externalKilograms, maxFractionDigits: 2)
         }
         let reps = done.compactMap(\.reps)
         let countText: String

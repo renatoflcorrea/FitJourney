@@ -84,7 +84,11 @@ extension RoutineExercise {
     }
 
     static func loadText(_ load: Load) -> String {
-        switch load {
+        loadText(load, displayUnit: WeightUnitPreference.current)
+    }
+
+    static func loadText(_ load: Load, displayUnit: WeightUnit) -> String {
+        switch LoadDisplay.load(load, in: displayUnit) {
         case .weight(let value, let unit):
             return "\(FJFormat.number(value, maxFractionDigits: 1)) \(unit.rawValue)"
         case .bodyweight(let delta, let unit):

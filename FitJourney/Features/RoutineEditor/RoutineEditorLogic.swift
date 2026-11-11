@@ -17,8 +17,8 @@ enum PrescriptionFormat {
     }
 
     /// Mostra na unidade preferida (conversão só na exibição; mesma unidade = valor como digitado).
-    static func loadText(_ load: Load, displayUnit: WeightUnit, step: Double? = nil) -> String {
-        let shown = LoadDisplay.load(load, in: displayUnit, step: step ?? LoadDisplay.step(for: displayUnit))
+    static func loadText(_ load: Load, displayUnit: WeightUnit) -> String {
+        let shown = LoadDisplay.load(load, in: displayUnit)
         switch shown {
         case .weight(let value, let unit):
             return "\(FJFormat.number(value, maxFractionDigits: 2)) \(unitText(unit))"

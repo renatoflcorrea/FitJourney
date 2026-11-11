@@ -7,33 +7,41 @@ import Testing
 struct SettingsPresentationTests {
     // MARK: kg ↔ lb só na exibição
 
-    @Test func conversaoKgParaLbArredondaAoPasso() {
-        // 100 kg = 220,46 lb → passo 1 lb = 220
-        #expect(LoadDisplay.value(100, from: .kg, to: .lb, step: 1) == 220)
-        // 32,5 kg = 71,65 lb → 72
-        #expect(LoadDisplay.value(32.5, from: .kg, to: .lb, step: 1) == 72)
-        // passo 5 lb: 71,65 → 70
-        #expect(LoadDisplay.value(32.5, from: .kg, to: .lb, step: 5) == 70)
-    }
-
-    @Test func conversaoLbParaKgEMesmaUnidadeNaoMuda() {
-        #expect(LoadDisplay.value(45, from: .lb, to: .kg, step: 0.5) == 20.5) // 20,41 kg → 20,5
-        #expect(LoadDisplay.value(32.25, from: .kg, to: .kg, step: 0.5) == 32.25)
+    @Test func conversaoArredondaA01() {
+        #expect(LoadDisplay.value(100, from: .kg, to: .lb) == 220.5) // 220,46
+        #expect(LoadDisplay.value(32.5, from: .kg, to: .lb) == 71.7) // 71,65
+        #expect(LoadDisplay.value(45, from: .lb, to: .kg) == 20.4)   // 20,41
+        #expect(LoadDisplay.value(32.25, from: .kg, to: .kg) == 32.25) // mesma unidade intacta
     }
 
     @Test func textoDaCargaUsaUnidadeDeExibicao() {
         let load = Load.weight(value: 100, unit: .kg)
         #expect(PrescriptionFormat.loadText(load, displayUnit: .kg) == "100 kg")
-        #expect(PrescriptionFormat.loadText(load, displayUnit: .lb) == "220 lb")
+        #expect(PrescriptionFormat.loadText(load, displayUnit: .lb) == "220,5 lb" || PrescriptionFormat.loadText(load, displayUnit: .lb) == "220.5 lb")
         #expect(PrescriptionFormat.loadText(.bodyweight(delta: 0, unit: .kg), displayUnit: .lb) == "PC")
         #expect(PrescriptionFormat.loadText(.bodyweight(delta: 10, unit: .kg), displayUnit: .lb).hasPrefix("PC +22"))
     }
 
-    @Test func passoPadraoPorUnidade() {
+    @MainActor @Test func formatadoresDeSessaoEToolboxUsamAMesmaConversao() {
+        let watch = WatchLoad(value: 100, unit: .kg)
+        #expect(SessionPresentation.loadText(watch, display: .kg) == "100 kg")
+        #expect(SessionPresentation.loadText(watch, display: .lb)?.hasSuffix(" lb") == true)
+        #expect(SessionPresentation.loadText(WatchLoad(value: 10, unit: .kg, isBodyweight: true), display: .lb)?.hasPrefix("+22") == true)
+        #expect(FitnessToolbox.loadText(.kg(100), displayUnit: .lb).hasSuffix("lb"))
+        #expect(FitnessToolbox.loadText(.kg(100), displayUnit: .kg) == "100kg")
+        #expect(LoadDisplay.kgText(1000, maxFractionDigits: 0, display: .kg).hasSuffix("kg"))
+        #expect(LoadDisplay.kgText(100, display: .lb).hasSuffix("lb"))
+    }
+
+    @Test func passoPadraoEConversaoDeUnidade() {
         #expect(LoadDisplay.step(for: .kg, stored: 0) == 0.5)
         #expect(LoadDisplay.step(for: .lb, stored: 0) == 1)
         #expect(LoadDisplay.step(for: .kg, stored: 2.5) == 2.5)
         #expect(LoadDisplay.step(for: .kg, stored: 3) == 0.5) // inválido = padrão
+        // O passo escolhido só vale para cargas na unidade preferida.
+        #expect(LoadDisplay.step(forLoadIn: .kg, preferred: .kg, stored: 2.5) == 2.5)
+        #expect(LoadDisplay.step(forLoadIn: .lb, preferred: .kg, stored: 2.5) == 1)
+        #expect(LoadDisplay.step(forLoadIn: .kg, preferred: .lb, stored: 5) == 0.5)
     }
 
     // MARK: Estados das integrações

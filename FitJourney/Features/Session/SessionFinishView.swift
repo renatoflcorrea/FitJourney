@@ -85,7 +85,7 @@ struct SessionFinishView: View {
                 FJMetricGrid {
                     FJMetricCell("Duração", value: FJFormat.clock(Int(summary.durationSeconds)), systemImage: "clock")
                     FJMetricCell(summary.hasEstimatedVolume ? "Volume (estimado)" : "Volume",
-                                 value: FJFormat.number(summary.volumeKg, maxFractionDigits: 0), unit: "kg", systemImage: "scalemass")
+                                 value: LoadDisplay.kgNumber(summary.volumeKg, maxFractionDigits: 0), unit: LoadDisplay.symbol(), systemImage: "scalemass")
                     FJMetricCell("Séries", value: "\(summary.completedSets)/\(summary.totalSets)", systemImage: "checkmark.circle")
                     FJMetricCell("Exercícios",
                                  value: "\(engine.snapshot?.metrics.exercisesDone ?? 0)/\(engine.snapshot?.metrics.exercisesTotal ?? 0)",
@@ -123,7 +123,7 @@ struct SessionFinishView: View {
 
     private func recordText(_ record: PersonalRecord) -> String {
         let name = engine.snapshot?.exercises.first { $0.exerciseID == record.exerciseID }?.name ?? String(localized: "Exercício")
-        let value = "\(FJFormat.number(record.valueKg)) kg"
+        let value = LoadDisplay.kgText(record.valueKg, maxFractionDigits: 2)
         switch record.kind {
         case .heaviestLoad: return String(localized: "\(name) — maior carga: \(value)")
         case .bestVolume: return String(localized: "\(name) — maior volume: \(value)")

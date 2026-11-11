@@ -477,7 +477,7 @@ struct SessionSetEditSheet: View {
                                 .foregroundStyle(FJColor.textSecondary)
                             if exercise.measurementKind != .timeOrDistance {
                                 NumberStepperField(exercise.measurementKind == .repsOnly ? "Lastro" : "Carga", value: $load,
-                                                   unit: unitText, step: 0.5,
+                                                   unit: unitText, step: LoadDisplay.step(forLoadIn: WeightUnit(rawValue: (SessionPresentation.displayLoad(set)?.unit ?? .kg).rawValue) ?? .kg),
                                                    range: exercise.measurementKind == .repsOnly ? -300...300 : 0...999,
                                                    fractionDigits: 2, showsSign: exercise.measurementKind == .repsOnly)
                             }

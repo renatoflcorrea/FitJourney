@@ -92,8 +92,8 @@ struct WorkoutDetailView: View {
                 FJMetricGrid {
                     FJMetricCell("Duração", value: FJFormat.clock(Int(session.clock.elapsed(at: end))), systemImage: "clock")
                     FJMetricCell(WorkoutMetrics.hasEstimatedVolume(performed) ? "Volume (estimado)" : "Volume",
-                                 value: FJFormat.number(WorkoutMetrics.volumeKg(performed), maxFractionDigits: 0),
-                                 unit: "kg", systemImage: "scalemass")
+                                 value: LoadDisplay.kgNumber(WorkoutMetrics.volumeKg(performed), maxFractionDigits: 0),
+                                 unit: LoadDisplay.symbol(), systemImage: "scalemass")
                     FJMetricCell("Séries", value: "\(performed.filter(\.isCompleted).count)/\(performed.count)", systemImage: "checkmark.circle")
                 }
             }
@@ -292,7 +292,7 @@ struct HistorySetEditSheet: View {
                         if measurementKind != .timeOrDistance {
                             NumberStepperField(measurementKind == .repsOnly ? "Lastro" : "Carga", value: $load,
                                                unit: LoadEditing.unitText(unit),
-                                               step: 0.5, range: measurementKind == .repsOnly ? -300...300 : 0...999,
+                                               step: LoadDisplay.step(forLoadIn: unit), range: measurementKind == .repsOnly ? -300...300 : 0...999,
                                                fractionDigits: 2, showsSign: measurementKind == .repsOnly)
                         }
                         switch measurementKind {

@@ -181,14 +181,14 @@ struct ExerciseProgressView: View {
 
     private func bestSetText(_ samples: [ProgressCalculator.Sample]) -> String? {
         guard let best = ProgressCalculator.bestSet(samples) else { return nil }
-        let load = "\(FJFormat.number(best.loadKg)) kg"
+        let load = LoadDisplay.kgText(best.loadKg, maxFractionDigits: 2)
         return best.reps.map { "\(load) × \($0)" } ?? load
     }
 
     private func lastTimeText(_ samples: [ProgressCalculator.Sample]) -> String? {
         guard let last = samples.last else { return nil }
         let relative = last.date.formatted(.relative(presentation: .named))
-        if let kg = ProgressCalculator.value(of: last, metric: .load) { return "\(FJFormat.number(kg)) kg · \(relative)" }
+        if let kg = ProgressCalculator.value(of: last, metric: .load) { return "\(LoadDisplay.kgText(kg, maxFractionDigits: 2)) · \(relative)" }
         return relative
     }
 

@@ -18,6 +18,8 @@ struct FitJourneyApp: App {
     private let mealReminders: MealReminderScheduler
     private let notificationDelegate: AppNotificationDelegate
     private let categoryRegistry: NotificationCategoryRegistry
+    /// Exportar/importar/apagar vivem aqui: sobrevivem ao reset da árvore e mostram o resultado depois dele.
+    @State private var dataTransfer: DataTransferModel
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -47,6 +49,7 @@ struct FitJourneyApp: App {
 
         let engine = SessionEngine(context: container.mainContext, notifications: UserNotificationRestScheduler())
         let authorization = HealthAuthorization(store: HealthKitStore.shared)
+        _dataTransfer = State(initialValue: DataTransferModel(container: container))
         _sessionEngine = State(initialValue: engine)
         _sessionCoordinator = State(initialValue: SessionCoordinator(engine: engine))
         _healthAuthorization = State(initialValue: authorization)
@@ -61,6 +64,7 @@ struct FitJourneyApp: App {
                 .environment(sessionCoordinator)
                 .environment(healthAuthorization)
                 .environment(healthController)
+                .environment(dataTransfer)
                 .environment(\.mealReminderScheduler, mealReminders)
                 .task {
                     await categoryRegistry.apply()
@@ -77,12 +81,10 @@ struct FitJourneyApp: App {
                 }
                 .task {
                     // FC ao vivo na tela da sessão; a zona usa a FC máxima de Ajustes (ou 220 − idade do perfil).
+                    let zones = HeartRateZoneProvider()
                     for await sample in healthController.heartRateUpdates() {
-                        let stored = UserDefaults.standard.double(forKey: AppPreferenceKeys.maxHeartRate)
-                        let age = CoachProfileStore().load().age
-                        let zone = HeartRateZones.resolve(configuredMax: stored > 0 ? stored : nil, age: age)
-                            .zones?.zone(for: sample.bpm).map(HealthPresentation.designZone)
-                        sessionCoordinator.heartRate = SessionHeartRate(bpm: Int(sample.bpm.rounded()), zone: zone)
+                        sessionCoordinator.heartRate = SessionHeartRate(bpm: Int(sample.bpm.rounded()),
+                                                                        zone: zones.zone(for: sample.bpm))
                     }
                 }
                 .task(priority: .utility) {

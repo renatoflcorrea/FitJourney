@@ -8,18 +8,20 @@ struct DataSettingsView: View {
     var onClose: () -> Void = {}
 
     @Environment(\.modelContext) private var context
-    @State private var model: DataTransferModel?
+    /// O App injeta um modelo de nível superior (sobrevive ao reset da árvore). Sem ele (previews), cria um local.
+    @Environment(DataTransferModel.self) private var shared: DataTransferModel?
+    @State private var local: DataTransferModel?
 
     var body: some View {
         Group {
-            if let model {
+            if let model = shared ?? local {
                 DataSettingsContent(model: model, onClose: onClose)
             } else {
                 Color.clear
             }
         }
         .onAppear {
-            if model == nil { model = DataTransferModel(container: context.container) }
+            if shared == nil, local == nil { local = DataTransferModel(container: context.container) }
         }
     }
 }
@@ -61,11 +63,14 @@ struct DataSettingsContent: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadStats() }
         .fileImporter(isPresented: $showsImporter, allowedContentTypes: Self.importTypes) { model.inspect($0) }
-        .sheet(item: $model.exported) { file in
-            ShareSheet(items: [file.url])
+        .sheet(item: $model.exported, onDismiss: { model.cleanupExport() }) { file in
+            ShareSheet(items: [file.url]) { model.cleanupExport() }
                 .presentationDetents([.medium, .large])
         }
-        .sheet(item: $model.pendingImport) { pending in
+        .sheet(item: $model.pendingImport, onDismiss: {
+            // Confirmar já deixou a importação em curso (ela libera o arquivo ao terminar).
+            if !model.activity.isBusy { model.releaseScope() }
+        }) { pending in
             ImportSummarySheet(pending: pending, sessionInProgress: sessionInProgress,
                                onCancel: { model.cancelPendingImport() },
                                onConfirm: { mode, includeCoach in
@@ -393,9 +398,13 @@ struct EraseAllView: View {
 /// Folha de compartilhamento do sistema para o arquivo exportado.
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
+    /// Chamado ao fim do compartilhamento ou do cancelamento.
+    var onFinish: () -> Void = {}
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, _, _, _ in onFinish() }
+        return controller
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}

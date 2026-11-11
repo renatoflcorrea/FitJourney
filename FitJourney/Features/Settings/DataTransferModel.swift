@@ -4,9 +4,18 @@ import SwiftData
 import SwiftUI
 
 extension Notification.Name {
-    /// Postada depois de "Substituir tudo" ou "Apagar tudo": o `AppRoot` recria as abas (modelos antigos
-    /// já não existem) e volta à raiz.
+    /// Postada **antes** de "Substituir tudo" ou "Apagar tudo": o `AppRoot` troca a árvore por um estado
+    /// neutro bloqueante (fecha sheets e editores, sessão minimizada) e o Coach cancela suas tarefas.
+    static let fjDataWillReset = Notification.Name("fj.dataWillReset")
+    /// Postada **depois** (também se a operação falhar): o `AppRoot` recria as abas e relê a sessão.
     static let fjDataDidReset = Notification.Name("fj.dataDidReset")
+}
+
+/// Mensagem mostrada pelo `AppRoot` depois de um reset (a tela de Dados já não existe nesse momento).
+struct DataAnnouncement: Identifiable, Equatable {
+    let id = UUID()
+    var title: String
+    var message: String
 }
 
 /// Resumo de um backup lido por `inspect`, antes de qualquer mudança.
@@ -41,6 +50,8 @@ final class DataTransferModel {
     var pendingImport: PendingImport?
     private(set) var report: BackupImportReport?
     var errorMessage: String?
+    /// Resultado de uma operação que reiniciou a árvore (substituir/apagar): o `AppRoot` mostra um alerta.
+    var announcement: DataAnnouncement?
 
     struct ExportedFile: Identifiable, Equatable {
         let id = UUID()
@@ -51,6 +62,9 @@ final class DataTransferModel {
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var task: Task<Void, Never>?
     @ObservationIgnored private var scopedURL: URL?
+    @ObservationIgnored private var exportedURL: URL?
+    /// Cada operação tem uma geração: progresso atrasado de uma anterior é ignorado e nunca regride.
+    @ObservationIgnored private var generation = 0
 
     init(container: ModelContainer, defaults: UserDefaults = .standard) {
         self.container = container
@@ -61,17 +75,18 @@ final class DataTransferModel {
 
     func export(options: BackupExportOptions) {
         guard !activity.isBusy else { return }
+        generation += 1
+        let gen = generation
         activity = .exporting(BackupProgress(phase: .reading, fraction: 0))
         let exporter = BackupExporter(modelContainer: container)
         let handler: BackupProgressHandler = { [weak self] progress in
-            Task { @MainActor in
-                guard let self, case .exporting = self.activity else { return }
-                self.activity = .exporting(progress)
-            }
+            Task { @MainActor in self?.report(progress, generation: gen, exporting: true) }
         }
         task = Task {
             do {
                 let result = try await exporter.export(options: options, progress: handler)
+                Self.protect(result.fileURL)
+                exportedURL = result.fileURL
                 exported = ExportedFile(url: result.fileURL)
             } catch is CancellationError {
             } catch {
@@ -91,7 +106,12 @@ final class DataTransferModel {
         case .success(let url):
             guard !activity.isBusy else { return }
             releaseScope()
-            if url.startAccessingSecurityScopedResource() { scopedURL = url }
+            if url.startAccessingSecurityScopedResource() {
+                scopedURL = url
+            } else if !FileManager.default.isReadableFile(atPath: url.path) {
+                errorMessage = String(localized: "Não foi possível acessar o arquivo escolhido.")
+                return
+            }
             activity = .importing(BackupProgress(phase: .validating, fraction: 0))
             let importer = BackupImporter(modelContainer: container)
             task = Task {
@@ -119,25 +139,38 @@ final class DataTransferModel {
     func performImport(_ pending: PendingImport, includeCoachConversations: Bool) {
         guard !activity.isBusy else { return }
         pendingImport = nil
+        generation += 1
+        let gen = generation
         activity = .importing(BackupProgress(phase: .extracting, fraction: 0))
         let importer = BackupImporter(modelContainer: container)
         let options = BackupImportOptions(mode: pending.mode, includeCoachConversations: includeCoachConversations)
         let handler: BackupProgressHandler = { [weak self] progress in
-            Task { @MainActor in
-                guard let self, case .importing = self.activity else { return }
-                self.activity = .importing(progress)
-            }
+            Task { @MainActor in self?.report(progress, generation: gen, exporting: false) }
         }
+        let replaces = pending.mode == .replace
         task = Task {
+            if replaces { await beginReset() }
             do {
                 let report = try await importer.importBackup(from: pending.url, options: options, progress: handler)
-                self.report = report
-                if pending.mode == .replace { NotificationCenter.default.post(name: .fjDataDidReset, object: nil) }
+                if replaces {
+                    announcement = DataAnnouncement(
+                        title: String(localized: "Backup importado"),
+                        message: ([SettingsPresentation.importSummary(report)] + report.warnings.map(\.message))
+                            .joined(separator: "\n"))
+                } else {
+                    self.report = report
+                }
             } catch is CancellationError {
             } catch {
-                errorMessage = error.localizedDescription
+                let message = error.localizedDescription + "\n" + String(localized: "Nada foi alterado.")
+                if replaces {
+                    announcement = DataAnnouncement(title: String(localized: "Não foi possível concluir"), message: message)
+                } else {
+                    errorMessage = error.localizedDescription
+                }
             }
             releaseScope()
+            if replaces { endReset() }
             activity = .idle
         }
     }
@@ -146,25 +179,70 @@ final class DataTransferModel {
 
     func eraseAll(options: DataEraseOptions) {
         guard !activity.isBusy else { return }
+        generation += 1
         activity = .erasing
         let eraser = DataEraser(modelContainer: container)
         task = Task {
+            await beginReset()
             do {
                 try await eraser.eraseAll(options: options)
-                NotificationCenter.default.post(name: .fjDataDidReset, object: nil)
+                announcement = DataAnnouncement(title: String(localized: "Dados apagados"),
+                                                message: String(localized: "O app voltou ao primeiro uso."))
             } catch {
-                errorMessage = error.localizedDescription
+                announcement = DataAnnouncement(title: String(localized: "Não foi possível concluir"),
+                                                message: error.localizedDescription + "\n" + String(localized: "Nada foi alterado."))
             }
+            endReset()
             activity = .idle
         }
     }
 
+    // MARK: Reset em duas fases
+
+    /// Fase 1: a árvore vira um estado neutro bloqueante antes de qualquer escrita no banco.
+    private func beginReset() async {
+        NotificationCenter.default.post(name: .fjDataWillReset, object: nil)
+        try? await Task.sleep(for: .milliseconds(350)) // deixa as views antigas saírem
+    }
+
+    /// Fase 2: recria as abas (também quando a operação falhou).
+    private func endReset() {
+        NotificationCenter.default.post(name: .fjDataDidReset, object: nil)
+    }
+
     // MARK: Comum
+
+    private func report(_ progress: BackupProgress, generation gen: Int, exporting: Bool) {
+        guard gen == generation else { return }
+        switch (activity, exporting) {
+        case (.exporting(let current), true):
+            activity = .exporting(BackupProgress(phase: progress.phase, fraction: max(current.fraction, progress.fraction)))
+        case (.importing(let current), false):
+            activity = .importing(BackupProgress(phase: progress.phase, fraction: max(current.fraction, progress.fraction)))
+        default: break
+        }
+    }
+
+    /// Exportação pode ter dados de saúde: protegida enquanto o aparelho está bloqueado e fora do backup do iCloud.
+    private static func protect(_ url: URL) {
+        try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: url.path)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var copy = url
+        try? copy.setResourceValues(values)
+    }
+
+    /// Apaga o arquivo exportado (fim do compartilhamento, cancelamento ou fechamento da folha).
+    func cleanupExport() {
+        exported = nil
+        if let exportedURL { try? FileManager.default.removeItem(at: exportedURL) }
+        exportedURL = nil
+    }
 
     func cancel() { task?.cancel() }
     func dismissReport() { report = nil }
 
-    private func releaseScope() {
+    func releaseScope() {
         scopedURL?.stopAccessingSecurityScopedResource()
         scopedURL = nil
     }

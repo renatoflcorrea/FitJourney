@@ -3753,6 +3753,46 @@
           }
         }
       }
+    },
+    "Atualizando dados…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating data…"
+          }
+        }
+      }
+    },
+    "Não foi possível acessar o arquivo escolhido.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't access the chosen file."
+          }
+        }
+      }
+    },
+    "Dados apagados": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data erased"
+          }
+        }
+      }
+    },
+    "O app voltou ao primeiro uso.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The app is back to first use."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

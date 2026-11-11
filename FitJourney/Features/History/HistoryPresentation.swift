@@ -66,7 +66,7 @@ enum HistoryPresentation {
         let minutes = max(1, Int((row.durationSeconds / 60).rounded()))
         var parts = [String(localized: "\(minutes) min")]
         if row.volumeKg > 0 {
-            parts.append((row.hasEstimatedVolume ? "~" : "") + FJFormat.number(row.volumeKg, maxFractionDigits: 0) + " kg")
+            parts.append((row.hasEstimatedVolume ? "~" : "") + LoadDisplay.kgText(row.volumeKg, maxFractionDigits: 0))
         }
         return parts.joined(separator: " · ")
     }
@@ -229,12 +229,12 @@ enum ProgressCalculator {
             guard let top = valid.compactMap(\.load).max(by: { $0.externalKilograms < $1.externalKilograms }) else {
                 return SessionPresentation.seriesCount(valid.count)
             }
-            let load = FJFormat.number(top.externalKilograms)
+            let load = LoadDisplay.kgNumber(top.externalKilograms)
             let reps = valid.compactMap(\.reps)
             if !valid.isEmpty, reps.count == valid.count {
                 return "\(load) × " + reps.map(String.init).joined(separator: ", ")
             }
-            return "\(load) kg · " + SessionPresentation.seriesCount(valid.count)
+            return "\(load) \(LoadDisplay.symbol()) · " + SessionPresentation.seriesCount(valid.count)
         }
     }
 }

@@ -12,11 +12,7 @@ struct SettingsRootView: View {
 
     @AppStorage(AppPreferenceKeys.weightUnit) private var weightUnitRaw = WeightUnit.kg.rawValue
     @AppStorage(AppPreferenceKeys.loadStep) private var loadStep = 0.0
-    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
-    @AppStorage(AppPreferenceKeys.defaultRestSeconds) private var defaultRest = 90
-    @AppStorage(AppPreferenceKeys.restSound) private var restSound = true
     @AppStorage(AppPreferenceKeys.maxHeartRate) private var maxHeartRate = 0.0
-    @AppStorage(AppPreferenceKeys.liveActivity) private var liveActivity = true
 
     @State private var profile = CoachProfile()
     @State private var providerSettings = ProviderSettings.default
@@ -140,10 +136,6 @@ struct SettingsRootView: View {
                 loadStep = unit == .kg ? 0.5 : 1
             }
 
-            Picker("Semana começa em", selection: $weekStartRaw) {
-                Text("Segunda").tag(WeekStart.monday.rawValue)
-                Text("Domingo").tag(WeekStart.sunday.rawValue)
-            }
         } header: {
             Text("Unidades")
         } footer: {
@@ -155,18 +147,15 @@ struct SettingsRootView: View {
 
     private var trainingSection: some View {
         Section {
-            Picker("Descanso padrão", selection: $defaultRest) {
-                ForEach(AppPreferenceKeys.defaultRestOptions, id: \.self) { seconds in
-                    Text(verbatim: SettingsPresentation.restText(seconds)).tag(seconds)
-                }
-            }
-            Toggle("Som ao fim do descanso", isOn: $restSound)
             heartRateRows
-            Toggle("Atividade ao Vivo", isOn: $liveActivity)
+            // Sem consumidor ainda: "Atividade ao Vivo" aparece desabilitada (a feature vem no ciclo 6).
+            LabeledContent("Atividade ao Vivo") {
+                Text("Em breve").foregroundStyle(FJColor.textSecondary)
+            }
         } header: {
             Text("Treino")
         } footer: {
-            Text("A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada (em breve).")
+            Text("A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil.")
         }
     }
 

@@ -168,6 +168,27 @@ struct MealReminderTests {
         #expect(center.status == .notDetermined)
     }
 
+    @Test func globalToggleOffCancelsAndBlocksScheduling() async throws {
+        let f = try makeFixture()
+        addMeal(f, "Almoço", minutes: 750)
+        let center = FakeMealReminderCenter()
+        let suite = "fj-meal-toggle-\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let scheduler = MealReminderScheduler(center: center, calendar: calendar, defaults: defaults)
+        await scheduler.reschedule(for: f.context, now: at(11, 6))
+        #expect(!center.pending.isEmpty) // ausente = ligado
+        defaults.set(false, forKey: MealReminderScheduler.enabledKey)
+        await scheduler.reschedule(for: f.context, now: at(11, 6))
+        #expect(center.pending.isEmpty)
+        let adds = center.addCount
+        await scheduler.reschedule(for: f.context, now: at(11, 6))
+        #expect(center.addCount == adds)
+        defaults.set(true, forKey: MealReminderScheduler.enabledKey)
+        await scheduler.reschedule(for: f.context, now: at(11, 6))
+        #expect(!center.pending.isEmpty)
+    }
+
     @Test func archivingPlanStopsFutureReminders() async throws {
         let f = try makeFixture()
         addMeal(f, "Almoço", minutes: 750)
