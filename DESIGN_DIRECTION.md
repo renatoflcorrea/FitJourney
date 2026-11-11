@@ -1,12 +1,12 @@
 # FitJourney — direção de design
 
 Data: 11 de novembro de 2026
-Status: **proposta para aprovação, revisão 1** (pacotes P0.1 + P0.4, `ios-design`).
+Status: **proposta para aprovação, revisão 2** (pacotes P0.1 + P0.4 + W0, `ios-design`) — incorpora as decisões do usuário de 11/11 (SPEC §11 D1–D5): laranja como cor do treino, reps realizadas opcionais, passo de carga 0,5 kg, propostas P1/P3/P4/P5 aprovadas e "manter tela ligada" recusada, app do Apple Watch (§9).
 Protótipo: [design/prototype.html](design/prototype.html) (abrir no Safari/Chrome; claro e escuro lado a lado).
 Código: `FitJourney/DesignSystem/` (tokens e componentes; `DesignSystemGallery` mostra todos).
 Referências: [SPEC.md](SPEC.md) · [docs/PLANO.md](docs/PLANO.md) · Manylens e Health Product (`DESIGN_DIRECTION.md`: vidro só no que flutua, a forma diz o que o toque faz, nada corta, cor com significado, nunca falha em silêncio).
 
-Este documento é o contrato visual para `ios-design`, `ios-implementation` e `qa-accessibility`. Sobre comportamento vale a SPEC; sobre aparência e interação vale este documento. Onde este documento propõe algo que a SPEC não diz, está marcado **(proposta)** e listado em §9.
+Este documento é o contrato visual para `ios-design`, `ios-implementation` e `qa-accessibility`. Sobre comportamento vale a SPEC; sobre aparência e interação vale este documento. Decisões e perguntas em aberto estão em §10.
 
 ---
 
@@ -16,7 +16,7 @@ Este documento é o contrato visual para `ios-design`, `ios-implementation` e `q
 2. **Vidro só no que flutua.** Liquid Glass na tab bar, toolbars, acessório da sessão, botões de ação, chips de filtro, painel do timer de descanso e sheets. **Nunca** em linhas de lista, cartões de dados, formulários ou gráficos: esses são sólidos (`FJCard`, fundo `surface`). Vidro sobre vidro não existe: dentro de um painel de vidro os controles são sólidos. Toda superfície de vidro própria passa por `.fjGlass(in:)`, que troca por sólido com Reduzir Transparência; botões usam `.glass`/`.glassProminent` do sistema.
 3. **Uma mão, no meio do treino.** Na sessão, tudo o que se toca a cada série fica na metade inferior: a **doca de ação** (§4.6) concentra concluir série, descanso e finalizar. O topo é só leitura (tempo, progresso, FC) e ações raras (minimizar, menu). Alvos: 44 pt mínimo, 48 pt nos +/−, 52 pt no check, 56 pt no botão principal.
 4. **Números legíveis à distância.** Carga, reps, tempo e FC usam SF Rounded com dígitos monoespaçados, em tamanho grande (28 pt na série atual, 60 pt no timer). Um número grande por cartão; unidade pequena ao lado; rótulo acima.
-5. **Cor com significado, e nunca sozinha.** Índigo = treino, verde = dieta, rosa-vermelho = saúde/coração. Zonas de FC têm escala própria e sempre trazem "Z1…Z5". Estado sempre tem símbolo + texto. Vermelho só em ação destrutiva e erro.
+5. **Cor com significado, e nunca sozinha.** Laranja = treino, verde = dieta, rosa-vermelho = saúde/coração. Zonas de FC têm escala própria e sempre trazem "Z1…Z5". Estado sempre tem símbolo + texto. Vermelho só em ação destrutiva e erro.
 6. **Planejado não é realizado.** Prescrição aparece em tom secundário ("alvo 8–12"); o realizado, em primário com check preenchido. Dado ausente é "—" e "indisponível", nunca zero (FC sem Watch, kcal sem valor).
 7. **Um toque para o caminho comum, tudo editável depois.** Concluir série como prescrita, refeição como planejada: um toque. Ajustes ficam um nível abaixo (tocar no número, "Ajustar"). Nada concluído é definitivo: tocar de novo desfaz.
 8. **Nunca falha em silêncio, nunca interrompe sem motivo.** Todo estado tem tela, cartão ou aviso (`FJBanner`) que diz o que houve e oferece a saída. Permissões são pedidas no contexto, nunca na abertura. Confirmação só para ações destrutivas ou que trocam o programa/dieta ativos.
@@ -42,7 +42,7 @@ Cada área tem dois tons: `color` (texto, símbolo, linha de gráfico; ≥ 4,5:1
 
 | Área | `color` claro / escuro | `fill` claro / escuro | Onde |
 |---|---|---|---|
-| Treino (`training`) | `#4B45D6` / `#9A96FF` | `#4B45D6` / `#5E58E8` | Tint global do app, botão "Iniciar treino", check de série, timer |
+| Treino (`training`) | `#C2410C` / `#FF9A3D` | `#D4450C` / `#D4450C` | Tint global do app, botão "Iniciar treino", check de série, timer |
 | Dieta (`nutrition`) | `#18803A` / `#30D158` | `#18803A` / `#1F8A40` | Aba Dieta, check de refeição, metas |
 | Saúde (`health`) | `#D70F45` / `#FF5C7A` | `#D70F45` / `#D92350` | Coração, linha de FC, aba Saúde |
 | Coach (`coach`, fase 2) | `#0A6FB8` / `#5AC8FA` | `#0A6FB8` / `#0F78C4` | Aba Coach, cartões de proposta |
@@ -51,22 +51,26 @@ Zonas de FC — só como ponto, faixa ou barra, sempre com o rótulo "Z*n*":
 
 | Zona | % FC máx (padrão, configurável) | Nome | Claro / escuro |
 |---|---|---|---|
-| Z1 | 50–60% | Muito leve | `#8E99A8` / `#98A2B3` |
-| Z2 | 60–70% | Leve | `#2F9BE6` / `#4DB5FF` |
-| Z3 | 70–80% | Moderada | `#2FB457` / `#3DD56D` |
-| Z4 | 80–90% | Intensa | `#F08A1C` / `#FF9F2E` |
-| Z5 | 90–100% | Máxima | `#E5383B` / `#FF5A5F` |
+| Z1 | 50–60% | Muito leve | cinza `#7D8998` / `#98A2B3` |
+| Z2 | 60–70% | Leve | azul `#1E88D6` / `#4DB5FF` |
+| Z3 | 70–80% | Moderada | verde `#1F9D49` / `#3DD56D` |
+| Z4 | 80–90% | Intensa | amarelo `#B88A00` / `#FFD23F` |
+| Z5 | 90–100% | Máxima | magenta `#B5179E` / `#F06ADB` |
 
-Tipo de treino (`FJWorkoutKind`): **Força** = índigo do treino, símbolo `dumbbell.fill`; **Aeróbico** = turquesa `#0B7F83` / `#5AD1D6`, símbolo `figure.run`. Sempre com rótulo.
+A escala vai de cinza a magenta **sem laranja nem vermelho**: o laranja é do treino (D1) e o vermelho é só destrutivo. Todas as cinco têm ≥ 3:1 sobre `surface` nos dois temas (claro: 3,6 · 3,8 · 3,5 · 3,2 · 5,9).
+
+Contraste dos tons de texto e preenchimento (calculado): `training` sobre branco 5,2:1 e sobre `#1C1C1E` 8,1:1; branco sobre `trainingFill` 4,5:1; `attention` sobre branco 6,2:1.
+
+Tipo de treino (`FJWorkoutKind`): **Força** = laranja do treino, símbolo `dumbbell.fill`; **Aeróbico** = turquesa `#0B7F83` / `#5AD1D6`, símbolo `figure.run`. Sempre com rótulo.
 
 Estados (`FJTone`): a cor vai no símbolo e no fundo a 14%; o texto continua primário.
 
 | Tom | Claro / escuro | Significa | Exemplos |
 |---|---|---|---|
 | `success` | `#18803A` / `#30D158` | Concluído, salvo | Refeição feita, treino gravado no Saúde, descanso concluído |
-| `attention` | `#A85400` / `#FFB340` | Ajustado, parcial, precisa de você | Feita com alteração, concluído parcialmente, Saúde não conectado, sessão antiga em aberto |
+| `attention` | `#7A5D00` / `#FFD60A` | Ajustado, parcial, precisa de você | Feita com alteração, concluído parcialmente, Saúde não conectado, sessão antiga em aberto |
 | `destructive` | `#D12B20` / `#FF6259` | Só destrutivo e erro | Descartar sessão, apagar tudo, falha ao salvar |
-| `record` | `#8F6400` / `#FFD60A` | Recorde pessoal | Troféu no resumo e no histórico |
+| `record` | `#8F6400` / `#FFD60A` | Recorde pessoal (mesma família amarela de `attention`; o troféu e o texto diferenciam) | Troféu no resumo e no histórico |
 | `neutral` | `secondaryLabel` | Sem juízo | Pendente, pulada, fora da dieta, aquecimento |
 
 "Fora da dieta" e "pulada" são **neutros** de propósito: o app registra, não julga.
@@ -78,7 +82,7 @@ Só estilos de texto do sistema (Dynamic Type até AX5). Números: SF Rounded + 
 | Token | Estilo | Uso |
 |---|---|---|
 | `numberHero` | largeTitle rounded bold (34) | Tempo da sessão, kcal do dia, RPE escolhido |
-| `numberLarge` | title rounded semibold (28) | Carga e reps da série atual (`NumberStepperField`) |
+| `numberLarge` | title rounded semibold (28) | Carga da série atual (`NumberStepperField`) |
 | `numberMedium` | title3 rounded semibold (20) | `FJMetricCell`, séries não atuais, células do RPE |
 | `numberBody` | body rounded medium (17) | Número em linha de lista, FC ao vivo, acessório |
 | `numberCaption` | footnote rounded medium (13) | Eixos, legendas, "96 / 150 g" |
@@ -99,7 +103,7 @@ Formatos: carga com vírgula decimal local e sem zeros à direita ("32,5 kg"); t
 | `FJSize.minTap` | 44 pt |
 | `FJSize.stepperButton` | 48 pt |
 | `FJSize.setCheck` | 52 pt |
-| `FJSize.primaryButton` | 56 pt (altura mínima) |
+| `FJSize.secondaryButton` · `FJSize.primaryButton` | 48 · 56 pt (alturas mínimas) |
 | `FJSize.progressRing` | 72 pt |
 
 ### 2.4 Hápticos (`FJHaptic`, via `sensoryFeedback`)
@@ -114,7 +118,7 @@ Formatos: carga com vírgula decimal local e sem zeros à direita ("32,5 kg"); t
 | Sessão salva, recorde (`celebration`) | sucesso |
 | Erro ao salvar (`error`) | erro |
 
-Desfazer um check não vibra. Hápticos respeitam o ajuste do sistema; "Hápticos na sessão" em Ajustes desliga os da sessão.
+Desfazer um check não vibra (`fjHaptic(_:trigger:when:)`). Hápticos respeitam o ajuste do sistema; "Hápticos na sessão" em Ajustes desliga os da sessão.
 
 ### 2.5 Movimento (`FJMotion`, `.fjAnimation(_:value:)`)
 
@@ -125,7 +129,7 @@ Desfazer um check não vibra. Hápticos respeitam o ajuste do sistema; "Háptico
 | `press` | `.easeOut(duration: 0.08)` | Resposta ao toque |
 | `reduced` | `.easeInOut(duration: 0.2)` | Substitui todas com Reduzir Movimento |
 
-Com Reduzir Movimento: sem zoom/matched geometry na transição sessão ↔ acessório (vira esmaecimento), sem contagem animada de dígitos, sem confete/efeito de símbolo no recorde (fica o troféu estático). Nenhuma animação em laço em lugar nenhum.
+Com Reduzir Movimento: sem zoom/matched geometry na transição sessão ↔ acessório (vira esmaecimento), sem contagem animada de dígitos nem troca animada de símbolo (`.fjNumericTransition()` e `.fjSymbolTransition()` viram identidade — nenhuma tela chama `contentTransition` direto), sem confete no recorde (fica o troféu estático). Nenhuma animação em laço em lugar nenhum.
 
 ---
 
@@ -224,7 +228,7 @@ Push a partir da ficha. `List` nativa em modo de edição permanente (alças de 
 
 - **Cabeçalho**: nome, letra/cor, dias (modo semanal), observações, duração estimada calculada ("~55 min").
 - **Linha de exercício**: miniatura da mídia (ou símbolo do equipamento), nome, resumo da prescrição em uma linha ("4 × 8–12 · 32,5 kg · 90 s"), etiquetas de tipo de série quando não for "válida". Toque abre a **prescrição**. Deslizar: Duplicar, Mover/copiar para outra ficha, Remover.
-- **Agrupar** (bi-set, tri-set, circuito): "Selecionar" na toolbar → marcar 2+ exercícios vizinhos → "Agrupar". O tipo sai da contagem (2 = bi-set, 3 = tri-set, 4+ = circuito). O grupo aparece com um trilho vertical índigo à esquerda unindo as linhas, rótulo "Bi-set" no topo e a linha "Descanso ao fim da rodada: 90 s". "Desagrupar" no menu do rótulo.
+- **Agrupar** (bi-set, tri-set, circuito): "Selecionar" na toolbar → marcar 2+ exercícios vizinhos → "Agrupar". O tipo sai da contagem (2 = bi-set, 3 = tri-set, 4+ = circuito). O grupo aparece com um trilho vertical laranja à esquerda unindo as linhas, rótulo "Bi-set" no topo e a linha "Descanso ao fim da rodada: 90 s". "Desagrupar" no menu do rótulo.
 
 **Prescrição do exercício** (push, `Form`):
 
@@ -236,7 +240,7 @@ Push a partir da ficha. `List` nativa em modo de edição permanente (alças de 
    - **Tipo de série**: aquecimento, preparatória, válida, drop-set, rest-pause, até a falha, back-off.
    - **Repetições**: segmentado **Fixas | Faixa | AMRAP**. Fixas: um `NumberStepperField`. Faixa: dois (mín. "piso" e máx.), validação mín < máx. AMRAP: sem campo, texto "máximo possível".
    - **Isometria** (`isometric`, ou "Sustentação" opcional por série): `NumberStepperField` em segundos, passo 5.
-   - **Carga**: segmentado **kg (ou lb) | Peso corporal**. Peso corporal mostra `NumberStepperField` com sinal ("Lastro +10 kg", "Assistência −20 kg", 0 = só o corpo). Unilateral mostra "por lado".
+   - **Carga**: `NumberStepperField` com passo **0,5 kg** (D3; configurável em Ajustes). Segmentado **kg (ou lb) | Peso corporal**. Peso corporal mostra `NumberStepperField` com sinal ("Lastro +10 kg", "Assistência −20 kg", 0 = só o corpo). Unilateral mostra "por lado".
    - **Descanso**: chips 30 · 45 · 60 · 90 · 120 · 180 s + "Outro" (stepper de 5 s).
    - **Cadência**: campo curto com máscara "3-1-1-0", opcional.
    - **Esforço alvo**: segmentado Nenhum | RIR | RPE + stepper (RIR 0–5, RPE 1–10).
@@ -284,10 +288,11 @@ Push a partir da ficha. `List` nativa em modo de edição permanente (alças de 
 │ ┌──────────────────────────────┐ │
 │ │ ▶ Supino inclinado halter  ▣ │ │  exercício atual (expandido)
 │ │   última vez: 3 × 10 com 24 kg│ │
-│ │ 1  24 kg × 10            (✓) │ │
-│ │ 2  ┌ Carga ┐   ┌ Reps ┐      │ │  série atual: campos grandes
-│ │    (−) 24 (+)  (−) 10 (+) ( )│ │
-│ │ 3  24 kg × 8–12          ( ) │ │
+│ │ 1  24 kg · alvo 8–12     (✓) │ │
+│ │ 2  alvo 8–12 · RIR 2         │ │  série atual: carga grande
+│ │    (−)   26 kg   (+)     ( ) │ │
+│ │    [+ reps]                  │ │  reps realizadas: opcional
+│ │ 3  24 kg · alvo 8–12     ( ) │ │
 │ │ + Série   Anotação           │ │
 │ └──────────────────────────────┘ │
 │ ○ Crucifixo          3 × 12–15   │  pendentes (recolhidos)
@@ -299,19 +304,19 @@ Push a partir da ficha. `List` nativa em modo de edição permanente (alças de 
 **Barra superior** (toolbar do sistema, só leitura + ações raras):
 - Esquerda: `chevron.down` — minimizar (também arrastar a tela para baixo).
 - Centro: tempo decorrido (`numberBody` semibold, calculado por `startDate`) e "3/6" exercícios; barra de progresso fina (2 pt) na borda inferior da barra.
-- Direita: `FJHeartRateBadge` (bpm + zona; "—" com `heart.slash` quando indisponível — tocar explica: "Sem dados do Apple Watch agora") e menu "…": Adicionar exercício · Reordenar · Anotação da sessão · Dor/desconforto · Finalizar treino · Descartar treino (destrutivo).
+- Direita: `FJHeartRateBadge` (bpm + zona; "—" com `heart.slash` quando indisponível — tocar explica: "Sem dados do Apple Watch agora") e menu "…": Pausar treino · Adicionar exercício · Reordenar · Anotação da sessão · Dor/desconforto · Finalizar treino · Descartar treino (destrutivo).
 
 **Lista de exercícios** (`ScrollView` de `FJCard`s; rola sozinha para o exercício atual):
 - **Recolhido**: símbolo de estado (○ pendente, ✓ concluído preenchido, ◐ parcial, » pulado), nome, resumo ("4 × 8–12 · 32,5 kg"; concluído mostra o realizado). Toque expande e o torna o atual.
 - **Expandido (atual)**:
   - Cabeçalho: nome em `cardTitle`; miniatura da mídia à direita (1 toque abre a mídia em sheet `.medium`); etiquetas (Bi-set, Unilateral); linha "última vez: 3 × 10 com 24 kg" e observação da prescrição ("banco 30°"); cadência e esforço alvo quando houver ("3-1-1-0 · RIR 2").
   - **Linhas de série**: número (ou etiqueta do tipo: "Aq", "Drop"…), valores, `FJCheckButton` à direita (52 pt).
-    - **Série atual** (a primeira pendente, ou a que o usuário tocou): linha alta com dois `NumberStepperField` lado a lado — Carga (passo 2,5 kg / 5 lb, configurável) e Repetições (passo 1; pré-preenchido com o **piso** da faixa na primeira vez e com o realizado da última sessão depois) — e o alvo em `caption` ("alvo 8–12"). Tocar no número abre o teclado numérico com "OK" acima do teclado.
-    - **Outras séries**: compactas, uma linha: "24 kg × 10" (feita, primário) ou "24 kg × 8–12" (pendente, secundário). Tocar nos valores torna a série a atual (editar depois de concluída mantém o check e o `completedAt`).
-    - Check: um toque conclui com os valores exibidos → háptico → a doca vira **descanso**. Tocar de novo desfaz (sem confirmação; o descanso em curso é cancelado).
+    - **Série atual** (a primeira pendente, ou a que o usuário tocou): linha alta com **um** `NumberStepperField` de Carga em destaque (28 pt, passo 0,5 kg — D3) e o check à direita. O **alvo aparece sempre como prescrito** — "alvo 8–12", "alvo 10", "alvo máx." — com RIR/RPE e cadência quando houver (D2). Abaixo, discreto, `FJOptionalNumberField` "**+ reps**": reps realizadas começam vazias e são opcionais; tocar abre o teclado numérico (com OK); preenchido mostra "10 reps" e um × para limpar. Tocar no número da carga abre o teclado decimal com "OK" na barra do teclado.
+    - **Outras séries**: compactas, uma linha. Pendente: "24 kg · alvo 8–12" em secundário. Concluída sem reps: "24 kg · alvo 8–12" em primário com check (vale "feita dentro do alvo"). Concluída com reps informadas: "24 kg × 9". Tocar nos valores torna a série a atual (editar depois de concluída mantém o check e o `completedAt`).
+    - Check: um toque conclui a série **com a carga exibida** (sem exigir reps) → háptico → a doca vira **descanso**; o "+ reps" continua acessível na série recém-concluída durante o descanso. Tocar de novo desfaz (sem confirmação, sem háptico; o descanso em curso é cancelado).
     - Deslizar a linha: Remover série · Mudar tipo.
   - Rodapé do cartão: "+ Série" (copia a última), "Anotação", menu "…" do exercício: Trocar exercício (abre a Biblioteca filtrada pelo mesmo grupo; a substituição fica registrada: "no lugar de Supino reto") · Pular (motivo opcional em chips: Equipamento ocupado, Dor, Tempo, Outro) · Marcar como concluído (com pendentes = "Concluído parcialmente") · Dor/desconforto (local + 0–10) · Ver evolução.
-- **Bi-set/circuito**: cartões do grupo unidos pelo trilho índigo e rótulo "Bi-set · rodada 2 de 3". A série atual alterna A → B; o descanso só dispara ao fim da rodada (entre A e B a doca mostra "Agora: B — Tríceps corda").
+- **Bi-set/circuito**: cartões do grupo unidos pelo trilho laranja e rótulo "Bi-set · rodada 2 de 3". A série atual alterna A → B; o descanso só dispara ao fim da rodada (entre A e B a doca mostra "Agora: B — Tríceps corda").
 - **Isométrico**: a série atual mostra `NumberStepperField` "Sustentação" (s) e carga opcional; a doca oferece "Iniciar sustentação".
 - **Cardio**: a linha atual mostra campos Distância e Nível/Velocidade/Inclinação; a doca vira cronômetro.
 
@@ -319,8 +324,8 @@ Push a partir da ficha. `List` nativa em modo de edição permanente (alças de 
 
 | Modo | Conteúdo |
 |---|---|
-| Série | `FJPrimaryButton("Concluir série 2")` — faz o mesmo que o check da série atual. Sublinha acima: "Supino inclinado · 24 kg × 10". |
-| Descanso | `FJRestTimerView`: "DESCANSO", o que vem a seguir ("Série 3 de 4 · 24 kg × 10"), tempo em 60 pt, barra, **−15 s · Pular · +15 s** (52 pt de altura). Ao zerar: háptico + som opcional, rótulo "Descanso concluído", contagem "+0:12" continua; a doca volta ao modo Série ao tocar em Pular/qualquer check, ou sozinha após 10 s. A lista continua utilizável durante o descanso (ajustar a próxima carga). |
+| Série | `FJPrimaryButton("Concluir série 2")` — faz o mesmo que o check da série atual. Sublinha acima: "Supino inclinado · 26 kg · alvo 8–12". |
+| Descanso | `FJRestTimerView`: "DESCANSO", o que vem a seguir ("Série 3 de 4 · 26 kg · alvo 8–12"), tempo em 60 pt, barra, **−15 s · Pular · +15 s** (52 pt de altura). Ao zerar: háptico + som opcional + anúncio no VoiceOver, rótulo "Descanso concluído", tempo parado em 0:00 e o botão central vira "Continuar"; a doca volta ao modo Série ao tocar em Continuar/qualquer check, ou sozinha após 10 s. A lista continua utilizável durante o descanso (ajustar a próxima carga, informar as reps da série feita). |
 | Sustentação | Antes: `FJPrimaryButton("Iniciar sustentação")`. Durante: contagem regressiva em 60 pt com 3 s de preparação ("3, 2, 1"), botão "Parar" (registra o tempo real e conclui a série); ao zerar: háptico, continua contando o excedente até "Parar". |
 | Cardio | Cronômetro em 60 pt, "Iniciar" / "Pausar" / "Concluir". |
 | Próximo | Exercício concluído: "Próximo: Crucifixo" (`FJPrimaryButton`), 1 toque expande o próximo. |
@@ -333,12 +338,13 @@ Push a partir da ficha. `List` nativa em modo de edição permanente (alças de 
 | FC ao vivo indisponível (sem Watch, negado, simulador) | Badge "—"; nada mais muda. Nunca "0 bpm". |
 | FC conectando | Coração pulsando uma vez + "—" (sem laço com Reduzir Movimento). |
 | Falha ao salvar uma série | A linha volta ao estado anterior, háptico de erro, `FJBanner` destrutivo no topo da lista: "Não foi possível salvar. Tente de novo." |
-| Retomada (app fechado e reaberto) | Volta como estava (tela cheia ou minimizada), tempo e descanso recalculados por data; descanso que venceu fora do app aparece como "Descanso concluído +3:20". |
-| Sessão antiga em aberto (> 4 h sem série) **(proposta)** | Ao abrir o app: sheet "Você tem um treino em aberto desde ontem, 19:40" — Continuar · Finalizar na hora da última série · Descartar. |
+| Retomada (app fechado e reaberto) | Volta como estava (tela cheia ou minimizada), tempo e descanso recalculados por data; descanso que venceu fora do app aparece como "Descanso concluído". |
+| Pausada (pelo relógio ou pelo menu "…") | Tempo congelado com "Pausado" na barra superior; a doca mostra `FJPrimaryButton("Retomar treino")`; o descanso em curso congela e some da doca. O acessório mostra o símbolo de pausa e "pausado". |
+| Sessão antiga em aberto (> 4 h sem série) | Ao abrir o app: sheet "Você tem um treino em aberto desde ontem, 19:40" — Continuar · Finalizar na hora da última série · Descartar. |
 | Minimizada | `FJSessionAccessory` acima da tab bar: símbolo, nome da ficha, "Supino inclinado · série 2 de 4", tempo; durante o descanso mostra a contagem regressiva e "descanso". Toque reabre. |
-| Tela bloqueada / segundo plano | Ciclo 6: Live Activity com o descanso. Até lá, notificação local ao fim do descanso (se autorizada no primeiro descanso; pedido contextual). |
+| Tela bloqueada / segundo plano | Notificação local ao fim do descanso (permissão pedida no contexto, no primeiro descanso; negada = só háptico em primeiro plano). No ciclo 6 a Live Activity assume. |
+| Controlada pelo Apple Watch | Nada muda na tela: o estado chega por snapshot e a lista/doca acompanham (série concluída no relógio aparece marcada aqui). Selo `applewatch` ao lado da FC enquanto o relógio está conectado. |
 
-A tela não apaga durante a sessão em primeiro plano **(proposta, ajuste "Manter tela ligada")**.
 
 ### 4.6 Encerramento
 
@@ -381,8 +387,8 @@ Push a partir do exercício, da sessão ou do histórico.
 
 1. Seletor segmentado de métrica: **Carga | Volume | 1RM est.**; fileira de `FJFilterChip` de período: 1M · 3M · 6M · 1A · Tudo.
 2. Gráfico (Swift Charts, dentro de `FJCard`): linha + pontos na cor do treino; recordes com ponto maior e troféu; arrastar seleciona um ponto e mostra data + valor no cabeçalho do cartão (não em balão de vidro). Eixo Y começa perto do mínimo real, não em zero, para carga/1RM; em zero para volume.
-3. **Melhor série** e **Última vez** (`FJMetricCell`): "34 kg × 8", "32,5 kg × 10 · há 3 dias".
-4. Lista de sessões: data, séries realizadas em uma linha ("32,5 × 10, 10, 9, 8").
+3. **Melhor série** e **Última vez** (`FJMetricCell`): "34 kg × 8", "32,5 kg · há 3 dias" (reps só quando informadas).
+4. Lista de sessões: data, séries realizadas em uma linha ("32,5 kg · 4 séries" ou, com reps informadas, "32,5 × 10, 10, 9, 8").
 
 Estados: um único registro → ponto isolado + "Registre mais treinos para ver a evolução"; nenhum → `FJEmptyState`. Isométrico troca Carga por Tempo; cardio mostra Distância | Duração | Ritmo.
 
@@ -440,7 +446,7 @@ Título grande "Saúde". Seletor segmentado **Dia | Tendências**; navegação d
 
 **Dia**:
 
-1. **Frequência cardíaca do dia** (`FJCard`): gráfico 24 h (Swift Charts) — barras de mín–máx por intervalo de 15 min na cor da saúde; **treinos sobrepostos** como faixas verticais atrás do gráfico (índigo = Força, turquesa = Aeróbico, 18% de opacidade) com o símbolo do tipo no topo da faixa. Cabeçalho: "58–164 bpm" e FC em repouso. Arrastar mostra hora + bpm no cabeçalho.
+1. **Frequência cardíaca do dia** (`FJCard`): gráfico 24 h (Swift Charts) — barras de mín–máx por intervalo de 15 min na cor da saúde; **treinos sobrepostos** como faixas verticais atrás do gráfico (laranja = Força, turquesa = Aeróbico, 18% de opacidade) com o símbolo do tipo no topo da faixa. Cabeçalho: "58–164 bpm" e FC em repouso. Arrastar mostra hora + bpm no cabeçalho.
 2. **Treinos do dia**: linha por treino — símbolo, nome ("A — Peito e tríceps" ou "Corrida ao ar livre"), `FJTag` **Força**/**Aeróbico**, origem ("FitJourney" · "Apple Watch"), duração, FC média, kcal. Toque abre o detalhe.
 3. **Força x aeróbico**: barra empilhada de minutos do dia + as duas `FJMetricCell`; abaixo, comparação com a semana (7 barras empilhadas, hoje destacado).
 4. **Energia ativa** e **Passos** (`FJMetricGrid`).
@@ -475,8 +481,8 @@ Título grande "Saúde". Seletor segmentado **Dia | Tendências**; navegação d
 
 Sheet `.large` a partir do avatar em Hoje. `Form` nativo:
 
-- **Unidades**: carga (kg | lb), passo de carga (1 · 2 · 2,5 · 5), distância (km | mi), semana começa em (segunda | domingo).
-- **Treino**: descanso padrão, som ao fim do descanso, hápticos na sessão, manter tela ligada, sugerir progressão (desligado), limite de vídeo.
+- **Unidades**: carga (kg | lb), passo de carga (**0,5** · 1 · 2 · 2,5 · 5; padrão 0,5 kg / 1 lb), distância (km | mi), semana começa em (segunda | domingo).
+- **Treino**: descanso padrão, som ao fim do descanso, notificação ao fim do descanso, hápticos na sessão, sugerir progressão (desligado), limite de vídeo.
 - **Saúde**: estado ("Conectado" / "Não conectado" / "Sem acesso — abrir Ajustes do iPhone"), "Conectar ao Saúde", gravar treinos (toggle), FC máxima (calculada pela idade ou manual) e limites das 5 zonas (com `FJHeartRateZoneBadge`).
 - **Dieta**: lembretes, tamanho do copo.
 - **Dados**: Exportar tudo (JSON) → `ShareLink`; Importar backup (mostra o resumo do que será importado antes de confirmar); **Apagar todos os dados** (destrutivo, diálogo com o que será apagado + confirmação em dois passos).
@@ -504,8 +510,8 @@ Estados: exportando/importando (progresso na linha, cancelável); importação i
 
 ### 5.3 Iniciar → executar → encerrar
 1. Hoje → "Iniciar treino" → a sessão sobe em tela cheia, primeiro exercício expandido, série 1 atual, doca "Concluir série 1".
-2. (Opcional) ajustar carga/reps com +/−. Tocar no check ou em "Concluir série" → háptico → doca vira **Descanso** (90 s, −15/Pular/+15).
-3. Descanso zera → háptico/som → doca volta a "Concluir série 2". Repetir.
+2. (Opcional) ajustar a carga com +/− (0,5 kg por toque). Tocar no check ou em "Concluir série" → háptico → doca vira **Descanso** (90 s, −15/Pular/+15).
+3. (Opcional) durante o descanso, tocar em "+ reps" na série feita e informar quantas saíram. Descanso zera → háptico/som → doca volta a "Concluir série 2". Repetir.
 4. Última série → exercício marca concluído (háptico forte), recolhe; doca: "Próximo: Crucifixo" → 1 toque.
 5. Desvios a qualquer momento pelo menu do exercício: Trocar · Pular · + Série · Anotação · Dor; pelo menu da sessão: Adicionar exercício · Reordenar.
 6. Minimizar (`chevron.down`) para ver a dieta ou a biblioteca; o acessório mostra o tempo/descanso; tocar volta.
@@ -515,8 +521,8 @@ Estados: exportando/importando (progresso na linha, cancelável); importação i
 ### 5.4 Retomar sessão após fechar o app
 1. Usuário fecha (ou o sistema encerra) o app no meio do descanso.
 2. Reabre: Hoje aparece com a sessão **no mesmo modo em que estava** — tela cheia reabre sem animação de entrada; minimizada volta com o acessório.
-3. Tempo decorrido correto (por `startDate`); descanso mostra o restante ou "Descanso concluído +m:ss"; série atual e campos editados preservados.
-4. Se a última série foi há mais de 4 h: sheet "Treino em aberto" (Continuar · Finalizar na hora da última série · Descartar) **(proposta)**.
+3. Tempo decorrido correto (por `SessionClock`: início, pausas e fim); descanso mostra o restante ou "Descanso concluído"; série atual e campos editados preservados.
+4. Se a última série foi há mais de 4 h: sheet "Treino em aberto" (Continuar · Finalizar na hora da última série · Descartar).
 
 ### 5.5 Trocar o programa ativo
 1. Treinos → Programas → tocar num anterior → "Reativar" (ou criar/duplicar um novo e salvar).
@@ -542,13 +548,13 @@ Estados: exportando/importando (progresso na linha, cancelável); importação i
 ## 6. Acessibilidade
 
 - **VoiceOver**
-  - Linha de série é um elemento com ações: rótulo "Série 2 de 4, válida, 32,5 quilos, 10 repetições" · valor "pendente/concluída/pulada" · dica "Toque duas vezes para concluir" · ações personalizadas "Editar carga", "Editar repetições", "Remover série". Unidades por extenso (quilos, segundos, batimentos por minuto), nunca "kg".
-  - `NumberStepperField` é ajustável (deslizar para cima/baixo = +/−) e tem a ação "Digitar valor".
+  - Linha de série é um elemento com ações: rótulo "Série 2 de 4, válida, 32,5 quilos, alvo 8 a 12 repetições" (com reps informadas: "…, 9 repetições feitas") · valor "pendente/concluída/pulada" · ações personalizadas "Editar carga", "Informar repetições", "Remover série". Sem dicas redundantes ("toque duas vezes…"): o VoiceOver já as dá. Unidades por extenso (quilos, segundos, batimentos por minuto), nunca "kg".
+  - `NumberStepperField` é ajustável (deslizar para cima/baixo = +/−) e tem a ação "Digitar valor"; o teclado fecha pelo "OK" da barra do teclado. `FJBanner` expõe o texto como um elemento e o botão de ação como outro.
   - Timer de descanso: anuncia "Descanso, 1 minuto e 30 segundos" ao iniciar e "Descanso concluído" ao terminar (`AccessibilityNotification.Announcement`); o texto que muda a cada segundo tem `.updatesFrequently` e não interrompe.
   - Ordem de foco na sessão: barra superior → exercício atual → doca; ao concluir uma série o foco vai para a doca.
   - Gráficos: `accessibilityChartDescriptor` com resumo ("FC entre 92 e 164, média 128") e navegação por exercício; a lista numerada abaixo do gráfico traz os mesmos dados em texto.
   - Estados sempre em texto: "Feita, com alteração", "Zona 3, moderada", "Indisponível".
-- **Dynamic Type até AX5**: só estilos de texto; nenhuma altura fixa em linha com texto. Em tamanhos de acessibilidade: `FJAdaptiveStack` empilha (os dois steppers da série ficam um sob o outro; métricas em 1 coluna; botões secundários em coluna); linha do tempo da dieta põe a hora acima do cartão; a doca cresce e a lista rola por trás. O timer tem teto de 96 pt e reduz até 50% para caber.
+- **Dynamic Type até AX5**: só estilos de texto; nenhuma altura fixa em linha com texto. Em tamanhos de acessibilidade: `FJAdaptiveStack` empilha (o `NumberStepperField` põe rótulo, valor e botões em três linhas, sem truncar o rótulo; métricas em 1 coluna; botões secundários em coluna); linha do tempo da dieta põe a hora acima do cartão; a doca cresce e a lista rola por trás. O timer tem teto de 96 pt e reduz até 50% para caber.
 - **Reduzir Transparência**: `.fjGlass` vira `surfaceElevated` com contorno; barras e botões do sistema seguem o sistema. Nenhuma informação depende do desfoque.
 - **Reduzir Movimento**: §2.5.
 - **Aumentar Contraste / Diferenciar sem cor**: superfícies e texto são cores do sistema; estados têm símbolo e texto; selecionado tem check ou contorno além da cor; zonas têm "Z*n*"; força/aeróbico têm símbolo e rótulo.
@@ -577,14 +583,15 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 
 **Sessão**
 11. Do toque em "Iniciar treino" à sessão interativa: < 300 ms com ficha de 12 exercícios.
-12. Concluir uma série prescrita = **1 toque**; ajustar a carga em um passo e concluir = **2 toques**; nenhum desses toques acima da metade da tela.
+12. Concluir uma série prescrita = **1 toque**, sem informar reps; ajustar a carga em um passo (0,5 kg) e concluir = **2 toques**; nenhum desses toques acima da metade da tela. A série concluída sem reps mostra o alvo como prescrito.
 13. Com o polegar da mão que segura o aparelho (zona inferior de 50% da tela) é possível: concluir série, ajustar o descanso, pular o descanso, ir ao próximo exercício e finalizar.
-14. Carga e reps da série atual e o timer são legíveis a 1,5 m (≥ 28 pt e ≥ 60 pt no tamanho de texto padrão).
-15. Fechar o app à força durante o descanso e reabrir após 2 min: mesma série atual, tempo decorrido correto (±1 s), descanso mostrado como concluído com o excedente.
+14. A carga da série atual e o timer são legíveis a 1,5 m (≥ 28 pt e ≥ 60 pt no tamanho de texto padrão).
+15. Fechar o app à força durante o descanso e reabrir após 2 min: mesma série atual, tempo decorrido correto (±1 s), descanso mostrado como concluído.
 16. Minimizar mostra o acessório em todas as abas; tocar reabre no mesmo ponto de rolagem.
 17. Desfazer um check restaura o estado pendente sem perder os valores editados.
-18. VoiceOver na linha de série lê "Série *n* de *N*, *tipo*, *carga*, *reps*, *estado*".
-19. Sem Apple Watch, a sessão inteira funciona e o badge de FC mostra "—".
+18. VoiceOver na linha de série lê "Série *n* de *N*, *tipo*, *carga*, alvo *reps*, *estado*"; desfazer um check não vibra.
+19. Sem Apple Watch, a sessão inteira funciona e o badge de FC mostra "—". Com a sessão pausada, o tempo da barra e do acessório não avança.
+19a. Todo teclado numérico aberto por um campo do DesignSystem fecha pelo "OK" da barra do teclado; digitar "32.5" ou "32,5" resulta em 32,5 kg nos dois locales.
 
 **Encerramento**
 20. RPE pode ficar sem resposta e o treino é salvo; tocar no valor escolhido desmarca.
@@ -612,14 +619,14 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 |---|---|---|
 | `fjGlass(in:tint:interactive:)` | `Modifiers/FJGlass.swift` | Único acesso a `glassEffect` em superfícies próprias |
 | `FJCard`, `.fjCard()`, `.fjScreenBackground()`, `FJAdaptiveStack` | `Modifiers/FJCard.swift` | Cartão sólido; fundo de tela; pilha que empilha em AX |
-| `FJPrimaryButton`, `FJSecondaryButton`, `FJIconButton`, `.fjPrimaryButtonStyle()`, `.fjSecondaryButtonStyle()` | `Components/FJButtons.swift` | `.glassProminent` / `.glass` |
-| `FJTag`, `FJFilterChip` | `Components/FJChip.swift` | Etiqueta sólida em conteúdo; chip de filtro em vidro |
+| `FJPrimaryButton`, `FJSecondaryButton`, `FJIconButton`, `.buttonStyle(.fjPrimary(area))`, `.buttonStyle(.fjSecondary())` | `Components/FJButtons.swift` | Botões de ação em vidro (`fjGlass` tingido/neutro) com altura mínima por token (56 / 48 / 44 pt). Toolbars do sistema continuam com os botões nativos. |
+| `FJTag`, `FJFilterChip` | `Components/FJChip.swift` | Etiqueta sólida em conteúdo; chip de filtro em vidro (selecionado = check + contorno, texto primário) |
 | `FJProgressRing`, `FJGoalBar` | `Components/FJProgress.swift` | Metas |
 | `FJMetricCell`, `FJMetricGrid` | `Components/FJMetricCell.swift` | Valor + unidade + rótulo |
 | `FJSectionHeader` | `Components/FJSectionHeader.swift` | Cabeçalho de seção com ação |
-| `NumberStepperField` | `Components/NumberStepperField.swift` | Carga, reps, tempo, lastro com +/− |
-| `FJRestTimerView` | `Components/FJRestTimerView.swift` | Painel de descanso (por datas) |
-| `FJCheckButton`, `FJRPEScale`, `FJSessionAccessory` | `Components/FJSessionControls.swift` | Check de série/refeição; RPE 1–10; conteúdo do `tabViewBottomAccessory` |
+| `NumberStepperField`, `FJOptionalNumberField`, `.fjKeyboardDone(_:)` | `Components/NumberStepperField.swift` | Carga, tempo, lastro com +/−; campo opcional discreto ("+ reps"); botão OK na barra do teclado |
+| `FJRestTimerView` | `Components/FJRestTimerView.swift` | Painel de descanso (por datas; para de atualizar e anuncia ao terminar) |
+| `FJCheckButton`, `FJRPEScale`, `FJSessionAccessory` | `Components/FJSessionControls.swift` | Check de série/refeição; RPE 1–10; conteúdo do `tabViewBottomAccessory` (recebe `startedAt`, `pausedSeconds`, `pausedAt` do `SessionClock`) |
 | `FJHeartRateZoneBadge`, `FJHeartRateBadge` | `Components/FJHeartRate.swift` | Zona e FC ao vivo |
 | `FJEmptyState`, `FJLoadingState`, `FJBanner` | `Components/FJStates.swift` | Estados |
 | `DesignSystemGallery` | `DesignSystemGallery.swift` | Todos, para preview e QA |
@@ -628,29 +635,195 @@ Componentes de tela (linha de série, cartão de exercício, linha do tempo da d
 
 ---
 
-## 9. Decisões e pontos em aberto
+## 9. Apple Watch (watchOS 26) — pacote W0
+
+Comportamento e arquitetura de dados: SPEC §6.4. Objetivo: o iPhone fica no bolso ou no armário e **todo o controle da sessão acontece no pulso**. Quadros de 41 e 46 mm no protótipo.
+
+### 9.1 Princípios do relógio
+
+1. **Um relance, uma ação.** Cada tela responde "o que faço agora?" com um número grande e um botão. Nada de listas durante a série.
+2. **A Coroa é da carga.** Na sessão, girar a Digital Crown ajusta a carga em passos de 0,5 kg (e o RPE ao finalizar). Por isso as páginas da sessão são **horizontais** (`TabView` com `.page`), não verticais: paginação vertical disputaria a Coroa com a carga. Ver Q-W1.
+3. **Toque duplo = ação principal** da tela (`handGestureShortcut(.primaryAction)`): Iniciar, Concluir série, Pular descanso, Iniciar/Parar sustentação, Salvar.
+4. **O pulso avisa.** Hápticos distintos são a interface principal entre as séries (§9.6); a tela pode estar apagada.
+5. **Nunca trava.** O relógio aplica o próprio comando na hora (otimista) e reconcilia com o snapshot do iPhone. Sem iPhone por perto, continua sozinho.
+6. **Fundo preto, vidro só nos botões.** Conteúdo direto sobre preto (OLED); Liquid Glass nativo do watchOS 26 em botões (`.glass`, `.glassProminent`) e na toolbar. Nenhum cartão de vidro.
+
+### 9.2 Tokens no relógio
+
+- **Cor**: as mesmas de §2.1, tons do tema escuro (treino `#FF9A3D`, preenchimento `#D4450C`, zonas, saúde). Texto primário branco; secundário branco 66%.
+- **Tipografia**: estilos de texto do sistema, números em SF Rounded com dígitos monoespaçados. Carga: `.largeTitle` rounded bold (≈ 40 pt). Timer de descanso/sustentação: 48 pt (41 mm) / 54 pt (46 mm), `minimumScaleFactor(0.6)`. Nome do exercício: `.headline`, até 2 linhas (1 no 41 mm).
+- **Alvos**: botão principal em largura total, 46 pt de altura (41 mm) / 52 pt (46 mm); demais ≥ 44 pt — exceção: os dois botões de vidro do descanso no 41 mm têm 40 pt visíveis com área de toque de 44 pt (é a tela mais apertada). Margens: `scenePadding`.
+- **Movimento**: `FJMotion.value` para número e check; sem animação em laço. Tela sempre ligada (Always On): brilho reduzido, timer a 1 Hz, sem animações.
+- O código de tokens é compartilhado com o iPhone (`FJColor`, `FJFont`, `FJFormat`, `FJHeartRateZone`); componentes do relógio ficam em um diretório próprio do alvo watchOS.
+
+### 9.3 Arquitetura de telas
+
+```
+NavigationStack
+├─ Treinos (raiz): ficha do dia em destaque + demais fichas
+│    └─ Ficha (exercícios e prescrição) ── [Iniciar]
+└─ Sessão (substitui a raiz enquanto houver sessão em andamento)
+     TabView horizontal:  Controles ◀ │ SÉRIE (inicial) │ ▶ Métricas │ ▶ Ficha
+     └─ Finalizar:  RPE (Coroa) → Resumo
+```
+
+A página **Série** muda de conteúdo conforme o estado: série → descanso → (sustentação | cardio) → próximo exercício. As outras páginas estão sempre a um deslize.
+
+### 9.4 Telas
+
+**Treinos (raiz)** — título "Treinos".
+- Primeiro item em destaque (altura dupla, contorno laranja): sobrelinha conforme a agenda — "HOJE" (semanal), "PRÓXIMA" (sequencial), "HÁ MAIS TEMPO" (livre) —, selo com a letra, nome da ficha, "6 exercícios · ~55 min". Toque abre a ficha.
+- Abaixo, as outras fichas do programa ativo (selo + nome). Dia de descanso no modo semanal: linha neutra "Descanso hoje" no topo, sem destaque; todas as fichas continuam iniciáveis.
+- Rodapé: nome do programa e "atualizado há 5 min" (idade do resumo recebido do iPhone).
+
+**Ficha** — título "A · Peito e tríceps".
+- Lista dos exercícios: nome + prescrição em uma linha ("4 × 8–12 · 32,5 kg"); bi-set unido por trilho laranja.
+- `Iniciar` (`.glassProminent` laranja) fixo na base (toolbar inferior). Toque duplo inicia. Início: contagem "3, 2, 1" com hápticos, como no app Exercício.
+
+**Sessão · Série** (página inicial)
+
+```
+┌────────────────────┐
+│ 32:14         10:09│  tempo da sessão (toolbar) · hora do sistema
+│ Supino inclinado   │  nome (headline)
+│ Série 2 de 4       │  + tipo quando não for "válida"
+│   ◉  26,0 kg       │  carga grande; ◉ = Coroa ativa
+│ alvo 8–12 · RIR 2  │  alvo sempre como prescrito
+│ [    Concluir    ] │  botão principal · toque duplo
+└────────────────────┘
+```
+
+- **Carga**: gira a Coroa → ±0,5 kg por detente, com háptico de detente; o indicador da Coroa (traço laranja à direita do número) mostra que ela está ativa. Tocar no número abre a folha "Carga" com − / + grandes (alternativa sem Coroa). Peso corporal mostra "PC", "PC +10 kg" e a Coroa ajusta o lastro.
+- **Alvo** como prescrito: "8–12", "10", "máx.", com RIR/RPE. Reps realizadas não são pedidas aqui (D2).
+- **Concluir**: conclui a série com a carga exibida → háptico de sucesso → a página vira **Descanso**. Na última série do exercício o botão diz "Concluir exercício".
+- Entre exercícios: "Próximo: Crucifixo · 3 × 12–15 · 15 kg" + `Começar` (toque duplo).
+
+**Sessão · Descanso** (mesma página)
+
+- Título "Descanso" na toolbar (no lugar do tempo da sessão); contagem regressiva grande; barra fina de progresso.
+- "Próxima: 26,0 kg" — a Coroa continua ajustando a carga, agora da próxima série (Q-W2).
+- Linha de botões de vidro: `+ reps` (abre seletor pela Coroa, começando no piso da faixa; "Limpar" volta a não informado) e `+15 s`. Abaixo, `Pular` em largura total (toque duplo).
+- Fim: háptico forte (§9.6), "Descanso concluído" por 2 s e volta à Série. Com o pulso abaixado o háptico toca do mesmo jeito.
+
+**Sessão · Sustentação** (isométrico)
+- "Sustentação · alvo 0:45" + `Iniciar` (toque duplo) → "3, 2, 1" com cliques → cronômetro grande contando o tempo sustentado, marca do alvo na barra; háptico ao atingir o alvo; `Parar` (toque duplo) registra o tempo real e conclui a série.
+
+**Sessão · Cardio**
+- Cronômetro grande, FC e zona logo abaixo, `Concluir`. Distância/nível ficam para o iPhone.
+
+**Sessão · Ficha** (página à direita)
+- Lista dos exercícios com estado (○ pendente, ● atual em laranja, ✓ concluído, » pulado) e "2/4" séries. Toque abre ações: **Ir para este** · **Concluir exercício** · **Pular** (motivo opcional: Ocupado · Dor · Tempo).
+
+**Sessão · Métricas** (página à direita da Série)
+- Tempo decorrido (maior), FC ao vivo com `Z3` e o ponto da zona, calorias ativas, "Exercício 3 de 6 · série 2 de 4". Sem dado: "—".
+
+**Sessão · Controles** (página à esquerda, como no app Exercício)
+- Grade 2 × 2 de botões de vidro com rótulo: **Pausar/Retomar** · **Finalizar** · **Próximo** · **Pular exercício**.
+- Pausado: a página Série mostra "Pausado" com o tempo congelado e `Retomar` (toque duplo).
+
+**Finalizar**
+1. **RPE**: "Como foi o treino?", número grande (1–10) com o rótulo ("7 · Muito difícil"), ajustado pela Coroa com detentes. `Salvar` (toque duplo) e `Sem nota`.
+2. **Resumo**: check, duração, séries (18/20), calorias, FC média, "1 recorde". Cargas atuais: o relógio aplica a regra padrão do SPEC §3.4 (atualiza só quando todas as séries válidas foram concluídas) e mostra "2 cargas atualizadas · revise no iPhone" (Q-W3). `OK` volta a Treinos.
+- Finalizar sem nenhuma série concluída: "Descartar treino?" — Descartar (destrutivo) · Voltar.
+
+### 9.5 Estados
+
+| Estado | O que o relógio mostra |
+|---|---|
+| Primeiro uso, nunca sincronizou | "Abra o FitJourney no iPhone para trazer seus treinos" + símbolo do iPhone. Sem botões mortos. |
+| Sem programa ativo | "Nenhum programa ativo. Crie ou ative um no iPhone." Treino livre fica fora do W0 (Q-W4). |
+| Sincronizando | Lista anterior continua utilizável; indicador pequeno de atividade ao lado de "atualizado…". Nunca uma tela só de carregamento se já existe resumo. |
+| Resumo antigo (> 24 h) | Rodapé em tom de atenção: "atualizado ontem" — iniciar continua permitido. |
+| iPhone fora de alcance (antes de iniciar) | Inicia normalmente com o último resumo; selo `iphone.slash` na toolbar. |
+| iPhone fora de alcance (na sessão) | Selo `iphone.slash` na toolbar; tudo funciona; comandos ficam na fila. Ao reconectar: selo some, sem interromper. Nenhum alerta modal. |
+| Comando ainda não confirmado | Sem marca visível (otimista). Só se o iPhone rejeitar: o valor volta e aparece "Atualizado pelo iPhone" por 2 s com háptico leve. |
+| Sessão iniciada no iPhone | O relógio abre direto na Sessão (pede para iniciar a `HKWorkoutSession` espelhada). Se o app do relógio estava fechado: notificação "Treino em andamento · Abrir". Na raiz, o destaque vira "EM ANDAMENTO · Continuar". |
+| Sessão iniciada no relógio | O iPhone mostra a mesma sessão (tela cheia ou acessório) com o selo `applewatch`. |
+| Sessão já em andamento ao tocar Iniciar em outra ficha | "Há um treino em andamento" — Continuar · Finalizar aquele. |
+| Sem permissão de Saúde (negada ou não pedida) | Na primeira vez, antes de iniciar: tela "Permitir Saúde" explicando FC e calorias → pedido do sistema. Negado: a sessão funciona sem `HKWorkoutSession`; Métricas mostra "—" e a linha "Sem acesso ao Saúde · ajuste no iPhone". Nunca "0 bpm". |
+| FC ainda sem leitura | "—" com o coração esmaecido; sem animação em laço. |
+| Sessão antiga em aberto (> 4 h) | Ao abrir: "Treino em aberto desde 19:40" — Continuar · Finalizar · Descartar (mesma regra do iPhone). |
+| Erro ao salvar no fim, sem iPhone | "Salvo no relógio. Será enviado ao iPhone quando conectar." O treino do Saúde já está gravado pelo relógio. |
+| Bateria/Modo Pouca Energia | Sem mudança de layout; FC pode ficar menos frequente → "—" quando ausente. |
+
+### 9.6 Hápticos do relógio
+
+| Evento | Háptico (`WKHapticType`) |
+|---|---|
+| Detente da Coroa (carga, reps, RPE) | detente do sistema |
+| Série concluída | `.success` |
+| Fim do descanso | `.notification`, duas vezes com 0,4 s |
+| "3, 2, 1" (início, sustentação) | `.click` a cada segundo, `.start` no zero |
+| Alvo da sustentação atingido | `.directionUp` |
+| Parar sustentação / pausar | `.stop` |
+| Retomar | `.start` |
+| Treino salvo | `.success` |
+| Comando rejeitado / erro | `.failure` |
+
+### 9.7 Acessibilidade no relógio
+
+- **VoiceOver**: a página Série é lida como "Supino inclinado, série 2 de 4, 26 quilos, alvo 8 a 12 repetições"; a carga é um elemento ajustável (deslizar para cima/baixo = ±0,5 kg), independente da Coroa; botões com rótulo completo ("Concluir série 2"); o fim do descanso é anunciado. Páginas têm nome ("Controles", "Série", "Métricas", "Ficha").
+- **Texto grande (até AX3 no relógio)**: a página Série vira rolável; como a rolagem passa a usar a Coroa, a carga deixa de ser ajustada por ela e ganha botões − / + visíveis ao lado do número. O botão principal continua fixo na base. Nenhum texto essencial é truncado: o nome do exercício quebra em até 3 linhas.
+- **Reduzir Movimento**: sem rolagem de dígitos nem transição de página animada entre série e descanso (esmaecimento); hápticos mantidos.
+- **Sem depender de gesto**: toque duplo e Coroa têm sempre um botão equivalente na tela (folha "Carga" com − / +).
+- **Cor nunca sozinha**: zona com "Z3", estado do exercício com símbolo, pausa com texto.
+- **AssistiveTouch / uma mão**: toda a sessão é operável só com toque duplo + Coroa, ou só com toques.
+
+### 9.8 Critérios de validação (relógio)
+
+Exigem iPhone + Apple Watch pareados; no simulador vale só layout.
+
+W1. Da face do relógio até a sessão iniciada: no máximo 3 toques (app → ficha do dia → Iniciar).
+W2. Concluir uma série = 1 toque ou 1 toque duplo, sem olhar para o iPhone; ajustar a carga em 0,5 kg = 1 detente da Coroa.
+W3. O alvo aparece como prescrito ("8–12", "10", "máx."); nenhuma tela exige reps para concluir.
+W4. O fim do descanso é sentido com o pulso abaixado e a tela apagada.
+W5. Série concluída no relógio aparece no iPhone em até 2 s (e vice-versa) com os dois por perto.
+W6. Com o iPhone em modo avião: iniciar, concluir todas as séries e finalizar funcionam; ao reconectar, a sessão no iPhone tem as mesmas séries, cargas e horários (±1 s), sem duplicar.
+W7. Sessão iniciada no iPhone aparece no relógio sem tocar em nada além de abrir o app (ou a notificação).
+W8. Pausar no relógio congela o tempo no relógio e no iPhone; retomar não conta o intervalo.
+W9. Sem permissão de Saúde a sessão inteira funciona e as métricas mostram "—".
+W10. Todas as telas cabem em 41 mm sem truncar número, alvo ou botão principal; em 46 mm não sobra área morta acima do botão.
+W11. Toda área de toque ≥ 44 pt; botão principal ≥ 46 pt (41 mm).
+W12. VoiceOver percorre a página Série em ordem: exercício → série → carga (ajustável) → alvo → Concluir.
+W13. Com texto no maior tamanho a carga é ajustável por botões e nada essencial é cortado.
+W14. Finalizar: RPE pela Coroa, "Sem nota" disponível, resumo mostra quantas cargas foram atualizadas.
+
+### 9.9 Fora do W0
+
+Complicação e widget do Conjunto Inteligente, treino livre e edição de fichas no relógio, dieta no relógio, distância/nível de cardio, anotações e dor/desconforto (ficam no iPhone).
+
+---
+
+## 10. Decisões e pontos em aberto
+
+Decididas pelo usuário em 11/11 (SPEC §11):
+
+- **D1** Laranja é a cor do treino e o tint do app. Consequências: Z4 passou a amarelo e Z5 a magenta (escala sem laranja nem vermelho); o tom "atenção" passou de laranja-escuro a amarelo (§2.1).
+- **D2** Na sessão o alvo aparece sempre como prescrito; reps realizadas são opcionais e começam vazias; o check conclui com a carga exibida (§4.5).
+- **D3** Passo padrão de carga 0,5 kg, configurável (§4.3, §4.12).
+- **D4** Aprovadas: treino em aberto há mais de 4 h, exemplo ABC no primeiro uso, notificação ao fim do descanso, refeição passada sem registro = "Sem registro". Recusada: manter tela ligada (removida).
+- **D5** App do Apple Watch com controle completo da sessão (§9).
 
 Decididas neste documento:
 
-1. **Claro e escuro pelo sistema** (os apps irmãos são só escuros; aqui o uso é diurno/academia e a SPEC pede os dois).
-2. **Índigo como cor do treino e tint do app**, para não colidir com o verde da dieta, o vermelho do coração nem a escala Z1–Z5.
-3. **Doca de ação** na sessão além do check por linha: o check atende a SPEC ("um toque no check"); a doca garante o uso com uma mão.
-4. **"+" de registrar comida na toolbar** de Hoje e Dieta, não como botão flutuante.
-5. **"Fora da dieta" e "pulada" são neutros**, sem cor de alerta.
-6. **Faixas de exercício no gráfico de FC em tons neutros e numeradas**; cor fica reservada para a linha de FC e as zonas.
-7. **Sem onboarding**: primeiro uso é a própria tela Hoje com convites.
-
-Propostas além da SPEC (precisam de aprovação):
-
-- P1. Sheet "Treino em aberto" quando a última série foi há mais de 4 h (§4.5, §5.4).
-- P2. "Manter tela ligada" durante a sessão, ligado por padrão (§4.5, §4.12).
-- P3. "Começar com um exemplo (ABC)" no primeiro uso (§5.1).
-- P4. Refeição pendente em dia passado aparece como "Sem registro", não "Pulada" (§4.9).
-- P5. Notificação local ao fim do descanso antes da Live Activity do ciclo 6 (§4.5).
+1. **Claro e escuro pelo sistema** no iPhone (os apps irmãos são só escuros); relógio sempre escuro.
+2. **Laranja em dois tons**: `#C2410C`/`#FF9A3D` para texto e símbolo, `#D4450C` para preenchimento com texto branco — é um laranja queimado, o mais claro que mantém 4,5:1 com branco (Q5).
+3. **Doca de ação** na sessão além do check por linha: o check atende a SPEC; a doca garante o uso com uma mão.
+4. **Reps opcionais como campo discreto "+ reps"**, disponível antes e depois de concluir a série; nunca no caminho do check.
+5. **"+" de registrar comida na toolbar** de Hoje e Dieta, não como botão flutuante.
+6. **"Fora da dieta", "pulada" e "sem registro" são neutros**, sem cor de alerta.
+7. **Faixas de exercício no gráfico de FC em tons neutros e numeradas**; cor fica reservada para a linha de FC e as zonas.
+8. **Sem onboarding**: primeiro uso é a própria tela Hoje com convites.
+9. **Descanso para em 0:00** ("Descanso concluído"), sem contar o excedente.
+10. **Botões de ação próprios** usam `fjGlass` (vidro nativo tingido) com altura por token, em vez de `.glassProminent`, para garantir 56/48/44 pt exatos e o substituto sólido; toolbars e o relógio usam os estilos nativos.
+11. **Relógio: páginas horizontais** e Coroa dedicada à carga.
 
 Perguntas em aberto:
 
-- Q1. Índigo como cor do treino está bom, ou prefere algo mais "energia" (laranja)? Laranja obrigaria a mudar a cor da Z4.
-- Q2. Repetições pré-preenchidas na série atual: piso da faixa (proposto) ou topo?
-- Q3. Passo padrão de carga: 2,5 kg (proposto) ou 1 kg?
 - Q4. A doca volta sozinha de "Descanso concluído" para "Concluir série" após 10 s — ou deve ficar até um toque?
+- Q5. O laranja de preenchimento é queimado (`#D4450C`) para manter texto branco legível. Alternativa: laranja vivo (`#FF9500`) com texto **preto** nos botões. Qual prefere?
+- Q6. "Atenção" e "recorde" ficaram na mesma família amarela (diferenciados por símbolo). Aceitável, ou o recorde deve ter outra cor?
+- Q-W1. Sessão no relógio em páginas **horizontais** (Coroa livre para a carga), não verticais como sugerido. Confirma?
+- Q-W2. Durante o descanso, a Coroa ajusta a carga da próxima série (proposto) ou o tempo de descanso?
+- Q-W3. Ao finalizar pelo relógio, as cargas atuais são atualizadas pela regra padrão sem perguntar, com revisão no iPhone. Confirma?
+- Q-W4. Treino livre (sem ficha) no relógio fica fora do W0. Confirma?

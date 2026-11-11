@@ -4,7 +4,7 @@ import SwiftUI
 /// (claro/escuro, Dynamic Type, Reduzir Transparência/Movimento).
 struct DesignSystemGallery: View {
     @State private var load = 32.5
-    @State private var reps = 10.0
+    @State private var reps: Int? = nil
     @State private var hold = 45.0
     @State private var rpe: Int? = 7
     @State private var checks: [FJCheckState] = [.done, .pending, .pending, .skipped]
@@ -196,9 +196,11 @@ struct DesignSystemGallery: View {
         section("Carga e repetições") {
             FJCard {
                 VStack(spacing: FJSpacing.l) {
-                    FJAdaptiveStack(spacing: FJSpacing.l) {
-                        NumberStepperField("Carga", value: $load, unit: "kg", step: 2.5, range: 0...500, fractionDigits: 2)
-                        NumberStepperField("Repetições", value: $reps, unit: "reps", range: 0...100)
+                    NumberStepperField("Carga", value: $load, unit: "kg", step: 0.5, range: 0...500, fractionDigits: 2)
+                    FJAdaptiveStack {
+                        Text("alvo 8–12").font(FJFont.label).foregroundStyle(FJColor.textSecondary)
+                        Spacer(minLength: 0)
+                        FJOptionalNumberField("Repetições realizadas", prompt: "+ reps", value: $reps, unit: "reps")
                     }
                     NumberStepperField("Sustentação", value: $hold, unit: "s", step: 5, range: 0...600)
                 }
@@ -221,9 +223,9 @@ struct DesignSystemGallery: View {
                 FJRestTimerView(
                     endsAt: restEndsAt,
                     total: restTotal,
-                    nextUp: "Série 3 de 4 · 32,5 kg × 10",
+                    nextUp: "Série 3 de 4 · 32,5 kg · alvo 8–12",
                     onAdjust: { delta in
-                        restEndsAt = restEndsAt.addingTimeInterval(delta)
+                        restEndsAt = max(restEndsAt.addingTimeInterval(delta), .now)
                         restTotal = max(0, restTotal + delta)
                     },
                     onSkip: { restEndsAt = .now }
@@ -232,6 +234,14 @@ struct DesignSystemGallery: View {
                 FJSessionAccessory(
                     routineName: "A — Peito e tríceps",
                     startedAt: sessionStart,
+                    detail: "Supino reto · série 2 de 4"
+                )
+                .fjGlass()
+                FJSessionAccessory(
+                    routineName: "A — Peito e tríceps",
+                    startedAt: sessionStart,
+                    pausedSeconds: 120,
+                    pausedAt: sessionStart.addingTimeInterval(1500),
                     detail: "Supino reto · série 2 de 4"
                 )
                 .fjGlass()

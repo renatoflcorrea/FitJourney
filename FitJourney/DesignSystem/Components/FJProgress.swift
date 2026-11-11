@@ -19,7 +19,7 @@ struct FJProgressRing<Label: View>: View {
         self.label = label()
     }
 
-    private var clamped: Double { min(max(progress ?? 0, 0), 1) }
+    private var clamped: Double { (progress ?? 0).fjClamped(to: 0...1) }
 
     var body: some View {
         ZStack {
@@ -63,7 +63,7 @@ struct FJGoalBar: View {
 
     private var fraction: Double? {
         guard let value, let goal, goal > 0 else { return nil }
-        return min(max(value / goal, 0), 1)
+        return (value / goal).fjClamped(to: 0...1)
     }
 
     private var valueText: String {

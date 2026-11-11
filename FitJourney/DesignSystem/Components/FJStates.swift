@@ -35,8 +35,7 @@ struct FJEmptyState: View {
         } actions: {
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .font(.headline)
-                    .fjPrimaryButtonStyle(area)
+                    .buttonStyle(.fjPrimary(area, fillsWidth: false))
             }
         }
     }
@@ -95,14 +94,18 @@ struct FJBanner: View {
                 .foregroundStyle(tone.color)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: FJSpacing.xs) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(FJColor.textPrimary)
-                if let message {
-                    Text(message)
-                        .font(FJFont.caption)
-                        .foregroundStyle(FJColor.textSecondary)
+                VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(FJColor.textPrimary)
+                    if let message {
+                        Text(message)
+                            .font(FJFont.caption)
+                            .foregroundStyle(FJColor.textSecondary)
+                    }
                 }
+                // Só o texto é combinado; o botão continua um elemento próprio para o VoiceOver.
+                .accessibilityElement(children: .combine)
                 if let actionTitle, let action {
                     Button(actionTitle, action: action)
                         .font(.subheadline.weight(.semibold))
@@ -114,7 +117,7 @@ struct FJBanner: View {
         .padding(FJSpacing.l)
         .background(tone.soft, in: FJRadius.shape(FJRadius.card))
         .background(FJColor.surface, in: FJRadius.shape(FJRadius.card))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .contain)
     }
 }
 

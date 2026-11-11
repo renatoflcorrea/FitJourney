@@ -40,7 +40,7 @@ struct FJMetricCell: View {
                 Text(verbatim: value ?? "—")
                     .font(FJFont.numberMedium)
                     .foregroundStyle(value == nil ? FJColor.textSecondary : FJColor.textPrimary)
-                    .contentTransition(.numericText())
+                    .fjNumericTransition()
                 if let unit, value != nil {
                     Text(verbatim: unit)
                         .font(FJFont.unit)

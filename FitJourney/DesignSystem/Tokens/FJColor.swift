@@ -27,9 +27,9 @@ enum FJColor {
 
     // MARK: Áreas
 
-    /// Treino — índigo.
-    static let training = Color(fjLight: 0x4B45D6, dark: 0x9A96FF)
-    static let trainingFill = Color(fjLight: 0x4B45D6, dark: 0x5E58E8)
+    /// Treino e tint do app — laranja (decisão D1). `training` 5,2:1 sobre branco; branco sobre `trainingFill` 4,5:1.
+    static let training = Color(fjLight: 0xC2410C, dark: 0xFF9A3D)
+    static let trainingFill = Color(fjLight: 0xD4450C, dark: 0xD4450C)
     /// Dieta — verde.
     static let nutrition = Color(fjLight: 0x18803A, dark: 0x30D158)
     static let nutritionFill = Color(fjLight: 0x18803A, dark: 0x1F8A40)
@@ -45,21 +45,23 @@ enum FJColor {
 
     // MARK: Zonas de frequência cardíaca (preenchimento de gráfico/ponto; nunca cor de texto)
 
-    static let zone1 = Color(fjLight: 0x8E99A8, dark: 0x98A2B3)
-    static let zone2 = Color(fjLight: 0x2F9BE6, dark: 0x4DB5FF)
-    static let zone3 = Color(fjLight: 0x2FB457, dark: 0x3DD56D)
-    static let zone4 = Color(fjLight: 0xF08A1C, dark: 0xFF9F2E)
-    static let zone5 = Color(fjLight: 0xE5383B, dark: 0xFF5A5F)
+    // Escala cinza → azul → verde → amarelo → magenta: sem laranja nem vermelho, para não colidir
+    // com o treino (laranja) nem com ações destrutivas. Todas ≥ 3:1 sobre `surface`.
+    static let zone1 = Color(fjLight: 0x7D8998, dark: 0x98A2B3)
+    static let zone2 = Color(fjLight: 0x1E88D6, dark: 0x4DB5FF)
+    static let zone3 = Color(fjLight: 0x1F9D49, dark: 0x3DD56D)
+    static let zone4 = Color(fjLight: 0xB88A00, dark: 0xFFD23F)
+    static let zone5 = Color(fjLight: 0xB5179E, dark: 0xF06ADB)
 
     // MARK: Estados
 
     /// Concluído / salvo.
     static let success = Color(fjLight: 0x18803A, dark: 0x30D158)
     /// Atenção: ajustado, parcial, pendente de ação do usuário.
-    static let attention = Color(fjLight: 0xA85400, dark: 0xFFB340)
+    static let attention = Color(fjLight: 0x7A5D00, dark: 0xFFD60A)
     /// Só ação destrutiva e erro.
     static let destructive = Color(fjLight: 0xD12B20, dark: 0xFF6259)
-    /// Recorde pessoal.
+    /// Recorde pessoal (mesma família amarela de `attention`; diferenciam-se por símbolo e texto).
     static let record = Color(fjLight: 0x8F6400, dark: 0xFFD60A)
 }
 
@@ -168,6 +170,8 @@ enum FJWorkoutKind: String, CaseIterable, Sendable {
         case .aerobic: FJColor.aerobic
         }
     }
+
+    var soft: Color { color.opacity(0.14) }
 
     var title: LocalizedStringKey {
         switch self {

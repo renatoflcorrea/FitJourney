@@ -49,7 +49,7 @@ struct FJHeartRateBadge: View {
                 .foregroundStyle(bpm == nil ? FJColor.textSecondary : FJColor.health)
             Text(verbatim: bpm.map(String.init) ?? "—")
                 .font(FJFont.numberBody.weight(.semibold))
-                .contentTransition(.numericText())
+                .fjNumericTransition()
             Text(verbatim: "bpm")
                 .font(.caption)
                 .foregroundStyle(FJColor.textSecondary)

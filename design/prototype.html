@@ -31,18 +31,18 @@ section.shot p.note{color:var(--page-text2);max-width:72ch;margin-top:6px;font-s
 .phone{
   --bg:#F2F2F7; --surface:#FFFFFF; --elev:#F2F2F7; --fill:rgba(118,118,128,.12); --fill2:rgba(120,120,128,.18);
   --text:#000; --text2:#6A6A70; --text3:#B9B9BE; --sep:rgba(60,60,67,.16);
-  --training:#4B45D6; --training-fill:#4B45D6; --nutrition:#18803A; --nutrition-fill:#18803A;
-  --health:#D70F45; --aerobic:#0B7F83; --attention:#A85400; --record:#8F6400; --destructive:#D12B20;
-  --z1:#8E99A8; --z2:#2F9BE6; --z3:#2FB457; --z4:#F08A1C; --z5:#E5383B;
+  --training:#C2410C; --training-fill:#D4450C; --nutrition:#18803A; --nutrition-fill:#18803A;
+  --health:#D70F45; --aerobic:#0B7F83; --attention:#7A5D00; --record:#8F6400; --destructive:#D12B20;
+  --z1:#7D8998; --z2:#1E88D6; --z3:#1F9D49; --z4:#B88A00; --z5:#B5179E;
   --glass:rgba(255,255,255,.58); --glass-line:rgba(255,255,255,.75); --glass-shadow:0 8px 28px rgba(0,0,0,.13);
   --tint:var(--training); --tint-fill:var(--training-fill);
 }
 .phone.dark{
   --bg:#000; --surface:#1C1C1E; --elev:#2C2C2E; --fill:rgba(118,118,128,.24); --fill2:rgba(120,120,128,.36);
   --text:#fff; --text2:#A1A1A9; --text3:#5A5A60; --sep:rgba(84,84,88,.6);
-  --training:#9A96FF; --training-fill:#5E58E8; --nutrition:#30D158; --nutrition-fill:#1F8A40;
-  --health:#FF5C7A; --aerobic:#5AD1D6; --attention:#FFB340; --record:#FFD60A; --destructive:#FF6259;
-  --z1:#98A2B3; --z2:#4DB5FF; --z3:#3DD56D; --z4:#FF9F2E; --z5:#FF5A5F;
+  --training:#FF9A3D; --training-fill:#D4450C; --nutrition:#30D158; --nutrition-fill:#1F8A40;
+  --health:#FF5C7A; --aerobic:#5AD1D6; --attention:#FFD60A; --record:#FFD60A; --destructive:#FF6259;
+  --z1:#98A2B3; --z2:#4DB5FF; --z3:#3DD56D; --z4:#FFD23F; --z5:#F06ADB;
   --glass:rgba(44,44,48,.6); --glass-line:rgba(255,255,255,.14); --glass-shadow:0 8px 28px rgba(0,0,0,.5);
 }
 .phone{width:410px;height:864px;border-radius:62px;border:10px solid #18181b;background:var(--bg);color:var(--text);
@@ -97,7 +97,7 @@ svg.i.f{fill:currentColor;stroke:none}
 .sp{margin-left:auto}
 .badge{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:20px;color:#fff;background:var(--training-fill);flex:none}
 .badge.sm{width:32px;height:32px;border-radius:9px;font-size:15px}
-.badge.b2{background:var(--aerobic);color:var(--bg)} .badge.b3{background:var(--z4);color:#000}
+.badge.b2{background:var(--aerobic);color:var(--bg)} .badge.b3{background:var(--z2);color:#fff}
 .tag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:4px 8px;border-radius:10px;background:var(--fill);color:var(--text);white-space:nowrap}
 .tag svg{color:var(--text2)}
 .tag.tr{background:color-mix(in srgb,var(--training) 14%,transparent)} .tag.tr svg{color:var(--training)}
@@ -165,7 +165,10 @@ svg.i.f{fill:currentColor;stroke:none}
 .stp .ctl{display:flex;align-items:center;justify-content:space-between}
 .stp .ctl span{width:44px;height:44px;border-radius:50%;background:var(--fill2);display:grid;place-items:center;font-size:18px;flex:none}
 .stp .ctl b{font-size:28px;font-weight:600;line-height:1}
-.stp .ctl b small{display:block;font-size:12px;color:var(--text2);font-weight:500;margin-top:2px}
+.stp .ctl b small{display:inline;font-size:15px;color:var(--text2);font-weight:500;margin-left:4px}
+.reps{display:flex;align-items:center;gap:10px;margin-top:10px}
+.lnk2{height:44px;padding:0 16px;border-radius:22px;background:var(--fill2);display:inline-grid;place-items:center;font-size:15px;font-weight:500;color:var(--text2);white-space:nowrap}
+.lnk2.sm{height:36px;padding:0 12px;font-size:13px}
 .dock{position:absolute;left:0;right:0;bottom:0;padding:12px 14px 30px;z-index:30}
 .rest{border-radius:28px;padding:16px;text-align:center}
 .rest .over{letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:5px}
@@ -206,6 +209,57 @@ svg.i.f{fill:currentColor;stroke:none}
 .cups i{width:14px;height:22px;border-radius:3px 3px 7px 7px;background:var(--fill2)}
 .cups i.on{background:var(--z2)}
 
+/* relógio */
+.wgrid{display:flex;flex-wrap:wrap;gap:34px 30px;margin-top:22px}
+.wgrid figure{width:min(100%,500px)}
+.wgrid figcaption{font-size:15px;font-weight:600}
+.wgrid figure p{font-size:13.5px;color:var(--page-text2);margin:2px 0 12px;max-width:62ch}
+.wpair{display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap}
+.wpair small{display:block;font-size:11px;letter-spacing:.06em;color:var(--page-text2);margin-top:6px}
+.watch{--text:#fff;--text2:#A9A9B2;--text3:#5A5A60;--fill:rgba(118,118,128,.26);--fill2:rgba(120,120,128,.4);--sep:rgba(84,84,88,.6);
+  --training:#FF9A3D;--training-fill:#D4450C;--nutrition:#30D158;--health:#FF5C7A;--attention:#FFD60A;--destructive:#FF6259;
+  --z1:#98A2B3;--z2:#4DB5FF;--z3:#3DD56D;--z4:#FFD23F;--z5:#F06ADB;--glass:rgba(70,70,78,.55);--glass-line:rgba(255,255,255,.18);
+  width:208px;height:248px;border-radius:48px;border:9px solid #26262b;outline:1px solid #45454c;background:#000;color:#fff;position:relative;overflow:hidden;zoom:1.2;
+  font:15px/1.22 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.watch.s41{width:176px;height:215px;border-radius:42px}
+.watch .wtop{position:absolute;top:8px;left:16px;right:16px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:600;z-index:3}
+.watch .wtop b{color:var(--training);font-weight:600;display:flex;align-items:center;gap:4px}
+.watch .wtop span{color:var(--text)}
+.watch .w{position:absolute;inset:0;padding:28px 9px 9px;display:flex;flex-direction:column}
+.watch .w.dots{padding-bottom:14px}
+.watch.s41 .li{font-size:13px;padding:6px 9px}.watch.s41 .li small{font-size:10.5px;white-space:nowrap}.watch.s41 .c{font-size:11.5px}
+.watch .pd{position:absolute;bottom:5px;left:0;right:0;display:flex;justify-content:center;gap:4px}
+.watch .pd i{width:5px;height:5px;border-radius:50%;background:var(--text3)}.watch .pd i.on{background:#fff}
+.watch .nm{font-weight:600;font-size:15px;line-height:1.15;padding:0 3px}
+.watch .c{font-size:12.5px;color:var(--text2);padding:0 3px}
+.watch .ov{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--text2);padding:0 3px}
+.watch .wnum{font-size:40px;font-weight:700;line-height:1;display:flex;align-items:baseline;gap:4px;padding:0 3px;margin:auto 0}
+.watch .wnum small{font-size:17px;color:var(--text2);font-weight:600}
+.watch .wnum .crown{margin-left:auto;width:4px;height:30px;border-radius:2px;background:var(--training);align-self:center}
+.watch .wtime{font-size:54px;font-weight:600;line-height:1;text-align:center;margin:auto 0}
+.watch.s41 .wnum{font-size:34px}.watch.s41 .wnum small{font-size:14px}.watch.s41 .wg{height:40px}.watch.s41 .w.dots{padding-bottom:13px}.watch.s41 .wtime{font-size:46px}.watch.s41 .nm{font-size:14px}
+.watch .wbtn{height:52px;border-radius:26px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:16px;background:var(--training-fill);box-shadow:inset 0 1px 0 rgba(255,255,255,.35);flex:none;margin-top:5px}
+.watch.s41 .wbtn{height:46px;font-size:15px}
+.watch .wg{height:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;gap:4px;font-weight:600;font-size:14px;background:var(--glass);border:1px solid var(--glass-line);flex:1}
+.watch .wrow2{display:flex;gap:5px;margin-top:5px}
+.watch .wbar{height:4px;border-radius:2px;background:var(--fill2);margin:4px 3px 2px;position:relative}.watch .wbar i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--training)}
+.watch .wbar em{position:absolute;top:-3px;bottom:-3px;width:2px;background:#fff}
+.watch .li{background:var(--fill);border-radius:14px;padding:7px 10px;margin-bottom:4px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;flex:none}
+.watch .li small{display:block;font-size:11.5px;color:var(--text2);font-weight:500}
+.watch .li.hl{outline:1.5px solid var(--training);outline-offset:-1.5px;padding:9px 10px;background:color-mix(in srgb,var(--training) 16%,transparent)}
+.watch .lb{width:26px;height:26px;border-radius:8px;background:var(--training-fill);display:grid;place-items:center;font-size:14px;font-weight:700;flex:none}
+.watch .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1;margin-top:2px}
+.watch .grid2 div{border-radius:20px;background:var(--glass);border:1px solid var(--glass-line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:600}
+.watch .grid2 div svg{font-size:20px}
+.watch .grid2 div.p{background:var(--training-fill);border-color:transparent}
+.watch .met{display:flex;align-items:baseline;gap:5px;font-size:24px;font-weight:600;padding:0 3px;line-height:1.25}
+.watch .met small{font-size:13px;color:var(--text2);font-weight:500}
+.watch .met.big{font-size:38px;font-weight:700}
+.watch.s41 .met{font-size:21px}.watch.s41 .met.big{font-size:32px}
+.watch .ctr{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;font-size:13.5px;color:var(--text2);padding:0 6px}
+.watch .ctr b{color:var(--text);font-size:15px}
+.watch .ctr svg{font-size:30px;color:var(--text2)}
+
 /* saúde */
 .chart{width:100%;height:auto;display:block;margin-top:10px}
 .chart text{font:600 10px ui-rounded,-apple-system,system-ui,sans-serif;fill:var(--text2)}
@@ -240,15 +294,19 @@ svg.i.f{fill:currentColor;stroke:none}
   <symbol id="cal" viewBox="0 0 24 24"><rect x="4" y="5.500" width="16" height="14.500" rx="3"/><path d="M4 10h16M8.500 3.500v4M15.500 3.500v4"/></symbol>
   <symbol id="scale" viewBox="0 0 24 24"><path d="M6 8h12l2 12H4zM9.500 8a2.500 2.500 0 015 0"/></symbol>
   <symbol id="swap" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
+  <symbol id="pause" viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></symbol>
+  <symbol id="next" viewBox="0 0 24 24"><path d="M5 5l9 7-9 7zM18 5v14"/></symbol>
+  <symbol id="nophone" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.500"/><path d="M4 4l16 16"/></symbol>
+  <symbol id="phone" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.500"/><path d="M11 18h2"/></symbol>
   <symbol id="book" viewBox="0 0 24 24"><path d="M5 4.500h11a3 3 0 013 3V20H8a3 3 0 01-3-3zM5 17a3 3 0 013-3h11"/></symbol>
 </svg>
 
 <div class="page">
   <h1>FitJourney — protótipo visual</h1>
-  <p class="lead">Sete telas principais em claro e escuro, para aprovar a direção descrita em <code>DESIGN_DIRECTION.md</code>. Vidro (Liquid Glass simulado) só no que flutua: barras, tab bar, botões, doca da sessão, acessório. Listas, números e gráficos ficam em cartões sólidos. Imagens estáticas — nada aqui é interativo.</p>
+  <p class="lead">As telas principais do iPhone em claro e escuro e, no fim, o app do Apple Watch em 46 e 41 mm, para aprovar a direção descrita em <code>DESIGN_DIRECTION.md</code>. Vidro (Liquid Glass simulado) só no que flutua: barras, tab bar, botões, doca da sessão, acessório. Listas, números e gráficos ficam em cartões sólidos. Imagens estáticas — nada aqui é interativo.</p>
   <div class="legend">
-    <span><i style="background:#4B45D6"></i>Treino</span><span><i style="background:#18803A"></i>Dieta</span><span><i style="background:#D70F45"></i>Saúde</span><span><i style="background:#0B7F83"></i>Aeróbico</span>
-    <span><i style="background:#8E99A8"></i>Z1</span><span><i style="background:#2F9BE6"></i>Z2</span><span><i style="background:#2FB457"></i>Z3</span><span><i style="background:#F08A1C"></i>Z4</span><span><i style="background:#E5383B"></i>Z5</span>
+    <span><i style="background:#D4450C"></i>Treino</span><span><i style="background:#18803A"></i>Dieta</span><span><i style="background:#D70F45"></i>Saúde</span><span><i style="background:#0B7F83"></i>Aeróbico</span>
+    <span><i style="background:#7D8998"></i>Z1</span><span><i style="background:#1E88D6"></i>Z2</span><span><i style="background:#1F9D49"></i>Z3</span><span><i style="background:#B88A00"></i>Z4</span><span><i style="background:#B5179E"></i>Z5</span>
   </div>
   <div id="shots"></div>
 </div>
@@ -263,7 +321,7 @@ svg.i.f{fill:currentColor;stroke:none}
       <div class="row" style="margin-top:10px"><div class="badge">A</div><div><div class="h">Peito e tríceps</div><div class="sub">6 exercícios · ~55 min · há 3 dias</div></div>
         <span class="tag tr sp">Próxima</span></div>
       <div class="line"></div>
-      <div class="sub" style="line-height:1.6"><span style="color:var(--text)">Supino reto</span> · <span class="num">4 × 8–12 · 32,5 kg</span><br><span style="color:var(--text)">Supino inclinado halter</span> · <span class="num">3 × 10 · 24 kg</span><br><span style="color:var(--text)">Crucifixo</span> · <span class="num">3 × 12–15</span> · +3</div>
+      <div class="sub" style="line-height:1.6"><span style="color:var(--text)">Supino reto</span> · <span class="num">4 × 8–12 · 32,5 kg</span><br><span style="color:var(--text)">Supino inclinado halter</span> · <span class="num">3 × 8–12 · 24 kg</span><br><span style="color:var(--text)">Crucifixo</span> · <span class="num">3 × 12–15</span> · +3</div>
       <div class="primary" style="margin-top:14px"><svg class="i f"><use href="#play"/></svg>Iniciar treino</div>
       <div class="row" style="margin-top:10px;gap:8px"><div class="secondary glass">Outra ficha</div><div class="secondary glass"><svg class="i"><use href="#plus"/></svg>Treino livre</div></div>
     </div>
@@ -324,7 +382,7 @@ svg.i.f{fill:currentColor;stroke:none}
     <div class="sechead">Exercícios<a>Selecionar</a></div>
     <div class="card list" style="padding:4px 16px">
       <div class="li" style="min-height:64px"><div class="thumb"><svg class="i f"><use href="#play"/></svg></div><div><div class="h" style="font-size:16px">Supino reto</div><div class="cap num">4 × 8–12 · 32,5 kg · 90 s</div></div><span class="grip sp">≡</span></div>
-      <div class="li" style="min-height:64px"><div class="thumb"><svg class="i"><use href="#dumbbell"/></svg></div><div><div class="h" style="font-size:16px">Supino inclinado halter</div><div class="cap num">3 × 10 · 24 kg · 90 s</div></div><span class="grip sp">≡</span></div>
+      <div class="li" style="min-height:64px"><div class="thumb"><svg class="i"><use href="#dumbbell"/></svg></div><div><div class="h" style="font-size:16px">Supino inclinado halter</div><div class="cap num">3 × 8–12 · 24 kg · 90 s</div></div><span class="grip sp">≡</span></div>
     </div>
     <div class="card list" style="padding:4px 16px 4px 26px;position:relative">
       <div style="position:absolute;left:12px;top:44px;bottom:50px;width:4px;border-radius:2px;background:var(--training)"></div>
@@ -343,59 +401,59 @@ svg.i.f{fill:currentColor;stroke:none}
 </template>
 
 <!-- ============ 4a. SESSÃO — série ============ -->
-<template data-title="4 · Sessão de treino — série atual" data-note="A tela mais importante. Topo só de leitura (tempo, progresso, FC ao vivo). Exercício atual expandido; a série atual tem carga e reps grandes com −/+. Um toque no check — ou no botão da doca, na base — conclui a série.">
+<template data-title="4 · Sessão de treino — série atual" data-note="A tela mais importante. Topo só de leitura (tempo, progresso, FC ao vivo). Exercício atual expandido; a série atual tem a carga grande com −/+ (0,5 kg por toque) e o alvo sempre como prescrito (“8–12”). Reps realizadas são opcionais (“+ reps”). Um toque no check — ou no botão da doca, na base — conclui a série com a carga exibida.">
   <div class="topbar"><div class="in"><div class="gbtn glass"><svg class="i"><use href="#down"/></svg></div>
     <div class="mid"><b class="num">32:14</b><small>3 de 6 exercícios</small></div>
     <div class="hr glass"><svg class="i f"><use href="#heart"/></svg><span class="num">128</span><span class="zb" style="--zc:var(--z3)"><i></i>Z3</span></div><div class="gbtn glass"><svg class="i"><use href="#dots"/></svg></div></div>
     <div class="prog"><i></i></div></div>
   <div class="scroll" style="padding-top:124px">
-    <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div><div class="nm">Supino reto</div><div class="cap num">4 × 10 · 32,5 kg</div></div><span class="tag rec sp"><svg class="i"><use href="#trophy"/></svg>Recorde</span></div></div>
+    <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div><div class="nm">Supino reto</div><div class="cap num">4 séries · 32,5 kg</div></div><span class="tag rec sp"><svg class="i"><use href="#trophy"/></svg>Recorde</span></div></div>
     <div class="card" style="padding-bottom:6px">
-      <div class="ex"><div style="flex:1"><div class="h">Supino inclinado halter</div><div class="cap">última vez: <span class="num">3 × 10 com 24 kg</span> · banco 30°</div></div><div class="thumb"><svg class="i f"><use href="#play"/></svg></div></div>
-      <div class="set" style="margin-top:12px"><span class="n num">1</span><span class="v num">24 <small>kg</small> × 10</span><div class="chk done sp"><svg class="i"><use href="#check"/></svg></div></div>
+      <div class="ex"><div style="flex:1"><div class="h">Supino inclinado halter</div><div class="cap">última vez: <span class="num">3 séries com 24 kg</span> · banco 30°</div></div><div class="thumb"><svg class="i f"><use href="#play"/></svg></div></div>
+      <div class="set" style="margin-top:12px"><span class="n num">1</span><span class="v num">24 <small>kg · alvo 8–12</small></span><div class="chk done sp"><svg class="i"><use href="#check"/></svg></div></div>
       <div class="set cur">
-        <div class="head"><b>Série 2 de 3</b><span>· alvo <span class="num">10</span> · RIR 2</span></div>
+        <div class="head"><b>Série 2 de 3</b><span>· alvo <span class="num">8–12</span> · RIR 2</span></div>
         <div class="steps">
-          <div class="stp"><div class="cap">Carga</div><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num">26<small>kg</small></b><span><svg class="i"><use href="#plus"/></svg></span></div></div>
-          <div class="stp"><div class="cap">Repetições</div><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num">10<small>reps</small></b><span><svg class="i"><use href="#plus"/></svg></span></div></div>
+          <div class="stp"><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num">26<small>kg</small></b><span><svg class="i"><use href="#plus"/></svg></span></div></div>
           <div class="chk"><svg class="i"><use href="#check"/></svg></div>
         </div>
+        <div class="reps"><span class="lnk2">+ reps</span><span class="cap">opcional · o check conclui com a carga</span></div>
       </div>
-      <div class="set pend" style="border-top:0"><span class="n num">3</span><span class="v num">24 <small>kg</small> × 10</span><div class="chk sp"><svg class="i"><use href="#check"/></svg></div></div>
+      <div class="set pend" style="border-top:0"><span class="n num">3</span><span class="v num">24 <small>kg · alvo 8–12</small></span><div class="chk sp"><svg class="i"><use href="#check"/></svg></div></div>
       <div class="row" style="border-top:1px solid var(--sep);min-height:48px;color:var(--training);font-size:15px;font-weight:600;gap:20px"><span><svg class="i"><use href="#plus"/></svg> Série</span><span>Anotação</span><svg class="i sp" style="font-size:20px;color:var(--text2)"><use href="#dots"/></svg></div>
     </div>
     <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm"></div><div><div class="nm">Crucifixo na polia</div><div class="cap num">Bi-set · 3 × 12–15 · 15 kg</div></div></div></div>
     <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm"></div><div><div class="nm">Tríceps corda</div><div class="cap num">3 × 12–15 · 25 kg</div></div></div></div>
   </div>
-  <div class="dock"><div class="dockbtn glass"><div class="cap num">Supino inclinado halter · 26 kg × 10</div><div class="primary"><svg class="i"><use href="#check"/></svg>Concluir série 2</div></div></div>
+  <div class="dock"><div class="dockbtn glass"><div class="cap num">Supino inclinado halter · 26 kg · alvo 8–12</div><div class="primary"><svg class="i"><use href="#check"/></svg>Concluir série 2</div></div></div>
 </template>
 
 <!-- ============ 4b. SESSÃO — descanso ============ -->
-<template data-title="5 · Sessão de treino — descanso" data-note="Concluir a série troca a doca pelo cronômetro de descanso: tempo em 60 pt legível à distância, −15 s / Pular / +15 s com 52 pt de altura. A lista continua utilizável para ajustar a próxima série. Dentro do painel de vidro os controles são sólidos.">
+<template data-title="5 · Sessão de treino — descanso" data-note="Concluir a série troca a doca pelo cronômetro de descanso: tempo em 60 pt legível à distância, −15 s / Pular / +15 s com 52 pt de altura. A lista continua utilizável para ajustar a próxima carga ou informar as reps da série feita (série 1 com reps informadas, série 2 sem). Dentro do painel de vidro os controles são sólidos.">
   <div class="topbar"><div class="in"><div class="gbtn glass"><svg class="i"><use href="#down"/></svg></div>
     <div class="mid"><b class="num">33:02</b><small>3 de 6 exercícios</small></div>
     <div class="hr glass"><svg class="i f"><use href="#heart"/></svg><span class="num">141</span><span class="zb" style="--zc:var(--z3)"><i></i>Z3</span></div><div class="gbtn glass"><svg class="i"><use href="#dots"/></svg></div></div>
     <div class="prog"><i style="width:47%"></i></div></div>
   <div class="scroll" style="padding-top:124px">
-    <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div><div class="nm">Supino reto</div><div class="cap num">4 × 10 · 32,5 kg</div></div><span class="tag rec sp"><svg class="i"><use href="#trophy"/></svg>Recorde</span></div></div>
+    <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div><div class="nm">Supino reto</div><div class="cap num">4 séries · 32,5 kg</div></div><span class="tag rec sp"><svg class="i"><use href="#trophy"/></svg>Recorde</span></div></div>
     <div class="card" style="padding-bottom:6px">
-      <div class="ex"><div style="flex:1"><div class="h">Supino inclinado halter</div><div class="cap">última vez: <span class="num">3 × 10 com 24 kg</span> · banco 30°</div></div><div class="thumb"><svg class="i f"><use href="#play"/></svg></div></div>
+      <div class="ex"><div style="flex:1"><div class="h">Supino inclinado halter</div><div class="cap">última vez: <span class="num">3 séries com 24 kg</span> · banco 30°</div></div><div class="thumb"><svg class="i f"><use href="#play"/></svg></div></div>
       <div class="set" style="margin-top:12px"><span class="n num">1</span><span class="v num">24 <small>kg</small> × 10</span><div class="chk done sp"><svg class="i"><use href="#check"/></svg></div></div>
-      <div class="set"><span class="n num">2</span><span class="v num">26 <small>kg</small> × 10</span><div class="chk done sp"><svg class="i"><use href="#check"/></svg></div></div>
+      <div class="set"><span class="n num">2</span><span class="v num">26 <small>kg · alvo 8–12</small></span><span class="lnk2 sm sp">+ reps</span><div class="chk done"><svg class="i"><use href="#check"/></svg></div></div>
       <div class="set cur">
-        <div class="head"><b>Série 3 de 3</b><span>· alvo <span class="num">10</span> · RIR 2</span></div>
+        <div class="head"><b>Série 3 de 3</b><span>· alvo <span class="num">8–12</span> · RIR 2</span></div>
         <div class="steps">
-          <div class="stp"><div class="cap">Carga</div><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num">26<small>kg</small></b><span><svg class="i"><use href="#plus"/></svg></span></div></div>
-          <div class="stp"><div class="cap">Repetições</div><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num">10<small>reps</small></b><span><svg class="i"><use href="#plus"/></svg></span></div></div>
+          <div class="stp"><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num">26<small>kg</small></b><span><svg class="i"><use href="#plus"/></svg></span></div></div>
           <div class="chk"><svg class="i"><use href="#check"/></svg></div>
         </div>
+        <div class="reps"><span class="lnk2">+ reps</span><span class="cap">opcional · o check conclui com a carga</span></div>
       </div>
     </div>
     <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm"></div><div><div class="nm">Crucifixo na polia</div><div class="cap num">Bi-set · 3 × 12–15 · 15 kg</div></div></div></div>
   </div>
   <div class="dock"><div class="rest glass">
     <div class="over"><svg class="i"><use href="#timer"/></svg>DESCANSO</div>
-    <div class="sub num" style="color:var(--text)">Série 3 de 3 · 26 kg × 10</div>
+    <div class="sub num" style="color:var(--text)">Série 3 de 3 · 26 kg · alvo 8–12</div>
     <div class="time num">1:12</div>
     <div class="bar"><i style="width:80%"></i></div>
     <div class="ctls"><span class="num">−15 s</span><span class="p">Pular</span><span class="num">+15 s</span></div>
@@ -502,6 +560,105 @@ svg.i.f{fill:currentColor;stroke:none}
   <div class="tabbar glass" data-on="3"></div>
 </template>
 
+<!-- ============ APPLE WATCH ============ -->
+<template data-device="watch" data-title="Treinos" data-note="Raiz: a ficha do dia em destaque (HOJE / PRÓXIMA / HÁ MAIS TEMPO conforme a agenda), depois as outras fichas do programa ativo.">
+  <div class="wtop"><b>Treinos</b><span class="num">10:09</span></div>
+  <div class="w">
+    <div class="li hl"><span class="lb">A</span><div><small style="color:var(--training);font-weight:700;letter-spacing:.05em">HOJE</small>Peito e tríceps<small>6 exerc. · ~55 min</small></div></div>
+    <div class="li"><span class="lb" style="background:#1E88D6">B</span>Costas e bíceps</div>
+    <div class="li"><span class="lb" style="background:#0B7F83">C</span>Pernas e core</div>
+    <div class="c" style="margin-top:4px">Hipertrofia ABC · há 5 min</div>
+  </div>
+</template>
+
+<template data-device="watch" data-title="Ficha" data-note="Exercícios com a prescrição em uma linha. “Iniciar” fixo na base; toque duplo inicia.">
+  <div class="wtop"><b><svg class="i"><use href="#left"/></svg>A · Peito</b><span class="num">10:09</span></div>
+  <div class="w">
+    <div class="li"><div>Supino reto<small class="num">4 × 8–12 · 32,5 kg</small></div></div>
+    <div class="li"><div>Supino inclinado<small class="num">3 × 8–12 · 24 kg</small></div></div>
+    <div class="li"><div>Crucifixo na polia<small class="num">3 × 12–15 · 15 kg</small></div></div>
+    <div class="wbtn" style="position:absolute;left:9px;right:9px;bottom:9px;box-shadow:0 -14px 18px 6px #000, inset 0 1px 0 rgba(255,255,255,.35)"><svg class="i f"><use href="#play"/></svg>Iniciar</div>
+  </div>
+</template>
+
+<template data-device="watch" data-title="Sessão · Série" data-note="Página inicial da sessão. A Coroa ajusta a carga em 0,5 kg (traço laranja = Coroa ativa); o alvo aparece como prescrito; “Concluir” ou toque duplo conclui a série com a carga exibida.">
+  <div class="wtop"><b class="num">32:14</b><span class="num">10:09</span></div>
+  <div class="w dots">
+    <div class="nm">Supino inclinado halter</div>
+    <div class="c">Série 2 de 3</div>
+    <div class="wnum num">26,0<small>kg</small><span class="crown"></span></div>
+    <div class="c num">alvo 8–12 · RIR 2</div>
+    <div class="wbtn"><svg class="i"><use href="#check"/></svg>Concluir</div>
+  </div>
+  <div class="pd"><i></i><i class="on"></i><i></i><i></i></div>
+</template>
+
+<template data-device="watch" data-title="Sessão · Descanso" data-note="Contagem regressiva, o que vem a seguir (a Coroa já ajusta a próxima carga), “+ reps” opcional e “+15 s”. “Pular” ou toque duplo encerra. Háptico forte ao terminar. Aqui com o iPhone fora de alcance: só um selo, nada bloqueia.">
+  <div class="wtop"><b>Descanso <svg class="i" style="color:var(--text2)"><use href="#nophone"/></svg></b><span class="num">10:10</span></div>
+  <div class="w dots">
+    <div class="wtime num">1:12</div>
+    <div class="wbar"><i style="width:80%"></i></div>
+    <div class="c num" style="white-space:nowrap">Próxima: 26,0 kg</div>
+    <div class="wrow2"><div class="wg">+ reps</div><div class="wg num">+15 s</div></div>
+    <div class="wbtn">Pular</div>
+  </div>
+  <div class="pd"><i></i><i class="on"></i><i></i><i></i></div>
+</template>
+
+<template data-device="watch" data-title="Sessão · Sustentação" data-note="Isométrico: “Iniciar” → 3, 2, 1 → tempo sustentado com a marca do alvo; háptico ao atingir; “Parar” registra o tempo real.">
+  <div class="wtop"><b class="num">41:20</b><span class="num">10:18</span></div>
+  <div class="w dots">
+    <div class="nm">Prancha</div>
+    <div class="c">Série 1 de 3</div>
+    <div class="wtime num">0:32</div>
+    <div class="wbar"><i style="width:57%"></i><em style="left:80%"></em></div>
+    <div class="c num">alvo 0:45</div>
+    <div class="wbtn">Parar</div>
+  </div>
+  <div class="pd"><i></i><i class="on"></i><i></i><i></i></div>
+</template>
+
+<template data-device="watch" data-title="Sessão · Métricas" data-note="Um deslize à direita: tempo, FC ao vivo com a zona (ponto + “Z3”), calorias ativas e a posição na ficha. Sem dado = “—”.">
+  <div class="wtop"><b>Métricas</b><span class="num">10:10</span></div>
+  <div class="w dots">
+    <div class="met big num" style="margin-top:auto">33:02</div>
+    <div class="met num"><svg class="i f" style="color:var(--health);font-size:18px;align-self:center"><use href="#heart"/></svg>141<small>bpm</small><span class="zb" style="--zc:var(--z3);margin-left:auto;align-self:center"><i></i>Z3</span></div>
+    <div class="met num">286<small>kcal ativas</small></div>
+    <div class="c" style="margin:auto 0 0;white-space:nowrap">Exercício 2/6 · série 2/3</div>
+  </div>
+  <div class="pd"><i></i><i></i><i class="on"></i><i></i></div>
+</template>
+
+<template data-device="watch" data-title="Sessão · Controles" data-note="Um deslize à esquerda, como no app Exercício: pausar/retomar, finalizar, próximo exercício, pular exercício.">
+  <div class="wtop"><b>Controles</b><span class="num">10:10</span></div>
+  <div class="w dots">
+    <div class="grid2">
+      <div><svg class="i"><use href="#pause"/></svg>Pausar</div>
+      <div class="p"><svg class="i"><use href="#flag"/></svg>Finalizar</div>
+      <div><svg class="i"><use href="#next"/></svg>Próximo</div>
+      <div><svg class="i"><use href="#skip"/></svg>Pular</div>
+    </div>
+  </div>
+  <div class="pd"><i class="on"></i><i></i><i></i><i></i></div>
+</template>
+
+<template data-device="watch" data-title="Finalizar · RPE" data-note="Intensidade percebida 1–10 pela Coroa, com o rótulo. “Salvar” (toque duplo) ou “Sem nota”. Depois, um resumo curto.">
+  <div class="wtop"><b>Finalizar</b><span class="num">10:58</span></div>
+  <div class="w">
+    <div class="c">Como foi o treino?</div>
+    <div class="wnum num">7<small>Muito difícil</small><span class="crown"></span></div>
+    <div class="wrow2"><div class="wg">Sem nota</div></div>
+    <div class="wbtn">Salvar</div>
+  </div>
+</template>
+
+<template data-device="watch" data-title="Estado · nunca sincronizou" data-note="Primeiro uso ou sem programa ativo: uma frase que diz o que fazer no iPhone; nenhum botão morto.">
+  <div class="wtop"><b>Treinos</b><span class="num">10:09</span></div>
+  <div class="w">
+    <div class="ctr"><svg class="i"><use href="#phone"/></svg><b>Abra o FitJourney no iPhone</b>para trazer seus treinos para o relógio.</div>
+  </div>
+</template>
+
 <script>
 (function(){
   var tabs=[["sun","Hoje"],["dumbbell","Treinos"],["fork","Dieta"],["heart","Saúde"]];
@@ -540,7 +697,7 @@ svg.i.f{fill:currentColor;stroke:none}
     svg.innerHTML=o;
   }
   var host=document.getElementById('shots');
-  document.querySelectorAll('template').forEach(function(tp){
+  document.querySelectorAll('template:not([data-device])').forEach(function(tp){
     var sec=document.createElement('section');sec.className='shot';
     sec.innerHTML='<h2>'+tp.dataset.title+'</h2><p class="note">'+tp.dataset.note+'</p><div class="pair"></div>';
     ['Claro','Escuro'].forEach(function(name,i){
@@ -554,6 +711,21 @@ svg.i.f{fill:currentColor;stroke:none}
     });
     host.appendChild(sec);
   });
+  // Apple Watch: cada tela em 46 e 41 mm.
+  var wsec=document.createElement('section');wsec.className='shot';
+  wsec.innerHTML='<h2>9 · Apple Watch — a sessão no pulso</h2><p class="note">watchOS 26, sempre escuro. A sessão é um conjunto de páginas horizontais (Controles · Série · Métricas · Ficha): a Digital Crown fica livre para ajustar a carga em 0,5 kg, e o toque duplo aciona o botão principal de cada tela. Cada tela aparece em 46 mm e 41 mm.</p><div class="wgrid"></div>';
+  document.querySelectorAll('template[data-device="watch"]').forEach(function(tp){
+    var fig=document.createElement('figure');
+    fig.innerHTML='<figcaption>'+tp.dataset.title+'</figcaption><p>'+tp.dataset.note+'</p><div class="wpair"></div>';
+    [['46 MM',''],['41 MM',' s41']].forEach(function(size){
+      var d=document.createElement('div');
+      d.innerHTML='<div class="watch'+size[1]+'"></div><small>'+size[0]+'</small>';
+      d.firstChild.appendChild(tp.content.cloneNode(true));
+      fig.querySelector('.wpair').appendChild(d);
+    });
+    wsec.querySelector('.wgrid').appendChild(fig);
+  });
+  host.appendChild(wsec);
 })();
 </script>
 </body>

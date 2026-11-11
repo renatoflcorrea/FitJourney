@@ -20,7 +20,7 @@ struct FJTag: View {
         self.title = kind.title
         self.systemImage = kind.systemImage
         self.foreground = kind.color
-        self.background = kind.color.opacity(0.14)
+        self.background = kind.soft
     }
 
     /// Etiqueta de estado. O texto fica primário; a cor vai no símbolo e no fundo.
@@ -50,7 +50,8 @@ struct FJTag: View {
 }
 
 /// Chip de filtro/seleção em vidro (flutua sobre a lista: filtros da biblioteca, período do gráfico).
-/// Selecionado = vidro tingido + check; não depende só de cor.
+/// Selecionado = check + contorno na cor da área; o texto continua primário sobre vidro neutro,
+/// então o contraste não depende do que está atrás.
 struct FJFilterChip: View {
     private let title: LocalizedStringKey
     private let systemImage: String?
@@ -78,19 +79,25 @@ struct FJFilterChip: View {
                 if isSelected {
                     Image(systemName: "checkmark")
                         .font(.caption.weight(.bold))
+                        .foregroundStyle(area.color)
                 } else if let systemImage {
                     Image(systemName: systemImage)
                 }
                 Text(title)
             }
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(isSelected ? FJColor.onFill : FJColor.textPrimary)
+            .font(.subheadline.weight(isSelected ? .semibold : .medium))
+            .foregroundStyle(FJColor.textPrimary)
             .padding(.horizontal, FJSpacing.m)
             .frame(minHeight: FJSize.minTap)
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)
-        .fjGlass(tint: isSelected ? area.fill : nil, interactive: true)
+        .fjGlass(interactive: true)
+        .overlay {
+            if isSelected {
+                Capsule().strokeBorder(area.color, lineWidth: 1.5)
+            }
+        }
         .fjHaptic(.selection, trigger: isSelected)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

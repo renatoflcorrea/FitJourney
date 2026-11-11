@@ -38,7 +38,15 @@ enum FJSize {
     static let stepperButton: CGFloat = 48
     /// Check de série — o alvo mais tocado do app.
     static let setCheck: CGFloat = 52
+    /// Altura mínima do botão secundário.
+    static let secondaryButton: CGFloat = 48
     /// Altura mínima do botão principal.
     static let primaryButton: CGFloat = 56
     static let progressRing: CGFloat = 72
+}
+
+extension Comparable {
+    func fjClamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
+    }
 }

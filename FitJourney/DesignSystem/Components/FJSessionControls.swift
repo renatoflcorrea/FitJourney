@@ -31,17 +31,17 @@ struct FJCheckButton: View {
                 Image(systemName: state == .skipped ? "forward.fill" : "checkmark")
                     .font(.title3.weight(.bold))
                     .foregroundStyle(foreground)
-                    .contentTransition(.symbolEffect(.replace))
+                    .fjSymbolTransition()
             }
             .frame(width: FJSize.setCheck, height: FJSize.setCheck)
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
         .fjAnimation(value: state)
-        .fjHaptic(.setCompleted, trigger: state == .done)
+        // Vibra só ao concluir; desfazer é silencioso.
+        .fjHaptic(.setCompleted, trigger: state) { _, new in new == .done }
         .accessibilityLabel(Text(verbatim: accessibilityLabel))
         .accessibilityValue(valueText)
-        .accessibilityHint(state == .done ? Text("Toque duas vezes para desfazer") : Text("Toque duas vezes para concluir"))
     }
 
     private var foreground: Color {
@@ -87,7 +87,7 @@ struct FJRPEScale: View {
             HStack(alignment: .firstTextBaseline, spacing: FJSpacing.s) {
                 Text(verbatim: value.map(String.init) ?? "—")
                     .font(FJFont.numberHero)
-                    .contentTransition(.numericText())
+                    .fjNumericTransition()
                 Text(value.map(Self.label(for:)) ?? "Toque para avaliar")
                     .font(FJFont.label)
                     .foregroundStyle(FJColor.textSecondary)
@@ -130,36 +130,60 @@ struct FJRPEScale: View {
 }
 
 /// Conteúdo do acessório da tab bar (`tabViewBottomAccessory`) com a sessão em andamento.
-/// O vidro é do sistema. Tempo calculado por datas; durante o descanso mostra a contagem regressiva.
+/// O vidro é do sistema.
+///
+/// O tempo é derivado de datas e já desconta pausas — os três valores vêm direto do `SessionClock`
+/// do domínio: `startedAt`, `pausedSeconds` (= `accumulatedPauseSeconds`) e `pausedAt`.
+/// Pausado: o relógio congela e aparece "pausado". Em descanso: contagem regressiva e "descanso".
 struct FJSessionAccessory: View {
     private let routineName: String
     private let startedAt: Date
+    private let pausedSeconds: TimeInterval
+    private let pausedAt: Date?
     private let detail: String?
     private let restEndsAt: Date?
 
-    init(routineName: String, startedAt: Date, detail: String? = nil, restEndsAt: Date? = nil) {
+    init(
+        routineName: String,
+        startedAt: Date,
+        pausedSeconds: TimeInterval = 0,
+        pausedAt: Date? = nil,
+        detail: String? = nil,
+        restEndsAt: Date? = nil
+    ) {
         self.routineName = routineName
         self.startedAt = startedAt
+        self.pausedSeconds = pausedSeconds
+        self.pausedAt = pausedAt
         self.detail = detail
         self.restEndsAt = restEndsAt
     }
 
+    private var isPaused: Bool { pausedAt != nil }
+
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            content(now: context.date)
+        if let pausedAt {
+            // Pausado: nada muda com o tempo, então não há relógio rodando.
+            content(now: pausedAt)
+        } else {
+            TimelineView(.periodic(from: startedAt, by: 1)) { context in
+                content(now: context.date)
+            }
         }
     }
 
     private func content(now: Date) -> some View {
-        let rest = restEndsAt.map { Int($0.timeIntervalSince(now).rounded(.up)) }.flatMap { $0 > 0 ? $0 : nil }
-        let elapsed = Int(now.timeIntervalSince(startedAt))
+        let elapsed = max(0, Int(now.timeIntervalSince(startedAt) - pausedSeconds))
+        let rest: Int? = isPaused ? nil : restEndsAt
+            .map { Int($0.timeIntervalSince(now).rounded(.up)) }
+            .flatMap { $0 > 0 ? $0 : nil }
+        let symbol = isPaused ? "pause.fill" : (rest == nil ? "figure.strengthtraining.traditional" : "timer")
 
         return HStack(spacing: FJSpacing.m) {
-            Image(systemName: rest == nil ? "figure.strengthtraining.traditional" : "timer")
+            Image(systemName: symbol)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(FJColor.training)
-                .contentTransition(.symbolEffect(.replace))
-                .accessibilityHidden(true)
+                .fjSymbolTransition()
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: routineName)
                     .font(.subheadline.weight(.semibold))
@@ -175,8 +199,12 @@ struct FJSessionAccessory: View {
             VStack(alignment: .trailing, spacing: 0) {
                 Text(verbatim: FJFormat.clock(rest ?? elapsed))
                     .font(FJFont.numberBody.weight(.semibold))
-                    .contentTransition(.numericText(countsDown: rest != nil))
-                if rest != nil {
+                    .fjNumericTransition(countsDown: rest != nil)
+                if isPaused {
+                    Text("pausado")
+                        .font(.caption2)
+                        .foregroundStyle(FJColor.textSecondary)
+                } else if rest != nil {
                     Text("descanso")
                         .font(.caption2)
                         .foregroundStyle(FJColor.textSecondary)
@@ -188,12 +216,18 @@ struct FJSessionAccessory: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Treino em andamento: \(routineName)"))
-        .accessibilityValue(
-            rest.map { Text("Descanso, \(FJFormat.spokenDuration($0)) restantes") }
-                ?? Text("\(FJFormat.spokenDuration(elapsed / 60 * 60)) de treino")
-        )
-        .accessibilityHint(Text("Abre a sessão"))
+        .accessibilityValue(spokenValue(elapsed: elapsed, rest: rest))
         .accessibilityAddTraits([.isButton, .updatesFrequently])
+    }
+
+    private func spokenValue(elapsed: Int, rest: Int?) -> Text {
+        if let rest {
+            return Text("Descanso, \(FJFormat.spokenDuration(rest)) restantes")
+        }
+        if isPaused {
+            return Text("Pausado em \(FJFormat.spokenDuration(elapsed))")
+        }
+        return Text("\(FJFormat.spokenDuration(elapsed)) de treino")
     }
 }
 
@@ -225,6 +259,14 @@ struct FJSessionAccessory: View {
                 startedAt: .now.addingTimeInterval(-1934),
                 detail: "Supino reto · série 3 de 4",
                 restEndsAt: .now.addingTimeInterval(48)
+            )
+            .fjGlass()
+            FJSessionAccessory(
+                routineName: "A — Peito e tríceps",
+                startedAt: .now.addingTimeInterval(-1934),
+                pausedSeconds: 120,
+                pausedAt: .now.addingTimeInterval(-30),
+                detail: "Supino reto · série 3 de 4"
             )
             .fjGlass()
         }

@@ -1,7 +1,55 @@
 import SwiftUI
 
-/// Botão principal grande (Liquid Glass proeminente). Um por tela, na metade inferior.
-/// Ex.: "Iniciar treino", "Finalizar treino", "Salvar".
+/// Estilo do botão principal: Liquid Glass tingido na cor da área, texto branco, altura mínima
+/// `FJSize.primaryButton`. Com Reduzir Transparência o vidro vira preenchimento sólido (`fjGlass`).
+struct FJPrimaryButtonStyle: ButtonStyle {
+    let area: FJArea
+    let fillsWidth: Bool
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(FJColor.onFill)
+            .padding(.horizontal, FJSpacing.xl)
+            .frame(maxWidth: fillsWidth ? .infinity : nil, minHeight: FJSize.primaryButton)
+            .contentShape(Capsule())
+            .fjGlass(tint: area.fill, interactive: true)
+            .opacity(isEnabled ? 1 : 0.5)
+    }
+}
+
+/// Estilo do botão secundário: Liquid Glass neutro, texto primário, altura mínima `FJSize.secondaryButton`.
+struct FJSecondaryButtonStyle: ButtonStyle {
+    let fillsWidth: Bool
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(FJColor.textPrimary)
+            .padding(.horizontal, FJSpacing.l)
+            .frame(maxWidth: fillsWidth ? .infinity : nil, minHeight: FJSize.secondaryButton)
+            .contentShape(Capsule())
+            .fjGlass(interactive: true)
+            .opacity(isEnabled ? 1 : 0.5)
+    }
+}
+
+extension ButtonStyle where Self == FJPrimaryButtonStyle {
+    static func fjPrimary(_ area: FJArea = .training, fillsWidth: Bool = true) -> FJPrimaryButtonStyle {
+        FJPrimaryButtonStyle(area: area, fillsWidth: fillsWidth)
+    }
+}
+
+extension ButtonStyle where Self == FJSecondaryButtonStyle {
+    static func fjSecondary(fillsWidth: Bool = true) -> FJSecondaryButtonStyle {
+        FJSecondaryButtonStyle(fillsWidth: fillsWidth)
+    }
+}
+
+/// Botão principal grande. Um por tela, na metade inferior.
+/// Ex.: "Iniciar treino", "Concluir série", "Salvar treino".
 struct FJPrimaryButton: View {
     private let title: LocalizedStringKey
     private let systemImage: String?
@@ -27,22 +75,21 @@ struct FJPrimaryButton: View {
         Button(action: action) {
             HStack(spacing: FJSpacing.s) {
                 if isLoading {
-                    ProgressView().tint(FJColor.onFill)
+                    ProgressView()
+                        .tint(FJColor.onFill)
+                        .accessibilityLabel(Text("Carregando"))
                 } else if let systemImage {
                     Image(systemName: systemImage)
                 }
                 Text(title)
             }
-            .font(.headline)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: FJSize.primaryButton - 30)
         }
-        .fjPrimaryButtonStyle(area)
+        .buttonStyle(.fjPrimary(area))
         .disabled(isLoading)
     }
 }
 
-/// Botão secundário (Liquid Glass). Alternativa ao principal: "Outra ficha", "Treino livre".
+/// Botão secundário. Alternativa ao principal: "Outra ficha", "Treino livre".
 struct FJSecondaryButton: View {
     private let title: LocalizedStringKey
     private let systemImage: String?
@@ -69,15 +116,12 @@ struct FJSecondaryButton: View {
                 }
                 Text(title)
             }
-            .font(.subheadline.weight(.semibold))
-            .frame(maxWidth: fillsWidth ? .infinity : nil)
-            .frame(minHeight: FJSize.minTap - 16)
         }
-        .fjSecondaryButtonStyle()
+        .buttonStyle(.fjSecondary(fillsWidth: fillsWidth))
     }
 }
 
-/// Botão circular de ícone em vidro (toolbar própria, ação flutuante).
+/// Botão circular de ícone em vidro, 44 pt (ação flutuante fora de uma toolbar do sistema).
 struct FJIconButton: View {
     private let systemImage: String
     private let label: LocalizedStringKey
@@ -93,30 +137,13 @@ struct FJIconButton: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.body.weight(.semibold))
-                .frame(width: FJSize.minTap - 14, height: FJSize.minTap - 14)
+                .foregroundStyle(FJColor.textPrimary)
+                .frame(width: FJSize.minTap, height: FJSize.minTap)
+                .contentShape(Circle())
         }
-        .buttonStyle(.glass)
-        .buttonBorderShape(.circle)
+        .buttonStyle(.plain)
+        .fjGlass(in: Circle(), interactive: true)
         .accessibilityLabel(Text(label))
-    }
-}
-
-extension View {
-    /// Estilo do botão principal para um `Button` com rótulo próprio.
-    func fjPrimaryButtonStyle(_ area: FJArea = .training) -> some View {
-        self
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.capsule)
-            .controlSize(.large)
-            .tint(area.fill)
-    }
-
-    /// Estilo do botão secundário para um `Button` com rótulo próprio.
-    func fjSecondaryButtonStyle() -> some View {
-        self
-            .buttonStyle(.glass)
-            .buttonBorderShape(.capsule)
-            .controlSize(.large)
     }
 }
 

@@ -37,4 +37,15 @@ extension View {
     func fjHaptic<T: Equatable>(_ haptic: FJHaptic, trigger: T) -> some View {
         sensoryFeedback(haptic.feedback, trigger: trigger)
     }
+
+    /// Dispara o háptico só quando a mudança satisfaz `condition` (ex.: vibrar ao concluir, não ao desfazer).
+    func fjHaptic<T: Equatable>(
+        _ haptic: FJHaptic,
+        trigger: T,
+        when condition: @escaping (_ old: T, _ new: T) -> Bool
+    ) -> some View {
+        sensoryFeedback(trigger: trigger) { old, new in
+            condition(old, new) ? haptic.feedback : nil
+        }
+    }
 }

@@ -32,3 +32,34 @@ extension View {
         modifier(FJAnimationModifier(animation: animation, value: value))
     }
 }
+
+private struct FJNumericTransitionModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let countsDown: Bool
+
+    func body(content: Content) -> some View {
+        content.contentTransition(reduceMotion ? .identity : .numericText(countsDown: countsDown))
+    }
+}
+
+private struct FJSymbolTransitionModifier: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+    }
+}
+
+extension View {
+    /// Rolagem de dígitos ao mudar um número; sem transição com Reduzir Movimento.
+    /// Use no lugar de `contentTransition(.numericText())`.
+    func fjNumericTransition(countsDown: Bool = false) -> some View {
+        modifier(FJNumericTransitionModifier(countsDown: countsDown))
+    }
+
+    /// Troca animada de símbolo; sem transição com Reduzir Movimento.
+    /// Use no lugar de `contentTransition(.symbolEffect(.replace))`.
+    func fjSymbolTransition() -> some View {
+        modifier(FJSymbolTransitionModifier())
+    }
+}
