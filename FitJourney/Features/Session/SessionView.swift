@@ -22,7 +22,11 @@ struct SessionView: View {
     @State private var editing: SessionSnapshot.ExerciseSet?
     @State private var progressExercise: UUID?
     @State private var showsReorder = false
+    #if DEBUG
+    @State private var showsFinish = UserDefaults.standard.string(forKey: "fj.sessionDemo") == "finish"
+    #else
     @State private var showsFinish = false
+    #endif
     @State private var confirmsDiscard = false
     @State private var bannerDismissed = false
     @State private var holdPrep: SessionHoldPrep?

@@ -72,10 +72,10 @@ enum SessionPresentation {
     /// "8–12" → "8 a 12"; "45 s" → "45 segundos"; "20 min" → "20 minutos"; "AMRAP" → "máximo de repetições".
     static func spokenTarget(_ text: String) -> String {
         if text.uppercased() == "AMRAP" { return String(localized: "máximo de repetições") }
-        var spoken = text.replacingOccurrences(of: "–", with: " a ")
-        if spoken.hasSuffix(" s") { spoken = String(spoken.dropLast(2)) + " " + String(localized: "segundos") }
-        if spoken.hasSuffix(" min") { spoken = String(spoken.dropLast(4)) + " " + String(localized: "minutos") }
-        if spoken.hasSuffix(" km") { spoken = String(spoken.dropLast(3)) + " " + String(localized: "quilômetros") }
+        var spoken = text.replacingOccurrences(of: "–", with: String(localized: " a ", comment: "Faixa falada: 8 a 12"))
+        if spoken.hasSuffix(" s") { spoken = String(localized: "\(String(spoken.dropLast(2))) segundos") }
+        if spoken.hasSuffix(" min") { spoken = String(localized: "\(String(spoken.dropLast(4))) minutos") }
+        if spoken.hasSuffix(" km") { spoken = String(localized: "\(String(spoken.dropLast(3))) quilômetros") }
         return spoken
     }
 
@@ -332,7 +332,7 @@ extension SessionPresentation {
         var parts: [String] = []
         if let level { parts.append(String(localized: "nível \(level)")) }
         if let speedKmh { parts.append("\(FJFormat.number(speedKmh, maxFractionDigits: 1)) km/h") }
-        if let inclinePercent { parts.append(String(localized: "inclinação \(FJFormat.number(inclinePercent, maxFractionDigits: 1))") + " %") }
+        if let inclinePercent { parts.append(String(localized: "inclinação \(FJFormat.number(inclinePercent, maxFractionDigits: 1)) %")) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 

@@ -18,7 +18,7 @@ struct SessionRoutinePage: View {
                     }
                     .frame(minHeight: 36)
                 }
-                .accessibilityLabel("\(exercise.name), \(statusText(exercise)), \(exercise.sets.filter(\.isCompleted).count) de \(exercise.sets.count) séries")
+                .accessibilityLabel(String(localized: "\(exercise.name), \(statusText(exercise)), \(exercise.sets.filter(\.isCompleted).count) de \(exercise.sets.count) séries"))
             }
         }
         .accessibilityLabel("Ficha")
@@ -56,10 +56,10 @@ struct SessionRoutinePage: View {
 
     private func statusText(_ e: SessionSnapshot.Exercise) -> String {
         switch e.status {
-        case .completed: "concluído"
-        case .partial: "concluído parcialmente"
-        case .skipped: "pulado"
-        default: isCurrent(e) ? "atual" : "pendente"
+        case .completed: String(localized: "concluído")
+        case .partial: String(localized: "concluído parcialmente")
+        case .skipped: String(localized: "pulado")
+        default: isCurrent(e) ? String(localized: "atual") : String(localized: "pendente")
         }
     }
 }
@@ -117,10 +117,10 @@ struct SummaryView: View {
                 }
                 row("Duração", WatchFormat.clock(summary.duration))
                 row("Séries", "\(summary.completedSets)/\(summary.totalSets)")
-                row("Calorias", summary.activeKilocalories.map { "\(Int($0)) kcal" } ?? "—")
-                row("FC média", summary.averageHeartRate.map { "\($0) bpm" } ?? "—")
+                row("Calorias", summary.activeKilocalories.map { String(localized: "\(Int($0)) kcal") } ?? "—")
+                row("FC média", summary.averageHeartRate.map { String(localized: "\($0) bpm") } ?? "—")
                 if summary.loadsUpdated > 0 {
-                    Text("\(summary.loadsUpdated) \(summary.loadsUpdated == 1 ? "carga atualizada" : "cargas atualizadas") · revise no iPhone")
+                    Text("\(summary.loadsUpdated) cargas atualizadas · revise no iPhone")
                         .font(.footnote).foregroundStyle(WF.textSecondary)
                 }
                 if model.connection == .phoneUnreachable {
@@ -132,7 +132,7 @@ struct SummaryView: View {
         }
     }
 
-    private func row(_ title: String, _ value: String) -> some View {
+    private func row(_ title: LocalizedStringResource, _ value: String) -> some View {
         HStack {
             Text(title).font(.footnote).foregroundStyle(WF.textSecondary)
             Spacer()

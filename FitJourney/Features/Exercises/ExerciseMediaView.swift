@@ -146,6 +146,7 @@ struct ExerciseMediaView: View {
 // MARK: Imagem com zoom
 
 private struct ZoomableLocalImage: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let fileName: String
 
     @State private var image: CGImage?
@@ -170,7 +171,7 @@ private struct ZoomableLocalImage: View {
                     .accessibilityHint("Toque duas vezes para ampliar")
                     .accessibilityAddTraits(.isImage)
                     .accessibilityZoomAction { action in
-                        withAnimation(FJMotion.value) {
+                        withAnimation(FJMotion.resolve(FJMotion.value, reduceMotion: reduceMotion)) {
                             switch action.direction {
                             case .zoomIn: setScale(scale + 1)
                             case .zoomOut: setScale(scale - 1)
@@ -206,7 +207,7 @@ private struct ZoomableLocalImage: View {
     }
 
     private func toggleZoom() {
-        withAnimation(FJMotion.value) { scale > 1 ? reset() : setScale(2.5) }
+        withAnimation(FJMotion.resolve(FJMotion.value, reduceMotion: reduceMotion)) { scale > 1 ? reset() : setScale(2.5) }
     }
 
     private func setScale(_ value: CGFloat) {

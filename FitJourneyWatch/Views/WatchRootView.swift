@@ -58,8 +58,8 @@ struct PhoneUnreachableBadge: View {
 /// Estado vazio com símbolo e mensagem (sem botões mortos).
 struct WatchEmptyState: View {
     let symbol: String
-    let title: String
-    var message: String?
+    let title: LocalizedStringResource
+    var message: LocalizedStringResource?
 
     var body: some View {
         ScrollView {

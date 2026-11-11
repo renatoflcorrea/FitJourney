@@ -359,7 +359,7 @@ final class WatchSessionModel {
                 closedSessionIDs.insert(rejected.command.sessionID)
             }
             haptics.play(.failure)
-            show(notice: "Atualizado pelo iPhone")
+            show(notice: String(localized: "Atualizado pelo iPhone"))
             requestSnapshot()
         }
         recompute()
@@ -408,7 +408,7 @@ final class WatchSessionModel {
             let ids = Self.referencedIDs(item.command.kind)
             return !ids.sets.allSatisfy(sets.contains) || !ids.exercises.allSatisfy(exercises.contains)
         }
-        if pending.count != before { show(notice: "Atualizado pelo iPhone") }
+        if pending.count != before { show(notice: String(localized: "Atualizado pelo iPhone")) }
     }
 
     /// Séries/exercícios que um comando cria (IDs determinísticos). `addExercise` cria até

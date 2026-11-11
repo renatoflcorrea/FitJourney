@@ -64,7 +64,8 @@ struct FJRestTimerView: View {
                     Text(verbatim: nextUp)
                         .font(FJFont.label)
                         .foregroundStyle(FJColor.textPrimary)
-                        .lineLimit(2)
+                        .lineLimit(3)
+                        .fixedSize(horizontal: false, vertical: true)
                         .multilineTextAlignment(.center)
                 }
             }

@@ -73,6 +73,14 @@ struct TrainingRootView: View {
                 // QA/evidências: `-fj.openFirstRoutine YES` abre o editor da primeira ficha.
                 if UserDefaults.standard.bool(forKey: "fj.openFirstRoutine"), path.isEmpty,
                    let routine = active?.sortedRoutines.first { path.append(routine) }
+                // QA/evidências: `-fj.sessionDemo set|rest|finish` inicia a primeira ficha (rest: conclui a 1ª série; finish: abre o encerramento).
+                if let demo = UserDefaults.standard.string(forKey: "fj.sessionDemo"), let coordinator = sessionCoordinator,
+                   coordinator.engine.snapshot == nil, let routine = active?.sortedRoutines.first {
+                    coordinator.start(routine: routine)
+                    if demo != "set", let setID = coordinator.engine.snapshot?.currentSetID {
+                        coordinator.send(.completeSet(setID: setID, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil))
+                    }
+                }
                 #endif
             }
             .onChange(of: scenePhase) { _, phase in if phase == .active { now = .now } }
