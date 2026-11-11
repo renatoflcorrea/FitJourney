@@ -18,14 +18,25 @@
 - P2.1 Motor da sessão integrado (`f313870`, 122 testes): idempotência com tombstones, ordem por série, save atômico, compatibilidade de protocolo, comandos add/substitute/reorder.
 - Infra: simulador próprio por worktree (AGENTS.md); `FJ-main` para o supervisor.
 
+- P1.2 Editor de ficha integrado (`6eb241b`) + correção de warning e duração com bi-set (`1febc94`).
+- P5.1+P5.2 Núcleo de IA integrado (`328b194`): OpenAI-compatível + Anthropic nativo (conferido com a skill claude-api), tools locais com consentimento por categoria (tudo desligado por padrão), drafts com JSON Schema em `contracts/`.
+- W3a App watchOS integrado (`a7a36b1`): UI completa, estado otimista com retenção até o 1º snapshot; release usa `UnavailableWatchTransport` até o W2.
+
+- P2.2–P2.5 Sessão/histórico integrados (`7c936c2`); P1.1+P1.4 Hoje/Treinos integrados com todas as telas ligadas (`35c5c13`); P4.1 Apple Health integrado (`e933689`).
+- Supervisor ligou sessão + Saúde no app (`37b553c`): sessionHost no AppRoot, Iniciar treino/Ver treino/Histórico reais, HealthWorkoutController acoplado ao motor, FC ao vivo.
+- Testes rodam em pt-BR (`da544a0`) — o catálogo traduz para en e os testes esperam o texto-fonte.
+- P6.1 passe de design integrado (`9d5a0f5`): FJRoutineColor/FJRoutineBadge/FJFlowLayout, ícone "degraus", DESIGN §4.11–4.14.
+- **App navegável de ponta a ponta no simulador**: Hoje → Iniciar treino → sessão → encerrar → histórico; Treinos/editor/biblioteca; Dieta.
+- Infra: máquina no limite de simuladores (maxUserProcs) — um simulador por agente, sem desligar os de outros projetos.
+
 ## Em andamento
-- P1.1+P1.4 Programas/Hoje (Sonnet) — implementando.
-- P1.2 Editor de ficha (Sonnet) — correções da revisão (grupo ao arrastar, R-T2, unidade kg/lb, ProgramStore atômico).
-- P5.1+P5.2 Núcleo de IA (Opus).
-- P2.2–P2.5 Tela da sessão/encerramento/histórico/acessório (Sonnet).
-- P4.1 Apple Health no iPhone (Opus).
-- W3a App watchOS (UI + transporte simulado) (Sonnet).
+- P3.3 Lembretes de refeição — em revisão.
+- P5.3+P5.4 UI do Coach + Ajustes de IA — em revisão.
+- P6.2 Exportar/importar — agente retomado após falha do shell (código pronto, sem testes rodados).
+- P2.6 + W2 + W3b (Opus): lacunas do motor, protocolo v2 com IDs determinísticos, WatchConnectivity, HKWorkoutSession no relógio.
+- P4.2+P4.3 FC na sessão, gráfico por exercício e aba Saúde (Sonnet).
 
 ## Próximo
-- Integrar P1.1 + ligar abas (Dieta, sessão, `MediaMaintenance.runAtLaunch`, `restore`/`handleForeground`, StarterProgram → SampleProgramFactory) → P4.2/P4.3 (FC, aba Saúde) → W2/W3b (transporte real + HKWorkoutSession no relógio) → P5.3/P5.4 (UI do Coach) → P3.3 lembretes → Ciclo 6 → Cartographer.
-- Pedir ao design tokens oficiais de cor de ficha (RoutineColor) e promover `FlowLayout`.
+- Integrar P3.3 (+ delegate de notificações e reschedule no App) e Coach (aba + repairInterruptedMessages).
+- P6.3 Ajustes gerais (unidades, Saúde, notificações, IA, dados) + substituições do P6.1 (RoutineColor→FJRoutineBadge, FlowLayout, relógio com cores de ficha).
+- Ciclo 6: Live Activity (DESIGN §4.14), localização en completa, QA, Cartographer; republicar protótipo.

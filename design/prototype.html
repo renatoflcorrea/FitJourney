@@ -40,7 +40,7 @@ section.shot p.note{color:var(--page-text2);max-width:72ch;margin-top:6px;font-s
 .phone.dark{
   --bg:#000; --surface:#1C1C1E; --elev:#2C2C2E; --fill:rgba(118,118,128,.24); --fill2:rgba(120,120,128,.36);
   --text:#fff; --text2:#A1A1A9; --text3:#5A5A60; --sep:rgba(84,84,88,.6);
-  --training:#FF9A3D; --training-fill:#D4450C; --nutrition:#30D158; --nutrition-fill:#1F8A40;
+  --training:#FF9A3D; --training-fill:#D4450C; --nutrition:#30D158; --nutrition-fill:#1C8540;
   --health:#FF5C7A; --aerobic:#5AD1D6; --attention:#FFD60A; --record:#FFD60A; --destructive:#FF6259;
   --z1:#98A2B3; --z2:#4DB5FF; --z3:#3DD56D; --z4:#FFD23F; --z5:#F06ADB;
   --glass:rgba(44,44,48,.6); --glass-line:rgba(255,255,255,.14); --glass-shadow:0 8px 28px rgba(0,0,0,.5);
@@ -267,6 +267,133 @@ svg.i.f{fill:currentColor;stroke:none}
 .zrow .bar{margin:0}.zrow .bar i{background:var(--zc)}
 .zrow .num{text-align:right;color:var(--text2);font-weight:500}
 .numb{width:22px;height:22px;border-radius:7px;background:var(--fill2);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+
+/* ---------- revisão 3: fichas, ícone, Saúde-dia, Atividade ao Vivo, Coach, Ajustes ---------- */
+.phone{--coach:#0A6FB8;--coach-fill:#0A6FB8;--success:#18803A;
+  --rc-orange:#D4450C;--rc-blue:#0A66C2;--rc-green:#18803A;--rc-purple:#7C3AED;--rc-on:#fff}
+.phone.dark{--coach:#5AC8FA;--coach-fill:#0F78C4;--success:#30D158;
+  --rc-orange:#D4450C;--rc-blue:#1F71CC;--rc-green:#1C8540;--rc-purple:#8349EE}
+.phone.t-coach{--tint:var(--coach);--tint-fill:var(--coach-fill)}
+.badge.rb{background:var(--rc-blue)}.badge.rg{background:var(--rc-green)}.badge.rp{background:var(--rc-purple)}
+.badge.ext{background:var(--fill2);color:var(--text)}
+svg.g{width:1em;height:1em;flex:none;vertical-align:-.12em}
+.tabbar.five div{font-size:10px}
+.banner{display:flex;gap:10px;padding:12px;border-radius:16px;background:var(--fill);font-size:14px;line-height:1.35;margin-bottom:12px}
+.banner>svg{font-size:18px;margin-top:1px;color:var(--text2)}
+.banner.at{background:color-mix(in srgb,var(--attention) 14%,transparent)}.banner.at>svg{color:var(--attention)}
+.banner.de{background:color-mix(in srgb,var(--destructive) 12%,transparent)}.banner.de>svg{color:var(--destructive)}
+.banner b{display:block;font-size:15px}
+.banner .ba{display:flex;gap:8px;margin-top:8px}
+.banner .ba span{height:40px;padding:0 16px;border-radius:20px;background:var(--fill2);display:grid;place-items:center;font-weight:600;font-size:14px}
+.banner .ba span.p{background:var(--tint-fill);color:#fff}
+.cmp{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13.5px;margin-top:6px}
+.cmp span:nth-child(odd){color:var(--text2)}
+.two{display:flex;gap:12px}.two .card{flex:1;margin-bottom:12px;padding:14px}
+.two b.num{font-size:28px;font-weight:600;line-height:1.1;display:block;margin-top:2px}
+.two b.num small{font-size:15px;color:var(--text2);font-weight:500;margin-left:3px}
+.mini{display:flex;align-items:flex-end;gap:4px;height:34px;margin:8px 0 6px}
+.mini i{flex:1;border-radius:3px;background:var(--health);opacity:.4}
+.mini i.on{opacity:1}
+.stack{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;margin:10px 0 12px}
+.stack i{background:var(--training)}.stack i+i{background:var(--aerobic)}
+.week{display:flex;align-items:flex-end;gap:8px;height:74px;margin-top:12px;position:relative}
+.week>div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;height:100%;font-size:11px;color:var(--text2);opacity:.45}
+.week>div.on{opacity:1;font-weight:700;color:var(--text)}
+.week i{display:block;width:100%;border-radius:3px;background:var(--training)}.week i.a{background:var(--aerobic)}
+.week::after{content:"";position:absolute;left:0;right:0;bottom:44px;border-top:1.5px dashed var(--text3)}
+.brk{border-left:2px dashed var(--attention);margin-left:4px;padding-left:10px}
+.ctrx{text-align:center;padding:26px 12px}
+.ctrx>svg{font-size:44px;color:var(--tint)}
+.ctrx h4{font-size:22px;font-weight:700;margin:10px 0 6px}
+.ctrx p{font-size:15px;color:var(--text2)}
+
+/* formulários (Ajustes) */
+.fh{font-size:13px;color:var(--text2);text-transform:uppercase;letter-spacing:.03em;margin:14px 16px 6px}
+.ff{font-size:12.5px;color:var(--text2);margin:6px 16px 0;line-height:1.35}
+.form{background:var(--surface);border-radius:20px;padding:0 16px}
+.form .fr{display:flex;align-items:center;gap:12px;min-height:46px;border-top:1px solid var(--sep);font-size:16px}
+.form .fr:first-child{border-top:0}
+.form .fr .v{margin-left:auto;color:var(--text2);font-size:15px;display:flex;align-items:center;gap:6px;text-align:right}
+.form .fr .ic{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:16px;flex:none;background:var(--text2)}
+.form .fr small{display:block;font-size:12.5px;color:var(--text2)}
+.seg{display:flex;background:var(--fill2);border-radius:9px;padding:2px;font-size:13px;font-weight:600}
+.seg span{padding:5px 12px;border-radius:7px}
+.seg span.on{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.phone.dark .seg span.on{background:#636366}
+.destr{color:var(--destructive)}
+.avatar{width:52px;height:52px;border-radius:50%;background:var(--fill2);display:grid;place-items:center;font-weight:700;font-size:19px;color:var(--training);flex:none}
+
+/* coach */
+.me{margin:0 0 12px auto;max-width:82%;width:fit-content;background:var(--coach-fill);color:#fff;border-radius:20px;padding:10px 14px;font-size:16px;line-height:1.35}
+.ai{font-size:16px;line-height:1.4;margin-bottom:10px}
+.think{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text2);margin-bottom:6px}
+.think svg:first-child{color:var(--coach)}
+.thinkbody{border-left:2px solid var(--sep);padding-left:10px;font-size:13px;color:var(--text2);margin:0 0 8px 6px;line-height:1.35}
+.tool{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--text2);margin-bottom:4px}
+.tool a{color:var(--coach);font-weight:600}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--text);vertical-align:1px;margin-left:3px}
+.composer{position:absolute;left:14px;right:14px;bottom:26px;min-height:52px;border-radius:26px;display:flex;align-items:center;gap:8px;padding:4px 4px 4px 18px;z-index:30;font-size:16px;color:var(--text2)}
+.composer .send{margin-left:auto;width:44px;height:44px;border-radius:50%;background:var(--coach-fill);color:#fff;display:grid;place-items:center;font-size:20px;flex:none}
+.jump{position:absolute;right:18px;bottom:92px;z-index:30}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:40px;padding:8px 14px;border-radius:20px;display:inline-flex;align-items:center;font-size:14px;font-weight:500;line-height:1.25}
+.draft{outline:1.5px solid var(--coach);outline-offset:-1.5px}
+.draft .over{color:var(--coach);display:flex;align-items:center;gap:5px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tag.co{background:color-mix(in srgb,var(--coach) 14%,transparent)}.tag.co svg{color:var(--coach)}
+.exl{font-size:14px;color:var(--text2);padding:2px 0 8px 44px;line-height:1.55}
+.exl b{color:var(--text);font-weight:400}
+.cl{display:flex;align-items:center;gap:12px;min-height:64px;border-top:1px solid var(--sep)}
+.cl:first-child{border-top:0}
+.cl div{min-width:0;flex:1}.cl .h{font-size:16px}
+.cl .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+
+/* Atividade ao Vivo */
+.phone.lock{background:linear-gradient(165deg,#F6B27A,#E2673A 46%,#7C3C6C)}
+.phone.dark.lock{background:linear-gradient(165deg,#2C1C3B,#15101A 55%,#060608)}
+.lock .status{color:#fff}.lock .home{background:#fff}
+.lockclock{position:absolute;top:96px;left:0;right:0;text-align:center;color:#fff}
+.lockclock small{font-size:19px;font-weight:600;display:block;opacity:.92}
+.lockclock b{font-size:92px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.la{position:absolute;left:10px;right:10px;border-radius:30px;padding:14px 16px;color:var(--text)}
+.lv .l1{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--training)}
+.lv .l1.n{color:var(--text2)}.lv .l1.ok{color:var(--success)}
+.lv .l1 .num{margin-left:auto;color:var(--text2);font-weight:600;font-size:13px;letter-spacing:0}
+.lv .l1 .nm{font-size:16px;font-weight:600;letter-spacing:0;color:var(--text)}
+.lv .body{display:flex;align-items:center;gap:18px;margin:4px 0 8px}
+.lv .cd{font-size:44px;font-weight:600;line-height:1}
+.lv .nx{font-size:14px;line-height:1.3}
+.lv .nx small{display:block;font-size:11px;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.lv .nx.big{font-size:19px;font-weight:600}.lv .nx.big span{display:block;font-size:14px;font-weight:400;color:var(--text2)}
+.lv .bar{height:4px;margin:0 0 10px}.lv .bar i{background:var(--training)}
+.lv .btns{display:flex;gap:8px}
+.lv .btns span{flex:1;height:44px;border-radius:22px;background:var(--fill2);display:grid;place-items:center;font-weight:600;font-size:16px}
+.lv .btns span.p{background:var(--training-fill);color:#fff}
+.board{display:flex;flex-wrap:wrap;gap:24px 28px;margin-top:22px;align-items:flex-start}
+.board figure{display:flex;flex-direction:column;gap:8px}
+.board figcaption{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--page-text2)}
+.board .stage{background:linear-gradient(165deg,#3a3a44,#1b1b21);border-radius:18px;padding:16px 22px;display:flex;gap:14px;align-items:center;min-height:70px}
+.di{--training:#FF9A3D;background:#000;color:#fff;border-radius:22px;height:37px;display:inline-flex;align-items:center;justify-content:space-between;gap:74px;padding:0 12px;
+  font:600 15px ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.di.min{width:37px;justify-content:center;padding:0;gap:0;border-radius:50%}
+.di .o{color:var(--training)}.di .ok{color:#30D158}.di .s{color:#A1A1A9}
+.di svg{font-size:17px}
+.ringm{width:18px;height:18px;border-radius:50%;background:conic-gradient(#FF9A3D 0 62%,rgba(255,255,255,.24) 0);
+  -webkit-mask:radial-gradient(circle,transparent 5px,#000 5.6px);mask:radial-gradient(circle,transparent 5px,#000 5.6px)}
+.dix{--training:#FF9A3D;--training-fill:#D4450C;--text:#fff;--text2:#A1A1A9;--fill:rgba(118,118,128,.24);--fill2:rgba(120,120,128,.36);--success:#30D158;
+  background:#000;color:#fff;border-radius:44px;width:360px;max-width:100%;padding:18px 20px 16px;font:17px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.lac{--training:#C2410C;--training-fill:#D4450C;--text:#000;--text2:#5d5d63;--fill:rgba(118,118,128,.12);--fill2:rgba(120,120,128,.18);--success:#18803A;
+  background:#F4F4F6;color:#000;border-radius:28px;width:340px;max-width:100%;padding:14px 16px;font:17px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+.sw{display:grid;grid-template-columns:repeat(4,44px);gap:10px;padding:16px;border-radius:20px}
+.sw div{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font:700 20px ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif}
+.sw.l{background:#fff}.sw.d{background:#1C1C1E}
+.sizes{display:flex;align-items:flex-end;gap:12px;padding:16px;border-radius:20px;background:#fff}
+.sizes div{display:grid;place-items:center;background:#D4450C;color:#fff;font:700 20px ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif}
+.appicon{width:112px;height:112px;display:block}
+.phone.tall{height:1040px}.phone-wrap.tall{height:calc(1040px*var(--s))}
+.lock .la{background:rgba(255,255,255,.86)}.phone.dark.lock .la{background:rgba(34,34,38,.82)}
+.cl .h{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:700px){.board{justify-content:center}}
 </style>
 </head>
 <body>
@@ -299,13 +426,27 @@ svg.i.f{fill:currentColor;stroke:none}
   <symbol id="nophone" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.500"/><path d="M4 4l16 16"/></symbol>
   <symbol id="phone" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.500"/><path d="M11 18h2"/></symbol>
   <symbol id="book" viewBox="0 0 24 24"><path d="M5 4.500h11a3 3 0 013 3V20H8a3 3 0 01-3-3zM5 17a3 3 0 013-3h11"/></symbol>
+  <symbol id="sparkles" viewBox="0 0 24 24"><path d="M10 4l1.600 4.400L16 10l-4.400 1.600L10 16l-1.600-4.400L4 10l4.400-1.600zM18 14l.800 2.200L21 17l-2.200.800L18 20l-.800-2.200L15 17l2.200-.800z"/></symbol>
+  <symbol id="sliders" viewBox="0 0 24 24"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.500"/><circle cx="8" cy="17" r="2.500"/></symbol>
+  <symbol id="link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.700 0l3-3a4 4 0 00-5.700-5.700l-1 1M14 10a4 4 0 00-5.700 0l-3 3a4 4 0 005.700 5.700l1-1"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24"><rect x="5.500" y="11" width="13" height="9.500" rx="2.500"/><path d="M8.500 11V8a3.500 3.500 0 017 0v3"/></symbol>
+  <symbol id="up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></symbol>
+  <symbol id="compose" viewBox="0 0 24 24"><path d="M11 5H6.500A2.500 2.500 0 004 7.500v10A2.500 2.500 0 006.500 20h10a2.500 2.500 0 002.500-2.500V13M9.500 14.500l1-4L19 2l3 3-8.500 8.500z"/></symbol>
+  <symbol id="nowatch" viewBox="0 0 24 24"><rect x="7" y="6" width="10" height="12" rx="3"/><path d="M9 6l.700-3h4.600L15 6M9 18l.700 3h4.600l.700-3M3.500 3.500l17 17"/></symbol>
+  <symbol id="share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v5.500A1.500 1.500 0 006.500 20h11a1.500 1.500 0 001.500-1.500V13"/></symbol>
+  <symbol id="import" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 13v5.500A1.500 1.500 0 006.500 20h11a1.500 1.500 0 001.500-1.500V13"/></symbol>
+  <symbol id="trash" viewBox="0 0 24 24"><path d="M5 7h14M9.500 7V4.500h5V7M7 7l1 13h8l1-13"/></symbol>
+  <symbol id="bell" viewBox="0 0 24 24"><path d="M6 16.500V11a6 6 0 0112 0v5.500l1.500 2h-15zM10 20.500a2 2 0 004 0"/></symbol>
+  <symbol id="warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4.500M12 17.400v.2"/></symbol>
+  <symbol id="steps" viewBox="150 170 724 700"><path d="M238 770H420V600H602V430H786" fill="none" stroke="currentColor" stroke-width="92" stroke-linecap="round" stroke-linejoin="round"/><circle cx="706" cy="284" r="66" fill="currentColor"/></symbol>
 </svg>
 
 <div class="page">
   <h1>FitJourney — protótipo visual</h1>
-  <p class="lead">As telas principais do iPhone em claro e escuro e, no fim, o app do Apple Watch em 46 e 41 mm, para aprovar a direção descrita em <code>DESIGN_DIRECTION.md</code>. Vidro (Liquid Glass simulado) só no que flutua: barras, tab bar, botões, doca da sessão, acessório. Listas, números e gráficos ficam em cartões sólidos. Imagens estáticas — nada aqui é interativo.</p>
+  <p class="lead">As telas principais do iPhone em claro e escuro e, no fim, o app do Apple Watch em 46 e 41 mm, para aprovar a direção descrita em <code>DESIGN_DIRECTION.md</code>. Vidro (Liquid Glass simulado) só no que flutua: barras, tab bar, botões, doca da sessão, acessório. Listas, números e gráficos ficam em cartões sólidos. Imagens estáticas — nada aqui é interativo. As seções 10 a 23 são da revisão 3: paleta de fichas e ícone, aba Saúde por dia, vínculo com o Apple Watch, Atividade ao Vivo e Dynamic Island, Coach e Ajustes.</p>
   <div class="legend">
-    <span><i style="background:#D4450C"></i>Treino</span><span><i style="background:#18803A"></i>Dieta</span><span><i style="background:#D70F45"></i>Saúde</span><span><i style="background:#0B7F83"></i>Aeróbico</span>
+    <span><i style="background:#D4450C"></i>Treino</span><span><i style="background:#18803A"></i>Dieta</span><span><i style="background:#D70F45"></i>Saúde</span><span><i style="background:#0B7F83"></i>Aeróbico</span><span><i style="background:#0A6FB8"></i>Coach</span>
     <span><i style="background:#7D8998"></i>Z1</span><span><i style="background:#1E88D6"></i>Z2</span><span><i style="background:#1F9D49"></i>Z3</span><span><i style="background:#B88A00"></i>Z4</span><span><i style="background:#B5179E"></i>Z5</span>
   </div>
   <div id="shots"></div>
@@ -659,12 +800,351 @@ svg.i.f{fill:currentColor;stroke:none}
   </div>
 </template>
 
+<!-- ============ REVISÃO 3 (P6.1) ============ -->
+<!-- 10. FICHAS E ÍCONE -->
+<template data-device="board" data-title="10 · Fichas e ícone — paleta, selo e ícone do app" data-note="Paleta oficial das fichas (FJRoutineColor): oito cores de identidade, cada uma com par preenchimento/texto ≥ 4,5:1 e preenchimento ≥ 3:1 sobre cartão e fundo, em claro e escuro. O selo (FJRoutineBadge) tem três tamanhos. Ícone “degraus”: um caminho que sobe em três degraus até um ponto — jornada e progressão de carga — nas variantes claro, escuro e tinted do iOS e na máscara circular do watchOS.">
+  <figure><figcaption>Paleta · claro</figcaption><div class="sw l">
+    <div style="background:#D4450C;color:#fff">A</div><div style="background:#0A66C2;color:#fff">B</div><div style="background:#18803A;color:#fff">C</div><div style="background:#7C3AED;color:#fff">D</div>
+    <div style="background:#C2256E;color:#fff">E</div><div style="background:#0B7F83;color:#fff">F</div><div style="background:#AD8200;color:#1A1206">G</div><div style="background:#5F6B7A;color:#fff">H</div></div></figure>
+  <figure><figcaption>Paleta · escuro</figcaption><div class="sw d">
+    <div style="background:#D4450C;color:#fff">A</div><div style="background:#1F71CC;color:#fff">B</div><div style="background:#1C8540;color:#fff">C</div><div style="background:#8349EE;color:#fff">D</div>
+    <div style="background:#C92C75;color:#fff">E</div><div style="background:#5AD1D6;color:#1A1206">F</div><div style="background:#FFD23F;color:#1A1206">G</div><div style="background:#AEB7C2;color:#1A1206">H</div></div></figure>
+  <figure><figcaption>Selo · sm 32 · md 44 · lg 56</figcaption><div class="sizes">
+    <div style="width:32px;height:32px;border-radius:9px;font-size:15px">A</div><div style="width:44px;height:44px;border-radius:12px">A</div><div style="width:56px;height:56px;border-radius:15px;font-size:26px">A</div><div style="width:56px;height:56px;border-radius:15px;font-size:20px">A1</div></div></figure>
+  <figure><figcaption>Ícone · claro</figcaption><svg class="appicon" data-v="light"></svg></figure>
+  <figure><figcaption>Ícone · escuro</figcaption><svg class="appicon" data-v="dark"></svg></figure>
+  <figure><figcaption>Ícone · tinted</figcaption><svg class="appicon" data-v="tinted"></svg></figure>
+  <figure><figcaption>Ícone · watchOS</figcaption><svg class="appicon" data-v="watch"></svg></figure>
+</template>
+
+<!-- 11. SAÚDE — DIA -->
+<template data-late data-class="tall" data-theme="t-health" data-title="11 · Saúde — dia" data-note="FC ao longo do dia em barras de mín–máx a cada 15 min, com os treinos sobrepostos como faixas (laranja = força, turquesa = aeróbico) e a linha de repouso. Lacunas ficam vazias; em hoje o gráfico termina no horário atual. Abaixo: treinos do dia, força x aeróbico com a semana (hoje destacado) e energia e FC em repouso comparadas com a média dos 7 dias anteriores, em texto neutro. Quadro em altura estendida para mostrar a rolagem inteira.">
+  <div class="scroll">
+    <div class="large" style="margin-bottom:8px"><h3>Saúde</h3><div class="acts"><div class="seg" style="margin-bottom:6px"><span class="on">Dia</span><span>Tendências</span></div></div></div>
+    <div class="daynav"><span><svg class="i"><use href="#left"/></svg></span>Hoje, 11 nov<span style="opacity:.3"><svg class="i"><use href="#right"/></svg></span></div>
+    <div class="card" style="padding-bottom:10px">
+      <div class="over">FREQUÊNCIA CARDÍACA · ATÉ AGORA</div>
+      <div class="row" style="align-items:baseline;margin-top:2px"><b class="num" style="font-size:30px;font-weight:700">58–164<small style="font-size:15px;color:var(--text2);font-weight:500;margin-left:4px">bpm</small></b><span class="cap num sp">Repouso 56 bpm</span></div>
+      <svg class="chart daychart" viewBox="0 0 346 150" role="img" aria-label="Frequência cardíaca do dia entre 58 e 164, com dois treinos"></svg>
+    </div>
+    <div class="card list" style="padding:2px 16px">
+      <div class="li"><div class="badge sm ext"><svg class="i"><use href="#run"/></svg></div><div><div style="font-size:16px">Corrida ao ar livre <span class="tag ae" style="margin-left:4px"><svg class="i"><use href="#run"/></svg>Aeróbico</span></div><div class="cap num">07:02 · 31 min · FC média 151 · 298 kcal · Apple Watch</div></div></div>
+      <div class="li"><div class="badge sm">A</div><div><div style="font-size:16px">Peito e tríceps <span class="tag tr" style="margin-left:4px"><svg class="i"><use href="#dumbbell"/></svg>Força</span></div><div class="cap num">18:05 · 52 min · FC média 128 · 318 kcal · <svg class="i"><use href="#link"/></svg> FitJourney + Apple Watch</div></div></div>
+    </div>
+    <div class="card">
+      <div class="over">FORÇA X AERÓBICO</div>
+      <div class="stack"><i style="flex:52"></i><i style="flex:31"></i></div>
+      <div class="row" style="gap:24px"><div class="metric"><div class="cap"><svg class="i" style="color:var(--training)"><use href="#dumbbell"/></svg>Força</div><b class="num">52<small>min</small></b></div><div class="metric"><div class="cap"><svg class="i" style="color:var(--aerobic)"><use href="#run"/></svg>Aeróbico</div><b class="num">31<small>min</small></b></div></div>
+      <div class="week">
+        <div><i style="height:30px"></i>S</div><div><i class="a" style="height:18px"></i>T</div><div class="on"><i class="a" style="height:17px"></i><i style="height:29px"></i>Q</div><div>Q</div><div>S</div><div>S</div><div>D</div>
+      </div>
+      <div class="cap" style="margin-top:8px">Hoje <span class="num">83 min</span> · média da semana <span class="num">46 min</span> por dia</div>
+    </div>
+    <div class="two">
+      <div class="card"><div class="cap"><svg class="i" style="color:var(--health)"><use href="#flame"/></svg> Energia ativa</div><b class="num">486<small>kcal</small></b>
+        <div class="mini"><i style="height:60%"></i><i style="height:74%"></i><i style="height:52%"></i><i style="height:80%"></i><i style="height:66%"></i><i style="height:58%"></i><i class="on" style="height:100%"></i></div>
+        <div class="cap">↑ <span class="num">74 kcal</span> acima da sua média</div></div>
+      <div class="card"><div class="cap"><svg class="i f" style="color:var(--health)"><use href="#heart"/></svg> FC em repouso</div><b class="num">56<small>bpm</small></b>
+        <div class="mini"><i style="height:78%"></i><i style="height:82%"></i><i style="height:80%"></i><i style="height:76%"></i><i style="height:84%"></i><i style="height:78%"></i><i class="on" style="height:72%"></i></div>
+        <div class="cap">↓ <span class="num">2 bpm</span> abaixo da sua média</div></div>
+    </div>
+  </div>
+  <div class="tabbar glass" data-on="3"></div>
+</template>
+
+<!-- 12. SAÚDE — VÍNCULO -->
+<template data-late data-class="tall" data-theme="t-health" data-title="12 · Saúde — vínculo com o treino do Apple Watch" data-note="Um treino do Watch no mesmo horário de uma sessão do app é o mesmo treino. Correspondência incerta: o app pergunta, mostrando os dois horários e os minutos em comum (aqui no detalhe da sessão). Correspondência alta: já vem vinculado, com “Desfazer”. Em nenhum caso os minutos do dia são somados duas vezes.">
+  <div class="nav"><div class="pill glass"><svg class="i"><use href="#left"/></svg>Saúde</div><div class="ttl">Treino</div><div class="gbtn glass"><svg class="i"><use href="#dots"/></svg></div></div>
+  <div class="scroll below-nav">
+    <div class="over" style="margin:0 4px 6px">CORRESPONDÊNCIA INCERTA — PEDE CONFIRMAÇÃO</div>
+    <div class="banner at"><svg class="i"><use href="#warn"/></svg><div style="flex:1"><b>Parece o mesmo treino</b>
+      <div class="cmp num"><span>FitJourney</span><span>18:05–18:57 · 52 min</span><span>Apple Watch</span><span>18:20–19:02 · 42 min · Força tradicional</span></div>
+      <div class="cap num" style="margin-top:4px">37 min em comum</div>
+      <div class="ba"><span class="p">Vincular</span><span>Não é o mesmo</span></div></div></div>
+    <div class="card">
+      <div class="row"><div class="badge">A</div><div><div class="h">Peito e tríceps</div><div class="cap">quarta, 11 nov · 18:05 · FitJourney</div></div></div>
+      <div class="line"></div>
+      <div class="metrics"><div class="metric"><div class="cap">Duração</div><b class="num">52:18</b></div><div class="metric"><div class="cap">FC média</div><b class="num">—</b></div><div class="metric"><div class="cap">Energia</div><b class="num">—</b></div></div>
+    </div>
+    <div class="over" style="margin:18px 4px 6px">CORRESPONDÊNCIA ALTA — JÁ VINCULADO</div>
+    <div class="banner"><svg class="i"><use href="#link"/></svg><div style="flex:1"><b>Vinculado ao treino do Apple Watch</b><span class="num">18:04–18:57</span> · a frequência cardíaca e a energia vêm do relógio.
+      <div class="ba"><span>Desfazer</span></div></div></div>
+    <div class="over" style="margin:18px 4px 6px">NA LISTA DO DIA, ENQUANTO PENDENTE</div>
+    <div class="card list" style="padding:8px 16px">
+      <div class="brk">
+        <div class="li" style="border:0"><div class="badge sm">A</div><div><div style="font-size:16px">Peito e tríceps</div><div class="cap num">18:05 · 52 min · FitJourney</div></div></div>
+        <div class="li"><div class="badge sm ext"><svg class="i"><use href="#dumbbell"/></svg></div><div><div style="font-size:16px">Força tradicional</div><div class="cap num">18:20 · 42 min · Apple Watch</div></div><span class="tag at sp"><svg class="i"><use href="#link"/></svg>Mesmo treino?</span></div>
+      </div>
+      <div class="cap" style="padding:8px 0 4px">Força hoje: <span class="num">57 min</span> (intervalo contado uma vez)</div>
+    </div>
+  </div>
+</template>
+
+<!-- 13. SAÚDE — ESTADOS -->
+<template data-late data-theme="t-health" data-title="13 · Saúde — sem dado não é zero" data-note="Sem Apple Watch, sem leituras no dia ou sem amostras: o cartão diz o que falta e o número vira “—”. Nunca “0 bpm”, nunca um gráfico só com eixos. Como o HealthKit não revela negação de leitura, o app fala em “sem dados” e aponta o caminho para conferir o acesso. Os treinos do FitJourney continuam visíveis.">
+  <div class="scroll">
+    <div class="large" style="margin-bottom:8px"><h3>Saúde</h3><div class="acts"><div class="seg" style="margin-bottom:6px"><span class="on">Dia</span><span>Tendências</span></div></div></div>
+    <div class="daynav"><span><svg class="i"><use href="#left"/></svg></span>Terça, 10 nov<span><svg class="i"><use href="#right"/></svg></span></div>
+    <div class="card"><div class="row"><svg class="i" style="font-size:26px;color:var(--text2)"><use href="#nowatch"/></svg><div><div class="h">Sem Apple Watch</div><div class="sub">A frequência cardíaca vem do Apple Watch ou de um sensor pareado.</div></div></div></div>
+    <div class="banner at"><svg class="i"><use href="#warn"/></svg><div style="flex:1"><b>Sem dados de frequência cardíaca</b>Confira se o FitJourney pode ler seus dados em Ajustes › Saúde › Acesso a Dados.<div class="ba"><span>Abrir Ajustes</span></div></div></div>
+    <div class="card"><div class="over">FREQUÊNCIA CARDÍACA</div><div class="sub" style="margin-top:6px">Sem leituras neste dia</div></div>
+    <div class="card list" style="padding:2px 16px">
+      <div class="li"><div class="badge sm rb">B</div><div><div style="font-size:16px">Costas e bíceps <span class="tag tr" style="margin-left:4px"><svg class="i"><use href="#dumbbell"/></svg>Força</span></div><div class="cap num">19:10 · 48 min · FitJourney</div></div></div>
+    </div>
+    <div class="two">
+      <div class="card"><div class="cap"><svg class="i" style="color:var(--health)"><use href="#flame"/></svg> Energia ativa</div><b class="num">—</b><div class="cap" style="margin-top:8px">Sem dados neste dia</div></div>
+      <div class="card"><div class="cap"><svg class="i f" style="color:var(--health)"><use href="#heart"/></svg> FC em repouso</div><b class="num">—</b><div class="cap" style="margin-top:8px">Indisponível</div></div>
+    </div>
+    <div class="card"><div class="metrics"><div class="metric"><div class="cap">Passos</div><b class="num">6.412</b></div><div class="metric"><div class="cap">VFC</div><b class="num">—</b></div><div class="metric"><div class="cap">Peso · 2 nov</div><b class="num">78,4<small>kg</small></b></div></div></div>
+  </div>
+  <div class="tabbar glass" data-on="3"></div>
+</template>
+
+<!-- 14. ATIVIDADE AO VIVO — TELA BLOQUEADA -->
+<template data-late data-class="lock" data-title="14 · Atividade ao Vivo — descanso na Tela Bloqueada" data-note="Uma atividade por sessão. No descanso: contagem regressiva legível à distância, o que vem a seguir (o alvo como prescrito) e dois botões grandes — +15 s e Pular — que funcionam sem desbloquear (App Intents). O tempo é desenhado pelo sistema; o app só atualiza em eventos. Tocar fora dos botões abre a sessão.">
+  <div class="lockclock"><small>quarta, 11 de novembro</small><b class="num">18:26</b></div>
+  <div class="la lv glass" style="bottom:210px">
+    <div class="l1"><svg class="g"><use href="#steps"/></svg>DESCANSO<span class="num">32:14</span></div>
+    <div class="body"><div class="cd num">1:15</div><div class="nx"><small>A seguir</small>Série 3 de 4<br><span class="num">26 kg · alvo 8–12</span></div></div>
+    <div class="bar"><i style="width:38%"></i></div>
+    <div class="btns"><span>+ 15 s</span><span class="p">Pular</span></div>
+  </div>
+  <div class="la lv glass" style="bottom:86px">
+    <div class="l1 ok"><svg class="i"><use href="#check"/></svg>DESCANSO CONCLUÍDO<span class="num">33:31</span></div>
+    <div class="body" style="margin-bottom:0"><div class="nx big">Série 3 de 4<span class="num">26 kg · alvo 8–12</span></div></div>
+  </div>
+</template>
+
+<!-- 15. DYNAMIC ISLAND -->
+<template data-device="board" data-title="15 · Atividade ao Vivo — Dynamic Island e outros estados" data-note="Ilha compacta: anel regressivo à esquerda e a contagem à direita no descanso; glifo e “2/4” na série; pausa e descanso concluído com símbolo próprio. Mínima: só o anel ou o símbolo. Expandida: o mesmo corpo da Tela Bloqueada, com +15 s e Pular. À direita, os estados Série, Pausado e Treino salvo na Tela Bloqueada. A ilha é sempre preta; a Tela Bloqueada segue claro/escuro.">
+  <figure><figcaption>Compacta · descanso</figcaption><div class="stage"><div class="di"><span class="ringm"></span><span class="o">1:15</span></div></div></figure>
+  <figure><figcaption>Compacta · série</figcaption><div class="stage"><div class="di"><svg class="g o"><use href="#steps"/></svg><span>2/4</span></div></div></figure>
+  <figure><figcaption>Compacta · pausado</figcaption><div class="stage"><div class="di"><svg class="i"><use href="#pause"/></svg><span class="s">32:14</span></div></div></figure>
+  <figure><figcaption>Compacta · descanso concluído</figcaption><div class="stage"><div class="di"><svg class="i ok"><use href="#check"/></svg><span>3/4</span></div></div></figure>
+  <figure><figcaption>Mínima · descanso / série / pausado</figcaption><div class="stage"><div class="di min"><span class="ringm"></span></div><div class="di min"><svg class="g o"><use href="#steps"/></svg></div><div class="di min"><svg class="i"><use href="#pause"/></svg></div></div></figure>
+  <figure><figcaption>Expandida · descanso</figcaption><div class="dix lv">
+    <div class="l1"><svg class="g"><use href="#steps"/></svg>DESCANSO<span class="num">32:14</span></div>
+    <div class="body" style="margin-top:10px"><div class="cd num" style="font-size:40px">1:15</div><div class="nx"><small>A seguir</small>Série 3 de 4<br><span class="num">26 kg · alvo 8–12</span></div></div>
+    <div class="bar"><i style="width:38%"></i></div>
+    <div class="btns"><span>+ 15 s</span><span class="p">Pular</span></div></div></figure>
+  <figure><figcaption>Expandida · série</figcaption><div class="dix lv">
+    <div class="l1"><svg class="g"><use href="#steps"/></svg>SÉRIE 2 DE 4<span class="num">32:14</span></div>
+    <div class="body" style="margin-top:10px"><div class="nx big">Supino inclinado halter<span class="num">26 kg · alvo 8–12 · RIR 2</span></div></div>
+    <div class="row" style="gap:10px"><div class="bar" style="flex:1;margin:0"><i style="width:42%"></i></div><span class="cap num" style="color:var(--text2)">3 de 6</span></div></div></figure>
+  <figure><figcaption>Tela Bloqueada · série</figcaption><div class="lac lv">
+    <div class="l1"><svg class="g"><use href="#steps"/></svg><span class="nm">Supino inclinado halter</span><span class="num">32:14</span></div>
+    <div class="body"><div class="nx big">Série 2 de 4<span class="num">26 kg · alvo 8–12 · RIR 2</span></div></div>
+    <div class="row" style="gap:10px"><div class="bar" style="flex:1;margin:0"><i style="width:42%"></i></div><span class="cap num" style="color:var(--text2)">3 de 6</span></div></div></figure>
+  <figure><figcaption>Tela Bloqueada · pausado</figcaption><div class="lac lv">
+    <div class="l1 n"><svg class="i"><use href="#pause"/></svg>PAUSADO</div>
+    <div class="body" style="margin-bottom:0"><div class="cd num">32:14</div><div class="nx">Supino inclinado halter<br><span style="color:var(--text2)">Série 2 de 4</span></div></div></div></figure>
+  <figure><figcaption>Tela Bloqueada · treino salvo</figcaption><div class="lac lv">
+    <div class="l1 ok"><svg class="i"><use href="#check"/></svg>TREINO CONCLUÍDO</div>
+    <div class="body" style="margin-bottom:0"><div class="nx big">A — Peito e tríceps<span class="num">52 min · 18 séries · 8.420 kg</span></div></div></div></figure>
+</template>
+
+<!-- 16. COACH — BOAS-VINDAS -->
+<template data-late data-theme="t-coach" data-tabs="5" data-title="16 · Coach — boas-vindas e consentimento" data-note="Primeira vez na aba: o que o Coach faz, para onde vão os dados (direto ao provedor escolhido, com a chave do usuário; o FitJourney não tem servidor) e o que compartilhar — quatro categorias, todas desligadas por padrão. Só depois de “Concordar e continuar” alguma mensagem pode ser enviada.">
+  <div class="scroll" style="padding-top:64px">
+    <div class="ctrx" style="padding:8px 12px 14px"><svg class="i"><use href="#sparkles"/></svg><h4>Seu Coach de IA</h4><p>Converse para montar treinos e dietas. Tudo o que ele propõe é um rascunho que você revisa antes de salvar.</p></div>
+    <div class="card"><div class="h">Para onde vão seus dados</div><div class="sub" style="margin-top:4px">O que você escolher compartilhar é enviado ao provedor de IA que você configurar, com a sua própria chave. O FitJourney não tem servidor: nada passa por nós.</div></div>
+    <div class="fh">Compartilhar com o Coach</div>
+    <div class="form">
+      <div class="fr"><div>Perfil<small>idade, peso, nível, objetivo, restrições</small></div><div class="tog off sp"></div></div>
+      <div class="fr"><div>Treinos<small>programas, fichas e histórico de séries</small></div><div class="tog sp" style="background:var(--success)"></div></div>
+      <div class="fr"><div>Dieta<small>plano alimentar e registros</small></div><div class="tog off sp"></div></div>
+      <div class="fr"><div>Saúde<small>resumos de FC, energia e treinos do Saúde</small></div><div class="tog off sp"></div></div>
+    </div>
+    <div class="ff">O Coach não faz diagnóstico nem substitui médico, nutricionista ou educador físico.</div>
+  </div>
+  <div class="fade"></div>
+  <div class="bottom" style="bottom:100px"><div class="primary">Concordar e continuar</div></div>
+  <div class="tabbar glass five" data-on="4"></div>
+</template>
+
+<!-- 17. COACH — CONVERSAS -->
+<template data-late data-theme="t-coach" data-tabs="5" data-title="17 · Coach — conversas" data-note="Lista nativa por período, com busca. Uma etiqueta marca a conversa que tem rascunho ainda não salvo; a resposta em andamento aparece como “Respondendo…”. O rodapé diz qual provedor e modelo estão em uso e o que está sendo compartilhado.">
+  <div class="scroll">
+    <div class="large"><h3>Coach</h3><div class="acts"><div class="gbtn glass"><svg class="i"><use href="#sliders"/></svg></div><div class="gbtn glass"><svg class="i"><use href="#compose"/></svg></div></div></div>
+    <div class="fh" style="margin-top:0">Hoje</div>
+    <div class="card" style="padding:2px 16px">
+      <div class="cl"><div><div class="h">ABC de hipertrofia, 4x por semana</div><div class="sub">Montei um ABC com base no que você vem treinando…</div></div><span class="tag co"><svg class="i"><use href="#sparkles"/></svg>Rascunho</span></div>
+      <div class="cl"><div><div class="h">Evolução no supino</div><div class="sub">Respondendo…</div></div><span class="cap">agora</span></div>
+    </div>
+    <div class="fh">7 dias anteriores</div>
+    <div class="card" style="padding:2px 16px">
+      <div class="cl"><div><div class="h">Dieta para 2.200 kcal</div><div class="sub">Salvei como “Cutting 2.200”. Quer ajustar o jantar?</div></div><span class="cap">sex</span></div>
+      <div class="cl"><div><div class="h">Dor no ombro no desenvolvimento</div><div class="sub">Vale procurar um profissional para avaliar. Enquanto isso…</div></div><span class="cap">qui</span></div>
+      <div class="cl"><div><div class="h">O que treinar hoje?</div><div class="sub">Pela sequência, hoje é a ficha B — Costas e bíceps.</div></div><span class="cap">ter</span></div>
+    </div>
+    <div class="ff" style="text-align:center;margin-top:14px">OpenAI · gpt-5-mini · compartilhando Treinos e Dieta</div>
+  </div>
+  <div class="tabbar glass five" data-on="4"></div>
+</template>
+
+<!-- 18. COACH — CONVERSA -->
+<template data-late data-theme="t-coach" data-title="18 · Coach — conversa com streaming e raciocínio" data-note="Pergunta em balão, resposta em texto corrido. O raciocínio fica recolhido (“Pensou por 12 s”; aqui aberto). Cada consulta aos dados locais aparece como uma linha “Leu…” — é a prova, na tela, do que saiu do aparelho; categoria não compartilhada aparece com cadeado. Durante a resposta o botão de enviar vira Parar e, se o usuário rolou para cima, um botão leva de volta ao fim.">
+  <div class="nav"><div class="pill glass"><svg class="i"><use href="#left"/></svg>Coach</div><div class="ttl">Evolução no supino<small>gpt-5-mini</small></div><div class="gbtn glass"><svg class="i"><use href="#dots"/></svg></div></div>
+  <div class="scroll below-nav">
+    <div class="cap" style="text-align:center;margin-bottom:12px">Esta conversa pode ler: Treinos. <span style="color:var(--coach);font-weight:600">Alterar</span></div>
+    <div class="me">Como foi minha evolução no supino nos últimos 3 meses? Vale subir a carga?</div>
+    <div class="think"><svg class="i"><use href="#sparkles"/></svg>Pensou por 12 s<svg class="i" style="font-size:12px"><use href="#down"/></svg></div>
+    <div class="thinkbody">O usuário quer a tendência do supino reto e uma recomendação de carga. Preciso do histórico do exercício em 90 dias e da prescrição atual da ficha A…</div>
+    <div class="tool"><svg class="i"><use href="#check"/></svg>Leu a evolução de Supino reto · 90 dias</div>
+    <div class="tool"><svg class="i"><use href="#check"/></svg>Leu o programa ativo</div>
+    <div class="tool"><svg class="i"><use href="#lock"/></svg>Dieta não compartilhada · <a>Permitir</a></div>
+    <div class="ai" style="margin-top:10px">Em 12 semanas sua carga no <b>supino reto</b> foi de <span class="num">27,5</span> para <span class="num">32,5 kg</span>, sempre dentro do alvo de 8–12.<br><br>Nas duas últimas sessões você fechou as quatro séries com 12 reps. Isso indica espaço para subir: tente <span class="num"><b>35 kg</b></span> mirando 8–10 e<span class="dot"></span></div>
+  </div>
+  <div class="gbtn glass jump"><svg class="i"><use href="#down"/></svg></div>
+  <div class="composer glass">Pergunte ao Coach<div class="send"><svg class="i f"><use href="#stop"/></svg></div></div>
+</template>
+
+<!-- 19. COACH — PROPOSTA -->
+<template data-late data-class="tall" data-theme="t-coach" data-title="19 · Coach — cartão de proposta" data-note="Quando a resposta traz um rascunho de programa (ou de dieta), ele aparece como um cartão sólido com contorno na cor do Coach: fichas com o selo oficial, expansíveis nos exercícios com a prescrição. “Revisar e salvar” abre o editor normal já preenchido; nada é gravado antes disso.">
+  <div class="nav"><div class="pill glass"><svg class="i"><use href="#left"/></svg>Coach</div><div class="ttl">ABC de hipertrofia<small>gpt-5-mini</small></div><div class="gbtn glass"><svg class="i"><use href="#dots"/></svg></div></div>
+  <div class="scroll below-nav">
+    <div class="me">Monte um ABC de hipertrofia, 4x por semana, 60 min</div>
+    <div class="think"><svg class="i"><use href="#sparkles"/></svg>Pensou por 18 s<svg class="i" style="font-size:12px"><use href="#right"/></svg></div>
+    <div class="tool" style="margin-bottom:8px"><svg class="i"><use href="#check"/></svg>Consultou 3 fontes<svg class="i" style="font-size:12px"><use href="#right"/></svg></div>
+    <div class="ai">Montei um ABC em rodízio com base no que você vem treinando e nos 60 min por sessão.</div>
+    <div class="card draft">
+      <div class="over"><svg class="i"><use href="#sparkles"/></svg>RASCUNHO DE PROGRAMA</div>
+      <div class="h" style="margin-top:6px;font-size:19px">Hipertrofia ABC</div>
+      <div class="tags"><span class="tag">Hipertrofia</span><span class="tag">Sequencial</span><span class="tag">4x por semana</span></div>
+      <div class="line"></div>
+      <div class="row"><div class="badge sm">A</div><div><div style="font-size:16px;font-weight:600">Peito e tríceps</div><div class="cap">6 exercícios · ~55 min</div></div><svg class="i chev sp"><use href="#down"/></svg></div>
+      <div class="exl"><b>Supino reto</b> · <span class="num">4 × 8–12 · 90 s</span><br><b>Supino inclinado halter</b> · <span class="num">3 × 8–12 · 90 s</span><br><b>Crossover polia alta</b> <span class="tag co">novo</span> · <span class="num">3 × 12–15</span> · +3</div>
+      <div class="row" style="border-top:1px solid var(--sep);padding:8px 0"><div class="badge sm rb">B</div><div><div style="font-size:16px;font-weight:600">Costas e bíceps</div><div class="cap">6 exercícios · ~58 min</div></div><svg class="i chev sp"><use href="#right"/></svg></div>
+      <div class="row" style="border-top:1px solid var(--sep);padding:8px 0 12px"><div class="badge sm rg">C</div><div><div style="font-size:16px;font-weight:600">Pernas e ombros</div><div class="cap">7 exercícios · ~60 min</div></div><svg class="i chev sp"><use href="#right"/></svg></div>
+      <div class="primary">Revisar e salvar</div>
+      <div class="row" style="margin-top:8px"><div class="secondary glass">Pedir ajustes</div></div>
+    </div>
+  </div>
+  <div class="composer glass">Pergunte ao Coach<div class="send" style="opacity:.4"><svg class="i"><use href="#up"/></svg></div></div>
+</template>
+
+<!-- 20. AJUSTES -->
+<template data-late data-title="20 · Ajustes" data-note="Sheet a partir do avatar de Hoje: formulário nativo, sem vidro. Perfil no topo; unidades (kg/lb muda só a exibição); treino, com a Atividade ao Vivo; e os grupos maiores — Saúde, Notificações, Coach e IA, Dados — cada um com o estado à direita e uma tela própria.">
+  <div class="nav"><div style="width:44px"></div><div class="ttl">Ajustes</div><div class="pill glass" style="color:var(--tint)">OK</div></div>
+  <div class="scroll below-nav">
+    <div class="form"><div class="fr" style="min-height:76px"><div class="avatar">RC</div><div>Seu perfil<small>34 anos · 78 kg · intermediário</small></div><svg class="i chev sp"><use href="#right"/></svg></div></div>
+    <div class="fh">Unidades</div>
+    <div class="form">
+      <div class="fr">Carga<div class="seg sp"><span class="on">kg</span><span>lb</span></div></div>
+      <div class="fr">Passo de carga<span class="v num">0,5 kg</span></div>
+      <div class="fr">Semana começa em<span class="v">segunda</span></div>
+    </div>
+    <div class="ff">Mudar a unidade muda só a exibição. O histórico não é alterado.</div>
+    <div class="fh">Treino</div>
+    <div class="form">
+      <div class="fr">Descanso padrão<span class="v num">90 s</span></div>
+      <div class="fr">Som ao fim do descanso<div class="tog sp" style="background:var(--success)"></div></div>
+      <div class="fr">Atividade ao Vivo<div class="tog sp" style="background:var(--success)"></div></div>
+    </div>
+    <div class="fh">Integrações</div>
+    <div class="form">
+      <div class="fr"><div class="ic" style="background:var(--health)"><svg class="i f"><use href="#heart"/></svg></div>Saúde<span class="v">Conectado<svg class="i chev"><use href="#right"/></svg></span></div>
+      <div class="fr"><div class="ic" style="background:var(--destructive)"><svg class="i"><use href="#bell"/></svg></div>Notificações<span class="v">Desativadas<svg class="i chev"><use href="#right"/></svg></span></div>
+      <div class="fr"><div class="ic" style="background:var(--coach-fill)"><svg class="i"><use href="#sparkles"/></svg></div>Coach e IA<span class="v">OpenAI<svg class="i chev"><use href="#right"/></svg></span></div>
+    </div>
+    <div class="fh">Dados</div>
+    <div class="form"><div class="fr">Exportar, importar e apagar<svg class="i chev sp"><use href="#right"/></svg></div></div>
+  </div>
+</template>
+
+<!-- 21. AJUSTES — COACH E IA -->
+<template data-late data-theme="t-coach" data-title="21 · Ajustes — Coach e IA" data-note="Provedor, chave (guardada no Keychain, nunca exibida inteira, fora da exportação), modelo e teste de conexão com o resultado na própria linha. Abaixo, os mesmos quatro compartilhamentos da boas-vindas.">
+  <div class="nav"><div class="pill glass"><svg class="i"><use href="#left"/></svg>Ajustes</div><div class="ttl">Coach e IA</div><div style="width:44px"></div></div>
+  <div class="scroll below-nav">
+    <div class="fh" style="margin-top:0">Provedor</div>
+    <div class="form">
+      <div class="fr">OpenAI<span class="v" style="color:var(--coach)"><svg class="i"><use href="#check"/></svg>Pronto</span></div>
+      <div class="fr">Anthropic<span class="v">Falta a chave</span></div>
+      <div class="fr">OpenRouter<span class="v">Falta a chave</span></div>
+      <div class="fr">Compatível com OpenAI<span class="v">Endereço próprio</span></div>
+    </div>
+    <div class="fh">Chave de API</div>
+    <div class="form">
+      <div class="fr"><span class="num">••••••••3fA2</span><span class="v" style="color:var(--coach);font-weight:600">Trocar</span></div>
+      <div class="fr destr">Remover chave</div>
+    </div>
+    <div class="ff">Guardada no Keychain deste iPhone. Não entra na exportação nem em backups do app.</div>
+    <div class="fh">Modelo</div>
+    <div class="form">
+      <div class="fr">Modelo<span class="v">gpt-5-mini<svg class="i chev"><use href="#right"/></svg></span></div>
+      <div class="fr" style="color:var(--coach);font-weight:600">Testar conexão<span class="v" style="font-weight:400"><svg class="i" style="color:var(--success)"><use href="#check"/></svg>Conectado · 0,8 s</span></div>
+    </div>
+    <div class="fh">Compartilhar com o Coach</div>
+    <div class="form">
+      <div class="fr">Perfil<div class="tog off sp"></div></div>
+      <div class="fr">Treinos<div class="tog sp" style="background:var(--success)"></div></div>
+      <div class="fr">Dieta<div class="tog sp" style="background:var(--success)"></div></div>
+      <div class="fr">Saúde<div class="tog off sp"></div></div>
+    </div>
+    <div class="ff">Vale para as próximas mensagens. O que já foi enviado continua com o provedor.</div>
+  </div>
+</template>
+
+<!-- 22. AJUSTES — DADOS -->
+<template data-late data-title="22 · Ajustes — dados: exportar, importar, apagar" data-note="Exportar mostra o progresso na própria linha e termina na folha de compartilhamento. Importar mostra o resumo do arquivo antes de mudar qualquer coisa (juntar é o padrão). Apagar fica separado, lista o que some e pede dois passos de confirmação; com treino em andamento, importar e apagar ficam bloqueados com a explicação.">
+  <div class="nav"><div class="pill glass"><svg class="i"><use href="#left"/></svg>Ajustes</div><div class="ttl">Dados</div><div style="width:44px"></div></div>
+  <div class="scroll below-nav">
+    <div class="form">
+      <div class="fr"><svg class="i" style="color:var(--tint)"><use href="#share"/></svg><div>Exportar tudo<small>Preparando… 62%</small></div><span class="v" style="color:var(--tint)">Cancelar</span></div>
+      <div class="fr"><svg class="i" style="color:var(--tint)"><use href="#import"/></svg>Importar backup</div>
+    </div>
+    <div class="ff">Inclui programas, treinos, dieta, registros e ajustes. Fotos, vídeos e chaves de IA não entram no arquivo.</div>
+    <div class="fh">Resumo antes de importar</div>
+    <div class="card" style="margin-bottom:0">
+      <div class="h">Backup de 2 de novembro de 2026</div><div class="cap">formato v1 · FitJourney-2026-11-02.json</div>
+      <div class="line"></div>
+      <div class="metrics" style="grid-template-columns:repeat(4,1fr)"><div class="metric"><div class="cap">Programas</div><b class="num">3</b></div><div class="metric"><div class="cap">Treinos</div><b class="num">142</b></div><div class="metric"><div class="cap">Dietas</div><b class="num">2</b></div><div class="metric"><div class="cap">Registros</div><b class="num">1.204</b></div></div>
+      <div class="line"></div>
+      <div class="row" style="min-height:40px"><svg class="i" style="color:var(--tint)"><use href="#check"/></svg><div>Juntar com o que já existe<div class="cap">itens iguais não duplicam</div></div></div>
+      <div class="row" style="min-height:40px"><svg class="i" style="opacity:0"><use href="#check"/></svg><div class="destr">Substituir tudo</div></div>
+    </div>
+    <div class="fh">Armazenamento</div>
+    <div class="form"><div class="fr">Mídia dos exercícios<span class="v num">312 MB</span></div></div>
+    <div class="fh"> </div>
+    <div class="form"><div class="fr destr"><svg class="i"><use href="#trash"/></svg>Apagar todos os dados…</div></div>
+    <div class="ff">Apaga programas, treinos, dieta, mídia, conversas do Coach, perfil e chaves. Treinos já gravados no app Saúde continuam lá. Pede confirmação em dois passos.</div>
+  </div>
+</template>
+
+<!-- 23. PERFIL -->
+<template data-late data-title="23 · Ajustes — perfil" data-note="Tudo opcional; campo vazio é “não informado”, nunca zero. Só é enviado ao Coach se “Perfil” estiver ligado. A idade também alimenta a FC máxima usada nas zonas.">
+  <div class="nav"><div class="pill glass"><svg class="i"><use href="#left"/></svg>Ajustes</div><div class="ttl">Perfil</div><div style="width:44px"></div></div>
+  <div class="scroll below-nav">
+    <div class="ff" style="margin:0 16px 4px">Ajuda o Coach a conhecer você. Só é enviado se “Perfil” estiver ligado em Compartilhar com o Coach.</div>
+    <div class="fh">Sobre você</div>
+    <div class="form">
+      <div class="fr">Idade<span class="v num">34 anos</span></div>
+      <div class="fr">Sexo<span class="v">Não informar</span></div>
+      <div class="fr">Altura<span class="v num">178 cm</span></div>
+      <div class="fr"><div>Peso<small style="color:var(--tint)">Usar o peso do Saúde · 78,4 kg</small></div><span class="v num">78 kg</span></div>
+    </div>
+    <div class="fh">Treino</div>
+    <div class="form">
+      <div class="fr">Nível<div class="seg sp"><span>Inic.</span><span class="on">Interm.</span><span>Avanç.</span></div></div>
+      <div class="fr">Objetivo<span class="v">Hipertrofia</span></div>
+      <div class="fr">Dias por semana<span class="v num">4</span></div>
+      <div class="fr">Minutos por treino<span class="v num">60</span></div>
+      <div class="fr">Equipamentos<span class="v">Academia completa</span></div>
+    </div>
+    <div class="fh">Cuidados</div>
+    <div class="form"><div class="fr" style="color:var(--text3)">Restrições e lesões</div></div>
+    <div class="ff">Informativo. O Coach não faz diagnóstico.</div>
+    <div class="fh">Alimentação</div>
+    <div class="form"><div class="fr">Preferências e alergias<span class="v">Sem lactose</span></div></div>
+  </div>
+</template>
+
 <script>
 (function(){
   var tabs=[["sun","Hoje"],["dumbbell","Treinos"],["fork","Dieta"],["heart","Saúde"]];
   function tabbar(el){
-    var on=+el.dataset.on;
-    el.innerHTML=tabs.map(function(t,i){return '<div class="'+(i===on?'on':'')+'"><svg class="i'+(t[0]==='heart'&&i===on?' f':'')+'"><use href="#'+t[0]+'"/></svg>'+t[1]+'</div>';}).join('');
+    var on=+el.dataset.on, list=el.classList.contains('five')?tabs.concat([["sparkles","Coach"]]):tabs;
+    el.innerHTML=list.map(function(t,i){return '<div class="'+(i===on?'on':'')+'"><svg class="i'+(t[0]==='heart'&&i===on?' f':'')+'"><use href="#'+t[0]+'"/></svg>'+t[1]+'</div>';}).join('');
   }
   // Curva de FC determinística: sobe a cada série, cai no descanso.
   function chart(svg){
@@ -697,20 +1177,63 @@ svg.i.f{fill:currentColor;stroke:none}
     svg.innerHTML=o;
   }
   var host=document.getElementById('shots');
-  document.querySelectorAll('template:not([data-device])').forEach(function(tp){
+  // FC do dia: barras de mín–máx a cada 15 min, treinos sobrepostos, linha de repouso. Determinístico.
+  function daychart(svg){
+    var W=346,H=150,x0=2,x1=W-30,y0=24,y1=H-18,lo=45,hi=175,now=21.5;
+    var X=function(h){return x0+(x1-x0)*h/24}, Y=function(v){return y1-(y1-y0)*(v-lo)/(hi-lo)};
+    var wk=[[7.03,7.55,'--aerobic','run',150,166],[18.08,18.95,'--training','dumbbell',112,164]];
+    var o='';
+    wk.forEach(function(w){
+      o+='<rect x="'+X(w[0])+'" y="'+y0+'" width="'+Math.max(X(w[1])-X(w[0]),8)+'" height="'+(y1-y0)+'" rx="4" fill="var('+w[2]+')" opacity=".18"/>';
+      var cx=(X(w[0])+X(w[1]))/2;
+      o+='<circle cx="'+cx+'" cy="'+(y0-10)+'" r="10" fill="var('+w[2]+')"/><svg x="'+(cx-6)+'" y="'+(y0-16)+'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--surface)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><use href="#'+w[3]+'"/></svg>';
+    });
+    o+='<line x1="'+x0+'" x2="'+x1+'" y1="'+Y(56)+'" y2="'+Y(56)+'" stroke="var(--text2)" stroke-width="1" stroke-dasharray="3 4"/><text x="'+(x1+4)+'" y="'+(Y(56)+3)+'">rep.</text>';
+    for(var q=0;q<now*4;q++){
+      var h=q/4; if(h>=1&&h<5.75) continue; if(h>=13.5&&h<14.25) continue; // relógio fora do pulso
+      var base=h<6.5?54:66+10*Math.sin(h*.9)+6*Math.sin(h*2.3), a=base-4-3*Math.abs(Math.sin(q*1.7)), b=base+8+9*Math.abs(Math.sin(q*.83));
+      wk.forEach(function(w){ if(h>=w[0]-.2&&h<=w[1]){a=w[4]-10*Math.abs(Math.sin(q));b=w[5]-8*Math.abs(Math.cos(q*1.3));} else if(h>w[1]&&h<w[1]+.6){a=88;b=118;} });
+      a=Math.max(a,52); o+='<rect x="'+(X(h)+.4)+'" y="'+Y(b)+'" width="'+((x1-x0)/96-.9)+'" height="'+Math.max(Y(a)-Y(b),2.2)+'" rx="1.1" fill="var(--health)"/>';
+    }
+    [[0,'0h'],[6,'6h'],[12,'12h'],[18,'18h']].forEach(function(l){o+='<text x="'+X(l[0])+'" y="'+(H-4)+'">'+l[1]+'</text>';});
+    [[110,'110'],[160,'160']].forEach(function(l){o+='<text x="'+(x1+4)+'" y="'+(Y(l[0])+3)+'">'+l[1]+'</text>';});
+    svg.innerHTML=o;
+  }
+  // Ícone do app: mesma geometria de design/icon/make_icon.swift.
+  function appicon(svg){
+    var v=svg.dataset.v;
+    var bg={light:['#FF8B2B','#DB430A'],dark:['#26262A','#0D0D0F'],tinted:['#000','#000'],watch:['#FF8B2B','#DB430A']}[v];
+    var fg={light:['#fff','#fff'],dark:['#FFA347','#EE5A12'],tinted:['#fff','#B4B4B4'],watch:['#fff','#fff']}[v];
+    var clip=v==='watch'?'<circle cx="512" cy="512" r="512"/>':'<rect width="1024" height="1024" rx="230"/>';
+    svg.setAttribute('viewBox','0 0 1024 1024');
+    svg.innerHTML='<defs><linearGradient id="ib'+v+'" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+bg[0]+'"/><stop offset="1" stop-color="'+bg[1]+'"/></linearGradient>'
+      +'<linearGradient id="if'+v+'" gradientUnits="userSpaceOnUse" x1="0" y1="218" x2="0" y2="816"><stop offset="0" stop-color="'+fg[0]+'"/><stop offset="1" stop-color="'+fg[1]+'"/></linearGradient>'
+      +'<clipPath id="ic'+v+'">'+clip+'</clipPath></defs><g clip-path="url(#ic'+v+')"><rect width="1024" height="1024" fill="url(#ib'+v+')"/>'
+      +'<g transform="translate(512 512) scale('+(v==='watch'?.8:1)+') translate(-512 -512)"><path d="M238 770H420V600H602V430H786" fill="none" stroke="url(#if'+v+')" stroke-width="92" stroke-linecap="round" stroke-linejoin="round"/><circle cx="706" cy="284" r="66" fill="url(#if'+v+')"/></g></g>';
+  }
+  function boardSection(tp){
+    var sec=document.createElement('section');sec.className='shot';
+    sec.innerHTML='<h2>'+tp.dataset.title+'</h2><p class="note">'+tp.dataset.note+'</p><div class="board"></div>';
+    sec.querySelector('.board').appendChild(tp.content.cloneNode(true));
+    sec.querySelectorAll('.appicon').forEach(appicon);
+    host.appendChild(sec);
+  }
+  function phoneSection(tp){
     var sec=document.createElement('section');sec.className='shot';
     sec.innerHTML='<h2>'+tp.dataset.title+'</h2><p class="note">'+tp.dataset.note+'</p><div class="pair"></div>';
     ['Claro','Escuro'].forEach(function(name,i){
       var fig=document.createElement('figure');
-      fig.innerHTML='<figcaption>'+name+'</figcaption><div class="phone-wrap"><div class="phone'+(i?' dark':'')+' '+(tp.dataset.theme||'')+'"><div class="island"></div><div class="status"><span>9:41</span><span>5G ▮▮▮</span></div><div class="home"></div></div></div>';
+      fig.innerHTML='<figcaption>'+name+'</figcaption><div class="phone-wrap '+(tp.dataset.class||'')+'"><div class="phone'+(i?' dark':'')+' '+(tp.dataset.theme||'')+' '+(tp.dataset.class||'')+'"><div class="island"></div><div class="status"><span>9:41</span><span>5G ▮▮▮</span></div><div class="home"></div></div></div>';
       var phone=fig.querySelector('.phone');
       phone.appendChild(tp.content.cloneNode(true));
       phone.querySelectorAll('.tabbar').forEach(tabbar);
       phone.querySelectorAll('.hrchart').forEach(chart);
+      phone.querySelectorAll('.daychart').forEach(daychart);
       sec.querySelector('.pair').appendChild(fig);
     });
     host.appendChild(sec);
-  });
+  }
+  document.querySelectorAll('template:not([data-device]):not([data-late])').forEach(phoneSection);
   // Apple Watch: cada tela em 46 e 41 mm.
   var wsec=document.createElement('section');wsec.className='shot';
   wsec.innerHTML='<h2>9 · Apple Watch — a sessão no pulso</h2><p class="note">watchOS 26, sempre escuro. A sessão é um conjunto de páginas horizontais (Controles · Série · Métricas · Ficha): a Digital Crown fica livre para ajustar a carga em 0,5 kg, e o toque duplo aciona o botão principal de cada tela. Cada tela aparece em 46 mm e 41 mm.</p><div class="wgrid"></div>';
@@ -726,6 +1249,10 @@ svg.i.f{fill:currentColor;stroke:none}
     wsec.querySelector('.wgrid').appendChild(fig);
   });
   host.appendChild(wsec);
+  // Revisão 3: quadros de página (paleta, ícone, Dynamic Island) e telas novas, na ordem do documento.
+  document.querySelectorAll('template[data-device="board"],template[data-late]').forEach(function(tp){
+    if(tp.dataset.device==='board') boardSection(tp); else phoneSection(tp);
+  });
 })();
 </script>
 </body>

@@ -11,6 +11,7 @@ struct DesignSystemGallery: View {
     @State private var filters: Set<String> = ["Peito"]
     @State private var restEndsAt = Date.now.addingTimeInterval(75)
     @State private var restTotal: TimeInterval = 90
+    @State private var routineColor: FJRoutineColor = .orange
 
     private let sessionStart = Date.now.addingTimeInterval(-1934)
     private let groups = ["Peito", "Costas", "Pernas", "Ombros", "Braços"]
@@ -20,6 +21,7 @@ struct DesignSystemGallery: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: FJSpacing.sectionGap) {
                     colors
+                    routines
                     typography
                     buttons
                     chips
@@ -81,6 +83,32 @@ struct DesignSystemGallery: View {
                         swatch("destrutivo", FJColor.destructive)
                         swatch("recorde", FJColor.record)
                     }
+                }
+            }
+        }
+    }
+
+    private var routines: some View {
+        section("Fichas") {
+            FJCard {
+                VStack(alignment: .leading, spacing: FJSpacing.m) {
+                    FJFlowLayout(spacing: FJSpacing.s) {
+                        ForEach(Array(FJRoutineColor.allCases.enumerated()), id: \.element) { index, color in
+                            FJRoutineBadge(
+                                symbol: String(UnicodeScalar(UInt8(65 + index))),
+                                color: color,
+                                accessibilityLabel: Text(verbatim: color.localizedName)
+                            )
+                        }
+                    }
+                    HStack(spacing: FJSpacing.m) {
+                        FJRoutineBadge(symbol: "A", color: routineColor, size: .sm)
+                        FJRoutineBadge(symbol: "A", color: routineColor, size: .md)
+                        FJRoutineBadge(symbol: "A", color: routineColor, size: .lg)
+                        FJRoutineBadge(symbol: "figure.run", color: routineColor, size: .lg)
+                        FJRoutineBadge(symbol: "", name: "Pernas", color: routineColor, size: .lg)
+                    }
+                    FJRoutineColorPicker(selection: $routineColor)
                 }
             }
         }
