@@ -99,7 +99,7 @@ struct DraftApplier {
                 } else {
                     exercise = Exercise(name: exerciseDraft.name.trimmed(max: 80),
                                         measurementKind: Self.measurementKind(for: exerciseDraft),
-                                        defaultRestSeconds: exerciseDraft.restSeconds ?? 90)
+                                        defaultRestSeconds: exerciseDraft.restSeconds)
                     context.insert(exercise)
                     catalog.append(exercise)
                 }
