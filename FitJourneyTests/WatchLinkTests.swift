@@ -131,6 +131,8 @@ struct WatchLinkCodecTests {
             .adjustRest(seconds: -15), .skipRest, .startHold(setID: set), .endHold(setID: set),
             .skipExercise(exerciseID: ex, reason: .pain), .skipExercise(exerciseID: ex, reason: nil),
             .completeExercise(exerciseID: ex), .focusExercise(exerciseID: ex), .addSet(exerciseID: ex, kind: .dropSet),
+            .addExercise(catalogExerciseID: UUID(), afterExerciseID: ex), .addExercise(catalogExerciseID: UUID(), afterExerciseID: nil),
+            .substituteExercise(exerciseID: ex, withCatalogExerciseID: UUID()), .reorderExercise(exerciseID: ex, toIndex: 2),
             .pause, .resume, .finish(rpe: 8, applyLoadProposalIDs: [UUID(), UUID()]), .finish(rpe: nil, applyLoadProposalIDs: []),
             .discard,
         ]

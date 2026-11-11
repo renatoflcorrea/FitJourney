@@ -5,8 +5,10 @@ import Foundation
 /// `revision` é monotônica por sessão: o receptor descarta snapshots com revisão menor que a que tem.
 /// Tempos são datas (relógio derivado de timestamps, nunca de contadores).
 struct SessionSnapshot: Codable, Sendable, Hashable {
-    enum Status: String, Codable, Sendable, Hashable {
+    enum Status: String, Codable, Sendable, Hashable, UnknownCaseDecodable {
         case active, paused, finished, discarded
+        /// Valor de versão futura.
+        case unknown
     }
 
     var sessionID: UUID

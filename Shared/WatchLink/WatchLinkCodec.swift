@@ -12,6 +12,21 @@ enum WatchLinkMessage: Codable, Sendable, Hashable {
     case snapshotRequest
     /// iPhone → relógio: programa ativo (`nil` = sem programa ativo).
     case programDigest(ProgramDigest?)
+    /// Qualquer lado: recebi uma mensagem de versão que não suporto. Formato estável, legível por
+    /// qualquer versão — o emissor mostra "atualize o app" (o lado com `currentVersion` menor).
+    case incompatible(WatchLinkCompatibility)
+}
+
+/// Faixa de versões que um lado entende.
+struct WatchLinkCompatibility: Codable, Sendable, Hashable {
+    var minimumVersion: Int
+    var currentVersion: Int
+
+    static let current = WatchLinkCompatibility(minimumVersion: WatchLinkProtocol.minimumSupportedVersion,
+                                                currentVersion: WatchLinkProtocol.schemaVersion)
+
+    /// Quem precisa atualizar, do ponto de vista de quem recebeu este aviso do outro lado.
+    var peerIsOutdated: Bool { currentVersion < WatchLinkProtocol.schemaVersion }
 }
 
 /// Envelope versionado: o receptor lê `schemaVersion` antes de decodificar o resto.
@@ -37,6 +52,18 @@ enum WatchLinkCodecError: Error, Equatable, Sendable {
 enum WatchLinkCodec {
     private struct VersionProbe: Decodable {
         var schemaVersion: Int
+        var incompatible: WatchLinkCompatibility?
+    }
+
+    /// Formato estável do aviso de incompatibilidade (sem `message`).
+    private struct IncompatibleNotice: Codable {
+        var schemaVersion: Int
+        var incompatible: WatchLinkCompatibility
+    }
+
+    /// Resposta a uma mensagem com `unsupportedVersion`: aviso legível por qualquer versão.
+    static func incompatibilityNotice() throws -> Data {
+        try encode(.incompatible(.current))
     }
 
     static func encode(_ message: WatchLinkMessage) throws -> Data {
@@ -47,6 +74,9 @@ enum WatchLinkCodec {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .sortedKeys
         do {
+            if case .incompatible(let compatibility) = envelope.message {
+                return try encoder.encode(IncompatibleNotice(schemaVersion: envelope.schemaVersion, incompatible: compatibility))
+            }
             return try encoder.encode(envelope)
         } catch {
             throw WatchLinkCodecError.malformed
@@ -61,6 +91,10 @@ enum WatchLinkCodec {
         let decoder = JSONDecoder()
         guard let probe = try? decoder.decode(VersionProbe.self, from: data) else {
             throw WatchLinkCodecError.malformed
+        }
+        // O aviso de incompatibilidade é lido em qualquer versão.
+        if let compatibility = probe.incompatible {
+            return WatchLinkEnvelope(message: .incompatible(compatibility), schemaVersion: probe.schemaVersion)
         }
         guard probe.schemaVersion >= WatchLinkProtocol.minimumSupportedVersion,
               probe.schemaVersion <= WatchLinkProtocol.schemaVersion else {

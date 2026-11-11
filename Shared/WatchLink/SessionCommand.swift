@@ -49,6 +49,12 @@ struct SessionCommand: Codable, Sendable, Hashable, Identifiable {
         case focusExercise(exerciseID: UUID)
         /// Série extra no exercício (copia alvo/carga da última).
         case addSet(exerciseID: UUID, kind: WatchSetKind?)
+        /// Adiciona um exercício do catálogo (`Exercise.id`) no fim ou logo depois de `afterExerciseID`.
+        case addExercise(catalogExerciseID: UUID, afterExerciseID: UUID?)
+        /// Troca o exercício na hora por outro do catálogo (substituição registrada).
+        case substituteExercise(exerciseID: UUID, withCatalogExerciseID: UUID)
+        /// Move o exercício para a posição `toIndex` (0-based, limitada) na ordem da sessão.
+        case reorderExercise(exerciseID: UUID, toIndex: Int)
         case pause
         case resume
         /// Finaliza com RPE de sessão (1–10) e as propostas de carga confirmadas (`prescriptionID`s).
@@ -69,9 +75,13 @@ enum SessionCommandRejection: String, Codable, Sendable, Hashable, Error {
     case unknownRoutine
     case unknownSet
     case unknownExercise
+    /// Exercício do catálogo inexistente.
+    case unknownCatalogExercise
+    /// A sessão foi descartada: comandos novos não a ressuscitam.
+    case sessionDiscarded
     /// Operação não cabe no estado atual (ex.: `endHold` sem sustentação em curso).
     case invalidState
-    /// Valor fora do domínio (ex.: reps negativas).
+    /// Valor fora do domínio (ex.: reps negativas, descanso > 1 h, carga não finita).
     case invalidValue
     /// Falha ao gravar no banco.
     case persistenceFailed

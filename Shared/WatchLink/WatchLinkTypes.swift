@@ -11,6 +11,19 @@ enum WatchLinkProtocol {
     static let minimumSupportedVersion = 1
 }
 
+/// Enum de fio tolerante: valor bruto desconhecido (gravado por versão mais nova) vira `.unknown`
+/// em vez de derrubar a mensagem inteira.
+protocol UnknownCaseDecodable: RawRepresentable, Decodable where RawValue == String {
+    static var unknown: Self { get }
+}
+
+extension UnknownCaseDecodable {
+    init(from decoder: any Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = Self(rawValue: raw) ?? .unknown
+    }
+}
+
 enum WatchWeightUnit: String, Codable, Sendable, Hashable {
     case kg, lb
 }
@@ -41,20 +54,28 @@ enum WatchEffort: Codable, Sendable, Hashable {
     case rpe(Double)
 }
 
-enum WatchMeasurementKind: String, Codable, Sendable, Hashable {
+enum WatchMeasurementKind: String, Codable, Sendable, Hashable, UnknownCaseDecodable {
     case repsAndLoad, repsOnly, isometric, timeOrDistance
+    /// Valor de versão futura.
+    case unknown
 }
 
-enum WatchSetKind: String, Codable, Sendable, Hashable {
+enum WatchSetKind: String, Codable, Sendable, Hashable, UnknownCaseDecodable {
     case warmup, feeder, working, dropSet, restPause, toFailure, backOff
+    /// Valor de versão futura.
+    case unknown
 }
 
-enum WatchExerciseStatus: String, Codable, Sendable, Hashable {
+enum WatchExerciseStatus: String, Codable, Sendable, Hashable, UnknownCaseDecodable {
     case pending, inProgress, completed, partial, skipped
+    /// Valor de versão futura.
+    case unknown
 }
 
-enum WatchSkipReason: String, Codable, Sendable, Hashable {
+enum WatchSkipReason: String, Codable, Sendable, Hashable, UnknownCaseDecodable {
     case equipmentBusy, pain, time, other
+    /// Valor de versão futura.
+    case unknown
 }
 
 enum WatchCommandOrigin: String, Codable, Sendable, Hashable {

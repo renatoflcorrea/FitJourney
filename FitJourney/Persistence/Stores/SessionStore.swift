@@ -23,11 +23,22 @@ struct SessionSummary: Sendable, Hashable {
 }
 
 /// Ciclo de vida da sessão de treino. Persiste a cada mudança; relógio só por datas.
+///
+/// `autosave == false` (usado pelo `SessionEngine`): as mutações não chamam `save()` — quem chama
+/// grava a mutação junto com o registro do comando num único `save` (atomicidade) ou faz `rollback()`.
 @MainActor
 struct SessionStore {
     let context: ModelContext
+    var autosave: Bool
 
-    init(context: ModelContext) { self.context = context }
+    init(context: ModelContext, autosave: Bool = true) {
+        self.context = context
+        self.autosave = autosave
+    }
+
+    private func save() throws {
+        if autosave { try context.save() }
+    }
 
     // MARK: Leitura
 
@@ -107,7 +118,7 @@ struct SessionStore {
                 log.sessionExercise = snapshot
             }
         }
-        try context.save()
+        try save()
         return session
     }
 
@@ -138,7 +149,7 @@ struct SessionStore {
                 session.clock = clock
             }
         }
-        try context.save()
+        try save()
     }
 
     func uncompleteSet(_ log: SetLog, at date: Date = .now) throws {
@@ -146,7 +157,7 @@ struct SessionStore {
         log.completedAt = nil
         markEditedIfFinished(log, at: date)
         if let exercise = log.sessionExercise { refreshStatus(exercise, at: date) }
-        try context.save()
+        try save()
     }
 
     /// Edita valores realizados (antes ou depois de concluir). Em sessão encerrada marca "editado".
@@ -157,7 +168,7 @@ struct SessionStore {
         log.durationSeconds = durationSeconds
         log.distanceMeters = distanceMeters
         markEditedIfFinished(log, at: date)
-        try context.save()
+        try save()
     }
 
     /// Soma `delta` (na unidade da carga) à carga exibida da série: a registrada, senão a planejada,
@@ -169,7 +180,7 @@ struct SessionStore {
         if case .weight(let value, let unit) = adjusted, value < 0 { adjusted = .weight(value: 0, unit: unit) }
         log.load = adjusted
         markEditedIfFinished(log, at: date)
-        try context.save()
+        try save()
     }
 
     /// Série extra (copia alvo/carga da última). Sem `prescriptionID`: não atualiza a ficha.
@@ -183,7 +194,7 @@ struct SessionStore {
         context.insert(log)
         log.sessionExercise = exercise
         refreshStatus(exercise, at: date)
-        try context.save()
+        try save()
         return log
     }
 
@@ -194,13 +205,14 @@ struct SessionStore {
             exercise.sets?.removeAll { $0.persistentModelID == log.persistentModelID }
             refreshStatus(exercise, at: .now)
         }
-        try context.save()
+        try save()
     }
 
-    /// Adiciona um exercício não previsto (ou o primeiro do treino livre) com `setCount` séries.
+    /// Adiciona um exercício não previsto (ou o primeiro do treino livre) com `setCount` séries,
+    /// no fim ou logo depois de `after`.
     @discardableResult
     func addExercise(_ exercise: Exercise, to session: WorkoutSession, setCount: Int = 3,
-                     repTarget: RepTarget = .fixed(reps: 10)) throws -> SessionExercise {
+                     repTarget: RepTarget = .fixed(reps: 10), after: SessionExercise? = nil) throws -> SessionExercise {
         let snapshot = SessionExercise(name: exercise.name, measurementKind: exercise.measurementKind,
                                        sortIndex: (session.exercises ?? []).map(\.sortIndex).max().map { $0 + 1 } ?? 0)
         snapshot.exerciseID = exercise.id
@@ -214,12 +226,32 @@ struct SessionStore {
             context.insert(log)
             log.sessionExercise = snapshot
         }
-        try context.save()
+        if let after {
+            var ordered = session.sortedExercises.filter { $0.id != snapshot.id }
+            let position = (ordered.firstIndex { $0.id == after.id }).map { $0 + 1 } ?? ordered.count
+            ordered.insert(snapshot, at: position)
+            renumber(ordered)
+        }
+        try save()
         return snapshot
     }
 
+    /// Reordena na hora: move o exercício para a posição `index` (limitada) e renumera.
+    func moveExercise(_ exercise: SessionExercise, toIndex index: Int, at date: Date = .now) throws {
+        guard let session = exercise.session else { return }
+        var ordered = session.sortedExercises.filter { $0.id != exercise.id }
+        ordered.insert(exercise, at: min(max(0, index), ordered.count))
+        renumber(ordered)
+        session.updatedAt = date
+        try save()
+    }
+
+    private func renumber(_ ordered: [SessionExercise]) {
+        for (index, item) in ordered.enumerated() where item.sortIndex != index { item.sortIndex = index }
+    }
+
     /// Troca o exercício na hora; a origem fica registrada e a série perde o vínculo com a ficha.
-    func substitute(_ sessionExercise: SessionExercise, with exercise: Exercise) throws {
+    func substitute(_ sessionExercise: SessionExercise, with exercise: Exercise, at date: Date = .now) throws {
         if sessionExercise.substitutedFromExerciseID == nil && sessionExercise.substitutedFromName == nil {
             sessionExercise.substitutedFromExerciseID = sessionExercise.exerciseID
             sessionExercise.substitutedFromName = sessionExercise.name
@@ -232,8 +264,8 @@ struct SessionStore {
             log.prescriptionID = nil
             if !log.isCompleted { log.plannedLoad = nil }
         }
-        sessionExercise.updatedAt = .now
-        try context.save()
+        sessionExercise.updatedAt = date
+        try save()
     }
 
     func skipExercise(_ exercise: SessionExercise, reason: SkipReason? = nil, text: String? = nil,
@@ -242,7 +274,7 @@ struct SessionStore {
         exercise.skipReason = reason
         exercise.skipReasonText = text
         exercise.updatedAt = date
-        try context.save()
+        try save()
     }
 
     /// Retoma um exercício pulado.
@@ -251,7 +283,7 @@ struct SessionStore {
         exercise.skipReason = nil
         exercise.skipReasonText = nil
         refreshStatus(exercise, at: .now)
-        try context.save()
+        try save()
     }
 
     /// Conclusão manual: com séries pendentes vira "concluído parcialmente".
@@ -260,7 +292,7 @@ struct SessionStore {
         exercise.status = SessionExerciseRules.manualCompletionStatus(
             completedSets: sets.filter(\.isCompleted).count, totalSets: sets.count)
         exercise.updatedAt = date
-        try context.save()
+        try save()
     }
 
     // MARK: Relógio
@@ -353,15 +385,16 @@ struct SessionStore {
                 prescription.updatedAt = date
             }
         }
-        try context.save()
+        try save()
     }
 
     /// Descarta a sessão em andamento: nada fica no histórico (o registro é apagado).
     func discard(_ session: WorkoutSession) throws {
         guard session.status == .inProgress else { throw SessionStoreError.sessionNotInProgress }
         context.delete(session)
-        try context.save()
+        try save()
     }
+
 
     // MARK: Internos
 
@@ -370,7 +403,7 @@ struct SessionStore {
         change(&clock)
         session.clock = clock
         session.updatedAt = .now
-        try context.save()
+        try save()
     }
 
     private func refreshStatus(_ exercise: SessionExercise, at date: Date) {

@@ -6,13 +6,14 @@ import Testing
 @MainActor
 final class FakeRestScheduler: RestNotificationScheduling {
     var scheduled: [Date] = []
+    var names: [String?] = []
     var cancelCount = 0
     var granted = true
     var requested = 0
 
     func authorization() async -> RestNotificationAuthorization { granted ? .authorized : .notDetermined }
     func requestAuthorization() async -> Bool { requested += 1; return granted }
-    func scheduleRestEnd(at date: Date, nextExerciseName: String?) { scheduled.append(date) }
+    func scheduleRestEnd(at date: Date, nextExerciseName: String?) { scheduled.append(date); names.append(nextExerciseName) }
     func cancelRestEnd() { cancelCount += 1 }
 }
 
@@ -27,6 +28,7 @@ struct EngineFixture {
     let base: PersistenceFixture
     let clock: TestClock
     let scheduler = FakeRestScheduler()
+    let defaults = UserDefaults(suiteName: "engine-tests-\(UUID().uuidString)")!
     let engine: SessionEngine
     let t0 = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
@@ -36,8 +38,14 @@ struct EngineFixture {
         self.base = try base ?? PersistenceFixture()
         let clock = TestClock(clockAt ?? Date(timeIntervalSinceReferenceDate: 800_000_000))
         self.clock = clock
-        engine = SessionEngine(context: self.base.context, notifications: scheduler, autoRestTimer: false,
-                               now: { clock.now })
+        engine = SessionEngine(context: self.base.context, notifications: scheduler, tombstoneDefaults: defaults,
+                               autoRestTimer: false, now: { clock.now })
+    }
+
+    /// Outro motor no mesmo banco e mesmos defaults (simula reabrir o app).
+    func reopen(at offset: TimeInterval) -> SessionEngine {
+        let time = t0.addingTimeInterval(offset)
+        return SessionEngine(context: context, tombstoneDefaults: defaults, autoRestTimer: false, now: { time })
     }
 
     /// Ficha: supino (aquecimento + 3 × 8–12 a 30 kg, 90 s) → bi-set rosca (2) + tríceps (2), 60 s → prancha (2 × 45 s).
@@ -110,7 +118,7 @@ struct SessionEngineTests {
         #expect(try f.snapshot.revision == 2)
 
         // Dedupe sobrevive a reabrir o app (IDs persistidos na sessão).
-        let reopened = SessionEngine(context: f.context, autoRestTimer: false, now: { f.t0.addingTimeInterval(600) })
+        let reopened = f.reopen(at: 600)
         reopened.restore()
         #expect(reopened.apply(complete) == .duplicate(revision: 2))
         #expect(reopened.snapshot?.revision == 2)
@@ -319,13 +327,13 @@ struct SessionEngineTests {
                 at: 600, session: session)
 
         // Dentro de 4 h: sem pergunta.
-        let soon = SessionEngine(context: f.context, autoRestTimer: false, now: { f.t0.addingTimeInterval(600 + 3_600) })
+        let soon = f.reopen(at: 600 + 3_600)
         soon.restore()
         #expect(soon.staleSessionPrompt == nil)
         #expect(soon.snapshot?.sessionID == session)
 
         // 5 h depois da última série: pergunta e finaliza no horário da última série.
-        let later = SessionEngine(context: f.context, autoRestTimer: false, now: { f.t0.addingTimeInterval(600 + 5 * 3_600) })
+        let later = f.reopen(at: 600 + 5 * 3_600)
         later.restore()
         let prompt = try #require(later.staleSessionPrompt)
         #expect(prompt.sessionID == session)
@@ -341,11 +349,12 @@ struct SessionEngineTests {
         let f = try EngineFixture()
         let session = try f.start(try f.makeRoutine())
         let clock = TestClock(f.t0.addingTimeInterval(5 * 3_600))
-        let engine = SessionEngine(context: f.context, autoRestTimer: false, now: { clock.now })
+        let engine = SessionEngine(context: f.context, tombstoneDefaults: f.defaults, autoRestTimer: false, now: { clock.now })
         engine.restore()
         #expect(engine.staleSessionPrompt != nil)
-        engine.resolveStaleSession(.keepGoing)
+        #expect(engine.resolveStaleSession(.keepGoing))
         #expect(engine.staleSessionPrompt == nil)
+        #expect(engine.snapshot?.revision == 2) // continuar sobe a revisão e republica
         engine.restore()
         #expect(engine.staleSessionPrompt == nil) // atividade passou a contar de agora
 
@@ -367,8 +376,9 @@ struct SessionEngineTests {
         #expect(f.apply(.discard, at: 50, session: session, id: discardID) == .applied(revision: 2, events: [.sessionDiscarded(sessionID: session)]))
         let terminal = await iterator.next()
         #expect(terminal?.status == .discarded && terminal?.revision == 2)
-        #expect(f.apply(.discard, at: 50, session: session, id: discardID) == .duplicate(revision: 0))
-        #expect(f.apply(.discard, at: 60, session: session) == .rejected(.unknownSession))
+        #expect(f.apply(.discard, at: 50, session: session, id: discardID) == .duplicate(revision: 2))
+        // Comando atrasado da sessão descartada: duplicado com a revisão terminal, nunca 0.
+        #expect(f.apply(.pause, at: 60, session: session) == .duplicate(revision: 2))
     }
 
     // MARK: Exercício atual, foco e notificação

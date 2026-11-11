@@ -67,49 +67,85 @@ enum StaleSessionResolution: Sendable, Hashable {
 /// Motor da sessão de treino (P2.1): **única porta de escrita** da sessão em andamento para a UI
 /// e para o relógio (SPEC §4, §6.4).
 ///
-/// - Comandos idempotentes (`SessionCommand`): dedupe por `commandID` (persistido na sessão, os
-///   últimos `appliedCommandLimit`, + memória recente para sessões descartadas).
+/// - Comandos idempotentes (`SessionCommand`), deduplicados por `commandID`.
+///   **Janela de dedupe:** os últimos `appliedCommandLimit` (200) IDs ficam gravados na sessão; um
+///   reenvio mais antigo que isso seria reaplicado — o que, para comandos de série, vira no-op pela
+///   ordem por `issuedAt` (`SetLog.lastCommandAt`). Sessões descartadas ficam em `SessionTombstones`
+///   (as 5 mais recentes, em UserDefaults).
+/// - Atomicidade: cada comando valida tudo **antes** de mutar e grava a mutação junto com o registro
+///   (`commandID`, `revision`) num único `save`. O `rollback()` do SwiftData não desfaz valores em
+///   memória dos modelos, então, se o `save` falha, mutação e registro ficam juntos em memória como
+///   commit pendente (nunca divergem): o próximo comando — ou o reenvio do mesmo — tenta gravar de
+///   novo antes de qualquer coisa; o reenvio recebe então o resultado original (`.applied`).
 /// - Cada comando aplicado incrementa `revision` (persistida) e publica um `SessionSnapshot`.
 /// - Tempos sempre derivados de datas persistidas; `issuedAt` é o horário do fato (relógio offline).
-/// - Lê pelo `SessionStore`; as telas podem continuar lendo a sessão com `@Query`, mas mutações
-///   da sessão em andamento passam por aqui.
+///
+/// **Ciclo de vida na UI:** chamar `restore()` ao abrir o app e `handleForeground()` sempre que a
+/// cena voltar ao primeiro plano (`scenePhase == .active`) — reavalia descanso vencido e treino
+/// esquecido. As telas podem ler a sessão com `@Query`, mas toda mutação da sessão em andamento
+/// passa por aqui.
 @MainActor
 @Observable
 final class SessionEngine {
     /// Quantos `commandID`s ficam gravados por sessão para deduplicação.
-    static let appliedCommandLimit = 500
-    private static let recentMemoryLimit = 256
+    static let appliedCommandLimit = 200
+    /// `restFinished` vencido há mais que isso (app suspenso, por exemplo) não é anunciado.
+    static let restFinishedTolerance: TimeInterval = 30
+    /// Limite de descanso e de ajuste de descanso, em segundos.
+    static let maxRestSeconds = 3_600
+    /// Limite de um ajuste de carga num comando.
+    static let maxLoadDelta = 500.0
 
     /// Estado atual da sessão em andamento (`nil` = nenhuma).
     private(set) var snapshot: SessionSnapshot?
-    /// Treino esquecido aberto detectado no `restore()`.
+    /// Treino esquecido aberto detectado no `restore()`/`handleForeground()`.
     private(set) var staleSessionPrompt: StaleSessionPrompt?
     /// Último erro de persistência (para a UI avisar); `nil` depois de um comando bem-sucedido.
     private(set) var lastPersistenceError: String?
 
     @ObservationIgnored let context: ModelContext
     @ObservationIgnored private let notifications: any RestNotificationScheduling
+    @ObservationIgnored private let tombstones: SessionTombstones
     /// Relógio injetável (testes).
     @ObservationIgnored var now: () -> Date
+    /// Ponto de falha injetável antes do `save` (testes de atomicidade).
+    @ObservationIgnored var beforeSave: (() throws -> Void)?
     @ObservationIgnored private let autoRestTimer: Bool
 
     @ObservationIgnored private var session: WorkoutSession?
-    @ObservationIgnored private var recentCommandIDs: [UUID] = []
+    @ObservationIgnored private var appliedCache: (sessionID: UUID, ids: [UUID], set: Set<UUID>)?
     @ObservationIgnored private var announcedRestEnd: Date?
-    @ObservationIgnored private var scheduledRestEnd: Date?
+    @ObservationIgnored private var scheduledRest: ScheduledRest?
     @ObservationIgnored private var restTimer: Task<Void, Never>?
+    @ObservationIgnored private var pending: PendingCommit?
     @ObservationIgnored private var eventContinuations: [UUID: AsyncStream<SessionEvent>.Continuation] = [:]
     @ObservationIgnored private var snapshotContinuations: [UUID: AsyncStream<SessionSnapshot>.Continuation] = [:]
 
-    private var store: SessionStore { SessionStore(context: context) }
+    /// Comando aplicado em memória cujo `save` falhou.
+    private struct PendingCommit {
+        var commandID: UUID?
+        var result: SessionApplyResult
+        var finalize: () -> Void
+    }
+
+    private struct ScheduledRest: Equatable {
+        var endsAt: Date
+        var nextExerciseName: String?
+    }
+
+    /// Store sem `save` interno: o motor grava uma vez por comando.
+    private var store: SessionStore { SessionStore(context: context, autosave: false) }
 
     /// - Parameters:
+    ///   - tombstoneDefaults: onde guardar as sessões descartadas (`nil` = só memória).
     ///   - autoRestTimer: agenda internamente um `refresh()` no fim de cada descanso para emitir
     ///     `restFinished` (o estado continua vindo das datas). Testes passam `false` e chamam `refresh()`.
     init(context: ModelContext, notifications: any RestNotificationScheduling = NoopRestNotificationScheduler(),
-         autoRestTimer: Bool = true, now: @escaping () -> Date = { Date() }) {
+         tombstoneDefaults: UserDefaults? = .standard, autoRestTimer: Bool = true,
+         now: @escaping () -> Date = { Date() }) {
         self.context = context
         self.notifications = notifications
+        self.tombstones = SessionTombstones(defaults: tombstoneDefaults)
         self.autoRestTimer = autoRestTimer
         self.now = now
     }
@@ -127,10 +163,10 @@ final class SessionEngine {
         return try store.summary(for: session, at: now())
     }
 
-    /// Fluxo de eventos (um por assinante).
+    /// Fluxo de eventos (um por assinante; guarda até 64 não lidos).
     func events() -> AsyncStream<SessionEvent> {
         let id = UUID()
-        return AsyncStream { continuation in
+        return AsyncStream(bufferingPolicy: .bufferingNewest(64)) { continuation in
             eventContinuations[id] = continuation
             continuation.onTermination = { [weak self] _ in
                 Task { @MainActor in self?.eventContinuations[id] = nil }
@@ -139,10 +175,10 @@ final class SessionEngine {
     }
 
     /// Fluxo de snapshots para o transporte do relógio/Live Activity: o atual (se houver) e cada
-    /// novo, incluindo o terminal (`finished`/`discarded`).
+    /// novo, incluindo o terminal (`finished`/`discarded`). Guarda só o mais recente não lido.
     func snapshots() -> AsyncStream<SessionSnapshot> {
         let id = UUID()
-        return AsyncStream { continuation in
+        return AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
             if let snapshot { continuation.yield(snapshot) }
             snapshotContinuations[id] = continuation
             continuation.onTermination = { [weak self] _ in
@@ -151,11 +187,23 @@ final class SessionEngine {
         }
     }
 
+    /// Encerra os fluxos e o temporizador (ao descartar o motor). Os fluxos atravessam sessões de
+    /// propósito (o transporte do relógio assina uma vez); o fim de uma sessão não os encerra.
+    func invalidate() {
+        restTimer?.cancel()
+        restTimer = nil
+        for continuation in eventContinuations.values { continuation.finish() }
+        for continuation in snapshotContinuations.values { continuation.finish() }
+        eventContinuations = [:]
+        snapshotContinuations = [:]
+    }
+
     // MARK: Retomada
 
     /// Ao abrir o app: carrega a sessão em andamento, recalcula o estado pelas datas e detecta
     /// treino esquecido aberto (> 4 h sem atividade, D4).
     func restore() {
+        appliedCache = nil
         do {
             session = try store.inProgressSession()
         } catch {
@@ -168,36 +216,59 @@ final class SessionEngine {
             syncRest()
             return
         }
-        let current = now()
         // Descanso que venceu com o app fechado não gera `restFinished` atrasado.
-        if let end = session.restEndsAt, end <= current { announcedRestEnd = end }
-        let lastActivity = session.effectiveLastActivityAt
-        if SessionFlow.isStale(lastActivity: lastActivity, now: current) {
-            let lastSet = (session.exercises ?? []).flatMap { $0.sets ?? [] }.compactMap(\.completedAt).max()
-            staleSessionPrompt = StaleSessionPrompt(sessionID: session.id, routineName: session.routineName,
-                                                    lastActivityAt: lastActivity,
-                                                    suggestedEndAt: lastSet ?? lastActivity)
-        } else {
-            staleSessionPrompt = nil
-        }
+        if let end = session.restEndsAt, end <= now() { announcedRestEnd = end }
+        evaluateStale(session)
         publish(session)
         syncRest()
     }
 
-    func resolveStaleSession(_ resolution: StaleSessionResolution) {
-        guard let prompt = staleSessionPrompt else { return }
-        staleSessionPrompt = nil
+    /// Volta ao primeiro plano (`scenePhase == .active`): anuncia descanso recém-vencido (dentro da
+    /// tolerância), reavalia treino esquecido e ressincroniza notificação/temporizador.
+    func handleForeground() {
+        guard let session else {
+            restore()
+            return
+        }
+        refresh()
+        evaluateStale(session)
+        syncRest()
+    }
+
+    private func evaluateStale(_ session: WorkoutSession) {
+        let lastActivity = session.effectiveLastActivityAt
+        guard SessionFlow.isStale(lastActivity: lastActivity, now: now()) else {
+            staleSessionPrompt = nil
+            return
+        }
+        let lastSet = (session.exercises ?? []).flatMap { $0.sets ?? [] }.compactMap(\.completedAt).max()
+        staleSessionPrompt = StaleSessionPrompt(sessionID: session.id, routineName: session.routineName,
+                                                lastActivityAt: lastActivity, suggestedEndAt: lastSet ?? lastActivity)
+    }
+
+    /// Resolve o treino esquecido. O prompt só some depois de a ação dar certo.
+    @discardableResult
+    func resolveStaleSession(_ resolution: StaleSessionResolution) -> Bool {
+        guard let prompt = staleSessionPrompt else { return false }
+        let succeeded: Bool
         switch resolution {
         case .finishAtLastSet(let rpe, let ids):
-            apply(SessionCommand(sessionID: prompt.sessionID, issuedAt: prompt.suggestedEndAt, origin: .phone,
-                                 kind: .finish(rpe: rpe, applyLoadProposalIDs: ids)))
+            succeeded = apply(SessionCommand(sessionID: prompt.sessionID, issuedAt: prompt.suggestedEndAt, origin: .phone,
+                                             kind: .finish(rpe: rpe, applyLoadProposalIDs: ids))).isApplied
         case .keepGoing:
-            guard let session, session.id == prompt.sessionID else { return }
+            guard let session, session.id == prompt.sessionID else { return false }
+            guard flushPending() else { return false }
             session.lastActivityAt = now()
-            try? context.save()
+            session.revision += 1
+            succeeded = commitOrHold(nil, result: .applied(revision: session.revision, events: [])) { [weak self] in
+                self?.publish(session)
+            }.isApplied
         case .discard:
-            apply(SessionCommand(sessionID: prompt.sessionID, issuedAt: now(), origin: .phone, kind: .discard))
+            succeeded = apply(SessionCommand(sessionID: prompt.sessionID, issuedAt: now(), origin: .phone,
+                                             kind: .discard)).isApplied
         }
+        if succeeded { staleSessionPrompt = nil }
+        return succeeded
     }
 
     // MARK: Permissão de notificação (contextual)
@@ -211,7 +282,7 @@ final class SessionEngine {
     func requestNotificationPermission() async -> Bool {
         let granted = await notifications.requestAuthorization()
         if granted {
-            scheduledRestEnd = nil
+            scheduledRest = nil
             syncRest()
         }
         return granted
@@ -230,16 +301,26 @@ final class SessionEngine {
     /// Aplica um comando (do iPhone ou do relógio). Idempotente por `commandID`.
     @discardableResult
     func apply(_ command: SessionCommand) -> SessionApplyResult {
+        // Commit pendente (save anterior falhou): grava antes de qualquer coisa.
+        if let held = pending {
+            guard flushPending() else { return .rejected(.persistenceFailed) }
+            if held.commandID == command.commandID { return held.result }
+        }
+        if let tombstone = tombstones.tombstone(for: command.sessionID) {
+            if case .start = command.kind, !tombstone.commandIDs.contains(command.commandID) {
+                return .rejected(.sessionDiscarded)
+            }
+            return .duplicate(revision: tombstone.lastRevision)
+        }
         let target: WorkoutSession?
         do {
             target = try fetchSession(id: command.sessionID)
         } catch {
             return fail(error)
         }
-        if recentCommandIDs.contains(command.commandID) || target?.appliedCommandIDs.contains(command.commandID) == true {
-            return .duplicate(revision: target?.revision ?? 0)
+        if let target, appliedIDs(of: target).set.contains(command.commandID) {
+            return .duplicate(revision: target.revision)
         }
-
         if case .start(let routineID) = command.kind {
             return applyStart(command, routineID: routineID, existing: target)
         }
@@ -248,48 +329,40 @@ final class SessionEngine {
 
         let current = now()
         let at = min(max(command.issuedAt, session.startedAt), current)
+        switch command.kind {
+        case .finish(let rpe, let ids):
+            return applyFinish(command, session: session, at: at, rpe: rpe, proposalIDs: ids)
+        case .discard:
+            return applyDiscard(command, session: session)
+        default:
+            break
+        }
+
         var events: [SessionEvent] = []
         do {
-            switch command.kind {
-            case .start:
-                return .rejected(.invalidState) // tratado acima
-
-            case .finish(let rpe, let ids):
-                return try applyFinish(command, session: session, at: at, rpe: rpe, proposalIDs: ids)
-
-            case .discard:
-                return try applyDiscard(command, session: session)
-
-            default:
-                try perform(command.kind, on: session, at: at, now: current, events: &events)
-            }
-        } catch let rejection as SessionCommandRejection {
-            context.rollback()
-            return .rejected(rejection)
-        } catch {
-            context.rollback()
-            return fail(error)
-        }
-
-        do {
+            try perform(command.kind, on: session, at: at, now: current, events: &events)
             try record(command, in: session, at: at)
         } catch {
-            return fail(error)
+            return reject(error)
         }
-        self.session = session
-        lastPersistenceError = nil
-        publish(session)
-        events += restEvents(for: session, now: current, alreadyEmitted: events)
-        syncRest()
-        emit(events)
-        return .applied(revision: session.revision, events: events)
+        let emitted = events
+        return commitOrHold(command.commandID, result: .applied(revision: session.revision, events: events)) { [weak self] in
+            guard let self else { return }
+            self.session = session
+            self.publish(session)
+            self.syncRest()
+            self.emit(emitted)
+        }
     }
 
-    /// Verifica o fim do descanso pelas datas e emite `restFinished` uma vez.
+    /// Verifica o fim do descanso pelas datas e emite `restFinished` uma vez — só se venceu há no
+    /// máximo `restFinishedTolerance` (senão marca como anunciado sem avisar).
     func refresh() {
+        let current = now()
         guard let session, session.status == .inProgress, session.pausedAt == nil,
-              let end = session.restEndsAt, end <= now(), announcedRestEnd != end else { return }
+              let end = session.restEndsAt, end <= current, announcedRestEnd != end else { return }
         announcedRestEnd = end
+        guard current.timeIntervalSince(end) <= Self.restFinishedTolerance else { return }
         emit([.restFinished(at: end)])
     }
 
@@ -300,6 +373,7 @@ final class SessionEngine {
             // Outro `start` para a mesma sessão (reenvio com ID novo) é inofensivo.
             return existing.status == .inProgress ? .duplicate(revision: existing.revision) : .rejected(.sessionNotInProgress)
         }
+        let session: WorkoutSession
         do {
             if try store.inProgressSession() != nil { return .rejected(.anotherSessionInProgress) }
             var routine: Routine?
@@ -310,58 +384,79 @@ final class SessionEngine {
                 routine = found
             }
             let at = min(command.issuedAt, now())
-            let session = try store.start(routine: routine, at: at, id: command.sessionID)
+            session = try store.start(routine: routine, at: at, id: command.sessionID)
             try record(command, in: session, at: at)
-            self.session = session
-            staleSessionPrompt = nil
-            announcedRestEnd = nil
-            lastPersistenceError = nil
-            publish(session)
-            syncRest()
-            let events: [SessionEvent] = [.sessionStarted(sessionID: session.id)]
-            emit(events)
-            return .applied(revision: session.revision, events: events)
         } catch {
-            context.rollback()
-            return fail(error)
+            return reject(error)
+        }
+        let events: [SessionEvent] = [.sessionStarted(sessionID: session.id)]
+        return commitOrHold(command.commandID, result: .applied(revision: session.revision, events: events)) { [weak self] in
+            guard let self else { return }
+            self.session = session
+            self.staleSessionPrompt = nil
+            self.announcedRestEnd = nil
+            self.publish(session)
+            self.syncRest()
+            self.emit(events)
         }
     }
 
+    /// Tudo que pode falhar (validação, propostas, resumo) vem antes da mutação; o snapshot terminal
+    /// é montado em memória antes do único `save`. Um comando aplicado nunca é respondido como recusado.
     private func applyFinish(_ command: SessionCommand, session: WorkoutSession, at: Date, rpe: Int?,
-                             proposalIDs: [UUID]) throws -> SessionApplyResult {
-        if let rpe, !(1...10).contains(rpe) { throw SessionCommandRejection.invalidValue }
-        let store = store
-        let ids = Set(proposalIDs)
-        let proposals = try store.loadProposals(for: session).filter { ids.contains($0.prescriptionID) }
-        session.holdSetID = nil
-        session.holdStartedAt = nil
-        try store.finish(session, at: at, sessionRPE: rpe, applying: proposals)
-        try record(command, in: session, at: at)
-        let summary = try store.summary(for: session, at: at)
-        let terminal = SessionSnapshotBuilder.make(session: session, store: store)
-        clearActiveSession()
-        broadcast(terminal)
+                             proposalIDs: [UUID]) -> SessionApplyResult {
+        let summary: SessionSummary
+        let terminal: SessionSnapshot
+        do {
+            if let rpe, !(1...10).contains(rpe) { throw SessionCommandRejection.invalidValue }
+            let store = store
+            let ids = Set(proposalIDs)
+            let proposals = try store.loadProposals(for: session).filter { ids.contains($0.prescriptionID) }
+            // Mesmo resultado antes ou depois de `finish` (duração por datas; histórico exclui a sessão).
+            summary = try store.summary(for: session, at: at)
+            session.holdSetID = nil
+            session.holdStartedAt = nil
+            try store.finish(session, at: at, sessionRPE: rpe, applying: proposals)
+            try record(command, in: session, at: at)
+            terminal = SessionSnapshotBuilder.make(session: session, store: store)
+        } catch {
+            return reject(error)
+        }
         let events: [SessionEvent] = [.sessionFinished(sessionID: session.id, summary: summary)]
-        emit(events)
-        return .applied(revision: session.revision, events: events)
+        return commitOrHold(command.commandID, result: .applied(revision: terminal.revision, events: events)) { [weak self] in
+            guard let self else { return }
+            self.clearActiveSession()
+            self.broadcast(terminal)
+            self.emit(events)
+        }
     }
 
-    private func applyDiscard(_ command: SessionCommand, session: WorkoutSession) throws -> SessionApplyResult {
+    private func applyDiscard(_ command: SessionCommand, session: WorkoutSession) -> SessionApplyResult {
         let revision = session.revision + 1
-        let terminal = SessionSnapshotBuilder.make(session: session, store: store, status: .discarded, revision: revision)
         let sessionID = session.id
-        try store.discard(session)
-        remember(command.commandID)
-        clearActiveSession()
-        broadcast(terminal)
+        let commandIDs = appliedIDs(of: session).ids + [command.commandID]
+        let terminal = SessionSnapshotBuilder.make(session: session, store: store, status: .discarded, revision: revision)
+        do {
+            try store.discard(session)
+        } catch {
+            return reject(error)
+        }
+        let tombstone = SessionTombstone(sessionID: sessionID, lastRevision: revision, commandIDs: commandIDs,
+                                         discardedAt: now())
         let events: [SessionEvent] = [.sessionDiscarded(sessionID: sessionID)]
-        emit(events)
-        return .applied(revision: revision, events: events)
+        return commitOrHold(command.commandID, result: .applied(revision: revision, events: events)) { [weak self] in
+            guard let self else { return }
+            self.tombstones.add(tombstone)
+            self.clearActiveSession()
+            self.broadcast(terminal)
+            self.emit(events)
+        }
     }
 
     private func clearActiveSession() {
         session = nil
         snapshot = nil
+        appliedCache = nil
         staleSessionPrompt = nil
         lastPersistenceError = nil
         syncRest()
@@ -377,29 +472,38 @@ final class SessionEngine {
             throw SessionCommandRejection.invalidState
 
         case let .completeSet(setID, reps, load, duration, distance):
-            try validate(reps: reps, duration: duration, distance: distance)
+            try validate(reps: reps, load: load, duration: duration, distance: distance)
             let log = try setLog(setID, in: session)
+            guard touch(log, at: at) else { return }
             try complete(log, in: session, reps: reps, load: load?.load, duration: duration, distance: distance,
-                         at: at, events: &events)
+                         at: at, now: current, events: &events)
 
         case .uncompleteSet(let setID):
             let log = try setLog(setID, in: session)
+            guard touch(log, at: at) else { return }
             try store.uncompleteSet(log, at: at)
 
         case let .updateSet(setID, reps, load, duration, distance):
-            try validate(reps: reps, duration: duration, distance: distance)
+            try validate(reps: reps, load: load, duration: duration, distance: distance)
             let log = try setLog(setID, in: session)
+            guard touch(log, at: at) else { return }
             try store.updateSet(log, reps: reps, load: load?.load, durationSeconds: duration, distanceMeters: distance, at: at)
 
         case let .adjustLoad(setID, delta):
-            guard delta.isFinite else { throw SessionCommandRejection.invalidValue }
-            try store.adjustLoad(try setLog(setID, in: session), by: delta, at: at)
+            guard delta.isFinite, abs(delta) <= Self.maxLoadDelta else { throw SessionCommandRejection.invalidValue }
+            let log = try setLog(setID, in: session)
+            guard touch(log, at: at) else { return }
+            try store.adjustLoad(log, by: delta, at: at)
 
         case .startRest(let seconds):
-            if let seconds, seconds < 0 { throw SessionCommandRejection.invalidValue }
+            if let seconds, !(0...Self.maxRestSeconds).contains(seconds) { throw SessionCommandRejection.invalidValue }
+            guard !isSuperseded(at, in: session) else { return }
+            let before = session.restEndsAt
             try store.startRest(session, seconds: seconds ?? defaultRestSeconds(for: session), at: at)
+            restStartedEvent(session, before: before, now: current, into: &events)
 
         case .adjustRest(let seconds):
+            guard abs(seconds) <= Self.maxRestSeconds else { throw SessionCommandRejection.invalidValue }
             // Ajuste emitido antes da última série concluída se referia a um descanso já substituído.
             guard !isSuperseded(at, in: session) else { return }
             try store.adjustRest(session, by: seconds, at: current)
@@ -415,13 +519,14 @@ final class SessionEngine {
         case .startHold(let setID):
             let log = try setLog(setID, in: session)
             guard !log.isCompleted else { throw SessionCommandRejection.invalidState }
+            guard touch(log, at: at) else { return }
             try resumeIfPaused(session, at: at, events: &events)
+            if session.clock.isResting(at: current) { events.append(.restSkipped) }
             var clock = session.clock
             clock.skipRest()
             session.clock = clock
             session.holdSetID = log.id
             session.holdStartedAt = at
-            try context.save()
             events.append(.holdStarted(setID: log.id, at: at))
 
         case .endHold(let setID):
@@ -429,8 +534,10 @@ final class SessionEngine {
             guard session.holdSetID == setID, let started = session.holdStartedAt else {
                 throw SessionCommandRejection.invalidState
             }
+            guard touch(log, at: at) else { return }
             let duration = max(0, at.timeIntervalSince(started))
-            try complete(log, in: session, reps: nil, load: nil, duration: duration, distance: nil, at: at, events: &events)
+            try complete(log, in: session, reps: nil, load: nil, duration: duration, distance: nil,
+                         at: at, now: current, events: &events)
 
         case let .skipExercise(exerciseID, reason):
             let exercise = try sessionExercise(exerciseID, in: session)
@@ -452,19 +559,36 @@ final class SessionEngine {
             let exercise = try sessionExercise(exerciseID, in: session)
             try store.addSet(to: exercise, kind: kind?.setKind ?? .working, at: at)
 
+        case let .addExercise(catalogID, afterID):
+            let catalog = try catalogExercise(catalogID)
+            let after = try afterID.map { try sessionExercise($0, in: session) }
+            try store.addExercise(catalog, to: session, after: after)
+
+        case let .substituteExercise(exerciseID, catalogID):
+            let exercise = try sessionExercise(exerciseID, in: session)
+            try store.substitute(exercise, with: try catalogExercise(catalogID), at: at)
+
+        case let .reorderExercise(exerciseID, index):
+            guard index >= 0 else { throw SessionCommandRejection.invalidValue }
+            try store.moveExercise(try sessionExercise(exerciseID, in: session), toIndex: index, at: at)
+
         case .pause:
             guard session.pausedAt == nil else { return }
             try store.pause(session, at: at)
             events.append(.sessionPaused(at: at))
 
         case .resume:
+            let wasPaused = session.pausedAt != nil
             try resumeIfPaused(session, at: at, events: &events)
+            if wasPaused, session.pausedAt == nil, session.clock.isResting(at: current) {
+                events.append(.restAdjusted(endsAt: session.restEndsAt))
+            }
         }
     }
 
     /// Conclui a série (ou, se já concluída, só atualiza os valores informados).
     private func complete(_ log: SetLog, in session: WorkoutSession, reps: Int?, load: Load?, duration: Double?,
-                          distance: Double?, at: Date, events: inout [SessionEvent]) throws {
+                          distance: Double?, at: Date, now current: Date, events: inout [SessionEvent]) throws {
         if session.holdSetID == log.id {
             session.holdSetID = nil
             session.holdStartedAt = nil
@@ -480,6 +604,7 @@ final class SessionEngine {
         let latestOther = (session.exercises ?? []).flatMap { $0.sets ?? [] }
             .filter { $0.id != log.id }.compactMap(\.completedAt).max()
         let isLatest = latestOther.map { at >= $0 } ?? true
+        let before = session.restEndsAt
         try store.completeSet(log, reps: reps, load: load, durationSeconds: duration, distanceMeters: distance,
                               at: at, startRest: isLatest)
         // No grupo, a escolha manual cede à alternância por rodada.
@@ -491,32 +616,88 @@ final class SessionEngine {
         if let exercise = log.sessionExercise {
             events.append(.setCompleted(setID: log.id, exerciseID: exercise.id, at: at))
         }
+        restStartedEvent(session, before: before, now: current, into: &events)
     }
 
+    /// Retoma só se o comando é posterior ao início da pausa; anterior → registra sem retomar.
     private func resumeIfPaused(_ session: WorkoutSession, at: Date, events: inout [SessionEvent]) throws {
-        guard let pausedAt = session.pausedAt else { return }
-        try store.resume(session, at: max(at, pausedAt))
-        events.append(.sessionResumed(at: max(at, pausedAt)))
+        guard let pausedAt = session.pausedAt, at > pausedAt else { return }
+        try store.resume(session, at: at)
+        events.append(.sessionResumed(at: at))
+    }
+
+    /// `restStarted` quando o comando abriu um descanso novo ainda em curso; descanso de comando
+    /// atrasado que já venceu é marcado como anunciado, sem aviso.
+    private func restStartedEvent(_ session: WorkoutSession, before: Date?, now current: Date,
+                                  into events: inout [SessionEvent]) {
+        guard let end = session.restEndsAt, end != before else { return }
+        if session.clock.isResting(at: current) {
+            events.append(.restStarted(endsAt: end))
+        } else {
+            announcedRestEnd = end
+        }
     }
 
     // MARK: Apoio
 
+    /// Ordem por `issuedAt` por série: `false` = comando mais antigo que o último aplicado (no-op).
+    private func touch(_ log: SetLog, at: Date) -> Bool {
+        if let last = log.lastCommandAt, at < last { return false }
+        log.lastCommandAt = at
+        return true
+    }
+
+    private func appliedIDs(of session: WorkoutSession) -> (ids: [UUID], set: Set<UUID>) {
+        if let cache = appliedCache, cache.sessionID == session.id { return (cache.ids, cache.set) }
+        let ids = session.appliedCommandIDs
+        let set = Set(ids)
+        appliedCache = (session.id, ids, set)
+        return (ids, set)
+    }
+
     private func record(_ command: SessionCommand, in session: WorkoutSession, at: Date) throws {
-        var ids = session.appliedCommandIDs
+        var ids = appliedIDs(of: session).ids
         ids.append(command.commandID)
         if ids.count > Self.appliedCommandLimit { ids.removeFirst(ids.count - Self.appliedCommandLimit) }
         session.appliedCommandIDs = ids
+        appliedCache = (session.id, ids, Set(ids))
         session.revision += 1
         session.lastActivityAt = max(session.lastActivityAt ?? at, at)
-        remember(command.commandID)
+    }
+
+    private func commit() throws {
+        try beforeSave?()
         try context.save()
     }
 
-    private func remember(_ id: UUID) {
-        recentCommandIDs.append(id)
-        if recentCommandIDs.count > Self.recentMemoryLimit {
-            recentCommandIDs.removeFirst(recentCommandIDs.count - Self.recentMemoryLimit)
+    /// Grava; em sucesso finaliza (publica/emite) e devolve `result`. Em falha guarda como pendente.
+    private func commitOrHold(_ commandID: UUID?, result: SessionApplyResult,
+                              finalize: @escaping () -> Void) -> SessionApplyResult {
+        do {
+            try commit()
+        } catch {
+            lastPersistenceError = String(describing: error)
+            pending = PendingCommit(commandID: commandID, result: result, finalize: finalize)
+            return .rejected(.persistenceFailed)
         }
+        lastPersistenceError = nil
+        finalize()
+        return result
+    }
+
+    /// Tenta gravar o commit pendente. `false` = continua falhando.
+    private func flushPending() -> Bool {
+        guard let held = pending else { return true }
+        do {
+            try commit()
+        } catch {
+            lastPersistenceError = String(describing: error)
+            return false
+        }
+        pending = nil
+        lastPersistenceError = nil
+        held.finalize()
+        return true
     }
 
     private func fetchSession(id: UUID) throws -> WorkoutSession? {
@@ -540,8 +721,19 @@ final class SessionEngine {
         return exercise
     }
 
-    private func validate(reps: Int?, duration: Double?, distance: Double?) throws {
+    private func catalogExercise(_ id: UUID) throws -> Exercise {
+        var descriptor = FetchDescriptor<Exercise>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        guard let exercise = try context.fetch(descriptor).first else {
+            throw SessionCommandRejection.unknownCatalogExercise
+        }
+        return exercise
+    }
+
+    private func validate(reps: Int?, load: WatchLoad?, duration: Double?, distance: Double?) throws {
         if let reps, reps < 0 { throw SessionCommandRejection.invalidValue }
+        if let load, !load.value.isFinite { throw SessionCommandRejection.invalidValue }
+        if let load, !load.isBodyweight, load.value < 0 { throw SessionCommandRejection.invalidValue }
         if let duration, !(duration.isFinite && duration >= 0) { throw SessionCommandRejection.invalidValue }
         if let distance, !(distance.isFinite && distance >= 0) { throw SessionCommandRejection.invalidValue }
     }
@@ -553,9 +745,13 @@ final class SessionEngine {
            let rest = last.restSeconds ?? last.sessionExercise?.restSeconds {
             return rest
         }
-        let currentID = SessionFlow.currentExerciseID(session.flowStates, focused: session.focusedExerciseID)
-        let current = session.exercises?.first { $0.id == currentID }
+        let current = currentExercise(of: session)
         return current?.sortedSets.first { !$0.isCompleted }?.restSeconds ?? current?.restSeconds ?? 0
+    }
+
+    private func currentExercise(of session: WorkoutSession) -> SessionExercise? {
+        let currentID = SessionFlow.currentExerciseID(session.flowStates, focused: session.focusedExerciseID)
+        return session.exercises?.first { $0.id == currentID }
     }
 
     /// Comando emitido antes da série concluída mais recente (fila offline) — refere-se a um estado velho.
@@ -564,6 +760,11 @@ final class SessionEngine {
             return false
         }
         return issuedAt < latest
+    }
+
+    private func reject(_ error: Error) -> SessionApplyResult {
+        if let rejection = error as? SessionCommandRejection { return .rejected(rejection) }
+        return fail(error)
     }
 
     private func fail(_ error: Error) -> SessionApplyResult {
@@ -596,42 +797,40 @@ final class SessionEngine {
         }
     }
 
-    /// `restStarted` quando o comando abriu um descanso novo ainda em curso.
-    private func restEvents(for session: WorkoutSession, now current: Date, alreadyEmitted: [SessionEvent]) -> [SessionEvent] {
-        guard let end = session.restEndsAt, end != scheduledRestEnd,
-              !alreadyEmitted.contains(where: { if case .restAdjusted = $0 { true } else { false } }) else { return [] }
-        if end <= current {
-            announcedRestEnd = end // descanso de comando atrasado que já venceu: sem aviso
-            return []
-        }
-        return [.restStarted(endsAt: end)]
-    }
-
-    /// Sincroniza notificação e temporizador de fim de descanso com o estado persistido.
+    /// Sincroniza notificação (fim + nome do próximo exercício) e temporizador com o estado persistido.
     private func syncRest() {
-        let current = now()
-        var target: Date?
+        var target: ScheduledRest?
         if let session, session.status == .inProgress, session.pausedAt == nil,
-           let end = session.restEndsAt, end > current {
-            target = end
+           let end = session.restEndsAt, end > now() {
+            target = ScheduledRest(endsAt: end, nextExerciseName: currentExercise(of: session)?.name)
         }
-        guard target != scheduledRestEnd else { return }
-        scheduledRestEnd = target
-        restTimer?.cancel()
-        restTimer = nil
+        guard target != scheduledRest else { return }
+        let endChanged = target?.endsAt != scheduledRest?.endsAt
+        scheduledRest = target
         guard let target else {
+            restTimer?.cancel()
+            restTimer = nil
             notifications.cancelRestEnd()
             return
         }
-        let currentID = session.flatMap { SessionFlow.currentExerciseID($0.flowStates, focused: $0.focusedExerciseID) }
-        let name = session?.exercises?.first { $0.id == currentID }?.name
-        notifications.scheduleRestEnd(at: target, nextExerciseName: name)
+        notifications.scheduleRestEnd(at: target.endsAt, nextExerciseName: target.nextExerciseName)
+        if endChanged { armRestTimer(target.endsAt) }
+    }
+
+    /// Acorda no fim do descanso; se acordar cedo, rearma.
+    private func armRestTimer(_ end: Date) {
+        restTimer?.cancel()
+        restTimer = nil
         guard autoRestTimer else { return }
-        let delay = target.timeIntervalSince(current)
+        let delay = max(0, end.timeIntervalSince(now()))
         restTimer = Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay))
-            guard !Task.isCancelled else { return }
-            self?.refresh()
+            guard !Task.isCancelled, let self else { return }
+            if end > self.now() {
+                self.armRestTimer(end)
+            } else {
+                self.refresh()
+            }
         }
     }
 }

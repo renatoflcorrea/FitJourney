@@ -61,13 +61,17 @@ final class UserNotificationRestScheduler: RestNotificationScheduling {
     }
 
     func scheduleRestEnd(at date: Date, nextExerciseName: String?) {
-        let interval = date.timeIntervalSinceNow
-        guard interval > 0.5 else { cancelRestEnd(); return }
         let body = nextExerciseName.map { String(localized: "Hora da próxima série: \($0)") }
             ?? String(localized: "Hora da próxima série.")
         enqueue { scheduler in
             let status = await scheduler.center.notificationSettings().authorizationStatus
             guard status == .authorized || status == .provisional || status == .ephemeral else { return }
+            // Intervalo calculado na hora de agendar (a fila pode ter atrasado a operação).
+            let interval = date.timeIntervalSinceNow
+            guard interval > 0.5 else {
+                scheduler.center.removePendingNotificationRequests(withIdentifiers: [Self.identifier])
+                return
+            }
             let content = UNMutableNotificationContent()
             content.title = String(localized: "Descanso encerrado")
             content.body = body

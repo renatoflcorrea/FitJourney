@@ -193,6 +193,9 @@ final class SetLog {
     var completedAt: Date?
     /// Corrigida depois de a sessão terminar (SPEC §4.4).
     var edited: Bool = false
+    /// `issuedAt` do último comando que mexeu nesta série (motor da sessão): comandos mais antigos
+    /// que chegam depois (relógio offline) são ignorados.
+    var lastCommandAt: Date?
 
     var sessionExercise: SessionExercise?
 
