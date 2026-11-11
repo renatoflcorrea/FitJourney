@@ -43,6 +43,14 @@ enum HealthReading<Value: Sendable>: Sendable {
 
     var value: Value? { if case .available(let value) = self { value } else { nil } }
 
+    var status: HealthReadingStatus {
+        switch self {
+        case .available: .available
+        case .noData: .noData
+        case .unavailable: .unavailable
+        }
+    }
+
     func map<T: Sendable>(_ transform: (Value) -> T) -> HealthReading<T> {
         switch self {
         case .available(let value): .available(transform(value))
@@ -53,6 +61,12 @@ enum HealthReading<Value: Sendable>: Sendable {
 }
 
 extension HealthReading: Equatable where Value: Equatable {}
+extension HealthReading: Hashable where Value: Hashable {}
+
+/// Estado de uma leitura sem o valor.
+enum HealthReadingStatus: String, Sendable, Hashable {
+    case available, noData, unavailable
+}
 
 // MARK: - Zonas de FC
 
@@ -172,14 +186,37 @@ enum HeartRateAnalysis {
     /// Uma amostra "vale" até a próxima, limitada a isto (buracos sem sinal não contam).
     static let maxSampleGap: TimeInterval = 60
 
-    /// Amostras ordenadas dentro do intervalo (inclusivo nas pontas).
-    static func samples(_ samples: [HeartRateSample], in interval: DateInterval) -> [HeartRateSample] {
-        samples.filter { interval.contains($0.date) }.sorted { $0.date < $1.date }
+    /// Amostras válidas (bpm > 0) ordenadas no intervalo **semiaberto** `[start, end)` e fora das pausas.
+    static func samples(_ samples: [HeartRateSample], in interval: DateInterval,
+                        excluding pauses: [DateInterval] = []) -> [HeartRateSample] {
+        valid(samples).filter { sample in
+            contains(interval, sample.date) && !pauses.contains { contains($0, sample.date) }
+        }
+    }
+
+    /// Ordenadas e só com bpm > 0 (leituras inválidas nunca entram nas contas).
+    static func valid(_ samples: [HeartRateSample]) -> [HeartRateSample] {
+        samples.filter { $0.bpm > 0 && $0.bpm.isFinite }.sorted { $0.date < $1.date }
+    }
+
+    /// Fronteira semiaberta `[start, end)`: amostra no limite entre dois trechos conta só no seguinte.
+    static func contains(_ interval: DateInterval, _ date: Date) -> Bool {
+        date >= interval.start && date < interval.end
+    }
+
+    /// FC de um trecho a partir de baldes (resumo do dia): média dos baldes que começam no trecho,
+    /// mínimo dos mínimos e máximo dos máximos. `sampleCount` = número de baldes.
+    static func stats(buckets: [HeartRateBucket], in interval: DateInterval) -> HeartRateStats? {
+        let inside = buckets.filter { contains(interval, $0.interval.start) && $0.average > 0 }
+        guard !inside.isEmpty else { return nil }
+        return HeartRateStats(average: inside.map(\.average).reduce(0, +) / Double(inside.count),
+                              minimum: inside.map(\.minimum).min() ?? 0, maximum: inside.map(\.maximum).max() ?? 0,
+                              sampleCount: inside.count)
     }
 
     /// Média simples, mínimo e máximo das amostras do intervalo; `nil` sem amostras (nunca zero).
     static func stats(_ samples: [HeartRateSample], in interval: DateInterval? = nil) -> HeartRateStats? {
-        let inside = interval.map { HeartRateAnalysis.samples(samples, in: $0) } ?? samples
+        let inside = interval.map { HeartRateAnalysis.samples(samples, in: $0) } ?? valid(samples)
         guard !inside.isEmpty else { return nil }
         let values = inside.map(\.bpm)
         return HeartRateStats(average: values.reduce(0, +) / Double(values.count),
@@ -188,15 +225,20 @@ enum HeartRateAnalysis {
     }
 
     /// Tempo em zona: cada amostra vale até a seguinte (no máximo `maxGap`); a última vale até o fim
-    /// do intervalo (se houver), também limitada a `maxGap`. Tudo recortado ao intervalo.
+    /// do intervalo (se houver), também limitada a `maxGap`. Tudo recortado ao intervalo; o que cai
+    /// dentro de `pauses` não conta.
     static func timeInZones(_ samples: [HeartRateSample], zones: HeartRateZones, within interval: DateInterval? = nil,
-                            maxGap: TimeInterval = maxSampleGap) -> ZoneDurations {
-        let sorted = interval.map { HeartRateAnalysis.samples(samples, in: $0) } ?? samples.sorted { $0.date < $1.date }
+                            excluding pauses: [DateInterval] = [], maxGap: TimeInterval = maxSampleGap) -> ZoneDurations {
+        let sorted = interval.map { HeartRateAnalysis.samples(samples, in: $0, excluding: pauses) }
+            ?? valid(samples).filter { sample in !pauses.contains { contains($0, sample.date) } }
         var result = ZoneDurations()
         for (index, sample) in sorted.enumerated() {
             let nextDate = index + 1 < sorted.count ? sorted[index + 1].date : interval?.end
             guard let nextDate else { continue }
-            let duration = min(max(0, nextDate.timeIntervalSince(sample.date)), maxGap)
+            let end = sample.date.addingTimeInterval(min(max(0, nextDate.timeIntervalSince(sample.date)), maxGap))
+            let segment = DateInterval(start: sample.date, end: end)
+            let paused = pauses.reduce(0) { $0 + (segment.intersection(with: $1)?.duration ?? 0) }
+            let duration = max(0, segment.duration - paused)
             guard duration > 0 else { continue }
             if let zone = zones.zone(for: sample.bpm) {
                 result.byZone[zone, default: 0] += duration
@@ -272,6 +314,9 @@ struct HealthSessionTimeline: Sendable, Hashable {
     var activeDuration: TimeInterval?
     /// Na ordem da ficha.
     var exercises: [Exercise]
+    /// Pausas conhecidas (eventos `.pause`/`.resume` do `HKWorkout` ou registro do controller): a FC
+    /// dentro delas não entra nas contas.
+    var pauses: [DateInterval] = []
 
     var workoutType: HealthWorkoutType { HealthWorkoutType.derive(from: exercises.map(\.typeInput)) }
 
@@ -327,11 +372,14 @@ struct SessionHeartRateAnalysis: Sendable, Hashable {
 
     var hasHeartRate: Bool { overall != nil }
 
-    /// O que mostrar ao tocar no gráfico num instante: exercício cuja janela contém a data e, se
-    /// houver, a série cuja janela contém a data.
+    /// O que mostrar ao tocar no gráfico num instante: o exercício cujo trecho analisado contém a data
+    /// (havendo mais de um, o da série mais próxima) e a série **mais próxima** da data dentro dele.
     func lookup(at date: Date) -> (exercise: ExerciseHeartRate, set: SetHeartRate?)? {
-        guard let exercise = exercises.first(where: { $0.analysisInterval.contains(date) }) else { return nil }
-        return (exercise, exercise.sets.first { $0.window.contains(date) })
+        func distance(_ set: SetHeartRate) -> TimeInterval { abs(set.completedAt.timeIntervalSince(date)) }
+        func nearest(_ exercise: ExerciseHeartRate) -> TimeInterval { exercise.sets.map(distance).min() ?? .infinity }
+        let candidates = exercises.filter { $0.analysisInterval.contains(date) }
+        guard let exercise = candidates.min(by: { nearest($0) < nearest($1) }) else { return nil }
+        return (exercise, exercise.sets.min { distance($0) < distance($1) })
     }
 }
 
@@ -339,7 +387,9 @@ enum SessionHeartRateAnalyzer {
     static func analyze(_ timeline: HealthSessionTimeline, samples: [HeartRateSample], zones: HeartRateZones?,
                         window: SetHeartRateWindow = .standard, now: Date = Date()) -> SessionHeartRateAnalysis {
         let interval = timeline.interval(now: now)
-        let inside = HeartRateAnalysis.samples(samples, in: interval)
+        // O instante final da sessão entra (o filtro é semiaberto).
+        let closed = DateInterval(start: interval.start, end: interval.end.addingTimeInterval(0.001))
+        let inside = HeartRateAnalysis.samples(samples, in: closed, excluding: timeline.pauses)
         let exercises: [ExerciseHeartRate] = timeline.exercises.compactMap { exercise in
             guard let band = exercise.band else { return nil }
             let ordered = exercise.sets.sorted { $0.completedAt < $1.completedAt }
@@ -363,7 +413,8 @@ enum SessionHeartRateAnalyzer {
         }
         let overall = HeartRateAnalysis.stats(inside)
         let timeInZones = zones.flatMap { zones in
-            overall == nil ? nil : HeartRateAnalysis.timeInZones(inside, zones: zones, within: interval)
+            overall == nil ? nil : HeartRateAnalysis.timeInZones(inside, zones: zones, within: interval,
+                                                                 excluding: timeline.pauses)
         }
         return SessionHeartRateAnalysis(interval: interval, overall: overall, zones: zones,
                                         timeInZones: timeInZones, exercises: exercises)
@@ -391,13 +442,24 @@ struct HealthWorkoutEventPlan: Sendable, Hashable {
         var date: Date
     }
 
+    /// Pausa/retomada (usadas pelo gravador simples; a sessão ao vivo gera as suas).
+    struct PauseMark: Sendable, Hashable {
+        enum Kind: String, Sendable, Hashable { case pause, resume }
+        var kind: Kind
+        var date: Date
+    }
+
     /// Segmento de exercício com uma só série (1ª = última) ganha esta duração para trás.
     static let minimumSegment: TimeInterval = 30
 
     var segments: [Segment]
     var markers: [Marker]
+    var pauses: [PauseMark] = []
 
-    static func make(_ timeline: HealthSessionTimeline, workout: DateInterval) -> HealthWorkoutEventPlan {
+    /// - Parameter pauseLog: pausas/retomadas; marcas fora do treino e repetidas (pausa sobre pausa) são
+    ///   ignoradas. Pausa aberta no fim fica sem retomada: o trecho até o fim não conta como ativo.
+    static func make(_ timeline: HealthSessionTimeline, workout: DateInterval,
+                     pauseLog: [PauseMark] = []) -> HealthWorkoutEventPlan {
         var segments: [Segment] = []
         var markers: [Marker] = []
         for (offset, exercise) in timeline.exercises.enumerated() {
@@ -417,7 +479,21 @@ struct HealthWorkoutEventPlan: Sendable, Hashable {
                                     interval: DateInterval(start: start, end: end)))
         }
         markers.sort { $0.date < $1.date }
-        return HealthWorkoutEventPlan(segments: segments, markers: markers)
+        var pauses: [PauseMark] = []
+        var paused = false
+        for mark in pauseLog.sorted(by: { $0.date < $1.date }) where workout.contains(mark.date) {
+            switch mark.kind {
+            case .pause where !paused:
+                paused = true
+                pauses.append(mark)
+            case .resume where paused:
+                paused = false
+                pauses.append(mark)
+            default:
+                continue
+            }
+        }
+        return HealthWorkoutEventPlan(segments: segments, markers: markers, pauses: pauses)
     }
 }
 

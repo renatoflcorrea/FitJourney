@@ -42,28 +42,52 @@ enum HealthLiveUpdate: Sendable, Hashable {
 protocol HealthWorkoutRecorder: AnyObject {
     /// `true` = sessão ao vivo (publica FC/energia).
     var isLive: Bool { get }
+    /// Início da sessão do Saúde (`nil` = ainda não iniciada / gravador simples).
+    var startDate: Date? { get }
+    /// Sessão do Saúde pausada.
+    var isPaused: Bool { get }
+    /// Sessão do Saúde rodando ou pausada (não encerrada) — valida uma sessão recuperada.
+    var isActive: Bool { get }
     /// Chamado no MainActor a cada atualização ao vivo.
     var onLiveUpdate: ((HealthLiveUpdate) -> Void)? { get set }
 
     func start(at date: Date) async throws
     func pause(at date: Date)
     func resume(at date: Date)
-    /// Encerra e grava o `HKWorkout`; devolve o `uuid` gravado.
+    /// Grava o `HKWorkout` seguindo `HealthRecorderStep` (eventos/metadados/energia **antes** de
+    /// `endCollection`); devolve o `uuid` gravado.
     /// - Parameter estimatedEnergyKcal: usado só quando nada foi medido (sem Watch/sensor).
     func finish(start: Date, end: Date, plan: HealthWorkoutEventPlan, metadata: HealthWorkoutMetadata,
                 estimatedEnergyKcal: Double?) async throws -> UUID?
-    /// Descarta sem gravar nada.
+    /// Descarta sem gravar nada (sessão ao vivo: `end()` + `discardWorkout()`).
     func discard()
 }
 
-/// Sessão do relógio espelhada no iPhone (ciclo 4b). O protocolo de dados (comandos/snapshots)
-/// é do W2; aqui só o canal.
+/// Passos da gravação, na ordem exigida pelo HealthKit: tudo que é adicionado ao builder vem antes de
+/// `endCollection`, e `finishWorkout` por último. Os gravadores reais executam exatamente estas listas.
+enum HealthRecorderStep: String, Sendable, Hashable {
+    case beginCollection, addEnergy, addEvents, addMetadata, stopActivity, endSession, endCollection, finishWorkout
+
+    /// Sessão ao vivo (a coleta já começou no `start`).
+    static func liveFinish(hasEvents: Bool, addsEnergy: Bool) -> [HealthRecorderStep] {
+        (hasEvents ? [.addEvents] : []) + [.addMetadata] + (addsEnergy ? [.addEnergy] : [])
+            + [.stopActivity, .endSession, .endCollection, .finishWorkout]
+    }
+
+    /// Gravador simples (tudo no fim).
+    static func basicFinish(hasEvents: Bool, addsEnergy: Bool) -> [HealthRecorderStep] {
+        [.beginCollection] + (addsEnergy ? [.addEnergy] : []) + (hasEvents ? [.addEvents] : [])
+            + [.addMetadata, .endCollection, .finishWorkout]
+    }
+}
+
+/// Sessão do relógio espelhada no iPhone (ciclo 4b): só o canal. O protocolo de dados (comandos,
+/// snapshots, métricas) é do W2. FC/energia do relógio não vêm daqui: o W2 as recebe pelo canal e
+/// entrega em `HealthWorkoutController.receiveRemoteMetrics(_:)`.
 @MainActor
 protocol HealthRemoteWorkoutSession: AnyObject {
     var startDate: Date? { get }
-    /// FC/energia do relógio (via `associatedWorkoutBuilder()` da sessão espelhada).
-    var onLiveUpdate: ((HealthLiveUpdate) -> Void)? { get set }
-    /// Pacotes recebidos do relógio (`didReceiveDataFromRemoteWorkoutSession`).
+    /// Pacotes recebidos do relógio (`didReceiveDataFromRemoteWorkoutSession`), em ordem.
     var onRemoteData: (([Data]) -> Void)? { get set }
     /// Sessão terminou no relógio ou desconectou (`nil` = término normal).
     var onEnd: ((_ error: String?) -> Void)? { get set }

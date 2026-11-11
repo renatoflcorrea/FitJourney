@@ -117,6 +117,24 @@ struct HealthWorkoutMatcherTests {
         let match = HealthWorkoutMatcher.match(record(605, 650), sessions: [morning, evening])
         #expect(match.sessionID == evening.sessionID)
     }
+
+    @Test func highConfidenceNeedsSimilarDurationAndSameCategory() {
+        let session = window(0, 60)
+        // Treino de 20 min dentro da sessão de 60: sobreposição total, mas 20/60 < 0,4 → incerta.
+        guard case .suggestion(_, .uncertain, _) = HealthWorkoutMatcher.match(record(0, 20), sessions: [session])
+        else { Issue.record("esperava incerta"); return }
+        // 30/60 = 0,5 → alta.
+        guard case .suggestion(_, .high, _) = HealthWorkoutMatcher.match(record(0, 30), sessions: [session])
+        else { Issue.record("esperava alta"); return }
+        // Misto (cross training) não basta para alta.
+        guard case .suggestion(_, .uncertain, _) = HealthWorkoutMatcher.match(record(0, 60, category: .mixed), sessions: [session])
+        else { Issue.record("esperava incerta"); return }
+    }
+}
+
+private func bucket(_ minute: Double, _ average: Double) -> HeartRateBucket {
+    HeartRateBucket(interval: DateInterval(start: at(minute), duration: 300), average: average,
+                    minimum: average - 10, maximum: average + 10)
 }
 
 struct HealthDayAnalyzerTests {
@@ -126,9 +144,10 @@ struct HealthDayAnalyzerTests {
         let watch = record(1, 61, energy: 320)
         let run = record(120, 150, category: .aerobic, energy: 250)
         let day = DateInterval(start: at(-600), end: at(840))
-        let samples = [HeartRateSample(date: at(10), bpm: 120), HeartRateSample(date: at(130), bpm: 150)]
-        let summary = HealthDayAnalyzer.summarize(day: day, workouts: [own, watch, run], sessions: [session], heartRate: samples,
-                                                  activeEnergyKcal: nil, restingHeartRate: 58, steps: nil)
+        let summary = HealthDayAnalyzer.summarize(day: day, workouts: .available([own, watch, run]), sessions: [session],
+                                                  heartRate: .available([bucket(10, 120), bucket(130, 150)]),
+                                                  activeEnergyKcal: .unavailable, restingHeartRate: .available(58),
+                                                  steps: .noData)
         #expect(summary.entries.count == 2)
         guard case .session(_, let linkedOwn, let suggestions) = summary.entries[0] else { Issue.record("sessão"); return }
         #expect(linkedOwn?.id == own.id)
@@ -136,13 +155,50 @@ struct HealthDayAnalyzerTests {
         #expect(summary.entries[0].activeEnergyKcal == 300)
         #expect(summary.minutesByCategory[.strength] == 60)
         #expect(summary.minutesByCategory[.aerobic] == 30)
-        #expect(summary.totalWorkoutMinutes == 90)
+        #expect(summary.totalWorkoutMinutes == .available(90))
         #expect(summary.averageHeartRateByEntry[session.sessionID] == 120)
         #expect(summary.averageHeartRateByEntry[run.id] == 150)
-        // Indisponível ≠ zero.
-        #expect(summary.activeEnergyKcal == nil)
-        #expect(summary.steps == nil)
-        #expect(summary.restingHeartRate == 58)
+        #expect(summary.heartRate.value?.maximum == 160)
+        #expect(summary.healthWorkouts == .available)
+        // Indisponível ≠ sem dados ≠ zero.
+        #expect(summary.activeEnergyKcal == .unavailable)
+        #expect(summary.steps == .noData)
+        #expect(summary.restingHeartRate == .available(58))
+    }
+
+    @Test func uncertainSuggestionCountsAsExternalUntilConfirmed() {
+        let session = window(0, 60)
+        // Corrida do Watch sobreposta (categoria diferente → incerta): aparece sozinha e conta nos minutos.
+        let run = record(30, 90, category: .aerobic, energy: 400)
+        let summary = HealthDayAnalyzer.summarize(day: DateInterval(start: at(0), end: at(1_440)), workouts: .available([run]),
+                                                  sessions: [session], heartRate: .noData, activeEnergyKcal: .noData,
+                                                  restingHeartRate: .noData, steps: .noData)
+        #expect(summary.entries.count == 2)
+        guard case .external(let workout, let suggestion) = summary.entries[1] else { Issue.record("externo"); return }
+        #expect(workout.id == run.id)
+        #expect(suggestion?.sessionID == session.sessionID)
+        #expect(suggestion?.confidence == .uncertain)
+        #expect(summary.minutesByCategory[.aerobic] == 60)
+        #expect(summary.totalWorkoutMinutes == .available(90)) // união: 0–90
+        #expect(summary.heartRate == .noData)
+    }
+
+    @Test func totalMinutesKeepsUnavailableState() {
+        let day = DateInterval(start: at(0), end: at(1_440))
+        let unavailable = HealthDayAnalyzer.summarize(day: day, workouts: .unavailable, sessions: [], heartRate: .unavailable,
+                                                      activeEnergyKcal: .unavailable, restingHeartRate: .unavailable,
+                                                      steps: .unavailable)
+        #expect(unavailable.totalWorkoutMinutes == .unavailable)
+        #expect(unavailable.heartRate == .unavailable)
+        let empty = HealthDayAnalyzer.summarize(day: day, workouts: .noData, sessions: [], heartRate: .noData,
+                                                activeEnergyKcal: .noData, restingHeartRate: .noData, steps: .noData)
+        #expect(empty.totalWorkoutMinutes == .noData)
+        // Sessão do app conta mesmo com o Saúde indisponível.
+        let withSession = HealthDayAnalyzer.summarize(day: day, workouts: .unavailable, sessions: [window(0, 45)],
+                                                      heartRate: .unavailable, activeEnergyKcal: .unavailable,
+                                                      restingHeartRate: .unavailable, steps: .unavailable)
+        #expect(withSession.totalWorkoutMinutes == .available(45))
+        #expect(withSession.healthWorkouts == .unavailable)
     }
 
     @Test func unionDuration() {

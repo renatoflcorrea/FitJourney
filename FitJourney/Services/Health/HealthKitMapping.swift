@@ -3,9 +3,9 @@ import HealthKit
 
 // Ponte entre os tipos puros (`Domain/Health*.swift`) e o HealthKit.
 
-/// Dados do Saúde que o app lê ou grava (SPEC §6.1). Rotas não são lidas.
+/// Dados do Saúde que o app lê ou grava (SPEC §6.1). Rotas não são lidas; VFC fica fora até haver uso.
 enum HealthDataKind: String, Sendable, Hashable, CaseIterable {
-    case heartRate, workouts, activeEnergy, restingHeartRate, heartRateVariability, steps, bodyMass
+    case heartRate, workouts, activeEnergy, restingHeartRate, steps, bodyMass
 
     var localizedName: String {
         switch self {
@@ -13,7 +13,6 @@ enum HealthDataKind: String, Sendable, Hashable, CaseIterable {
         case .workouts: String(localized: "Treinos")
         case .activeEnergy: String(localized: "Energia ativa")
         case .restingHeartRate: String(localized: "FC em repouso")
-        case .heartRateVariability: String(localized: "Variabilidade da FC")
         case .steps: String(localized: "Passos")
         case .bodyMass: String(localized: "Massa corporal")
         }
@@ -27,7 +26,6 @@ enum HealthDataKind: String, Sendable, Hashable, CaseIterable {
         case .workouts: HKObjectType.workoutType()
         case .activeEnergy: HKQuantityType(.activeEnergyBurned)
         case .restingHeartRate: HKQuantityType(.restingHeartRate)
-        case .heartRateVariability: HKQuantityType(.heartRateVariabilitySDNN)
         case .steps: HKQuantityType(.stepCount)
         case .bodyMass: HKQuantityType(.bodyMass)
         }
@@ -50,6 +48,8 @@ enum HealthMetadataKey {
     static let setID = "FJSetID"
     static let setNumber = "FJSetNumber"
     static let workoutType = "FJWorkoutType"
+    /// `true` na amostra de energia ativa estimada pelo app (sem medição de Watch/sensor).
+    static let estimatedEnergy = "FJEstimatedEnergy"
 }
 
 extension HealthWorkoutType {
@@ -142,6 +142,14 @@ extension HealthWorkoutMetadata {
 }
 
 extension HealthWorkoutEventPlan {
+    /// `.pause`/`.resume` (só para o gravador simples; a sessão ao vivo gera os seus).
+    var pauseEvents: [HKWorkoutEvent] {
+        pauses.map {
+            HKWorkoutEvent(type: $0.kind == .pause ? .pause : .resume,
+                           dateInterval: DateInterval(start: $0.date, duration: 0), metadata: nil)
+        }
+    }
+
     /// `HKWorkoutEvent`s: `.segment` por exercício e `.marker` por série.
     var workoutEvents: [HKWorkoutEvent] {
         let segmentEvents = segments.map { segment in

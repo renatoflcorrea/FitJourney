@@ -47,9 +47,34 @@ struct HeartRateAggregationTests {
     @Test func statsAreNilWithoutSamples() {
         #expect(HeartRateAnalysis.stats([]) == nil)
         #expect(HeartRateAnalysis.stats([hr(0, 100)], in: DateInterval(start: at(10), end: at(20))) == nil)
-        let stats = HeartRateAnalysis.stats([hr(0, 100), hr(5, 120), hr(10, 140), hr(30, 200)],
+        // Semiaberto: a amostra em 10 s fica de fora; bpm ≤ 0 é descartado.
+        let stats = HeartRateAnalysis.stats([hr(0, 100), hr(2, 0), hr(3, -5), hr(5, 120), hr(10, 140), hr(30, 200)],
                                             in: DateInterval(start: at(0), end: at(10)))
-        #expect(stats == HeartRateStats(average: 120, minimum: 100, maximum: 140, sampleCount: 3))
+        #expect(stats == HeartRateStats(average: 110, minimum: 100, maximum: 120, sampleCount: 2))
+        #expect(HeartRateAnalysis.stats([hr(0, 0)]) == nil)
+    }
+
+    @Test func pausesAreExcluded() {
+        let zones = HeartRateZones(maxHeartRate: 200)
+        let pause = DateInterval(start: at(20), end: at(40))
+        let samples = [hr(0, 100), hr(10, 100), hr(20, 190), hr(30, 190), hr(40, 100)]
+        let result = HeartRateAnalysis.timeInZones(samples, zones: zones, within: DateInterval(start: at(0), end: at(50)),
+                                                   excluding: [pause])
+        #expect(result.duration(in: .zone5) == 0)
+        // 0–20 (o trecho de 10–40 perde a pausa) + 40–50.
+        #expect(result.duration(in: .zone1) == 30)
+        #expect(HeartRateAnalysis.samples(samples, in: DateInterval(start: at(0), end: at(50)), excluding: [pause]).count == 3)
+    }
+
+    @Test func statsFromBuckets() {
+        let buckets = [
+            HeartRateBucket(interval: DateInterval(start: at(0), duration: 300), average: 100, minimum: 90, maximum: 110),
+            HeartRateBucket(interval: DateInterval(start: at(300), duration: 300), average: 140, minimum: 120, maximum: 170),
+            HeartRateBucket(interval: DateInterval(start: at(600), duration: 300), average: 80, minimum: 70, maximum: 90),
+        ]
+        let stats = HeartRateAnalysis.stats(buckets: buckets, in: DateInterval(start: at(0), end: at(600)))
+        #expect(stats == HeartRateStats(average: 120, minimum: 90, maximum: 170, sampleCount: 2))
+        #expect(HeartRateAnalysis.stats(buckets: [], in: DateInterval(start: at(0), end: at(1))) == nil)
     }
 
     @Test func timeInZonesCapsGapsAndUsesIntervalEnd() {
@@ -179,6 +204,61 @@ struct HealthWorkoutEventPlanTests {
         let dictionary = HealthWorkoutMetadata(sessionID: id, routineName: "Treino A", workoutType: .traditionalStrength).dictionary
         #expect(dictionary[HKMetadataKeyExternalUUID] as? String == id.uuidString)
         #expect(dictionary[HealthMetadataKey.routineName] as? String == "Treino A")
+    }
+}
+
+struct HealthPauseAndLookupTests {
+    @Test func planPausesIgnoreRepeatsAndOutsideMarks() {
+        let marks: [HealthWorkoutEventPlan.PauseMark] = [
+            .init(kind: .resume, date: at(5)),  // retomada sem pausa
+            .init(kind: .pause, date: at(100)),
+            .init(kind: .pause, date: at(110)), // pausa sobre pausa
+            .init(kind: .resume, date: at(150)),
+            .init(kind: .pause, date: at(580)), // pausa aberta no fim
+            .init(kind: .resume, date: at(900)), // fora do treino
+        ]
+        let plan = HealthWorkoutEventPlan.make(makeTimeline(), workout: DateInterval(start: at(0), end: at(600)), pauseLog: marks)
+        #expect(plan.pauses.map(\.kind) == [.pause, .resume, .pause])
+        #expect(plan.pauses.map(\.date) == [at(100), at(150), at(580)])
+        #expect(plan.pauseEvents.map(\.type) == [.pause, .resume, .pause])
+    }
+
+    @Test func analyzerSkipsPausedHeartRate() {
+        var timeline = makeTimeline()
+        timeline.pauses = [DateInterval(start: at(350), end: at(450))]
+        let samples = [hr(100, 120), hr(400, 180), hr(500, 130)]
+        let analysis = SessionHeartRateAnalyzer.analyze(timeline, samples: samples, zones: nil)
+        #expect(analysis.overall?.maximum == 130)
+        #expect(analysis.overall?.sampleCount == 2)
+    }
+
+    @Test func sessionEndSampleCounts() {
+        let analysis = SessionHeartRateAnalyzer.analyze(makeTimeline(), samples: [hr(600, 150)], zones: nil)
+        #expect(analysis.overall?.average == 150)
+    }
+
+    @Test func lookupPicksNearestSet() throws {
+        let timeline = makeTimeline()
+        let analysis = SessionHeartRateAnalyzer.analyze(timeline, samples: [], zones: nil)
+        // 160 s: série 2 concluída a 60 s, série 3 a 40 s → a 3.
+        #expect(try #require(analysis.lookup(at: at(160))).set?.number == 3)
+        // 120 s: série 2 (20 s) mais próxima que a 3 (80 s).
+        #expect(try #require(analysis.lookup(at: at(120))).set?.number == 2)
+    }
+
+    @Test func recorderStepsKeepHealthKitOrder() {
+        for steps in [HealthRecorderStep.liveFinish(hasEvents: true, addsEnergy: true),
+                      HealthRecorderStep.basicFinish(hasEvents: true, addsEnergy: true)] {
+            let endCollection = steps.firstIndex(of: .endCollection)!
+            for added in [HealthRecorderStep.addEvents, .addMetadata, .addEnergy] {
+                #expect(steps.firstIndex(of: added)! < endCollection, "\(added) antes de endCollection")
+            }
+            #expect(steps.last == .finishWorkout)
+        }
+        let live = HealthRecorderStep.liveFinish(hasEvents: false, addsEnergy: false)
+        #expect(live == [.addMetadata, .stopActivity, .endSession, .endCollection, .finishWorkout])
+        let basic = HealthRecorderStep.basicFinish(hasEvents: false, addsEnergy: false)
+        #expect(basic == [.beginCollection, .addMetadata, .endCollection, .finishWorkout])
     }
 }
 

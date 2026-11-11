@@ -63,8 +63,10 @@ final class HealthKitStore: HealthStoreProtocol {
             return
         }
         healthStore.workoutSessionMirroringStartHandler = { session in
-            let box = UncheckedBox(session)
-            Task { @MainActor in handler(MirroredWorkoutSession(session: box.value)) }
+            // Delegate definido aqui, de forma síncrona (nada que o relógio mande antes do salto ao
+            // MainActor se perde: fica na fila do `MirroredWorkoutSession`).
+            let remote = MirroredWorkoutSession(session: session)
+            Task { @MainActor in handler(remote) }
         }
     }
 
@@ -149,9 +151,43 @@ enum HealthRecorderError: Error {
     case failed
 }
 
+
 private func energySample(kcal: Double, start: Date, end: Date) -> HKQuantitySample {
     HKQuantitySample(type: HKQuantityType(.activeEnergyBurned), quantity: HKQuantity(unit: HealthUnits.kilocalorie, doubleValue: kcal),
-                     start: start, end: max(start, end))
+                     start: start, end: max(start, end), metadata: [HealthMetadataKey.estimatedEnergy: NSNumber(value: true)])
+}
+
+@MainActor
+private func finishBuilder(_ builder: HKWorkoutBuilder) async throws -> UUID? {
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<UUID?, any Error>) in
+        builder.finishWorkout { workout, error in
+            if let error { continuation.resume(throwing: error) } else { continuation.resume(returning: workout?.uuid) }
+        }
+    }
+}
+
+/// Executa os passos comuns a um builder (`HealthRecorderStep`).
+@MainActor
+private func perform(_ step: HealthRecorderStep, on builder: HKWorkoutBuilder, start: Date, end: Date,
+                     events: [HKWorkoutEvent], metadata: HealthWorkoutMetadata, energy: HKQuantitySample?) async throws -> UUID? {
+    switch step {
+    case .beginCollection:
+        try await awaitCompletion { builder.beginCollection(withStart: start, completion: $0) }
+    case .addEnergy:
+        if let energy { try await awaitCompletion { builder.add([energy], completion: $0) } }
+    case .addEvents:
+        try await awaitCompletion { builder.addWorkoutEvents(events, completion: $0) }
+    case .addMetadata:
+        let dictionary = UncheckedBox(metadata.dictionary)
+        try await awaitCompletion { builder.addMetadata(dictionary.value, completion: $0) }
+    case .endCollection:
+        try await awaitCompletion { builder.endCollection(withEnd: end, completion: $0) }
+    case .finishWorkout:
+        return try await finishBuilder(builder)
+    case .stopActivity, .endSession:
+        break // só a sessão ao vivo
+    }
+    return nil
 }
 
 /// `HKWorkoutSession` + `HKLiveWorkoutBuilder` no iPhone (iOS 26+).
@@ -169,7 +205,7 @@ private final class LiveWorkoutRecorder: HealthWorkoutRecorder {
         self.session = session
         self.recovered = recovered
         builder = session.associatedWorkoutBuilder()
-        if !recovered {
+        if !recovered || builder.dataSource == nil {
             builder.dataSource = HKLiveWorkoutDataSource(healthStore: healthStore, workoutConfiguration: session.workoutConfiguration)
         }
         let delegate = WorkoutDelegate(onUpdate: { [weak self] update in
@@ -180,6 +216,10 @@ private final class LiveWorkoutRecorder: HealthWorkoutRecorder {
         builder.delegate = delegate
     }
 
+    var startDate: Date? { session.startDate }
+    var isPaused: Bool { session.state == .paused }
+    var isActive: Bool { session.state == .running || session.state == .paused }
+
     func start(at date: Date) async throws {
         guard !recovered else { return }
         session.prepare()
@@ -188,29 +228,32 @@ private final class LiveWorkoutRecorder: HealthWorkoutRecorder {
         try await awaitCompletion { builder.beginCollection(withStart: date, completion: $0) }
     }
 
-    func pause(at date: Date) { session.pause() }
-    func resume(at date: Date) { session.resume() }
+    func pause(at date: Date) { if session.state == .running { session.pause() } }
+    func resume(at date: Date) { if session.state == .paused { session.resume() } }
 
     func finish(start: Date, end: Date, plan: HealthWorkoutEventPlan, metadata: HealthWorkoutMetadata,
                 estimatedEnergyKcal: Double?) async throws -> UUID? {
-        session.stopActivity(with: end)
-        session.end()
-        let builder = builder
-        try await awaitCompletion { builder.endCollection(withEnd: end, completion: $0) }
-        let events = plan.workoutEvents
-        if !events.isEmpty { try await awaitCompletion { builder.addWorkoutEvents(events, completion: $0) } }
-        let dictionary = UncheckedBox(metadata.dictionary)
-        try await awaitCompletion { builder.addMetadata(dictionary.value, completion: $0) }
         let measured = builder.statistics(for: HKQuantityType(.activeEnergyBurned))?.sumQuantity() != nil
-        if !measured, let estimatedEnergyKcal, estimatedEnergyKcal > 0 {
-            let sample = energySample(kcal: estimatedEnergyKcal, start: start, end: end)
-            try await awaitCompletion { builder.add([sample], completion: $0) }
+        let energy = !measured && (estimatedEnergyKcal ?? 0) > 0
+            ? energySample(kcal: estimatedEnergyKcal ?? 0, start: start, end: end) : nil
+        let events = plan.workoutEvents
+        var workoutID: UUID?
+        for step in HealthRecorderStep.liveFinish(hasEvents: !events.isEmpty, addsEnergy: energy != nil) {
+            switch step {
+            case .stopActivity: session.stopActivity(with: end)
+            case .endSession: session.end()
+            default:
+                if let id = try await perform(step, on: builder, start: start, end: end, events: events,
+                                              metadata: metadata, energy: energy) {
+                    workoutID = id
+                }
+            }
         }
-        return try await finishBuilder(builder)
+        return workoutID
     }
 
     func discard() {
-        session.end()
+        if session.state != .ended { session.end() }
         builder.discardWorkout()
     }
 }
@@ -220,10 +263,12 @@ private final class LiveWorkoutRecorder: HealthWorkoutRecorder {
 private final class BasicWorkoutRecorder: HealthWorkoutRecorder {
     let isLive = false
     var onLiveUpdate: ((HealthLiveUpdate) -> Void)?
+    var startDate: Date? { nil }
+    var isPaused: Bool { false }
+    var isActive: Bool { false }
 
     private let healthStore: HKHealthStore
     private let type: HealthWorkoutType
-    private var pauses: [(type: HKWorkoutEventType, date: Date)] = []
 
     init(healthStore: HKHealthStore, type: HealthWorkoutType) {
         self.healthStore = healthStore
@@ -231,67 +276,107 @@ private final class BasicWorkoutRecorder: HealthWorkoutRecorder {
     }
 
     func start(at date: Date) async throws {}
-    func pause(at date: Date) { pauses.append((.pause, date)) }
-    func resume(at date: Date) { pauses.append((.resume, date)) }
+    func pause(at date: Date) {}
+    func resume(at date: Date) {}
 
+    /// Pausas vêm de `plan.pauses` (registradas pelo controller).
     func finish(start: Date, end: Date, plan: HealthWorkoutEventPlan, metadata: HealthWorkoutMetadata,
                 estimatedEnergyKcal: Double?) async throws -> UUID? {
         let builder = HKWorkoutBuilder(healthStore: healthStore, configuration: type.workoutConfiguration, device: .local())
-        try await awaitCompletion { builder.beginCollection(withStart: start, completion: $0) }
-        if let estimatedEnergyKcal, estimatedEnergyKcal > 0 {
-            let sample = energySample(kcal: estimatedEnergyKcal, start: start, end: end)
-            try await awaitCompletion { builder.add([sample], completion: $0) }
+        let energy = (estimatedEnergyKcal ?? 0) > 0 ? energySample(kcal: estimatedEnergyKcal ?? 0, start: start, end: end) : nil
+        let events = plan.pauseEvents + plan.workoutEvents
+        var workoutID: UUID?
+        for step in HealthRecorderStep.basicFinish(hasEvents: !events.isEmpty, addsEnergy: energy != nil) {
+            if let id = try await perform(step, on: builder, start: start, end: end, events: events,
+                                          metadata: metadata, energy: energy) {
+                workoutID = id
+            }
         }
-        let pauseEvents = pauses.filter { $0.date >= start && $0.date <= end }.map {
-            HKWorkoutEvent(type: $0.type, dateInterval: DateInterval(start: $0.date, duration: 0), metadata: nil)
-        }
-        let events = pauseEvents + plan.workoutEvents
-        if !events.isEmpty { try await awaitCompletion { builder.addWorkoutEvents(events, completion: $0) } }
-        let dictionary = UncheckedBox(metadata.dictionary)
-        try await awaitCompletion { builder.addMetadata(dictionary.value, completion: $0) }
-        try await awaitCompletion { builder.endCollection(withEnd: end, completion: $0) }
-        return try await finishBuilder(builder)
+        return workoutID
     }
 
-    func discard() { pauses = [] }
-}
-
-@MainActor
-private func finishBuilder(_ builder: HKWorkoutBuilder) async throws -> UUID? {
-    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<UUID?, any Error>) in
-        builder.finishWorkout { workout, error in
-            if let error { continuation.resume(throwing: error) } else { continuation.resume(returning: workout?.uuid) }
-        }
-    }
+    func discard() {}
 }
 
 // MARK: - Espelhamento (ciclo 4b)
 
+/// Fila thread-safe entre o delegate (fila do HealthKit) e o MainActor; preserva a ordem.
+private final class MirrorInbox: @unchecked Sendable {
+    enum Item: Sendable {
+        case data([Data])
+        case end(String?)
+    }
+
+    private let lock = NSLock()
+    private var items: [Item] = []
+    private var sink: (@Sendable () -> Void)?
+
+    func push(_ item: Item) {
+        lock.lock()
+        items.append(item)
+        let sink = sink
+        lock.unlock()
+        sink?()
+    }
+
+    func setSink(_ sink: @escaping @Sendable () -> Void) {
+        lock.lock()
+        self.sink = sink
+        let pending = !items.isEmpty
+        lock.unlock()
+        if pending { sink() }
+    }
+
+    func popAll() -> [Item] {
+        lock.lock()
+        defer { lock.unlock() }
+        let result = items
+        items = []
+        return result
+    }
+}
+
 /// `HKWorkoutSession` espelhada do relógio. Só o canal: o W2 define o conteúdo dos pacotes.
+/// O delegate é instalado no `init` (síncrono, ainda na fila do `workoutSessionMirroringStartHandler`).
 @MainActor
 private final class MirroredWorkoutSession: HealthRemoteWorkoutSession {
-    var onLiveUpdate: ((HealthLiveUpdate) -> Void)?
-    var onRemoteData: (([Data]) -> Void)?
-    var onEnd: ((String?) -> Void)?
+    var onRemoteData: (([Data]) -> Void)? { didSet { deliver() } }
+    var onEnd: ((String?) -> Void)? { didSet { deliver() } }
 
     private let session: HKWorkoutSession
-    /// Builder da sessão espelhada (FC/energia do relógio); mantido vivo aqui (delegate é fraco).
-    private let builder: HKLiveWorkoutBuilder
-    private var delegate: WorkoutDelegate?
+    private let delegate: WorkoutDelegate
+    private let inbox: MirrorInbox
+    /// Itens já tirados da fila, aguardando um receptor.
+    private var pending: [MirrorInbox.Item] = []
 
-    init(session: HKWorkoutSession) {
+    nonisolated init(session: HKWorkoutSession) {
         self.session = session
-        builder = session.associatedWorkoutBuilder()
-        let delegate = WorkoutDelegate(
-            onUpdate: { [weak self] update in Task { @MainActor in self?.onLiveUpdate?(update) } },
-            onRemoteData: { [weak self] data in Task { @MainActor in self?.onRemoteData?(data) } },
-            onEnd: { [weak self] error in Task { @MainActor in self?.onEnd?(error) } })
+        let inbox = MirrorInbox()
+        self.inbox = inbox
+        let delegate = WorkoutDelegate(onUpdate: { _ in }, onRemoteData: { inbox.push(.data($0)) },
+                                       onEnd: { inbox.push(.end($0)) })
         self.delegate = delegate
         session.delegate = delegate
-        builder.delegate = delegate
+        inbox.setSink { [weak self] in Task { @MainActor in self?.deliver() } }
     }
 
     var startDate: Date? { session.startDate }
+
+    private func deliver() {
+        pending += inbox.popAll()
+        while let item = pending.first {
+            switch item {
+            case .data(let data):
+                guard let onRemoteData else { return }
+                pending.removeFirst()
+                onRemoteData(data)
+            case .end(let error):
+                guard let onEnd else { return }
+                pending.removeFirst()
+                onEnd(error)
+            }
+        }
+    }
 
     func send(_ data: Data) async throws {
         let session = session

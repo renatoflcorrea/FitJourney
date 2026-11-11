@@ -81,16 +81,20 @@ enum HealthWorkoutMatcher {
     static let highOverlap = 0.6
     /// Diferença máxima entre inícios para confiança alta.
     static let maxStartDifference: TimeInterval = 15 * 60
+    /// Duração do mais curto ÷ do mais longo mínima para confiança alta.
+    static let minimumDurationRatio = 0.4
+
+    /// Mais curto ÷ mais longo (0…1).
+    static func durationRatio(_ a: DateInterval, _ b: DateInterval) -> Double {
+        let longer = max(a.duration, b.duration)
+        return longer > 0 ? min(a.duration, b.duration) / longer : 0
+    }
 
     /// Interseção ÷ duração do mais curto (0…1). Intervalos de duração zero não se sobrepõem.
     static func overlap(_ a: DateInterval, _ b: DateInterval) -> Double {
         let shorter = min(a.duration, b.duration)
         guard shorter > 0, let intersection = a.intersection(with: b) else { return 0 }
         return min(1, intersection.duration / shorter)
-    }
-
-    static func isCompatible(_ workout: HealthWorkoutCategory, with session: HealthWorkoutCategory) -> Bool {
-        workout == session || workout == .mixed || session == .mixed
     }
 
     static func match(_ workout: HealthWorkoutRecord, sessions: [HealthSessionWindow]) -> HealthWorkoutMatch {
@@ -110,8 +114,11 @@ enum HealthWorkoutMatcher {
             let value = overlap(workout.interval, session.interval)
             guard value >= minimumOverlap else { continue }
             let startsClose = abs(workout.start.timeIntervalSince(session.start)) <= maxStartDifference
+            let ratio = durationRatio(workout.interval, session.interval)
+            // Alta: muito sobreposto, inícios próximos, durações parecidas e mesma categoria (misto não basta).
             let confidence: HealthLinkConfidence =
-                value >= highOverlap && startsClose && isCompatible(workout.category, with: session.category) ? .high : .uncertain
+                value >= highOverlap && startsClose && ratio >= minimumDurationRatio && workout.category == session.category
+                ? .high : .uncertain
             if let current = best, (current.confidence, current.overlap) >= (confidence, value) { continue }
             best = (session, value, confidence)
         }
@@ -122,13 +129,16 @@ enum HealthWorkoutMatcher {
 
 // MARK: - Dia
 
-/// Item da lista de treinos do dia: cada sessão aparece uma vez (com os treinos do Saúde ligados a
-/// ela) e treinos sem sessão aparecem sozinhos.
+/// Item da lista de treinos do dia. Cada sessão aparece uma vez, com o treino gravado pelo app e as
+/// sugestões de **alta** confiança ligadas a ela. Treinos sem sessão — e sugestões **incertas**, até o
+/// usuário confirmar — aparecem como `external` (contam nos minutos e na energia).
 enum HealthDayEntry: Sendable, Hashable, Identifiable {
     case session(HealthSessionWindow, own: HealthWorkoutRecord?, suggestions: [LinkSuggestion])
-    case external(HealthWorkoutRecord)
+    /// `suggestion`: sessão com que este treino talvez coincida (confiança incerta) — pedir confirmação.
+    case external(HealthWorkoutRecord, suggestion: LinkSuggestion?)
 
     struct LinkSuggestion: Sendable, Hashable {
+        var sessionID: UUID
         var workout: HealthWorkoutRecord
         var confidence: HealthLinkConfidence
         var overlap: Double
@@ -137,21 +147,21 @@ enum HealthDayEntry: Sendable, Hashable, Identifiable {
     var id: UUID {
         switch self {
         case .session(let session, _, _): session.sessionID
-        case .external(let workout): workout.id
+        case .external(let workout, _): workout.id
         }
     }
 
     var interval: DateInterval {
         switch self {
         case .session(let session, _, _): session.interval
-        case .external(let workout): workout.interval
+        case .external(let workout, _): workout.interval
         }
     }
 
     var category: HealthWorkoutCategory {
         switch self {
         case .session(let session, _, _): session.category
-        case .external(let workout): workout.category
+        case .external(let workout, _): workout.category
         }
     }
 
@@ -160,69 +170,88 @@ enum HealthDayEntry: Sendable, Hashable, Identifiable {
         switch self {
         case .session(_, let own, let suggestions):
             own?.activeEnergyKcal ?? suggestions.first { $0.confidence == .high }?.workout.activeEnergyKcal
-        case .external(let workout): workout.activeEnergyKcal
+        case .external(let workout, _): workout.activeEnergyKcal
         }
     }
 }
 
-/// Resumo do dia (aba Saúde). Opcionais = indisponível/sem dados, nunca zero.
+/// Resumo do dia (aba Saúde). Cada leitura do Saúde guarda seu estado (`HealthReading`): indisponível e
+/// sem dados nunca viram zero.
 struct HealthDaySummary: Sendable, Hashable {
     var day: DateInterval
     var entries: [HealthDayEntry]
+    /// Estado da leitura de treinos do Saúde (as sessões do app entram sempre).
+    var healthWorkouts: HealthReadingStatus
     /// Minutos por categoria pela **união** dos intervalos (sobreposição não soma).
     var minutesByCategory: [HealthWorkoutCategory: Double]
-    /// Minutos de treino no dia (união de todos os intervalos).
-    var totalWorkoutMinutes: Double
-    var heartRate: HeartRateStats?
-    /// FC média por item (`HealthDayEntry.id`), quando há amostras no intervalo.
+    /// Minutos de treino no dia (união de todos os intervalos). `.unavailable` quando o Saúde não pôde
+    /// ser lido e não há sessão do app; `.noData` sem treino nenhum.
+    var totalWorkoutMinutes: HealthReading<Double>
+    var heartRate: HealthReading<HeartRateStats>
+    /// FC média por item (`HealthDayEntry.id`), quando há dados no intervalo.
     var averageHeartRateByEntry: [UUID: Double]
-    var activeEnergyKcal: Double?
-    var restingHeartRate: Double?
-    var steps: Double?
+    var activeEnergyKcal: HealthReading<Double>
+    var restingHeartRate: HealthReading<Double>
+    var steps: HealthReading<Double>
 }
 
 enum HealthDayAnalyzer {
-    /// Monta a lista do dia sem duplicar: treino do app/vinculado e sugestões entram na sessão.
+    /// Monta a lista do dia sem duplicar (ver `HealthDayEntry`).
     static func entries(workouts: [HealthWorkoutRecord], sessions: [HealthSessionWindow]) -> [HealthDayEntry] {
         var own: [UUID: HealthWorkoutRecord] = [:]
         var suggestions: [UUID: [HealthDayEntry.LinkSuggestion]] = [:]
-        var external: [HealthWorkoutRecord] = []
+        var external: [HealthDayEntry] = []
         for workout in workouts {
             switch HealthWorkoutMatcher.match(workout, sessions: sessions) {
             case .own(let sessionID):
                 if own[sessionID] == nil || workout.isFromThisApp { own[sessionID] = workout }
             case .suggestion(let sessionID, let confidence, let overlap):
-                suggestions[sessionID, default: []].append(.init(workout: workout, confidence: confidence, overlap: overlap))
+                let suggestion = HealthDayEntry.LinkSuggestion(sessionID: sessionID, workout: workout,
+                                                               confidence: confidence, overlap: overlap)
+                if confidence == .high {
+                    suggestions[sessionID, default: []].append(suggestion)
+                } else {
+                    external.append(.external(workout, suggestion: suggestion))
+                }
             case .unrelated:
-                // Treino do app órfão (sessão fora da lista) não aparece duplicado se a sessão existir em outro dia.
-                external.append(workout)
+                external.append(.external(workout, suggestion: nil))
             }
         }
         var result: [HealthDayEntry] = sessions.map { session in
-            let sorted = (suggestions[session.sessionID] ?? []).sorted {
-                ($0.confidence, $0.overlap) > ($1.confidence, $1.overlap)
-            }
+            let sorted = (suggestions[session.sessionID] ?? []).sorted { $0.overlap > $1.overlap }
             return .session(session, own: own[session.sessionID], suggestions: sorted)
         }
-        result += external.map { .external($0) }
+        result += external
         return result.sorted { $0.interval.start < $1.interval.start }
     }
 
-    static func summarize(day: DateInterval, workouts: [HealthWorkoutRecord], sessions: [HealthSessionWindow],
-                          heartRate: [HeartRateSample], activeEnergyKcal: Double?, restingHeartRate: Double?,
-                          steps: Double?) -> HealthDaySummary {
-        let entries = entries(workouts: workouts, sessions: sessions)
+    /// - Parameter heartRate: baldes de FC do dia (5 min) — não as amostras individuais.
+    static func summarize(day: DateInterval, workouts: HealthReading<[HealthWorkoutRecord]>, sessions: [HealthSessionWindow],
+                          heartRate: HealthReading<[HeartRateBucket]>, activeEnergyKcal: HealthReading<Double>,
+                          restingHeartRate: HealthReading<Double>, steps: HealthReading<Double>) -> HealthDaySummary {
+        let entries = entries(workouts: workouts.value ?? [], sessions: sessions)
         var byCategory: [HealthWorkoutCategory: [DateInterval]] = [:]
         for entry in entries { byCategory[entry.category, default: []].append(entry.interval) }
         let minutes = byCategory.mapValues { DateIntervalMath.unionDuration($0, clippedTo: day) / 60 }
             .filter { $0.value > 0 }
-        let total = DateIntervalMath.unionDuration(entries.map(\.interval), clippedTo: day) / 60
+        let total: HealthReading<Double>
+        if entries.isEmpty {
+            total = workouts.status == .unavailable ? .unavailable : .noData
+        } else {
+            total = .available(DateIntervalMath.unionDuration(entries.map(\.interval), clippedTo: day) / 60)
+        }
+        let buckets = heartRate.value ?? []
         var averages: [UUID: Double] = [:]
         for entry in entries {
-            if let stats = HeartRateAnalysis.stats(heartRate, in: entry.interval) { averages[entry.id] = stats.average }
+            if let stats = HeartRateAnalysis.stats(buckets: buckets, in: entry.interval) { averages[entry.id] = stats.average }
         }
-        return HealthDaySummary(day: day, entries: entries, minutesByCategory: minutes, totalWorkoutMinutes: total,
-                                heartRate: HeartRateAnalysis.stats(heartRate, in: day), averageHeartRateByEntry: averages,
+        let dayHeartRate: HealthReading<HeartRateStats> = switch heartRate {
+        case .available(let buckets): HeartRateAnalysis.stats(buckets: buckets, in: day).map { .available($0) } ?? .noData
+        case .noData: .noData
+        case .unavailable: .unavailable
+        }
+        return HealthDaySummary(day: day, entries: entries, healthWorkouts: workouts.status, minutesByCategory: minutes,
+                                totalWorkoutMinutes: total, heartRate: dayHeartRate, averageHeartRateByEntry: averages,
                                 activeEnergyKcal: activeEnergyKcal, restingHeartRate: restingHeartRate, steps: steps)
     }
 }

@@ -18,24 +18,47 @@ final class FakeRecorder: HealthWorkoutRecorder {
     var startedAt: Date?
     var startError: (any Error)?
     var finishError: (any Error)?
+    /// Chamado dentro do `start` (simula algo acontecendo durante o `await`).
+    var onStart: (() -> Void)?
     var pauses: [Date] = []
     var resumes: [Date] = []
     var finished: Finish?
     var discarded = false
+    /// Passos executados no `finish`, na ordem (mesmas listas dos gravadores reais).
+    var steps: [HealthRecorderStep] = []
     let workoutID = UUID()
+    var startDate: Date?
+    var isPaused = false
+    var isActive = true
 
-    init(isLive: Bool) { self.isLive = isLive }
-
-    func start(at date: Date) async throws {
-        if let startError { throw startError }
-        startedAt = date
+    init(isLive: Bool, startDate: Date? = nil) {
+        self.isLive = isLive
+        self.startDate = startDate
     }
 
-    func pause(at date: Date) { pauses.append(date) }
-    func resume(at date: Date) { resumes.append(date) }
+    func start(at date: Date) async throws {
+        onStart?()
+        if let startError { throw startError }
+        startedAt = date
+        startDate = date
+    }
+
+    func pause(at date: Date) {
+        pauses.append(date)
+        isPaused = true
+    }
+
+    func resume(at date: Date) {
+        resumes.append(date)
+        isPaused = false
+    }
 
     func finish(start: Date, end: Date, plan: HealthWorkoutEventPlan, metadata: HealthWorkoutMetadata,
                 estimatedEnergyKcal: Double?) async throws -> UUID? {
+        let hasEvents = !plan.segments.isEmpty || !plan.markers.isEmpty || (!isLive && !plan.pauses.isEmpty)
+        let addsEnergy = (estimatedEnergyKcal ?? 0) > 0
+        steps = isLive ? HealthRecorderStep.liveFinish(hasEvents: hasEvents, addsEnergy: addsEnergy)
+            : HealthRecorderStep.basicFinish(hasEvents: hasEvents, addsEnergy: addsEnergy)
         if let finishError { throw finishError }
         finished = Finish(start: start, end: end, plan: plan, metadata: metadata, energy: estimatedEnergyKcal)
         return workoutID
@@ -47,7 +70,6 @@ final class FakeRecorder: HealthWorkoutRecorder {
 @MainActor
 final class FakeRemoteSession: HealthRemoteWorkoutSession {
     var startDate: Date?
-    var onLiveUpdate: ((HealthLiveUpdate) -> Void)?
     var onRemoteData: (([Data]) -> Void)?
     var onEnd: ((String?) -> Void)?
     var sent: [Data] = []
@@ -64,6 +86,9 @@ final class FakeHealthStore: HealthStoreProtocol {
     var status: HealthRequestStatus = .unnecessary
     var liveSupported = true
     var liveStartError: (any Error)?
+    var liveFinishError: (any Error)?
+    var basicFinishError: (any Error)?
+    var onLiveStart: (() -> Void)?
     var recoverable: FakeRecorder?
     var bodyMass: Double? = 80
     var requests = 0
@@ -84,12 +109,15 @@ final class FakeHealthStore: HealthStoreProtocol {
         guard liveSupported else { throw FakeHealthError() }
         let recorder = FakeRecorder(isLive: true)
         recorder.startError = liveStartError
+        recorder.finishError = liveFinishError
+        recorder.onStart = onLiveStart
         live.append(recorder)
         return recorder
     }
 
     func makeBasicRecorder(type: HealthWorkoutType) -> any HealthWorkoutRecorder {
         let recorder = FakeRecorder(isLive: false)
+        recorder.finishError = basicFinishError
         basic.append(recorder)
         return recorder
     }
@@ -111,7 +139,13 @@ struct HealthFixture {
         engine = try EngineFixture()
         defaults.set(connected, forKey: HealthAuthorization.connectionKey)
         authorization = HealthAuthorization(store: store, defaults: defaults)
-        controller = HealthWorkoutController(store: store, authorization: authorization, context: engine.context)
+        controller = HealthWorkoutController(store: store, authorization: authorization, context: engine.context,
+                                             defaults: defaults, now: { [clock = engine.clock] in clock.now })
+    }
+
+    func makeController() -> HealthWorkoutController {
+        HealthWorkoutController(store: store, authorization: authorization, context: engine.context, defaults: defaults,
+                                now: { [clock = engine.clock] in clock.now })
     }
 
     /// Aplica no motor e repassa os eventos ao controller (como o `attach` faz).
@@ -180,8 +214,12 @@ struct HealthWorkoutControllerTests {
         #expect(finished.plan.segments[0].interval == DateInterval(start: f.engine.t0.addingTimeInterval(100),
                                                                    end: f.engine.t0.addingTimeInterval(200)))
         #expect(finished.plan.markers.count == 3)
+        // Pausa/retomada registradas no plano.
+        #expect(finished.plan.pauses.map(\.kind) == [.pause, .resume])
         // Energia medida ao vivo: não estima.
         #expect(finished.energy == nil)
+        // Ordem: eventos e metadados antes de encerrar a coleta.
+        #expect(recorder.steps == [.addEvents, .addMetadata, .stopActivity, .endSession, .endCollection, .finishWorkout])
         #expect(f.store.basic.isEmpty)
         #expect(try f.session(id).healthKitWorkoutID == recorder.workoutID)
         #expect(f.controller.state == .saved(sessionID: id, workoutID: recorder.workoutID))
@@ -292,13 +330,63 @@ struct HealthWorkoutControllerTests {
         let id = UUID()
         #expect(f.engine.apply(.start(routineID: routine.id), at: 0, session: id).isApplied)
         f.engine.apply(.pause, at: 50, session: id)
-        let recovered = FakeRecorder(isLive: true)
+        let recovered = FakeRecorder(isLive: true, startDate: f.engine.t0.addingTimeInterval(3))
         f.store.recoverable = recovered
         await f.controller.resumeIfNeeded(sessionID: id)
         #expect(f.store.live.isEmpty)
         #expect(recovered.startedAt == nil) // recuperada: já estava rodando
         #expect(recovered.pauses.count == 1)
         #expect(f.controller.state == .paused(sessionID: id, live: true))
+    }
+
+    @Test func recoveredAlreadyPausedIsNotPausedAgain() async throws {
+        let f = try HealthFixture()
+        let routine = try f.engine.makeRoutine()
+        let id = UUID()
+        #expect(f.engine.apply(.start(routineID: routine.id), at: 0, session: id).isApplied)
+        f.engine.apply(.pause, at: 50, session: id)
+        let recovered = FakeRecorder(isLive: true, startDate: f.engine.t0)
+        recovered.isPaused = true
+        f.store.recoverable = recovered
+        await f.controller.resumeIfNeeded(sessionID: id)
+        #expect(recovered.pauses.isEmpty)
+        #expect(recovered.resumes.isEmpty)
+    }
+
+    @Test func recoveredPausedButSessionRunningIsResumed() async throws {
+        let f = try HealthFixture()
+        let routine = try f.engine.makeRoutine()
+        let id = UUID()
+        #expect(f.engine.apply(.start(routineID: routine.id), at: 0, session: id).isApplied)
+        let recovered = FakeRecorder(isLive: true, startDate: f.engine.t0)
+        recovered.isPaused = true
+        f.store.recoverable = recovered
+        await f.controller.resumeIfNeeded(sessionID: id)
+        #expect(recovered.resumes.count == 1)
+        #expect(f.controller.state == .recording(sessionID: id, live: true))
+    }
+
+    @Test func recoveredFromAnotherSessionIsDiscarded() async throws {
+        let f = try HealthFixture()
+        let routine = try f.engine.makeRoutine()
+        let id = UUID()
+        #expect(f.engine.apply(.start(routineID: routine.id), at: 0, session: id).isApplied)
+        // Início muito diferente (outra sessão) → encerra e inicia nova com a data original.
+        let stale = FakeRecorder(isLive: true, startDate: f.engine.t0.addingTimeInterval(-3_600))
+        f.store.recoverable = stale
+        await f.controller.resumeIfNeeded(sessionID: id)
+        #expect(stale.discarded)
+        #expect(f.store.live.first?.startedAt == f.engine.t0)
+        // Recuperada já encerrada também não serve.
+        let g = try HealthFixture()
+        let id2 = UUID()
+        #expect(g.engine.apply(.start(routineID: try g.engine.makeRoutine().id), at: 0, session: id2).isApplied)
+        let ended = FakeRecorder(isLive: true, startDate: g.engine.t0)
+        ended.isActive = false
+        g.store.recoverable = ended
+        await g.controller.resumeIfNeeded(sessionID: id2)
+        #expect(ended.discarded)
+        #expect(g.store.live.count == 1)
     }
 
     @Test func attachListensToEngineEvents() async throws {
@@ -330,20 +418,131 @@ struct HealthWorkoutControllerTests {
         #expect(await iterator.next() == Data([3]))
         try await f.controller.sendToRemote(Data([9]))
         #expect(remote.sent == [Data([9])])
-        remote.onLiveUpdate?(.heartRate(HeartRateSample(date: Date(), bpm: 133)))
+        // FC do relógio chega pelo canal (W2).
+        f.controller.receiveRemoteMetrics([.heartRate(HeartRateSample(date: Date(), bpm: 133)), .activeEnergy(kilocalories: 12)])
         #expect(f.controller.latestHeartRate?.bpm == 133)
+        #expect(f.controller.activeEnergyKcal == 12)
 
         // O relógio grava o treino; o iPhone não grava outro.
         await f.apply(.finish(rpe: nil, applyLoadProposalIDs: []), at: 600, session: id)
         #expect(f.store.basic.isEmpty)
         #expect(local.finished == nil)
+        #expect(f.controller.state == .awaitingRemoteWorkout(sessionID: id))
         let watchWorkout = UUID()
         #expect(f.controller.linkWorkout(watchWorkout, to: id))
         #expect(try f.session(id).healthKitWorkoutID == watchWorkout)
+        #expect(f.controller.state == .saved(sessionID: id, workoutID: watchWorkout))
 
         remote.onEnd?(nil)
         #expect(!f.controller.hasRemoteSession)
         await #expect(throws: HealthMirroringError.self) { try await f.controller.sendToRemote(Data()) }
+    }
+
+    @Test func mirrorDroppedBeforeFinishNeverSavesLocally() async throws {
+        let f = try HealthFixture()
+        f.controller.startObservingMirroredSessions()
+        let id = try await f.start()
+        let remote = FakeRemoteSession()
+        f.store.mirroringHandler?(remote)
+        // Espelho cai com a sessão em andamento: marca mantida, estado sinaliza.
+        remote.onEnd?("disconnected")
+        #expect(!f.controller.hasRemoteSession)
+        #expect(f.controller.isMirrored(id))
+        #expect(f.controller.state == .mirrorDisconnected(sessionID: id))
+
+        await f.apply(.finish(rpe: nil, applyLoadProposalIDs: []), at: 600, session: id)
+        #expect(f.store.basic.isEmpty)
+        #expect(f.controller.state == .awaitingRemoteWorkout(sessionID: id))
+
+        // A marca persiste (outro controller, mesmo defaults) e a reconciliação não grava.
+        let reopened = f.makeController()
+        #expect(reopened.isMirrored(id))
+        await reopened.reconcilePendingWorkouts()
+        #expect(f.store.basic.isEmpty)
+        // W2 confirma que o relógio não gravou → libera.
+        reopened.unmarkMirrored(id)
+        f.defaults.removeObject(forKey: HealthWorkoutController.reconciledKey)
+        await reopened.reconcilePendingWorkouts()
+        #expect(f.store.basic.count == 1)
+    }
+
+    @Test func mirrorArrivingDuringLiveStartWins() async throws {
+        let f = try HealthFixture()
+        f.controller.startObservingMirroredSessions()
+        let remote = FakeRemoteSession()
+        f.store.onLiveStart = { [store = f.store] in store.mirroringHandler?(remote) }
+        let id = try await f.start()
+        let local = try #require(f.store.live.first)
+        #expect(local.discarded)
+        #expect(f.controller.state == .mirrored(sessionID: id))
+        #expect(f.controller.isMirrored(id))
+        await f.apply(.pause, at: 30, session: id)
+        #expect(local.pauses.isEmpty)
+    }
+
+    @Test func discardingMirroredSessionNotifiesW2() async throws {
+        let f = try HealthFixture()
+        f.controller.startObservingMirroredSessions()
+        var discarded: [UUID] = []
+        f.controller.onMirroredSessionDiscarded = { discarded.append($0) }
+        let id = try await f.start()
+        f.store.mirroringHandler?(FakeRemoteSession())
+        await f.apply(.discard, at: 60, session: id)
+        #expect(discarded == [id])
+    }
+
+    @Test func liveFinishFailureFallsBackToBasicWithSamePlan() async throws {
+        let f = try HealthFixture()
+        f.store.liveFinishError = FakeHealthError()
+        let id = try await f.start()
+        try await f.complete(exercise: 0, set: 1, at: 100, session: id)
+        await f.apply(.finish(rpe: nil, applyLoadProposalIDs: []), at: 3_600, session: id)
+        let live = try #require(f.store.live.first)
+        #expect(live.discarded)
+        let basic = try #require(f.store.basic.first)
+        let finished = try #require(basic.finished)
+        #expect(finished.plan.markers.count == 1)
+        #expect(finished.energy == 200)
+        #expect(basic.steps.first == .beginCollection)
+        #expect(basic.steps.firstIndex(of: .addMetadata)! < basic.steps.firstIndex(of: .endCollection)!)
+        #expect(try f.session(id).healthKitWorkoutID == basic.workoutID)
+    }
+
+    @Test func basicRecorderGetsPausesFromController() async throws {
+        let f = try HealthFixture()
+        f.store.liveSupported = false
+        let id = try await f.start()
+        await f.apply(.pause, at: 100, session: id)
+        await f.apply(.resume, at: 200, session: id)
+        await f.apply(.finish(rpe: nil, applyLoadProposalIDs: []), at: 600, session: id)
+        let finished = try #require(f.store.basic.first?.finished)
+        #expect(finished.plan.pauses == [.init(kind: .pause, date: f.engine.t0.addingTimeInterval(100)),
+                                         .init(kind: .resume, date: f.engine.t0.addingTimeInterval(200))])
+    }
+
+    @Test func reconcileSavesRecentSessionsOnce() async throws {
+        let f = try HealthFixture(connected: false)
+        let id = try await f.start()
+        await f.apply(.finish(rpe: nil, applyLoadProposalIDs: []), at: 600, session: id)
+        #expect(f.store.basic.isEmpty)
+        // Conexão ligada depois: a reconciliação grava uma vez.
+        f.authorization.isConnectionEnabled = true
+        f.store.basicFinishError = FakeHealthError()
+        await f.controller.reconcilePendingWorkouts()
+        #expect(f.store.basic.count == 1)
+        f.store.basicFinishError = nil
+        await f.controller.reconcilePendingWorkouts()
+        #expect(f.store.basic.count == 1) // já tentou: não insiste
+        #expect(try f.session(id).healthKitWorkoutID == nil)
+
+        // Sessão antiga (> 7 dias) fica de fora.
+        let g = try HealthFixture(connected: false)
+        let old = try await g.start()
+        await g.apply(.finish(rpe: nil, applyLoadProposalIDs: []), at: 600, session: old)
+        g.authorization.isConnectionEnabled = true
+        g.engine.clock.now = g.engine.t0.addingTimeInterval(8 * 86_400)
+        await g.controller.reconcilePendingWorkouts()
+        #expect(g.store.basic.isEmpty)
     }
 
     @Test func linkRefusesSessionInProgress() async throws {

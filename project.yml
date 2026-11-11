@@ -39,8 +39,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: FitJourney
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_NSHealthShareUsageDescription: "O FitJourney lê frequência cardíaca, treinos e energia para mostrar seus treinos com os dados do Apple Watch."
-        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "O FitJourney grava seus treinos no app Saúde."
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "O FitJourney lê frequência cardíaca, FC em repouso, treinos, energia ativa, passos e massa corporal para mostrar seus treinos e seu dia com os dados do Apple Watch e estimar a energia gasta."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "O FitJourney grava seus treinos e a energia ativa deles no app Saúde."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "O FitJourney usa fotos e vídeos da galeria para ilustrar exercícios."
         INFOPLIST_KEY_NSCameraUsageDescription: "O FitJourney usa a câmera para fotografar exercícios."
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: "O FitJourney acessa a rede local só se você configurar o Coach com um servidor de IA no seu computador (ex.: Ollama)."

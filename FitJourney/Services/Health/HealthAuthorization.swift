@@ -14,9 +14,9 @@ import Observation
 @Observable
 final class HealthAuthorization {
     static let readKinds: Set<HealthDataKind> = [.heartRate, .workouts, .activeEnergy, .restingHeartRate,
-                                                  .heartRateVariability, .steps, .bodyMass]
+                                                  .steps, .bodyMass]
     static let shareKinds: Set<HealthDataKind> = [.workouts, .activeEnergy]
-    static let connectionKey = "health.connectionEnabled"
+    nonisolated static let connectionKey = "health.connectionEnabled"
 
     enum Access: Sendable, Hashable {
         /// Aparelho sem HealthKit (iPad antigo etc.).
