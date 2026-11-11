@@ -80,4 +80,29 @@ enum ScheduleResolver {
             return ofTheDay.isEmpty ? .rest : .routines(ofTheDay)
         }
     }
+
+    /// Próximo dia (a partir de amanhã, até 7 dias) em que alguma ficha está marcada: modo semanal.
+    /// Várias fichas no mesmo dia → a de menor `sortIndex`. `nil` se nenhuma ficha tem dia marcado.
+    static func nextWorkout(after today: Date, routines: [RoutineInfo],
+                            calendar: Calendar = .current) -> (weekday: Weekday, routineID: UUID)? {
+        let ordered = routines.sorted { ($0.sortIndex, $0.id.uuidString) < ($1.sortIndex, $1.id.uuidString) }
+        let current = Weekday(date: today, calendar: calendar)
+        for offset in 1...7 {
+            let day = Weekday(calendarWeekday: current.calendarWeekday + offset)
+            if let routine = ordered.first(where: { $0.weekdays.contains(day) }) { return (day, routine.id) }
+        }
+        return nil
+    }
+
+    /// Aderência semanal: treinos previstos (soma dos dias marcados) e feitos (limitado ao previsto,
+    /// para o contador nunca passar de "4 de 4"). Semana de segunda a domingo (SPEC §11 Q2).
+    static func weeklyAdherence(plannedDays: Int, completedDates: [Date], now: Date,
+                                calendar: Calendar = .current) -> (done: Int, planned: Int)? {
+        guard plannedDays > 0 else { return nil }
+        var cal = calendar
+        cal.firstWeekday = 2
+        guard let week = cal.dateInterval(of: .weekOfYear, for: now) else { return nil }
+        let done = completedDates.filter { week.contains($0) }.count
+        return (min(done, plannedDays), plannedDays)
+    }
 }
