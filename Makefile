@@ -1,6 +1,6 @@
 SCHEME    = FitJourney
 DEST      = generic/platform=iOS Simulator
-TEST_DEST = platform=iOS Simulator,name=iPhone 17 Pro
+TEST_DEST ?= platform=iOS Simulator,name=iPhone 17 Pro
 
 .PHONY: project build test clean
 
