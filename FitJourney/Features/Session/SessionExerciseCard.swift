@@ -72,7 +72,7 @@ struct SessionExerciseCard: View {
             HStack(spacing: FJSpacing.m) {
                 statusSymbol
                 VStack(alignment: .leading, spacing: FJSpacing.xxs) {
-                    Text(exercise.name)
+                    Text(exercise.name.exerciseDisplayName)
                         .font(FJFont.cardTitle)
                         .foregroundStyle(FJColor.textPrimary)
                         .multilineTextAlignment(.leading)
@@ -96,7 +96,7 @@ struct SessionExerciseCard: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text("\(exercise.name), \(statusText)"))
+        .accessibilityLabel(Text("\(exercise.name.exerciseDisplayName), \(statusText)"))
         .accessibilityValue(Text(([SessionPresentation.exerciseSummary(exercise),
                                    SessionPresentation.spokenPain(score: exercise.painScore, location: exercise.painLocation)]
             .compactMap { $0 }).joined(separator: ", ")))
@@ -107,7 +107,7 @@ struct SessionExerciseCard: View {
         VStack(alignment: .leading, spacing: FJSpacing.s) {
             HStack(alignment: .top, spacing: FJSpacing.m) {
                 statusSymbol
-                Text(exercise.name)
+                Text(exercise.name.exerciseDisplayName)
                     .font(FJFont.cardTitle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
@@ -212,7 +212,7 @@ struct SessionExerciseCard: View {
                 .frame(width: FJSize.minTap, height: FJSize.minTap)
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel(Text("Ações de \(exercise.name)"))
+        .accessibilityLabel(Text("Ações de \(exercise.name.exerciseDisplayName)"))
     }
 
     private var footer: some View {

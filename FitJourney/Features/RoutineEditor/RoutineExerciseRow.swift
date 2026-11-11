@@ -58,7 +58,7 @@ struct RoutineExerciseRow: View {
                 }
                 Button(action: actions.open) {
                     VStack(alignment: .leading, spacing: FJSpacing.xs) {
-                        Text(item.displayName)
+                        Text(item.displayName.exerciseDisplayName)
                             .font(FJFont.cardTitle)
                             .foregroundStyle(isRemoved ? FJColor.textSecondary : FJColor.textPrimary)
                             .multilineTextAlignment(.leading)
@@ -105,7 +105,7 @@ struct RoutineExerciseRow: View {
                             .frame(width: FJSize.minTap, height: FJSize.minTap)
                             .contentShape(Rectangle())
                     }
-                    .accessibilityLabel(Text("Ações de \(item.displayName)"))
+                    .accessibilityLabel(Text("Ações de \(item.displayName.exerciseDisplayName)"))
                 }
             }
 
@@ -133,8 +133,8 @@ struct RoutineExerciseRow: View {
     }
 
     private var accessibilityName: String {
-        guard position.isGrouped else { return item.displayName }
-        return "\(GroupLabel.name(forCount: groupCount)), \(item.displayName)"
+        guard position.isGrouped else { return item.displayName.exerciseDisplayName }
+        return "\(GroupLabel.name(forCount: groupCount)), \(item.displayName.exerciseDisplayName)"
     }
 }
 

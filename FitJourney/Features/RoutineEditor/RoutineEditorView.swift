@@ -69,7 +69,7 @@ struct RoutineEditorView: View {
         .confirmationDialog("Remover da ficha?", isPresented: Binding(
             get: { deleting != nil }, set: { if !$0 { deleting = nil } }
         ), titleVisibility: .visible, presenting: deleting) { item in
-            Button("Remover \(item.displayName)", role: .destructive) {
+            Button("Remover \(item.displayName.exerciseDisplayName)", role: .destructive) {
                 run { try store.deleteExercise(item) }
             }
         } message: { _ in
@@ -89,9 +89,14 @@ struct RoutineEditorView: View {
 
     private var headerSection: some View {
         Section {
-            TextField("Nome da ficha", text: $routine.name)
+            // Vertical: o nome longo quebra em linhas (em texto grande não fica cortado).
+            TextField("Nome da ficha", text: $routine.name, axis: .vertical)
                 .font(FJFont.cardTitle)
+                .lineLimit(1...4)
                 .submitLabel(.done)
+                .onChange(of: routine.name) { _, value in
+                    if value.contains("\n") { routine.name = value.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespaces) }
+                }
                 .accessibilityLabel(Text("Nome da ficha"))
 
             HStack(spacing: FJSpacing.m) {

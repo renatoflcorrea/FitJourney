@@ -13,7 +13,7 @@ struct ExerciseRow: View {
                 .frame(width: 56, height: 56)
                 .clipShape(FJRadius.shape(FJRadius.chip))
             VStack(alignment: .leading, spacing: FJSpacing.xxs) {
-                Text(exercise.name)
+                Text(exercise.name.exerciseDisplayName)
                     .font(FJFont.cardTitle)
                     .foregroundStyle(FJColor.textPrimary)
                 Text(exercise.summaryLine)
@@ -41,7 +41,7 @@ struct ExerciseRow: View {
     }
 
     private func accessibilityText(mediaCount count: Int) -> String {
-        let base = "\(exercise.name), \(exercise.summaryLine)"
+        let base = "\(exercise.name.exerciseDisplayName), \(exercise.summaryLine)"
         return count > 0 ? String(localized: "\(base), \(String(localized: "\(count) mídias"))") : base
     }
 }
@@ -117,7 +117,7 @@ struct ExerciseBrowser: View {
         }
         .confirmationDialog("Excluir exercício?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
                             titleVisibility: .visible, presenting: pendingDelete) { exercise in
-            Button("Excluir \(exercise.name)", role: .destructive) { delete(exercise) }
+            Button("Excluir \(exercise.name.exerciseDisplayName)", role: .destructive) { delete(exercise) }
         } message: { _ in
             Text("A mídia salva deste exercício também será apagada. O histórico de treinos continua.")
         }

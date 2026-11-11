@@ -24,7 +24,16 @@ Texto grande: `content_size accessibility-extra-extra-large` (na escala do simct
 3. `FJRestTimerView.swift` (~linha 62): linha "Série X de Y · carga · alvo" do descanso cortava em texto grande; agora até 3 linhas.
 4. Auditoria estática (script em varredura de `Features/`, `DesignSystem/`, `FitJourneyWatch/`, `FitJourneyWidgets/`): botões só com ícone sem `accessibilityLabel` — nenhum (os candidatos têm rótulo no `Button` pai); `Chart` sem descritor — nenhum; `Image` decorativa sem `accessibilityHidden` — só falsos positivos dentro de `Label`/`Button` com rótulo; `Reduzir Transparência` tratado em `FJGlass`.
 
-## Pendências (não corrigidas)
+## P6.7 — pendências resolvidas
+- Hoje: subtítulo da data usa formato abreviado em tamanhos de acessibilidade (`TodayView.swift`). Captura `en-ax3-hoje.png`.
+- Ajustes: kg/lb vira `Picker` em menu em AX (`SettingsRootView.swift`). Captura `en-ax3-ajustes.png`.
+- Editor de ficha: nome com `axis: .vertical`, 1...4 linhas, sem quebras de linha gravadas (`RoutineEditorView.swift`). Captura `en-ax3-editor-ficha.png`.
+- Sessão: doca compacta em AX (`SessionCompactRest` em `SessionDock.swift`: tempo limitado, Pular visível, ±15 s em menu; sustentação com tempo menor). Captura `en-ax3-sessao-rest.png`.
+- Relógio, descanso em AX: coluna única rolável com Pular logo após o tempo e + reps/+15 s abaixo, sem botão fixo por cima (`SeriesPage.swift`, `RestView`). Sem captura nova (só build e testes).
+- Nomes de exercícios embutidos em en quando o app está em en (`ExerciseCatalogIndex.displayName`, `String.exerciseDisplayName`), sem alterar o dado gravado; só quando o nome gravado ainda é o do catálogo. Aplicado em biblioteca, detalhe, ficha, sessão, histórico. Dados de exemplo (`SampleData`) não foram alterados.
+- Ficam: textos de `SessionPresentation` (fala/VoiceOver, "Próximo: ...") e o Coach ainda mostram o nome gravado (pt); aviso `WatchRootView.swift:22` inalterado; relógio em en mostra o nome gravado.
+
+## Pendências (não corrigidas) — lista original; itens acima já resolvidos
 - `Features/Today/TodayView.swift:57` — `navigationSubtitle` da data trunca em texto grande ("Wednesday, November…"); é do sistema (sem `lineLimit`). Opção: formato abreviado em AX.
 - `Features/Settings/SettingsRootView.swift:133` — `Picker` segmentado kg/lb não cresce com Dynamic Type (alvo visual ~30 pt de altura em AX; o toque segue a altura do controle do sistema).
 - `Features/RoutineEditor/RoutineEditorView.swift` (campo do nome da ficha) — `TextField` de uma linha corta nomes longos em AX; é campo editável (rolagem horizontal), baixo impacto.
