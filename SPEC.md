@@ -91,6 +91,7 @@ Cada `RoutineExercise` tem uma lista de `SetPrescription` (pode ser "N séries i
 | Observações | livre (ex.: "pegada fechada", "banco 30°") |
 
 - **Carga inicial vs. carga atual** (R-T2): `initialLoad` é a carga prescrita ao criar/editar a ficha (imutável pela execução). `currentLoad` (por série prescrita) é atualizada ao concluir uma sessão em que o usuário usou outra carga — confirmação no fim da sessão: "Atualizar carga atual de Supino para 32 kg?" (padrão: sim, se todas as séries válidas foram concluídas). A próxima sessão pré-preenche com `currentLoad` e mostra "última vez: 3×10 com 32 kg".
+  - **Memória de carga (11/11)**: exercício de carga nunca começa com "0 kg" inventado. Sem carga na ficha (nil ou peso 0), a série planejada usa a **última carga válida usada naquele exercício** (qualquer ficha); sem histórico, mostra "Definir carga". A **primeira carga definida** de uma série sem carga na ficha vira `currentLoad` automaticamente ao finalizar ("salva automaticamente" no resumo), sem confirmação. Alterar a carga de uma série propaga para as séries seguintes pendentes do mesmo exercício que mostravam a mesma carga planejada (pirâmides intactas). Peso corporal com delta 0 é carga válida.
 - Progressão automática (ex.: +2,5 kg ao atingir o topo da faixa) — **opcional, desligada por padrão**; quando ligada, só sugere, nunca aplica sozinha.
 
 ---
