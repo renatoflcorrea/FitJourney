@@ -1,5 +1,6 @@
 name: FitJourney
 options:
+  developmentLanguage: pt-BR
   bundleIdPrefix: br.com.renatocorrea
   deploymentTarget:
     iOS: "26.0"
@@ -24,6 +25,8 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        # HKWorkoutSession no iPhone (iOS 26+) segue gravando com o app em segundo plano.
+        UIBackgroundModes: [workout-processing]
         # Coach com servidor compatível na rede local (Ollama): HTTP só para endereços locais.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -40,8 +43,8 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: FitJourney
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_NSHealthShareUsageDescription: "O FitJourney lê frequência cardíaca, treinos e energia para mostrar seus treinos com os dados do Apple Watch."
-        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "O FitJourney grava seus treinos no app Saúde."
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "O FitJourney lê frequência cardíaca, FC em repouso, treinos, energia ativa, passos e massa corporal para mostrar seus treinos e seu dia com os dados do Apple Watch e estimar a energia gasta."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "O FitJourney grava seus treinos e a energia ativa deles no app Saúde."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "O FitJourney usa fotos e vídeos da galeria para ilustrar exercícios."
         INFOPLIST_KEY_NSCameraUsageDescription: "O FitJourney usa a câmera para fotografar exercícios."
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: "O FitJourney acessa a rede local só se você configurar o Coach com um servidor de IA no seu computador (ex.: Ollama)."
@@ -101,6 +104,8 @@ schemes:
         FitJourneyWatchTests: [test]
     test:
       targets: [FitJourneyWatchTests]
+      language: pt-BR
+      region: BR
   FitJourney:
     build:
       targets:
@@ -108,3 +113,6 @@ schemes:
         FitJourneyTests: [test]
     test:
       targets: [FitJourneyTests]
+      # Testes rodam na língua de desenvolvimento (pt-BR), independente do idioma do simulador.
+      language: pt-BR
+      region: BR

@@ -1,8 +1,8 @@
 # FitJourney — direção de design
 
 Data: 11 de novembro de 2026
-Status: **proposta para aprovação, revisão 2** (pacotes P0.1 + P0.4 + W0, `ios-design`) — incorpora as decisões do usuário de 11/11 (SPEC §11 D1–D5): laranja como cor do treino, reps realizadas opcionais, passo de carga 0,5 kg, propostas P1/P3/P4/P5 aprovadas e "manter tela ligada" recusada, app do Apple Watch (§9).
-Protótipo: [design/prototype.html](design/prototype.html) (abrir no Safari/Chrome; claro e escuro lado a lado).
+Status: **revisão 3** (pacote P6.1, `ios-design`): paleta oficial de fichas (§2.1.1), ícone do app (§2.6), aba Saúde detalhada (§4.11), Ajustes (§4.12), Coach (§4.13) e Atividade ao Vivo / Dynamic Island (§4.14). Revisão 2 (pacotes P0.1 + P0.4 + W0) — incorpora as decisões do usuário de 11/11 (SPEC §11 D1–D5): laranja como cor do treino, reps realizadas opcionais, passo de carga 0,5 kg, propostas P1/P3/P4/P5 aprovadas e "manter tela ligada" recusada, app do Apple Watch (§9).
+Protótipo: [design/prototype.html](design/prototype.html) (abrir no Safari/Chrome; claro e escuro lado a lado; seções 10–23 são da revisão 3).
 Código: `FitJourney/DesignSystem/` (tokens e componentes; `DesignSystemGallery` mostra todos).
 Referências: [SPEC.md](SPEC.md) · [docs/PLANO.md](docs/PLANO.md) · Manylens e Health Product (`DESIGN_DIRECTION.md`: vidro só no que flutua, a forma diz o que o toque faz, nada corta, cor com significado, nunca falha em silêncio).
 
@@ -43,7 +43,7 @@ Cada área tem dois tons: `color` (texto, símbolo, linha de gráfico; ≥ 4,5:1
 | Área | `color` claro / escuro | `fill` claro / escuro | Onde |
 |---|---|---|---|
 | Treino (`training`) | `#C2410C` / `#FF9A3D` | `#D4450C` / `#D4450C` | Tint global do app, botão "Iniciar treino", check de série, timer |
-| Dieta (`nutrition`) | `#18803A` / `#30D158` | `#18803A` / `#1F8A40` | Aba Dieta, check de refeição, metas |
+| Dieta (`nutrition`) | `#18803A` / `#30D158` | `#18803A` / `#1C8540` | Aba Dieta, check de refeição, metas |
 | Saúde (`health`) | `#D70F45` / `#FF5C7A` | `#D70F45` / `#D92350` | Coração, linha de FC, aba Saúde |
 | Coach (`coach`, fase 2) | `#0A6FB8` / `#5AC8FA` | `#0A6FB8` / `#0F78C4` | Aba Coach, cartões de proposta |
 
@@ -59,7 +59,7 @@ Zonas de FC — só como ponto, faixa ou barra, sempre com o rótulo "Z*n*":
 
 A escala vai de cinza a magenta **sem laranja nem vermelho**: o laranja é do treino (D1) e o vermelho é só destrutivo. Todas as cinco têm ≥ 3:1 sobre `surface` nos dois temas (claro: 3,6 · 3,8 · 3,5 · 3,2 · 5,9).
 
-Contraste dos tons de texto e preenchimento (calculado): `training` sobre branco 5,2:1 e sobre `#1C1C1E` 8,1:1; branco sobre `trainingFill` 4,5:1; `attention` sobre branco 6,2:1.
+Contraste dos tons de texto e preenchimento (calculado): `training` sobre branco 5,2:1 e sobre `#1C1C1E` 8,1:1; branco sobre `trainingFill` 4,5:1; branco sobre `nutritionFill` 5,0:1 (claro) e 4,7:1 (escuro; era `#1F8A40`, 4,4:1, corrigido na revisão 3); `attention` sobre branco 6,2:1.
 
 Tipo de treino (`FJWorkoutKind`): **Força** = laranja do treino, símbolo `dumbbell.fill`; **Aeróbico** = turquesa `#0B7F83` / `#5AD1D6`, símbolo `figure.run`. Sempre com rótulo.
 
@@ -74,6 +74,42 @@ Estados (`FJTone`): a cor vai no símbolo e no fundo a 14%; o texto continua pri
 | `neutral` | `secondaryLabel` | Sem juízo | Pendente, pulada, fora da dieta, aquecimento |
 
 "Fora da dieta" e "pulada" são **neutros** de propósito: o app registra, não julga.
+
+### 2.1.1 Cores de ficha (`FJRoutineColor`, `FJRoutineBadge`)
+
+Paleta de **identidade**: serve para distinguir a ficha A da B, e só isso. É separada das cores de área e de estado e nunca carrega significado (verde não é "dieta", amarelo não é "atenção" quando está num selo de ficha). Os nomes são os valores gravados em `Routine.colorName` e não mudam.
+
+| Nome (`colorName`) | Claro: `fill` / `onFill` | Escuro: `fill` / `onFill` | `onFill`:`fill` claro · escuro |
+|---|---|---|---|
+| `orange` Laranja (padrão) | `#D4450C` / branco | `#D4450C` / branco | 4,5 · 4,5 |
+| `green` Verde | `#18803A` / branco | `#1C8540` / branco | 5,0 · 4,7 |
+| `pink` Rosa | `#C2256E` / branco | `#C92C75` / branco | 5,6 · 5,1 |
+| `blue` Azul | `#0A66C2` / branco | `#1F71CC` / branco | 5,7 · 4,9 |
+| `purple` Roxo | `#7C3AED` / branco | `#8349EE` / branco | 5,7 · 5,1 |
+| `teal` Turquesa | `#0B7F83` / branco | `#5AD1D6` / tinta `#1A1206` | 4,8 · 10,2 |
+| `yellow` Amarelo | `#AD8200` / tinta `#1A1206` | `#FFD23F` / tinta | 5,3 · 12,8 |
+| `gray` Cinza | `#5F6B7A` / branco | `#AEB7C2` / tinta | 5,4 · 9,1 |
+
+Regras:
+
+- `onFill` sobre `fill` ≥ 4,5:1 e `fill` ≥ 3:1 sobre `surface` **e** sobre `background`, nos dois temas. `design/tools/routine_palette_check.py` confere os 32 pares; rode ao mudar qualquer valor. Por isso o amarelo do tema claro é um ouro escuro (`#AD8200`): amarelo vivo não chega a 3:1 sobre branco.
+- A cor nunca vai sozinha: selo sempre com letra/símbolo; ponto de calendário sempre ao lado do nome ou com a lista do dia abaixo.
+- `fill` é para selo, ponto de calendário e marca de legenda. **Não** é cor de texto, de botão nem de gráfico de FC; o trilho do bi-set e o tint das telas continuam no laranja do treino.
+- Nome vazio ou desconhecido = `orange`. Ficha nova recebe `FJRoutineColor.suggested(forIndex:)` (A laranja, B azul, C verde, D roxo, E rosa, F turquesa, G amarelo, H cinza, e repete).
+- Relógio (sempre escuro) usa os tons `dark`.
+
+**Selo** (`FJRoutineBadge`): quadrado de cantos contínuos (raio = 27% do lado) com a letra em SF Rounded bold.
+
+| Tamanho | Lado | Onde |
+|---|---|---|
+| `.sm` | 32 pt | Linha do histórico, treinos do dia na Saúde, cartão de proposta do Coach |
+| `.md` (padrão) | 44 pt | Cartão de ficha, Hoje, editor de ficha |
+| `.lg` | 56 pt | Cabeçalho da ficha e do resumo do treino |
+
+- Conteúdo: `Routine.symbol` — até 2 caracteres em maiúsculas, ou um SF Symbol quando o texto é um nome de símbolo válido; vazio usa a inicial do nome; sem nada, `dumbbell.fill`.
+- Cresce com o Dynamic Type até 1,4× (não toma a linha em AX5).
+- VoiceOver: decorativo por padrão (o nome da ficha está ao lado). Quando aparece sozinho (dia do calendário, legenda), recebe `accessibilityLabel` ("Ficha A, Peito e tríceps").
+- **Seletor** (`FJRoutineColorPicker`): oito amostras circulares de 32 pt em alvos de 44 pt que quebram linha (`FJFlowLayout`, sem rolagem horizontal); selecionada = check + anel; VoiceOver lê o nome da cor e "selecionado".
 
 ### 2.2 Tipografia (`FJFont`)
 
@@ -131,6 +167,22 @@ Desfazer um check não vibra (`fjHaptic(_:trigger:when:)`). Hápticos respeitam 
 
 Com Reduzir Movimento: sem zoom/matched geometry na transição sessão ↔ acessório (vira esmaecimento), sem contagem animada de dígitos nem troca animada de símbolo (`.fjNumericTransition()` e `.fjSymbolTransition()` viram identidade — nenhuma tela chama `contentTransition` direto), sem confete no recorde (fica o troféu estático). Nenhuma animação em laço em lugar nenhum.
 
+### 2.6 Ícone do app
+
+Motivo **"degraus"**: um caminho branco que sobe em três degraus até um ponto. Lê-se como jornada (um caminho até a meta), como progressão de carga (um degrau por vez) e, de relance, como alguém subindo. Sem halter, sem coração, sem letra.
+
+| Variante | Arquivo | Aparência |
+|---|---|---|
+| Claro (padrão) | `FitJourney/Assets.xcassets/AppIcon.appiconset/AppIcon.png` | Motivo branco sobre gradiente laranja `#FF8B2B` → `#DB430A`, brilho suave no canto superior direito |
+| Escuro | `…/AppIcon-Dark.png` | Motivo em gradiente laranja `#FFA347` → `#EE5A12` sobre quase-preto `#26262A` → `#0D0D0F` |
+| Tinted | `…/AppIcon-Tinted.png` | Motivo em cinza (branco → `#B4B4B4`) sobre preto; o sistema aplica a cor |
+| watchOS | `FitJourneyWatch/Assets.xcassets/AppIcon.appiconset/AppIcon.png` | Como o claro, com o motivo a 80% para caber na máscara circular |
+
+- Todos 1024 × 1024, opacos, sem cantos arredondados (o sistema aplica a máscara). Os tamanhos menores são gerados pelo Xcode.
+- Fonte única: `design/icon/make_icon.swift` (CoreGraphics). `swift design/icon/make_icon.swift` regrava os quatro PNGs e as prévias com máscara em `design/icon/preview-*.png`. Não edite os PNGs à mão.
+- Geometria (em 1024): traço de 92 com pontas e cantos redondos pelos pontos (238,770) (420,770) (420,600) (602,600) (602,430) (786,430); ponto de raio 66 em (706,284). Margem mínima de 190 até a borda.
+- Dentro do app o motivo aparece só em **Sobre** (Ajustes) e como glifo da Atividade ao Vivo (§4.14), numa cor só. Não é usado como ilustração de estado vazio.
+
 ---
 
 ## 3. Arquitetura de informação e navegação
@@ -145,7 +197,11 @@ TabView (vidro do sistema, tabBarMinimizeBehavior(.onScrollDown))
 ├─ Dieta ─────── Dia (linha do tempo) · "+" Registrar comida · Plano → Editor de plano
 │                Histórico · Favoritos
 ├─ Saúde ─────── Dia | Tendências → Treino (detalhe com gráfico de FC)
-└─ Coach (fase 2; quando entrar, Ajustes continua no avatar de Hoje)
+└─ Coach (fase 2) ─ Boas-vindas/consentimento → Conversas → Conversa (cartão de proposta → editor em sheet)
+                    engrenagem → Coach e IA
+
+Ajustes (sheet a partir do avatar de Hoje, também com a aba Coach):
+   Perfil · Unidades · Treino · Dieta · Saúde · Notificações · Coach e IA · Dados · Sobre
 
 Sessão de treino: fullScreenCover sobre o TabView
    ⇅ minimiza para tabViewBottomAccessory (FJSessionAccessory), visível em todas as abas
@@ -342,7 +398,7 @@ Push a partir da ficha. `List` nativa em modo de edição permanente (alças de 
 | Pausada (pelo relógio ou pelo menu "…") | Tempo congelado com "Pausado" na barra superior; a doca mostra `FJPrimaryButton("Retomar treino")`; o descanso em curso congela e some da doca. O acessório mostra o símbolo de pausa e "pausado". |
 | Sessão antiga em aberto (> 4 h sem série) | Ao abrir o app: sheet "Você tem um treino em aberto desde ontem, 19:40" — Continuar · Finalizar na hora da última série · Descartar. |
 | Minimizada | `FJSessionAccessory` acima da tab bar: símbolo, nome da ficha, "Supino inclinado · série 2 de 4", tempo; durante o descanso mostra a contagem regressiva e "descanso". Toque reabre. |
-| Tela bloqueada / segundo plano | Notificação local ao fim do descanso (permissão pedida no contexto, no primeiro descanso; negada = só háptico em primeiro plano). No ciclo 6 a Live Activity assume. |
+| Tela bloqueada / segundo plano | Notificação local ao fim do descanso (permissão pedida no contexto, no primeiro descanso; negada = só háptico em primeiro plano). No ciclo 6 a Atividade ao Vivo (§4.14) mostra o descanso na Tela Bloqueada e na Dynamic Island, com +15 s e Pular. |
 | Controlada pelo Apple Watch | Nada muda na tela: o estado chega por snapshot e a lista/doca acompanham (série concluída no relógio aparece marcada aqui). Selo `applewatch` ao lado da FC enquanto o relógio está conectado. |
 
 
@@ -442,53 +498,455 @@ Estados: plano sem refeições (`FJEmptyState` "Adicione a primeira refeição")
 
 ### 4.11 Saúde
 
-Título grande "Saúde". Seletor segmentado **Dia | Tendências**; navegação de dia como na Dieta.
+Título grande "Saúde", tint da área saúde. Seletor segmentado **Dia | Tendências**. Navegação de dia como na Dieta (‹ **Hoje, 11 nov** ›; toque abre o calendário; não avança além de hoje) e faixa da semana com um ponto nos dias com treino.
 
-**Dia**:
+Três regras valem para a aba inteira:
 
-1. **Frequência cardíaca do dia** (`FJCard`): gráfico 24 h (Swift Charts) — barras de mín–máx por intervalo de 15 min na cor da saúde; **treinos sobrepostos** como faixas verticais atrás do gráfico (laranja = Força, turquesa = Aeróbico, 18% de opacidade) com o símbolo do tipo no topo da faixa. Cabeçalho: "58–164 bpm" e FC em repouso. Arrastar mostra hora + bpm no cabeçalho.
-2. **Treinos do dia**: linha por treino — símbolo, nome ("A — Peito e tríceps" ou "Corrida ao ar livre"), `FJTag` **Força**/**Aeróbico**, origem ("FitJourney" · "Apple Watch"), duração, FC média, kcal. Toque abre o detalhe.
-3. **Força x aeróbico**: barra empilhada de minutos do dia + as duas `FJMetricCell`; abaixo, comparação com a semana (7 barras empilhadas, hoje destacado).
-4. **Energia ativa** e **Passos** (`FJMetricGrid`).
+- **Sem dado não é zero.** Um número só aparece quando existe pelo menos uma amostra no período. Soma de nenhuma amostra é "—" com o motivo em texto, nunca "0". O único zero legítimo é o que o próprio FitJourney sabe ("Nenhum treino neste dia").
+- **Nunca soma duas vezes.** Minutos e energia de treino do dia usam a **união dos intervalos** de tempo, não a soma dos treinos. Um treino do Watch que se sobrepõe a uma sessão do app não infla o total, esteja vinculado ou não.
+- **Comparação sem juízo.** "Hoje x semana" é sempre o valor de hoje contra a **média dos 7 dias anteriores** (hoje fora da média), em texto neutro com seta e número: "↑ 74 kcal acima da sua média", "↓ 2 bpm abaixo da sua média", "na média" (diferença menor que 2%). Sem verde/vermelho e sem "bom/ruim": o app registra, não interpreta.
 
-**Tendências**: minutos por tipo por semana (barras empilhadas, 8 semanas), FC média por treino (pontos), FC em repouso (linha, 30/90 dias), cada um em seu `FJCard` com o valor atual no cabeçalho.
+#### Dia
 
-**Detalhe do treino (sessão) com gráfico de FC por exercício**:
+Rolagem de cartões sólidos, nesta ordem:
 
-1. Cabeçalho: nome, data, hora, `FJTag` do tipo, origem.
+1. **Frequência cardíaca** (`FJCard`).
+   - Cabeçalho: faixa do dia em `numberHero` ("58–164 bpm") e, à direita, "Repouso 56 bpm". Em hoje, a sobrelinha diz "FREQUÊNCIA CARDÍACA · ATÉ AGORA".
+   - Gráfico de 24 h (Swift Charts, 180 pt): uma barra de mín–máx por intervalo de 15 min, cantos redondos, na cor da saúde. Eixo X em 0h · 6h · 12h · 18h; eixo Y à direita com 3 marcas. Intervalo sem leitura fica **vazio** (relógio fora do pulso); nada é interpolado. Em hoje o gráfico termina no horário atual e o resto fica em branco.
+   - **Treinos sobrepostos**: faixa vertical atrás das barras, do início ao fim de cada treino — laranja (Força) ou turquesa (Aeróbico) a 18% — com o símbolo do tipo (`dumbbell.fill` / `figure.run`) num selo de 20 pt no topo da faixa. As barras dentro da faixa continuam na cor da saúde. Faixa mais estreita que 20 pt mantém a faixa e centraliza o selo sobre ela.
+   - **FC em repouso**: linha horizontal tracejada fina em `textSecondary`, rótulo "repouso" no eixo.
+   - **Seleção**: arrastar mostra a régua vertical e troca o cabeçalho (sólido, sem balão) por "14:15 · 72–88 bpm"; dentro de uma faixa de treino acrescenta o nome ("A — Peito e tríceps"). Tocar no selo de um treino abre o detalhe dele.
+2. **Treinos do dia** (lista em `FJCard`): uma linha por treino — `FJRoutineBadge(.sm)` para sessões do app ou o símbolo do tipo em quadrado `fill` para treinos de fora; nome ("A — Peito e tríceps", "Corrida ao ar livre"); `FJTag` **Força**/**Aeróbico**; "18:05 · 52 min · FC média 128 · 318 kcal"; origem em `caption` ("FitJourney", "Apple Watch", "FitJourney + Apple Watch" com o símbolo `link`). Toque abre o detalhe. Treino vinculado é **uma** linha. Sugestão de vínculo pendente: ver "Vínculo" abaixo.
+3. **Força x aeróbico** (`FJCard`).
+   - Hoje: barra empilhada horizontal de minutos (laranja + turquesa, 12 pt de altura) e duas `FJMetricCell` com símbolo e rótulo: "Força 52 min" · "Aeróbico 31 min".
+   - Semana: sete barras empilhadas verticais (a semana começa no dia definido em Ajustes), **hoje com opacidade total e rótulo em negrito**, os outros dias a 45%; linha tracejada na média diária. Legenda em texto: "Hoje 83 min · média da semana 46 min por dia". Tocar numa barra navega para aquele dia.
+   - Dia sem treino = sem barra (zero real). Dia sem acesso aos dados = traço "—" no lugar da barra.
+4. **Energia ativa** e **FC em repouso**: dois cartões lado a lado (`FJAdaptiveStack`; empilham em tamanhos de acessibilidade), mesma anatomia — rótulo com símbolo, valor em `numberLarge` + unidade, minigráfico de 7 dias (barras para energia, linha com pontos para FC em repouso; hoje destacado) e a linha de comparação com a semana. Energia traz ainda "318 kcal em treinos".
+5. **Mais** (`FJMetricGrid`): Passos · VFC · Peso (última leitura, com a data se não for de hoje). Cada célula mostra "—" quando não há amostra.
+
+#### Tendências
+
+Fileira de `FJFilterChip` de período (4 sem · 8 sem · 3 m). Três cartões, cada um com o valor atual no cabeçalho e a comparação com o período anterior em texto neutro: **Minutos por tipo** por semana (barras empilhadas Força/Aeróbico), **FC média por treino** (pontos na cor do tipo, com símbolo na legenda), **FC em repouso** (linha, média móvel de 7 dias). Menos de duas semanas de dados: o cartão mostra o que existe e "Continue registrando para ver a tendência".
+
+#### Detalhe do treino (sessão) com faixas por exercício
+
+1. Cabeçalho: `FJRoutineBadge(.lg)`, nome, data e hora, `FJTag` do tipo, origem. Vinculado: linha "Vinculado ao treino do Apple Watch" com `link` e menu "Desvincular".
 2. `FJMetricGrid`: Duração · FC média · FC máx · Energia · Volume · RPE.
-3. **Gráfico de FC × tempo** (`FJCard`, 240 pt de altura):
-   - Linha de FC na cor da saúde, 2 pt; lacunas de dado ficam como lacunas (sem interpolar).
-   - **Faixas por exercício**: retângulos verticais do início (1ª série) ao fim (última série concluída), alternando dois tons neutros (`fill` e transparente), cada um com o **número do exercício** em um selo no topo; a legenda numerada fica na lista abaixo. Faixas não usam cor de zona nem de área.
+3. **Gráfico de FC × tempo** (`FJCard`, 240 pt):
+   - Linha de FC na cor da saúde, 2 pt; lacunas de dado ficam como lacunas.
+   - **Faixas por exercício**: retângulos verticais do início (1ª série) ao fim (última série concluída), alternando dois tons neutros (`fill` e transparente), cada um com o **número do exercício** num selo no topo; a legenda numerada é a lista abaixo. Faixas não usam cor de zona, de área nem de ficha.
+   - Faixa mais estreita que 16 pt: o número sai do gráfico e fica só na lista; a faixa continua. Bi-set/circuito: **uma** faixa para o grupo, com "2+3". Exercício pulado: sem faixa; aparece na lista como "pulado". Exercício retomado depois de outro: duas faixas com o mesmo número.
+   - **Pausas**: intervalo pausado com hachura diagonal em `fill` e o símbolo `pause.fill` no topo; a linha de FC continua por cima.
    - **Marcadores de série**: pontos de 6 pt sobre a linha no `completedAt` de cada série.
    - **Zonas**: linhas horizontais finas nos limites, com "Z2…Z5" no eixo direito na cor da zona + rótulo.
-   - **Seleção**: tocar/arrastar mostra régua vertical e, no cabeçalho do cartão (sólido), "2 · Supino inclinado — série 3 · média 131 · máx 142 bpm". Sem seleção, o cabeçalho mostra média e máx do treino.
+   - **Seleção**: tocar/arrastar mostra a régua e, no cabeçalho do cartão, "2 · Supino inclinado — série 3 · média 131 · máx 142 bpm". Sem seleção: média e máx do treino. Tocar numa linha da lista de exercícios seleciona a faixa.
+   - Treino com mais de 90 min: o gráfico rola na horizontal mostrando 60 min por vez (`chartScrollableAxes`); abre no início.
 4. **Tempo em cada zona**: 5 barras horizontais com `FJHeartRateZoneBadge`, minutos e %.
-5. **Exercícios**: lista numerada (mesmos números das faixas) com FC média/máx por exercício e séries; tocar numa linha seleciona a faixa no gráfico.
+5. **Exercícios**: lista numerada (mesmos números das faixas) com FC média/máx por exercício e as séries.
 
-| Estado | O que muda |
+#### Vínculo com treino do Apple Watch
+
+Quando existe no Saúde um treino de outra origem (app Exercício do Watch) no mesmo horário de uma sessão do FitJourney, os dois são **o mesmo treino**: a sessão fica com as séries do app e com a FC e a energia do relógio. O núcleo classifica o candidato em dois níveis (os limiares são dele; referência: sobreposição ≥ 80% da duração menor e inícios a menos de 10 min = alta).
+
+| Nível | O que o app faz | Onde aparece |
+|---|---|---|
+| **Alta** | Vincula sozinho, e avisa. Reversível. | `FJBanner` neutro (símbolo `link`) no topo do detalhe, até ser dispensado: "Vinculado ao treino do Apple Watch (18:04–18:57)." · ação **Desfazer**. Na lista do dia: uma linha, origem "FitJourney + Apple Watch". |
+| **Incerta** | Não vincula. Pede confirmação. | `FJBanner` de atenção no topo do detalhe **e** na lista do dia (os dois treinos unidos por um colchete tracejado com a etiqueta "Mesmo treino?"). |
+
+Cartão da sugestão incerta (dentro do `FJBanner` de atenção, conteúdo sólido):
+
+```
+⚠ Parece o mesmo treino
+  FitJourney     18:05–18:57 · 52 min
+  Apple Watch    18:20–19:02 · 42 min · Força tradicional
+  37 min em comum
+  [ Vincular ]   [ Não é o mesmo ]
+```
+
+- **Vincular** → háptico de sucesso, as duas linhas viram uma, o detalhe ganha o gráfico de FC. **Não é o mesmo** → os dois ficam separados e a pergunta não volta (decisão guardada no par).
+- Mais de um candidato: "Vincular" abre uma sheet `.medium` com a lista (horário, duração, tipo, minutos em comum; seleção única) e "Nenhum destes".
+- Manual, a qualquer momento: menu "…" do detalhe da sessão → "Vincular a um treino do Saúde…"; no detalhe de um treino externo → "Vincular a um treino do FitJourney…". Sessão vinculada: "Desvincular".
+- A sugestão nunca aparece como alerta nem notificação: fica nos dois lugares fixos (e na linha de estado do encerramento, §4.6).
+- Enquanto a sugestão está pendente, os totais do dia já contam o intervalo uma vez só (união).
+
+#### Estados
+
+O HealthKit não informa se a **leitura** foi negada: acesso negado e ausência de dados chegam iguais (nenhuma amostra). Só a permissão de **gravar** é verificável. Por isso os estados de leitura falam do que se vê ("sem dados") e oferecem o caminho para conferir o acesso, em vez de afirmar "permissão negada".
+
+| Estado | O que aparece |
 |---|---|
-| Saúde nunca conectado | A aba mostra `FJEmptyState` "Conecte ao app Saúde" com 3 linhas do que será lido e `FJPrimaryButton("Conectar ao Saúde", area: .health)`; abaixo, os treinos do FitJourney do dia (dados próprios) continuam visíveis sem FC. |
-| Permissão negada/parcial | `FJBanner` de atenção "Sem acesso a frequência cardíaca" + "Abrir Ajustes"; cada cartão sem dado mostra "Indisponível", nunca zero nem gráfico vazio com eixo. |
-| Carregando | `FJLoadingState` dentro de cada cartão ("Lendo dados do Saúde…"); os cartões com dados locais aparecem de imediato. |
-| Dia sem treino | "Nenhum treino neste dia"; gráfico de FC do dia continua. |
-| Treino sem FC (sem Watch) | Detalhe mostra `FJBanner` neutro no lugar do gráfico e esconde "tempo em zona". |
-| Treino externo (Watch) sem sessão do app | Gráfico sem faixas por exercício; `FJBanner` "Vincular a um treino do FitJourney" quando há candidato. |
-| Erro de leitura | `FJBanner` destrutivo no cartão + "Tentar de novo". |
-| Simulador | Tratado como indisponível. |
+| Saúde nunca conectado | `FJEmptyState` "Conecte ao app Saúde" com 3 linhas do que será lido e `FJPrimaryButton("Conectar ao Saúde", area: .health)`. Abaixo, os treinos do FitJourney do dia continuam visíveis (dados próprios), sem FC. Nenhum eixo de gráfico vazio. |
+| Conectado, **sem nenhuma leitura de FC** nos últimos 30 dias, sem Apple Watch pareado | Cartão de FC vira uma linha: símbolo `applewatch.slash`, "Sem Apple Watch", "A frequência cardíaca vem do Apple Watch ou de um sensor pareado." Sem botão. Treinos, força x aeróbico e o que mais houver continuam. |
+| Conectado, sem nenhuma leitura de FC nos últimos 30 dias, **com** Apple Watch pareado | `FJBanner` de atenção: "Sem dados de frequência cardíaca" · "Confira se o FitJourney pode ler seus dados em Ajustes › Saúde › Acesso a Dados." · **Abrir Ajustes**. |
+| **Sem leituras neste dia** (há em outros dias) | Cartão de FC compacto: "Sem leituras neste dia" em secundário, sem eixos. FC em repouso "—". |
+| Leituras parciais no dia | Gráfico com lacunas; legenda "leituras em 9 h do dia". |
+| Hoje, dia em curso | Sobrelinha "ATÉ AGORA"; comparações usam o valor parcial e dizem "até agora". |
+| Dia sem treino | "Nenhum treino neste dia" na lista; força x aeróbico mostra só a semana. |
+| Energia/passos/VFC sem amostra | "—" na célula; a linha de comparação some. Nunca "0 kcal". |
+| Média da semana com menos de 3 dias de dados | Valor de hoje sem comparação: "Poucos dias para comparar". |
+| Gravação negada (verificável) | `FJBanner` de atenção em Ajustes › Saúde e no encerramento: "Sem acesso para gravar no Saúde — o treino fica só no FitJourney" · **Abrir Ajustes**. A aba Saúde não muda. |
+| Carregando | `FJLoadingState` dentro de cada cartão que espera o Saúde ("Lendo dados do Saúde…"); cartões com dados locais aparecem de imediato. Sem esqueleto piscando. |
+| Erro de leitura | `FJBanner` destrutivo no cartão + "Tentar de novo". Os outros cartões seguem. |
+| Treino sem FC | Detalhe: `FJBanner` neutro no lugar do gráfico ("Sem frequência cardíaca neste treino") e sem "tempo em cada zona". |
+| Treino externo sem sessão do app | Gráfico sem faixas por exercício; "Vincular a um treino do FitJourney…" no menu (ou a sugestão, se houver candidato). |
+| Saúde indisponível no aparelho / simulador | `FJEmptyState` "Saúde indisponível neste aparelho"; só os treinos do FitJourney. |
+
+Acessibilidade da aba: cada gráfico tem `accessibilityChartDescriptor` (dia: "Frequência cardíaca entre 58 e 164, repouso 56; 2 treinos"; semana: um valor por dia) e os mesmos dados existem em texto nos cartões; a comparação é lida por extenso ("74 quilocalorias acima da sua média de 7 dias"); a sugestão de vínculo é um elemento com as duas ações como botões separados; força/aeróbico sempre com símbolo e rótulo.
 
 ### 4.12 Ajustes
 
-Sheet `.large` a partir do avatar em Hoje. `Form` nativo:
+Sheet `.large` a partir do avatar em Hoje, com `NavigationStack` próprio; cada grupo grande é um push. Quando a aba Coach existir, a engrenagem da toolbar do Coach abre direto **Coach e IA**. `Form` nativo, sem vidro.
 
-- **Unidades**: carga (kg | lb), passo de carga (**0,5** · 1 · 2 · 2,5 · 5; padrão 0,5 kg / 1 lb), distância (km | mi), semana começa em (segunda | domingo).
-- **Treino**: descanso padrão, som ao fim do descanso, notificação ao fim do descanso, hápticos na sessão, sugerir progressão (desligado), limite de vídeo.
-- **Saúde**: estado ("Conectado" / "Não conectado" / "Sem acesso — abrir Ajustes do iPhone"), "Conectar ao Saúde", gravar treinos (toggle), FC máxima (calculada pela idade ou manual) e limites das 5 zonas (com `FJHeartRateZoneBadge`).
-- **Dieta**: lembretes, tamanho do copo.
-- **Dados**: Exportar tudo (JSON) → `ShareLink`; Importar backup (mostra o resumo do que será importado antes de confirmar); **Apagar todos os dados** (destrutivo, diálogo com o que será apagado + confirmação em dois passos).
-- **Sobre**: versão, privacidade.
+**Raiz**
 
-Estados: exportando/importando (progresso na linha, cancelável); importação inválida (alerta com o motivo, nada é alterado); sessão em andamento bloqueia "Apagar" e "Importar" com explicação.
+| Seção | Linhas |
+|---|---|
+| (topo) | **Perfil** — círculo com as iniciais, "Seu perfil" e o resumo ("34 anos · 78 kg · intermediário") ou "Opcional — ajuda o Coach a conhecer você" → push (§4.13.6) |
+| Unidades | Carga (**kg \| lb**, segmentado na linha) · Passo de carga (menu: **0,5** · 1 · 2 · 2,5 · 5; padrão 0,5 kg / 1 lb) · Distância (km \| mi) · Semana começa em (segunda \| domingo). Rodapé: "Mudar a unidade muda só a exibição. O histórico não é alterado." |
+| Treino | Descanso padrão · Som ao fim do descanso · Hápticos na sessão · **Atividade ao Vivo** (§4.14) · Sugerir progressão (desligado) · Limite de vídeo |
+| Dieta | Tamanho do copo |
+| Integrações | **Saúde** (estado à direita: "Conectado" / "Não conectado") → push · **Notificações** (estado: "Permitidas" / "Desativadas") → push · **Coach e IA** (estado: "OpenAI · gpt-5-mini" / "Não configurado") → push (§4.13.5) |
+| Dados | **Exportar, importar e apagar** → push |
+| Sobre | Versão, privacidade; o motivo do ícone (§2.6) no topo da tela Sobre |
+
+**Unidades kg/lb**: os valores são guardados como foram digitados e convertidos só na exibição; a troca é imediata, sem confirmação. Com lb, o passo padrão vira 1 lb e as cargas exibidas arredondam para o passo. Com sessão em andamento a troca vale na hora (a série atual é reexibida na nova unidade).
+
+**Saúde** (push)
+
+- Estado no topo: `FJBanner` conforme o caso — neutro "Conectado ao Saúde" · atenção "Não conectado" com **Conectar ao Saúde** (abre a sheet do §5.7) · atenção "Sem acesso para gravar" com **Abrir Ajustes**.
+- Gravar treinos no Saúde (toggle) · Vincular treinos do Apple Watch automaticamente quando a correspondência for alta (toggle, ligado; desligado = sempre perguntar).
+- FC máxima: "Pela idade (186 bpm)" | "Manual" + campo. Sem idade no perfil: "Informe sua idade no Perfil ou digite um valor".
+- Zonas: cinco linhas com `FJHeartRateZoneBadge`, faixa em % e em bpm ("Z3 · 70–80% · 130–149 bpm"); toque edita os limites; "Restaurar padrão".
+- Rodapé: "Seus dados de saúde ficam neste iPhone. Só vão ao Coach se você ligar 'Saúde' em Coach e IA."
+
+**Notificações** (push)
+
+- Estado do sistema no topo: "Permitidas" · "Ainda não solicitadas" (o pedido acontece ao ligar o primeiro toggle) · `FJBanner` de atenção "Desativadas nos Ajustes do iPhone" + **Abrir Ajustes** (os toggles abaixo ficam desabilitados, mantendo o valor).
+- Fim do descanso (toggle; rodapé: "Com a Atividade ao Vivo ligada, o aviso vem por ela.") · Lembretes de refeição (toggle geral + "4 refeições com lembrete · Editar no plano") · Treino em aberto há mais de 4 h (toggle).
+
+**Dados** (push)
+
+1. **Exportar tudo** — linha com `square.and.arrow.up`. Toque → a linha mostra progresso ("Preparando… 62%", cancelável) → folha de compartilhamento com `FitJourney-2026-11-11.json`. Rodapé: "Inclui programas, treinos, dieta, registros e ajustes. Fotos, vídeos e chaves de IA não entram no arquivo."
+2. **Importar backup** — `fileImporter` → validação → sheet `.medium` com o resumo antes de qualquer mudança:
+   - "Backup de 2 de novembro de 2026 · formato v1"
+   - contagens: 3 programas · 142 treinos · 2 dietas · 1.204 registros alimentares
+   - modo: **Juntar com o que já existe** (padrão; itens com o mesmo identificador não duplicam, vale o mais recente) | **Substituir tudo** (destrutivo; pede a mesma confirmação em dois passos de "Apagar")
+   - [Importar] [Cancelar]. Depois: `FJBanner` de sucesso "Importado: 142 treinos, 3 programas…".
+3. **Armazenamento** — "Mídia dos exercícios: 312 MB" (só leitura).
+4. **Apagar todos os dados** (destrutivo, em seção própria no fim). Toque → tela "Apagar todos os dados" com a lista do que some (programas e fichas, treinos, dieta e registros, mídia, conversas do Coach, perfil, chaves de IA, ajustes), o aviso "Treinos já gravados no app Saúde continuam lá" e o atalho "Exportar antes". Botão destrutivo **Apagar tudo…** → `confirmationDialog` ("Apagar todos os dados do FitJourney?") → alerta final "Isso não pode ser desfeito." [Apagar definitivamente] [Cancelar]. Depois: o app volta ao primeiro uso (Hoje com convites).
+
+| Estado | O que muda |
+|---|---|
+| Exportando / importando | Progresso na própria linha, cancelável; as outras linhas de Dados ficam desabilitadas. |
+| Arquivo inválido ou de outro app | Alerta com o motivo ("Este arquivo não é um backup do FitJourney"); nada é alterado. |
+| Backup de versão mais nova | Alerta "Este backup foi feito por uma versão mais nova do FitJourney. Atualize o app para importar." |
+| Falha no meio da importação | Nada é aplicado (tudo ou nada); `FJBanner` destrutivo com "Tentar de novo". |
+| Sessão em andamento | "Importar" e "Apagar" desabilitados com a explicação na linha: "Finalize o treino em andamento primeiro"; "Exportar" funciona. |
+| Sem nada para exportar | "Exportar" desabilitado: "Ainda não há dados". |
+
+### 4.13 Coach (fase 2)
+
+Aba **Coach** (quinta aba, símbolo `sparkles`, tint azul da área). Tudo sólido: mensagens, cartões de proposta e formulários não usam vidro; vidro só na barra de composição (flutua), nos chips de sugestão e nas toolbars.
+
+#### 4.13.1 Boas-vindas e consentimento
+
+Primeira vez na aba (e enquanto não houver consentimento), no lugar da lista — é a própria tela da aba, não um modal. Duas etapas com a ação principal fixa na base.
+
+**Etapa 1 — o que é e o que sai do aparelho**
+
+1. Símbolo `sparkles` grande na cor do Coach, título "Seu Coach de IA", uma frase: "Converse para montar treinos e dietas. Tudo o que ele propõe é um rascunho que você revisa antes de salvar."
+2. `FJCard` **"Para onde vão seus dados"**: "O que você escolher compartilhar é enviado ao provedor de IA que você configurar (OpenAI, Anthropic ou outro), com a sua própria chave. O FitJourney não tem servidor: nada passa por nós."
+3. `FJCard` **"Compartilhar com o Coach"** — quatro toggles, todos **desligados** por padrão, cada um com uma linha do que é enviado:
+   - Perfil — "idade, peso, nível, objetivo, restrições"
+   - Treinos — "programas, fichas e histórico de séries"
+   - Dieta — "plano alimentar e registros"
+   - Saúde — "resumos de FC, energia e treinos do app Saúde"
+4. Linha em `caption`: "O Coach não faz diagnóstico nem substitui médico, nutricionista ou educador físico."
+5. Base: `FJPrimaryButton("Concordar e continuar", area: .coach)` · link "Agora não" (a aba fica com um `FJEmptyState` "Ative o Coach quando quiser" + "Começar").
+
+**Etapa 2 — configurar a IA** (pulada se já houver provedor pronto): provedor, chave e modelo, os mesmos campos do §4.13.5 em versão curta, "Testar conexão" e `FJPrimaryButton("Começar a conversar")`. "Fazer isso depois" leva à lista com o aviso de configuração.
+
+#### 4.13.2 Lista de conversas
+
+Título grande "Coach". Toolbar: engrenagem (Coach e IA) e `square.and.pencil` (nova conversa). `.searchable`.
+
+- `List` com seções "Hoje", "7 dias anteriores", "Mais antigas". Linha: título (gerado da primeira mensagem; renomeável), prévia da última mensagem em uma linha, data relativa; à direita, quando houver, `FJTag("Rascunho", systemImage: "doc.badge.plus", area: .coach)` (a conversa tem proposta ainda não salva). Deslizar: Renomear · Apagar (destrutivo, com confirmação).
+- Linha com resposta em andamento: prévia "Respondendo…" e indicador de atividade pequeno. Resposta que falhou: símbolo de atenção + "Não foi possível responder".
+- Rodapé da lista: "OpenAI · gpt-5-mini · compartilhando Treinos e Dieta" — toque abre Coach e IA.
+
+| Estado | O que muda |
+|---|---|
+| Sem conversas | `FJEmptyState` "Pergunte ao Coach" + sugestões de prompt em chips de vidro (`FJFlowLayout`): "Monte um ABC de hipertrofia, 4x por semana, 60 min" · "Ajuste minha dieta para 2.200 kcal" · "Como foi minha evolução no supino?" · "O que treinar hoje?". Tocar numa sugestão abre uma conversa nova com o texto no campo (não envia sozinho). |
+| IA não configurada | `FJBanner` de atenção no topo: "Falta a chave da OpenAI" (ou "Escolha um modelo", "Endereço inválido") + **Configurar**. Conversas antigas continuam legíveis; o campo de mensagem fica desabilitado com a mesma explicação. |
+| Nada compartilhado | `FJBanner` neutro dispensável: "O Coach ainda não vê seus treinos nem sua dieta" + **Escolher o que compartilhar**. |
+| Sem rede | Nada muda na lista; o erro aparece ao enviar. |
+| Busca sem resultado | `ContentUnavailableView.search`. |
+
+#### 4.13.3 Conversa (chat)
+
+Push a partir da lista; a tab bar some dentro da conversa (como em Mensagens) para a barra de composição ficar na base. Título = título da conversa, subtítulo = modelo. Menu "…": Renomear · O que esta conversa pode ler · Apagar conversa.
+
+```
+┌──────────────────────────────────┐
+│ ‹ Coach     ABC de hipertrofia  … │  barra (vidro do sistema)
+│            gpt-5-mini             │
+├──────────────────────────────────┤
+│        ┌───────────────────────┐ │
+│        │ Monte um ABC de       │ │  você: balão à direita
+│        │ hipertrofia, 4x/sem   │ │
+│        └───────────────────────┘ │
+│ ✦ Pensou por 12 s            ⌄   │  raciocínio (recolhido)
+│ ✓ Leu 24 treinos · 90 dias       │  ferramentas (o que foi lido)
+│ ✓ Leu o programa ativo           │
+│ Montei um ABC com base no que    │  Coach: texto sem balão
+│ você vem treinando…              │
+│ ┌──────────────────────────────┐ │
+│ │ RASCUNHO DE PROGRAMA         │ │  cartão de proposta (§4.13.4)
+│ └──────────────────────────────┘ │
+├──────────────────────────────────┤
+│ ( Pergunte ao Coach…        ) (↑)│  composição (vidro)
+└──────────────────────────────────┘
+```
+
+**Mensagens**
+
+- **Você**: balão à direita, fundo `coachFill`, texto branco, raio 20 pt contínuo, largura máxima 82% (100% em tamanhos de acessibilidade).
+- **Coach**: texto direto sobre o fundo da tela, largura total, sem balão nem avatar; Markdown básico (negrito, listas, títulos curtos, tabelas simples viram lista em telas estreitas); texto selecionável.
+- Primeira mensagem de cada conversa é precedida por uma linha em `caption`: "Esta conversa pode ler: Treinos · Dieta. **Alterar**" (ou "Nada do seu histórico está compartilhado. **Alterar**").
+- Ações da mensagem (menu de contexto e, na última resposta, uma fileira de botões de ícone de 44 pt): Copiar · Tentar de novo.
+
+**Raciocínio** (quando o provedor envia)
+
+- Durante: linha "✦ Pensando… 8 s" (segundos por data de início; o símbolo pulsa uma vez por segundo, parado com Reduzir Movimento). Tocar expande o texto do raciocínio, que só cresce (nunca é reescrito).
+- Depois: "✦ Pensou por 12 s" recolhido por padrão; expandido mostra o texto em `caption`, cor secundária, com um filete de 2 pt à esquerda. Raciocínio omitido pelo provedor: "Raciocínio não disponível", sem expandir.
+- O raciocínio nunca é confundido com a resposta: outra cor, outro tamanho, recolhido.
+
+**Ferramentas — o que o Coach leu**
+
+Cada consulta local aparece como uma linha de estado, na ordem em que aconteceu. É a prova, na tela, do que saiu do aparelho.
+
+| Momento | Linha |
+|---|---|
+| Em andamento | indicador pequeno + "Lendo seu histórico de treinos (últimos 90 dias)…" |
+| Concluída | `checkmark` neutro + "Leu 24 treinos · 90 dias" · "Leu o programa ativo" · "Leu a dieta de 4 a 10 de nov" · "Leu o resumo de saúde de 30 dias" |
+| Bloqueada pelo compartilhamento | `lock` + "Dieta não compartilhada" + link **Permitir** (abre os toggles; a resposta segue sem esse dado) |
+| Falhou | símbolo de atenção + "Não foi possível ler o histórico" |
+
+Mais de três linhas recolhem em "Consultou 5 fontes" (expansível).
+
+**Streaming**
+
+- O texto entra em blocos conforme chega, sem animação letra a letra; um ponto `●` estático marca o fim enquanto a resposta está em curso.
+- A tela acompanha o fim do texto **só** se o usuário já estava no fim. Se ele rolou para cima, a rolagem não é puxada: aparece um botão de vidro circular "↓" acima da composição que leva ao fim.
+- Durante a resposta o botão de enviar vira **Parar** (`stop.fill`). Parar mantém o que já chegou, com "Interrompida" em `caption` e "Tentar de novo".
+- Sem hápticos durante o streaming.
+
+**Composição** (`safeAreaInset(edge: .bottom)`, vidro em cápsula)
+
+- Campo de várias linhas (1 a 6) "Pergunte ao Coach"; botão circular de 44 pt à direita: `arrow.up` em `coachFill` (desabilitado com o campo vazio) ou `stop.fill` durante a resposta.
+- Conversa vazia: até quatro sugestões em chips logo acima do campo.
+- Rolagem dispensa o teclado de forma interativa; a composição acompanha o teclado.
+- Uma resposta por vez: enquanto uma está em curso, enviar outra fica desabilitado (dá para digitar).
+
+**Estados da resposta**
+
+| Estado | O que aparece |
+|---|---|
+| Aguardando o primeiro bloco | "✦ Pensando…" (mesmo sem raciocínio do provedor) |
+| Em streaming | texto + `●`; botão Parar |
+| Concluída | texto; fileira Copiar · Tentar de novo na última |
+| Interrompida pelo usuário | texto parcial + "Interrompida" · **Tentar de novo** |
+| Interrompida ao fechar o app | igual a interrompida (o app nunca reabre "em streaming") |
+| Cortada pelo limite de tamanho | texto + `FJBanner` neutro "A resposta atingiu o limite de tamanho" · **Continuar** |
+| Recusa / filtro do provedor | `FJBanner` neutro com o texto do erro · "Tente reformular" |
+| Limite de consultas atingido | `FJBanner` neutro "O Coach fez consultas demais nesta resposta" · **Tentar de novo** |
+| Chave inválida | `FJBanner` destrutivo "A chave da OpenAI foi recusada" · **Abrir Coach e IA** |
+| Limite do provedor | `FJBanner` de atenção "Limite do provedor atingido. Tente em 20 s" (contagem por data) · **Tentar de novo** habilita ao fim |
+| Sem conexão / erro do servidor | `FJBanner` destrutivo "Sem conexão" / "O provedor está com problemas" · **Tentar de novo**; a mensagem do usuário fica preservada |
+| Menção a dor, lesão ou condição de saúde | A resposta segue; o prompt do sistema já orienta a recomendar um profissional. Sem cartão especial. |
+
+#### 4.13.4 Cartão de proposta
+
+Quando a resposta traz um `ProgramDraft` ou `NutritionPlanDraft`, ele aparece dentro da mensagem como um `FJCard` com contorno de 1,5 pt na cor do Coach. É a única coisa na conversa que leva a salvar algo.
+
+**Programa**
+
+```
+┌──────────────────────────────────┐
+│ ✦ RASCUNHO DE PROGRAMA           │
+│ Hipertrofia ABC                  │  cardTitle
+│ [Hipertrofia] [Sequencial] [4x/sem]│ FJTag
+│ ──────────────────────────────── │
+│ [A] Peito e tríceps         ⌄   │  FJRoutineBadge(.sm) + nome
+│     6 exercícios · ~55 min       │
+│ [B] Costas e bíceps         ›   │
+│ [C] Pernas e ombros         ›   │
+│ ──────────────────────────────── │
+│ [     Revisar e salvar     ]     │  FJPrimaryButton(area: .coach)
+│ [ Pedir ajustes ]                │  FJSecondaryButton
+└──────────────────────────────────┘
+```
+
+- Tocar numa ficha expande os exercícios, um por linha, com a prescrição no formato de sempre ("Supino reto · 4 × 8–12 · 90 s"). Exercício que não existe no catálogo leva `FJTag("novo")` — será criado ao salvar.
+- Cores e letras das fichas: as do rascunho; sem cor, `FJRoutineColor.suggested(forIndex:)`.
+- **Revisar e salvar** abre o editor normal de programa em sheet `.large`, preenchido, origem "IA". Salvar segue o fluxo de sempre, inclusive "Ativar agora?". **Nada é gravado antes disso.**
+- **Pedir ajustes** leva o foco ao campo de mensagem.
+
+**Dieta**: sobrelinha "RASCUNHO DE DIETA", nome, metas em `FJMetricGrid` (kcal · proteína · carboidrato · gordura), refeições em linhas ("07:30 · Café da manhã · 4 itens · 420 kcal") que expandem nos itens; rodapé "Valores estimados pela IA" (grau de estimativa "IA" no plano salvo). Mesmos dois botões; abre o editor de plano.
+
+| Estado | O que muda |
+|---|---|
+| Montando | Cartão com `FJLoadingState("Montando o rascunho…")`; sem botões. |
+| Inválido (não passou no esquema, depois do reparo) | `FJBanner` de atenção no lugar do cartão: "O rascunho veio incompleto" · **Pedir de novo**. Nada para salvar. |
+| Salvo | Botões dão lugar a `FJTag("Salvo", tone: .success)` + "Abrir programa". O cartão continua legível. |
+| Substituído por um rascunho mais novo na mesma conversa | Recolhido numa linha "Rascunho anterior · Hipertrofia ABC" (expansível, ainda salvável). |
+| Sessão em andamento | "Revisar e salvar" funciona; ativar o programa segue a regra do §5.5. |
+
+#### 4.13.5 Coach e IA (Ajustes)
+
+`Form`, push a partir de Ajustes ou da engrenagem do Coach.
+
+1. **Provedor** — lista de seleção única: OpenAI (padrão) · Anthropic · OpenRouter · Compatível com OpenAI (endereço próprio). Cada linha mostra o estado à direita: `checkmark` "Pronto" ou "Falta a chave".
+2. **Chave de API** — campo seguro com "Colar"; link "Onde encontro minha chave?" (abre a página do provedor no Safari). Salva: "••••••••3fA2" com **Trocar** e **Remover** (destrutivo). Rodapé: "Guardada no Keychain deste iPhone. Não entra na exportação nem em backups do app."
+3. **Modelo** — menu com os sugeridos do provedor + "Outro…" (campo de texto).
+4. **Endereço** (só no compatível): URL base e tamanho do contexto. Rodapé: "Aceita endereços https ou da sua rede local (ex.: Ollama no seu computador)."
+5. **Testar conexão** — botão na própria seção; resultado na linha: "Conectado · respondeu em 0,8 s" (sucesso) ou o erro em texto (chave recusada, modelo não encontrado, sem conexão, endereço inválido).
+6. **Compartilhar com o Coach** — os quatro toggles da boas-vindas, com as mesmas descrições. Rodapé: "Vale para as próximas mensagens. O que já foi enviado continua com o provedor."
+7. **Conversas** — "Apagar todas as conversas" (destrutivo, confirmação) · "Desativar o Coach" (desliga os compartilhamentos e volta à boas-vindas; a chave fica até ser removida).
+
+Estados: sem chave (rodapé de atenção "Falta a chave para usar o Coach"), sem modelo, endereço inválido (campo marcado + motivo), testando (indicador na linha, cancelável), Keychain indisponível (alerta "Não foi possível guardar a chave").
+
+#### 4.13.6 Perfil
+
+`Form`, push a partir de Ajustes (linha do topo) e da boas-vindas do Coach. **Tudo opcional**; campo vazio é "não informado", nunca zero.
+
+- Cabeçalho: "Ajuda o Coach a conhecer você. Só é enviado se 'Perfil' estiver ligado em Compartilhar com o Coach."
+- **Sobre você**: idade · sexo (Feminino | Masculino | Outro | não informar) · altura (cm) · peso (na unidade de carga dos Ajustes; com o Saúde conectado, "Usar o peso do Saúde · 78,4 kg").
+- **Treino**: nível (Iniciante | Intermediário | Avançado, segmentado) · objetivo (texto + chips com as tags do programa) · dias por semana (1 a 7) · minutos por treino (chips 30 · 45 · 60 · 75 · 90) · equipamentos disponíveis (texto; chips de sugestão: Academia completa · Halteres · Elásticos · Peso corporal).
+- **Cuidados**: restrições e lesões (texto livre). Rodapé: "Informativo. O Coach não faz diagnóstico."
+- **Alimentação**: preferências e alergias (texto livre).
+- A idade alimenta também a FC máxima "pela idade" (Ajustes › Saúde).
+
+#### Acessibilidade do Coach
+
+- Cada mensagem é um elemento: "Você: …" / "Coach: …". O raciocínio e as linhas de ferramenta são elementos separados, depois do texto na ordem de leitura; o cartão de proposta é um contêiner com título.
+- Streaming: o texto em curso tem `.updatesFrequently` e não interrompe; ao terminar, um anúncio "Resposta do Coach concluída". "Parar" tem rótulo "Parar resposta".
+- Dynamic Type até AX5: balões em largura total, chips quebram linha, os botões do cartão empilham; a composição cresce até 6 linhas e depois rola.
+- Reduzir Movimento: sem pulso no "Pensando…"; a rolagem para o fim é um salto.
+- Contraste: texto branco só sobre `coachFill`; links e símbolos na cor `coach`.
+
+### 4.14 Atividade ao Vivo e Dynamic Island (ciclo 6)
+
+Uma **única** Atividade ao Vivo por sessão: começa em "Iniciar treino", acompanha a sessão inteira e muda de conteúdo conforme o estado — **série**, **descanso**, **descanso concluído**, **pausado** — até o treino ser salvo ou descartado. O descanso é o estado principal (é quando o aparelho está no banco ou no bolso).
+
+Regras:
+
+- O tempo é desenhado pelo sistema (`Text(timerInterval:)`, `ProgressView(timerInterval:)`), a partir das mesmas datas do `SessionClock`. O app atualiza a atividade **só em eventos** (série concluída, descanso ajustado/pulado/terminado, troca de exercício, pausa, retomada, fim) — nunca a cada segundo.
+- Fundo e material são os do sistema (sem `activityBackgroundTint`); na Tela Bloqueada as cores seguem claro/escuro (`FJColor.training`, `textPrimary`, `textSecondary`). A ilha é sempre preta: tons do tema escuro (`#FF9A3D`), `keylineTint` laranja.
+- Glifo da atividade: o motivo do ícone (§2.6) numa cor só, 20 pt.
+- FC não aparece na atividade (ficaria desatualizada; está no relógio e no app).
+- Tocar em qualquer área fora dos botões abre o app na sessão em tela cheia.
+
+#### Tela Bloqueada e banner
+
+Altura alvo 132 pt (limite do sistema: 160 pt). Margens de 16 pt.
+
+```
+DESCANSO                                  SÉRIE
+┌────────────────────────────────────┐    ┌────────────────────────────────────┐
+│ ◢ DESCANSO                  32:14  │    │ ◢ Supino inclinado halter   32:14  │
+│ 1:15        A seguir               │    │ Série 2 de 4                       │
+│             Série 3 de 4           │    │ 26 kg · alvo 8–12 · RIR 2          │
+│             26 kg · alvo 8–12      │    │ ▓▓▓▓▓▓▓▓▓░░░░░░░░░  3 de 6         │
+│ ▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░ │    └────────────────────────────────────┘
+│ [     + 15 s     ] [    Pular    ] │
+└────────────────────────────────────┘
+```
+
+| Estado | Linha 1 | Corpo | Ações |
+|---|---|---|---|
+| **Descanso** | glifo + "DESCANSO" (`overline`, laranja) · tempo da sessão à direita (`numberCaption`, secundário) | Contagem regressiva em 44 pt rounded semibold com dígitos monoespaçados; à direita "A seguir" + "Série 3 de 4" + "26 kg · alvo 8–12" (o alvo como prescrito, D2); barra de progresso laranja de 4 pt | **+15 s** (neutro) · **Pular** (preenchido `trainingFill`, texto branco); cápsulas de 44 pt de altura, larguras iguais |
+| **Descanso concluído** | `checkmark.circle.fill` (sucesso) + "DESCANSO CONCLUÍDO" | "0:00" sai; a próxima série sobe para o tamanho de título: "Série 3 de 4" + "26 kg · alvo 8–12" | Sem botões (não há o que pular); tocar abre o app |
+| **Série** (exercitando) | glifo + nome do exercício (`headline`, 1 linha) · tempo da sessão | "Série 2 de 4" + alvo; barra de progresso da sessão com "3 de 6" exercícios | Sem botões (Q-LA1) |
+| **Sustentação / cardio** | glifo + "SUSTENTAÇÃO" ou o nome do exercício | Como o descanso: contagem (regressiva até o alvo na sustentação; progressiva no cardio) + "alvo 0:45" | Sem botões |
+| **Entre exercícios** | glifo + "PRÓXIMO" | "Crucifixo" + "3 × 12–15 · 15 kg" | Sem botões |
+| **Pausado** | `pause.fill` + "PAUSADO" (secundário) | Tempo da sessão congelado (texto estático) + nome do exercício | Sem botões |
+| **Tudo concluído** | glifo + "TREINO COMPLETO" | "Finalize no app para salvar" + tempo da sessão | Sem botões |
+| **Treino salvo** (estado final) | `checkmark.circle.fill` + "TREINO CONCLUÍDO" | "52 min · 18 séries · 8.420 kg" | Some em 5 min (ou ao dispensar) |
+
+`−15 s` fica só no app: na Tela Bloqueada dois botões grandes valem mais que três pequenos.
+
+#### Dynamic Island
+
+| Apresentação | Descanso | Série | Pausado | Descanso concluído |
+|---|---|---|---|---|
+| **Compacta — esquerda** | anel de progresso regressivo laranja (16 pt) | glifo laranja | `pause.fill` branco | `checkmark.circle.fill` verde |
+| **Compacta — direita** | contagem "1:15", laranja, dígitos monoespaçados, largura fixa (não faz a ilha pulsar de tamanho) | "2/4" (série de total), branco | tempo da sessão congelado, secundário | "3/4" (a próxima série) |
+| **Mínima** (dividindo a ilha com outro app) | o mesmo anel regressivo | glifo laranja | `pause.fill` | `checkmark` verde |
+
+**Expandida** (toque longo; também é o banner em aparelhos sem ilha):
+
+```
+┌──────────────────────────────────────┐
+│ ◢ DESCANSO                    32:14  │  leading · trailing
+│                                      │
+│ 1:15         A seguir                │  bottom
+│              Série 3 de 4            │
+│              26 kg · alvo 8–12       │
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░ │
+│ [     + 15 s     ]  [    Pular    ]  │
+└──────────────────────────────────────┘
+```
+
+- `leading`: glifo + rótulo do estado. `trailing`: tempo da sessão. `bottom`: o mesmo corpo da Tela Bloqueada (contagem em 40 pt), barra e botões. `center` fica vazio (evita texto sob a câmera).
+- Série expandida: `leading` glifo + "Série 2 de 4"; `bottom` nome do exercício, alvo e barra da sessão; sem botões.
+- Nenhum texto encosta na câmera; nada de animação própria — só as transições do sistema.
+
+#### Ações (App Intents)
+
+| Botão | Intent (`LiveActivityIntent`) | Efeito |
+|---|---|---|
+| **+15 s** | `AdjustRestIntent(seconds: 15)` | Mesmo comando do app e do relógio (idempotente, pelo `SessionEngine`); a contagem e a barra saltam +15 s; a notificação de fim é reagendada. Pode ser tocado várias vezes. |
+| **Pular** | `SkipRestIntent` | Encerra o descanso; a atividade passa a **Série**. |
+
+Os intents rodam no processo do app sem abri-lo. Não há estado otimista na atividade: o botão responde quando o app devolve o novo estado (alvo: < 1 s). Se a sessão já acabou quando o toque chega, o intent não faz nada e a atividade é encerrada.
+
+#### Quando o descanso termina
+
+| Situação | O que acontece |
+|---|---|
+| App ativo ou vivo em segundo plano (`HKWorkoutSession` do iPhone ou espelhada do relógio) | A atividade é atualizada para **Descanso concluído** com alerta ("Descanso concluído" · "Série 3 de 4 · 26 kg"), que acende a tela e expande a ilha. A notificação local daquele descanso é cancelada (um aviso só). Depois de 10 s, ou ao concluir/abrir, passa a **Série**. |
+| App suspenso | A atividade tem `staleDate` = fim do descanso: ao vencer, o sistema redesenha e o layout mostra **Descanso concluído** sozinho (`context.isStale`). O aviso sonoro/háptico vem da notificação local já agendada (D4). |
+| Atividades ao Vivo desligadas | Tudo como hoje: só a notificação local. |
+
+#### Estados e bordas
+
+| Situação | Comportamento |
+|---|---|
+| Sessão iniciada no iPhone | A atividade começa em **Série**. |
+| Sessão iniciada no relógio com o app do iPhone fechado | Sem atividade (o sistema só deixa iniciar com o app em primeiro plano); ela começa na primeira vez que o app abrir durante a sessão. O relógio é a interface nesse caso. |
+| Controlada pelo relógio | A atividade acompanha os snapshots: série concluída no pulso vira **Descanso** na Tela Bloqueada. |
+| Desfazer o check da série durante o descanso | Volta a **Série** (o descanso é cancelado). |
+| Pausar / retomar | **Pausado** com o tempo congelado; retomar volta ao estado anterior (o descanso em curso foi descartado na pausa, §4.5). |
+| Treino descartado | A atividade some na hora. |
+| Sessão esquecida | O sistema encerra atividades após 8 h; a sessão segue a regra do treino em aberto (> 4 h, §4.5). |
+| Desligada nos Ajustes do iPhone | Ajustes › Treino › Atividade ao Vivo mostra "Desativada nos Ajustes do iPhone" + **Abrir Ajustes**; a sessão não muda. |
+| Desligada no FitJourney | Nenhuma atividade; notificação de descanso como hoje. |
+| Tela sempre ligada (luminância reduzida) | Contagem e textos em branco (o laranja escurece demais); barra sem preenchimento colorido. |
+| StandBy | O layout da Tela Bloqueada ampliado pelo sistema; nada próprio. |
+| Apple Watch (Conjunto Inteligente) e CarPlay | Família `.small`: contagem + "Série 3 de 4" (descanso) ou exercício + "2/4" (série). Tocar no relógio abre o app do relógio. |
+
+#### Acessibilidade
+
+- VoiceOver, Tela Bloqueada: um elemento com o estado por extenso — "Descanso, 1 minuto e 15 segundos restantes. A seguir: série 3 de 4, 26 quilos, alvo 8 a 12 repetições" — e os botões "Adicionar 15 segundos" e "Pular descanso". Ilha compacta: "FitJourney, descanso, 1 minuto e 15 segundos".
+- Texto grande: a atividade tem altura limitada, então o texto vai até `xxxLarge`; acima disso `ViewThatFits` remove primeiro o tempo da sessão, depois a linha "A seguir". A contagem e os botões nunca saem.
+- Contraste: laranja `#FF9A3D` sobre preto 9:1; branco sobre `trainingFill` 4,5:1; o estado sempre tem rótulo ou símbolo além da cor.
+- Reduzir Movimento: sem animação própria; os dígitos trocam sem rolagem.
+- Alvos: botões de 44 pt de altura e metade da largura cada.
+
+#### Para quem implementa
+
+A atividade vive num alvo de extensão de widget (`FitJourneyLiveActivity/`). Ele deve compilar `FitJourney/DesignSystem/Tokens/FJColor.swift`, `FJFont.swift`, `FJFormat.swift` e `FJLayout.swift` (sem componentes de vidro) para usar os mesmos tokens. O glifo entra como símbolo vetorial no catálogo da extensão, gerado da geometria do §2.6.
 
 ---
 
@@ -542,6 +1000,33 @@ Estados: exportando/importando (progresso na linha, cancelável); importação i
 2. Toque → sheet própria de uma tela: o que será lido (FC, treinos, energia, FC em repouso, VFC, passos, peso), o que será gravado (treinos, energia), "Seus dados ficam neste iPhone". [Continuar] abre a folha de permissão do sistema; [Agora não] fecha sem insistir (o convite reaparece só nos lugares fixos, nunca como alerta).
 3. Autorizado: os cartões passam de "—" para `FJLoadingState` e depois dados.
 4. Negado/parcial: `FJBanner` "Sem acesso a …" + "Abrir Ajustes" nas telas de Saúde; no encerramento, "o treino fica só no FitJourney". O fluxo de treino nunca é bloqueado.
+
+### 5.8 Vincular um treino do Apple Watch
+1. O usuário treina com o FitJourney no iPhone e, em paralelo, grava "Força tradicional" no app Exercício do relógio.
+2. Ao salvar, o encerramento mostra a linha de estado do Saúde; o detalhe da sessão abre com a sugestão (§4.11):
+   - correspondência **alta** → já vinculado, `FJBanner` neutro "Vinculado ao treino do Apple Watch (18:04–18:57)" · Desfazer;
+   - correspondência **incerta** → `FJBanner` de atenção "Parece o mesmo treino" com os dois horários · Vincular · Não é o mesmo.
+3. Vincular: a sessão ganha FC e energia do relógio; Saúde › Dia mostra uma linha "FitJourney + Apple Watch". Os minutos do dia não mudam (já contavam o intervalo uma vez).
+4. Não é o mesmo: ficam duas linhas; a pergunta não volta. Dá para vincular depois pelo menu "…".
+
+### 5.9 Primeira conversa com o Coach e salvar uma proposta
+1. Aba Coach → boas-vindas: ler para onde vão os dados, ligar "Treinos" → [Concordar e continuar].
+2. Configurar a IA: provedor, colar a chave, modelo → "Testar conexão" → [Começar a conversar].
+3. Tocar na sugestão "Monte um ABC de hipertrofia, 4x por semana, 60 min" → o texto vai para o campo → enviar.
+4. "Pensando…" → linhas "Leu 24 treinos · 90 dias", "Leu o programa ativo" → a resposta entra em streaming → cartão **Rascunho de programa**.
+5. Expandir uma ficha para conferir → [Revisar e salvar] → editor de programa preenchido (origem IA) → ajustar o que quiser → Salvar → "Ativar *Hipertrofia ABC* agora?".
+6. De volta à conversa, o cartão mostra "Salvo" + "Abrir programa". Nada foi gravado antes do passo 5.
+
+### 5.10 Descanso pela Tela Bloqueada (ciclo 6)
+1. Concluir a série no app (ou no relógio) e bloquear o iPhone: a Atividade ao Vivo mostra **Descanso** com a contagem e "A seguir: Série 3 de 4 · 26 kg · alvo 8–12".
+2. (Opcional) [+15 s] soma tempo; [Pular] encerra o descanso — sem desbloquear.
+3. Ao zerar: a tela acende com "Descanso concluído" e a próxima série em destaque; som/háptico conforme os Ajustes.
+4. Tocar na atividade abre a sessão em tela cheia, na série atual.
+
+### 5.11 Exportar, importar e apagar
+- **Exportar**: Ajustes › Dados › Exportar tudo → progresso na linha → folha de compartilhamento com o JSON.
+- **Importar**: Importar backup → escolher o arquivo → resumo (data, contagens) → Juntar (padrão) ou Substituir tudo → [Importar] → aviso de sucesso com as contagens.
+- **Apagar**: Apagar todos os dados → lista do que some + "Exportar antes" → [Apagar tudo…] → diálogo → alerta final → o app volta ao primeiro uso.
 
 ---
 
@@ -608,6 +1093,37 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 27. No gráfico da sessão, cada faixa de exercício tem número legível, coincide com o intervalo 1ª–última série (±1 s) e a seleção mostra exercício, série, FC média e máx.
 28. Força e Aeróbico são distinguíveis sem cor (símbolo + rótulo).
 
+28a. Sem amostra, o valor é "—" com o motivo; nenhum cartão da aba mostra "0 bpm", "0 kcal" ou um gráfico só com eixos (teste: dia sem leituras, sem Apple Watch, Saúde não conectado).
+28b. Um treino do Watch sobreposto a uma sessão do app não aumenta os minutos nem a energia do dia, vinculado ou não.
+28c. Correspondência alta aparece já vinculada com "Desfazer"; incerta mostra os dois horários, os minutos em comum e as ações Vincular / Não é o mesmo; depois de "Não é o mesmo" a sugestão não reaparece.
+28d. No gráfico do dia, cada treino tem faixa na cor do tipo com o símbolo no topo; hoje destacado nas barras da semana sem depender só de cor (opacidade + rótulo em negrito).
+28e. As comparações com a semana são texto neutro com seta e número; nenhuma usa verde ou vermelho.
+
+**Fichas e ícone**
+28f. `python3 design/tools/routine_palette_check.py` passa (32 pares). Nenhuma tela usa `RoutineColor`, `RoutineBadge` ou `FlowLayout` fora do DesignSystem; cor de ficha vem só de `FJRoutineColor`.
+28g. O selo aparece igual (letra, cor, raio) em Hoje, Treinos, editor, histórico, Saúde e Coach; em AX5 não passa de 1,4× o tamanho base.
+28h. O ícone é reconhecível a 29 pt (Ajustes) nas três aparências do iOS e no relógio; nenhum traço encosta na máscara.
+
+**Coach**
+28i. Nenhuma mensagem é enviada antes do consentimento; os quatro compartilhamentos começam desligados.
+28j. Toda consulta a dados locais aparece na conversa como linha "Leu …"; categoria desligada aparece como "… não compartilhada", e o dado não é enviado.
+28k. Durante o streaming: o botão de enviar vira Parar; rolar para cima não é desfeito pela chegada de texto; VoiceOver não é interrompido e anuncia o fim.
+28l. Nada é salvo a partir de uma proposta sem passar pelo editor e pelo "Salvar"; o cartão mostra "Salvo" depois.
+28m. Cada erro do provedor (chave, limite, rede, tamanho, recusa) tem mensagem própria e uma saída; a mensagem do usuário nunca se perde.
+28n. A chave nunca aparece inteira depois de salva nem entra na exportação.
+
+**Ajustes e dados**
+28o. Trocar kg ↔ lb muda a exibição em todo o app na hora e não altera valores gravados (trocar e voltar mostra os mesmos números).
+28p. Importar mostra o resumo antes de alterar qualquer coisa; arquivo inválido não altera nada.
+28q. "Apagar todos os dados" exige dois passos de confirmação, lista o que será apagado e fica desabilitado durante uma sessão.
+
+**Atividade ao Vivo** (exige aparelho)
+28r. Com o iPhone bloqueado: a contagem do descanso bate com a do app (±1 s); +15 s e Pular funcionam sem desbloquear e refletem na atividade em até 1 s.
+28s. Ao fim do descanso há exatamente um aviso (atividade ou notificação, nunca os dois) e a atividade mostra "Descanso concluído" mesmo com o app suspenso.
+28t. Ilha compacta: a contagem não muda a largura da ilha a cada segundo; a apresentação mínima mostra o anel regressivo.
+28u. Pausar congela o tempo na atividade; descartar a remove na hora; salvar mostra o resumo e some em até 5 min.
+28v. VoiceOver lê o estado por extenso e os dois botões com rótulo completo; com o maior tamanho de texto a contagem e os botões continuam inteiros.
+
 **Build**
 29. `make build` sem erros nem avisos de concorrência; `DesignSystemGallery` renderiza em claro, escuro e AX3.
 
@@ -629,6 +1145,9 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 | `FJCheckButton`, `FJRPEScale`, `FJSessionAccessory` | `Components/FJSessionControls.swift` | Check de série/refeição; RPE 1–10; conteúdo do `tabViewBottomAccessory` (recebe `startedAt`, `pausedSeconds`, `pausedAt` do `SessionClock`) |
 | `FJHeartRateZoneBadge`, `FJHeartRateBadge` | `Components/FJHeartRate.swift` | Zona e FC ao vivo |
 | `FJEmptyState`, `FJLoadingState`, `FJBanner` | `Components/FJStates.swift` | Estados |
+| `FJRoutineColor` | `Tokens/FJRoutineColor.swift` | Paleta oficial das fichas (8 cores, `fill`/`onFill`, tons `light`/`dark`, `suggested(forIndex:)`) |
+| `FJRoutineBadge`, `FJRoutineColorPicker` | `Components/FJRoutineBadge.swift` | Selo da ficha (`.sm` 32 / `.md` 44 / `.lg` 56 pt); seletor de cor da ficha |
+| `FJFlowLayout` | `Modifiers/FJFlowLayout.swift` | Layout que quebra linha (etiquetas, chips, amostras, sugestões de prompt) |
 | `DesignSystemGallery` | `DesignSystemGallery.swift` | Todos, para preview e QA |
 
 Componentes de tela (linha de série, cartão de exercício, linha do tempo da dieta, gráfico de FC) ficam em `Features/` e são montados com estes.
@@ -817,6 +1336,19 @@ Decididas neste documento:
 9. **Descanso para em 0:00** ("Descanso concluído"), sem contar o excedente.
 10. **Botões de ação próprios** usam `fjGlass` (vidro nativo tingido) com altura por token, em vez de `.glassProminent`, para garantir 56/48/44 pt exatos e o substituto sólido; toolbars e o relógio usam os estilos nativos.
 11. **Relógio: páginas horizontais** e Coroa dedicada à carga.
+12. **Cores de ficha são identidade, não significado**: paleta própria de oito cores com par `fill`/`onFill` por tema; todo `fill` tem ≥ 3:1 sobre cartão e fundo, por isso o amarelo do tema claro é ouro escuro (§2.1.1).
+13. **Ícone "degraus"**: caminho em três degraus até um ponto, branco sobre laranja; sem halter (§2.6).
+14. **Uma Atividade ao Vivo por sessão**, não uma por descanso; na Tela Bloqueada só **+15 s** e **Pular** (o −15 s fica no app); sem FC na atividade (§4.14).
+15. **"Descanso concluído" sem depender do app acordar**: `staleDate` no fim do descanso; um único aviso por descanso (atividade ou notificação).
+16. **Saúde: sem dado não é zero, e leitura negada é tratada como "sem dados"** com o caminho para conferir o acesso — o HealthKit não revela negação de leitura (§4.11).
+17. **Totais do dia pela união dos intervalos**, para que treino do Watch sobreposto nunca some, mesmo antes de vincular.
+18. **Vínculo em dois níveis**: alta = vincula e avisa (com Desfazer); incerta = pergunta. Nunca por alerta ou notificação.
+19. **Comparação com a semana em texto neutro** (seta + número contra a média dos 7 dias anteriores), sem cor de bom/ruim.
+20. **Coach: resposta sem balão, pergunta em balão**; raciocínio recolhido; cada leitura de dados aparece como linha "Leu …" — a transparência do que saiu do aparelho é parte da interface.
+21. **Consentimento é a primeira tela da aba Coach**, com os quatro compartilhamentos desligados por padrão.
+22. **A tab bar some dentro da conversa** (a composição ocupa a base); a sessão em andamento continua a um "voltar" de distância e avisa pelo descanso (notificação/Atividade ao Vivo).
+23. **Ajustes em um `Form` com sub-telas** (Saúde, Notificações, Coach e IA, Dados, Perfil); a troca kg/lb é só de exibição.
+24. **`nutritionFill` escuro passou de `#1F8A40` para `#1C8540`**: o anterior dava 4,4:1 com branco.
 
 Perguntas em aberto:
 
@@ -827,3 +1359,13 @@ Perguntas em aberto:
 - Q-W2. Durante o descanso, a Coroa ajusta a carga da próxima série (proposto) ou o tempo de descanso?
 - Q-W3. Ao finalizar pelo relógio, as cargas atuais são atualizadas pela regra padrão sem perguntar, com revisão no iPhone. Confirma?
 - Q-W4. Treino livre (sem ficha) no relógio fica fora do W0. Confirma?
+- Q-LA1. Na Tela Bloqueada, o estado **Série** não tem botão. Um "Concluir série" ali fecharia o ciclo sem desbloquear, mas aceita toque acidental no bolso. Incluir?
+- Q-LA2. Sessão iniciada pelo relógio com o app do iPhone fechado fica sem Atividade ao Vivo até o app abrir (limite do sistema sem servidor de push). Aceitável?
+- Q-S1. Correspondência **alta** vincula sozinha e avisa com "Desfazer" (proposto, e há um toggle em Ajustes › Saúde para sempre perguntar). Ou deve sempre pedir confirmação?
+- Q-S2. Limiar de "alta" sugerido: sobreposição ≥ 80% da duração menor e inícios a menos de 10 min. Confirma, ou o núcleo define?
+- Q-A1. Importar backup: **Juntar** como padrão e **Substituir tudo** como opção destrutiva. Ou só substituir?
+- Q-A2. A exportação não leva fotos e vídeos (só o JSON). Precisa de um pacote com mídia?
+- Q-A3. kg ↔ lb só muda a exibição (valores guardados como digitados). Ou converter e regravar as cargas das fichas?
+- Q-C1. A tab bar some dentro da conversa do Coach (e com ela o acessório da sessão). Preferível manter a tab bar e pôr a composição acima dela?
+- Q-C2. Sugestão de prompt preenche o campo e espera o envio (proposto) ou envia direto?
+- Q-I1. Ícone escuro e tinted têm fundo opaco próprio. Se preferir o fundo do sistema (PNG transparente), é uma troca de uma linha no gerador.
