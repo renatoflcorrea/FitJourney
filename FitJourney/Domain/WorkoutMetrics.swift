@@ -3,19 +3,31 @@ import Foundation
 /// Uma série realizada, reduzida ao que as métricas precisam.
 struct PerformedSet: Sendable, Hashable {
     var kind: SetKind
+    /// Reps realizadas. Opcionais (SPEC D2): `nil` = "feita dentro do alvo".
     var reps: Int?
     var load: Load?
     var isCompleted: Bool
+    /// Piso do alvo prescrito (faixa → mín; fixo → n; AMRAP → `nil`), usado para estimar o
+    /// volume de séries concluídas sem reps (SPEC D2).
+    var targetFloorReps: Int?
 
-    init(kind: SetKind = .working, reps: Int?, load: Load?, isCompleted: Bool = true) {
+    init(kind: SetKind = .working, reps: Int?, load: Load?, isCompleted: Bool = true, targetFloorReps: Int? = nil) {
         self.kind = kind
         self.reps = reps
         self.load = load
         self.isCompleted = isCompleted
+        self.targetFloorReps = targetFloorReps
     }
 
     /// Conta para volume/recordes: válida (não aquecimento/preparatória) e concluída.
     var counts: Bool { isCompleted && kind.isWorking }
+
+    /// Reps usadas no volume: as realizadas ou, sem elas, o piso do alvo.
+    var volumeReps: Int? { reps ?? targetFloorReps }
+
+    /// Série válida concluída com carga, mas sem reps realizadas: o volume dela é estimado
+    /// (pelo piso do alvo; sem piso — AMRAP — entra como 0).
+    var hasEstimatedReps: Bool { counts && reps == nil && load != nil }
 }
 
 /// Melhores marcas de um exercício (todas em kg).
@@ -45,13 +57,33 @@ struct PersonalRecord: Sendable, Hashable {
 /// - Σ reps × carga apenas de séries **válidas e concluídas** (aquecimento e preparatória excluídos).
 /// - Carga absoluta conta inteira. **Peso corporal conta só o lastro positivo** (o app não tem a
 ///   massa corporal no momento da série; assistência conta 0). Barra fixa sem lastro → volume 0.
-/// - Séries sem reps ou sem carga contam 0.
+/// - Reps opcionais (SPEC D2): série concluída sem reps entra com o **piso do alvo** e o volume
+///   fica marcado como estimado (`hasEstimatedVolume`). Sem reps e sem piso (AMRAP) → 0.
+/// - Séries sem carga contam 0.
+///
+/// Regras de recorde com reps opcionais:
+/// - Maior carga: qualquer série válida concluída com carga (reps não importam — carga é o que importa).
+/// - Volume da sessão e 1RM estimado: só reps **realizadas** — estimativa nunca gera recorde.
 enum WorkoutMetrics {
+    /// Volume com estimativa pelo piso do alvo para séries sem reps.
     static func volumeKg(_ sets: [PerformedSet]) -> Double {
+        sets.reduce(0) { total, set in
+            guard set.counts, let reps = set.volumeReps, reps > 0, let load = set.load else { return total }
+            return total + Double(reps) * load.volumeKilograms
+        }
+    }
+
+    /// Volume só com reps realizadas (base dos recordes).
+    static func recordedVolumeKg(_ sets: [PerformedSet]) -> Double {
         sets.reduce(0) { total, set in
             guard set.counts, let reps = set.reps, reps > 0, let load = set.load else { return total }
             return total + Double(reps) * load.volumeKilograms
         }
+    }
+
+    /// Alguma série válida concluída teve o volume estimado (sem reps realizadas).
+    static func hasEstimatedVolume(_ sets: [PerformedSet]) -> Bool {
+        sets.contains(where: \.hasEstimatedReps)
     }
 
     /// 1RM estimado por Epley: `carga × (1 + reps / 30)`; 1 repetição → a própria carga.
@@ -65,14 +97,16 @@ enum WorkoutMetrics {
     static func bests(of sets: [PerformedSet]) -> ExerciseBests {
         var bests = ExerciseBests()
         for set in sets where set.counts {
-            guard let reps = set.reps, reps > 0, let load = set.load else { continue }
+            guard let load = set.load else { continue }
+            // Reps explícitas 0 = série não feita de fato; reps ausentes = feita dentro do alvo (D2).
+            if let reps = set.reps, reps <= 0 { continue }
             let kg = load.volumeKilograms
             bests.heaviestLoadKg = max(bests.heaviestLoadKg, kg)
-            if let e1rm = epley1RM(loadKg: kg, reps: reps) {
+            if let reps = set.reps, let e1rm = epley1RM(loadKg: kg, reps: reps) {
                 bests.bestEstimated1RMKg = max(bests.bestEstimated1RMKg, e1rm)
             }
         }
-        bests.bestSessionVolumeKg = volumeKg(sets)
+        bests.bestSessionVolumeKg = recordedVolumeKg(sets)
         return bests
     }
 

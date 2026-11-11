@@ -32,6 +32,19 @@ final class WorkoutSession {
     var accumulatedPauseSeconds: Double = 0
     var restEndsAt: Date?
 
+    // Motor da sessão (P2.1, SPEC §6.4).
+    /// Revisão monotônica do estado: sobe a cada comando aplicado (base do snapshot versionado).
+    var revision: Int = 0
+    /// IDs dos comandos já aplicados (JSON `[UUID]`, só os mais recentes) — deduplicação.
+    var appliedCommandIDsData: Data?
+    /// Exercício escolhido explicitamente como atual (`focusExercise`); `nil` = regra automática.
+    var focusedExerciseID: UUID?
+    /// Momento da última atividade (comando aplicado) — detecta treino esquecido aberto (D4).
+    var lastActivityAt: Date?
+    /// Sustentação isométrica em curso: série e início (relógio por datas).
+    var holdSetID: UUID?
+    var holdStartedAt: Date?
+
     @Relationship(deleteRule: .cascade, inverse: \SessionExercise.session)
     var exercises: [SessionExercise]? = []
 
@@ -62,6 +75,18 @@ final class WorkoutSession {
             accumulatedPauseSeconds = newValue.accumulatedPauseSeconds
             restEndsAt = newValue.restEndsAt
         }
+    }
+
+    /// IDs de comandos aplicados (mais antigos primeiro).
+    var appliedCommandIDs: [UUID] {
+        get { StorageCoding.decode([UUID].self, from: appliedCommandIDsData) ?? [] }
+        set { appliedCommandIDsData = StorageCoding.encode(newValue) }
+    }
+
+    /// Última atividade conhecida: a gravada, senão a última série concluída, senão o início.
+    var effectiveLastActivityAt: Date {
+        let lastSet = (exercises ?? []).flatMap { $0.sets ?? [] }.compactMap(\.completedAt).max()
+        return [lastActivityAt, lastSet, startedAt].compactMap { $0 }.max() ?? startedAt
     }
 
     /// (concluídos ou pulados, total) para o cabeçalho.
@@ -168,6 +193,9 @@ final class SetLog {
     var completedAt: Date?
     /// Corrigida depois de a sessão terminar (SPEC §4.4).
     var edited: Bool = false
+    /// `issuedAt` do último comando que mexeu nesta série (motor da sessão): comandos mais antigos
+    /// que chegam depois (relógio offline) são ignorados.
+    var lastCommandAt: Date?
 
     var sessionExercise: SessionExercise?
 
@@ -205,7 +233,9 @@ final class SetLog {
         set { cardioTargetData = StorageCoding.encode(newValue) }
     }
 
+    /// Para métricas: reps realizadas (opcionais, D2) + piso do alvo para estimar volume.
     var performed: PerformedSet {
-        PerformedSet(kind: kind, reps: reps, load: load, isCompleted: isCompleted)
+        PerformedSet(kind: kind, reps: reps, load: load, isCompleted: isCompleted,
+                     targetFloorReps: repTarget?.defaultReps)
     }
 }
