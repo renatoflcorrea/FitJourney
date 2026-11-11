@@ -39,11 +39,12 @@
 - P6.4 Live Activity integrada (`9fb2b34`); P2.7 sessão iPhone+relógio com comandos novos integrada (`f8ba486`). iOS e watchOS: build e testes verdes.
 - Makefile: `make device TEAM=<TEAM> [DEVICE_ID=<udid>]` (Team não versionado).
 
-## Pausado (limite de uso — retomar)
-- **P5.5 ChatGPT (login) experimental** (Opus): worktree `.claude/worktrees/agent-a3a3055d0c4becb2b` (branch `worktree-agent-a3a3055d0c4becb2b`), interrompido no meio — conferir `git status` e o que já foi commitado, terminar, `make build test`, revisar, integrar.
-- **P6.5 consumidores das preferências** (Sonnet): worktree `.claude/worktrees/agent-a73959d3d76d3dd70`, interrompido — mesmo procedimento.
+- P6.5 preferências integradas (`f7d0cd3`): `AppCalendar` (início da semana), `RestPolicy` no domínio (descanso padrão dos Ajustes; catálogo com descanso opcional), som ao fim do descanso. `DraftApplier` sem 90 fixo (`4eaa08d`).
+- P5.5 ChatGPT (login) experimental integrado (`7c28328`): OAuth PKCE + listener loopback endurecido, Responses com ferramentas, refresh serializado.
+
+## Em andamento
+- P6.6 (Sonnet): inglês completo (app, relógio, extensão, textos de permissão) + QA de acessibilidade com evidências em `work/evidence/ciclo-6/qa/`.
 
 ## Próximo
-- Localização en completa (catálogo; relógio sem catálogo) + QA de acessibilidade no simulador.
 - `/cartographer:cartographer` → `docs/CODEBASE_MAP.md`.
-- **Usuário**: teste em iPhone + Apple Watch (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações) via `make device`; chave de API ou login ChatGPT (após P5.5) para o Coach.
+- **Usuário**: teste em iPhone + Apple Watch (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações) via `make device TEAM=<TEAM> DEVICE_ID=<udid>`; chave de API ou login ChatGPT para o Coach.
