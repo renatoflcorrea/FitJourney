@@ -40,6 +40,18 @@ enum FJColor {
     static let coach = Color(fjLight: 0x0A6FB8, dark: 0x5AC8FA)
     static let coachFill = Color(fjLight: 0x0A6FB8, dark: 0x0F78C4)
 
+    // MARK: IA (copiloto) — gradiente "aurora" (DESIGN_DIRECTION §4.15.1)
+
+    // Azul do Coach → violeta → rosa. É a assinatura do que a IA faz; nunca carrega estado.
+    // Tons de texto/símbolo: ≥ 4,7:1 sobre `background` e `surface` nos dois temas, em todo o gradiente.
+    static let aiBlue = coach
+    static let aiViolet = Color(fjLight: 0x7C3AED, dark: 0xA78BFA)
+    static let aiPink = Color(fjLight: 0xC2256E, dark: 0xF472B6)
+    // Tons de preenchimento com texto branco: ≥ 4,6:1 em todo o gradiente.
+    static let aiBlueFill = coachFill
+    static let aiVioletFill = Color(fjLight: 0x7C3AED, dark: 0x8349EE)
+    static let aiPinkFill = Color(fjLight: 0xC2256E, dark: 0xC92C75)
+
     /// Treino aeróbico (força usa `training`) — turquesa.
     static let aerobic = Color(fjLight: 0x0B7F83, dark: 0x5AD1D6)
 

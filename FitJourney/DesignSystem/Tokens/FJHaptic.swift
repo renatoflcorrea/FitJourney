@@ -14,6 +14,8 @@ enum FJHaptic: Sendable {
     case exerciseCompleted
     /// Sessão finalizada / recorde pessoal.
     case celebration
+    /// Alteração do copiloto aplicada (cartão de alteração, §4.15.8). Desfazer não vibra.
+    case changeApplied
     case warning
     case error
 
@@ -26,6 +28,7 @@ enum FJHaptic: Sendable {
         case .selection: .selection
         case .exerciseCompleted: .impact(weight: .heavy)
         case .celebration: .success
+        case .changeApplied: .impact(weight: .medium)
         case .warning: .warning
         case .error: .error
         }
