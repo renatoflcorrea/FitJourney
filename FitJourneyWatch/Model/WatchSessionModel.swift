@@ -120,6 +120,9 @@ final class WatchSessionModel {
     @ObservationIgnored var loadCoalesceInterval: TimeInterval = 0.35
     /// Intervalo mínimo entre envios de métricas ao iPhone.
     @ObservationIgnored var metricsInterval: TimeInterval = 2
+    /// Depois de o iPhone abrir o app para gravar (`startWatchApp`), quanto tempo a próxima sessão ativa exibida
+    /// passa a ser gravada aqui (P2.8).
+    @ObservationIgnored var phoneLaunchWindow: TimeInterval = 90
 
     @ObservationIgnored private var closedSessionIDs: Set<UUID> = []
     @ObservationIgnored private var handledTerminalSessionIDs: Set<UUID> = []
@@ -129,6 +132,8 @@ final class WatchSessionModel {
     /// Sessões iniciadas aqui ou com "gravar no relógio" pedido: o relógio grava o treino delas.
     @ObservationIgnored private var watchRecordedSessionIDs: Set<UUID> = []
     @ObservationIgnored private var recordingPaused = false
+    /// Aberto pelo iPhone para gravar (`handlePhoneWorkoutLaunch`): vale até esta data.
+    @ObservationIgnored private var phoneLaunchUntil: Date?
     @ObservationIgnored private var lastMetricsSentAt: Date?
     @ObservationIgnored private var cardioStartElapsed: [UUID: TimeInterval] = [:]
     @ObservationIgnored private var coalesceTask: Task<Void, Never>?
@@ -340,6 +345,7 @@ final class WatchSessionModel {
         pruneAppliedCommands(in: snapshot)
         pruneCommandsWithUnknownIDs(in: snapshot)
         recompute()
+        recordIfLaunchedByPhone(display)
     }
 
     func receive(reply: SessionCommandReply) {
@@ -491,6 +497,29 @@ final class WatchSessionModel {
         guard canOfferWatchRecording, let display else { return }
         watchRecordedSessionIDs.insert(display.sessionID)
         beginRecordingIfNeeded(display)
+    }
+
+    /// O iPhone abriu o app pelo `HKHealthStore.startWatchApp(with:)` ao iniciar uma sessão (P2.8): pede o estado
+    /// e grava aqui a sessão em andamento do próximo snapshot do iPhone (não o do cache, que pode ser velho) que
+    /// chegar em até `phoneLaunchWindow`, pelo mesmo fluxo de
+    /// "gravar no relógio" (`workoutStatus(.recording)` → o iPhone adota a gravação remota, sem gravação dupla).
+    /// Sem sessão nesse prazo, nada acontece (o iPhone segue gravando).
+    func handlePhoneWorkoutLaunch() {
+        phoneLaunchUntil = now.addingTimeInterval(phoneLaunchWindow)
+        requestSnapshot()
+    }
+
+    private func recordIfLaunchedByPhone(_ snapshot: SessionSnapshot?) {
+        guard let until = phoneLaunchUntil else { return }
+        guard now <= until else {
+            phoneLaunchUntil = nil
+            return
+        }
+        guard let snapshot, snapshot.status == .active || snapshot.status == .paused else { return }
+        phoneLaunchUntil = nil
+        guard recordingSessionID != snapshot.sessionID, healthAccess != .denied else { return }
+        watchRecordedSessionIDs.insert(snapshot.sessionID)
+        beginRecordingIfNeeded(snapshot)
     }
 
     /// Cardio: inicia o cronômetro da série atual (o iPhone vê o mesmo; a pausa não conta).

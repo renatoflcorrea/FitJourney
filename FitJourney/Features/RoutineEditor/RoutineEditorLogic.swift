@@ -299,6 +299,14 @@ enum PrescriptionDefaults {
 
     static func setCount(for kind: MeasurementKind) -> Int { kind == .timeOrDistance ? 1 : 3 }
 
+    /// Carga inicial ao adicionar um exercício (P2.8): a última carga conhecida do exercício (histórico), senão
+    /// a do padrão por tipo (peso corporal; ou vazia em exercício de carga — nunca 0 automático). Cardio: nenhuma.
+    static func initialLoad(for kind: MeasurementKind, lastKnown: Load?,
+                            unit: WeightUnit = WeightUnitPreference.current) -> Load? {
+        guard kind != .timeOrDistance else { return nil }
+        return Load.defined(lastKnown) ?? set(for: kind, unit: unit).initialLoad
+    }
+
     /// Descanso quando nada o define (Ajustes › Treino › Descanso padrão; 90 s sem preferência).
     static func restSeconds(_ defaults: UserDefaults = .standard) -> Int { RestPreference.defaultSeconds(defaults) }
 }
@@ -439,15 +447,18 @@ enum RoutineEditorOps {
     }
 
     /// Insere exercícios com prescrição padrão por tipo de medida (descanso: o do catálogo), com um único save.
+    /// A carga inicial é a última usada no exercício, se houver (`PrescriptionDefaults.initialLoad`).
     @discardableResult
     static func add(_ exercises: [Exercise], to routine: Routine, store: ProgramStore) throws -> [RoutineExercise] {
         var added: [RoutineExercise] = []
+        let history = SessionStore(context: store.context)
         for exercise in exercises {
             let kind = exercise.measurementKind
             let t = PrescriptionDefaults.set(for: kind)
+            let load = PrescriptionDefaults.initialLoad(for: kind, lastKnown: try history.lastUsedLoad(exerciseID: exercise.id))
             added.append(try store.addExercise(
                 exercise, to: routine, setCount: PrescriptionDefaults.setCount(for: kind),
-                repTarget: t.repTarget, load: t.initialLoad, holdSeconds: t.holdSeconds, cardio: t.cardio,
+                repTarget: t.repTarget, load: load, holdSeconds: t.holdSeconds, cardio: t.cardio,
                 save: false))
         }
         routine.updatedAt = .now

@@ -1,3 +1,4 @@
+import HealthKit
 import SwiftUI
 import WatchKit
 
@@ -22,13 +23,29 @@ struct FitJourneyWatchApp: App {
             }
                 .environment(model)
                 .preferredColorScheme(.dark)
-                .task { model.start() }
+                .task {
+                    model.start()
+                    if WatchAppComposition.consumePendingPhoneLaunch() { model.handlePhoneWorkoutLaunch() }
+                }
         }
     }
 }
 
-/// Recuperação do treino do Saúde quando o app do relógio é reaberto com uma `HKWorkoutSession` em curso.
+/// Recuperação do treino do Saúde quando o app do relógio é reaberto com uma `HKWorkoutSession` em curso, e
+/// abertura pelo iPhone para gravar (`HKHealthStore.startWatchApp(with:)`, P2.8).
 final class WatchAppDelegate: NSObject, WKApplicationDelegate {
+    /// O iPhone iniciou uma sessão e abriu o app para gravar: grava a sessão em andamento aqui (o tipo vem do
+    /// snapshot do iPhone, como no "gravar no relógio").
+    func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
+        Task { @MainActor in
+            if let model = WatchAppComposition.model {
+                model.handlePhoneWorkoutLaunch()
+            } else {
+                WatchAppComposition.notePendingPhoneLaunch()
+            }
+        }
+    }
+
     func handleActiveWorkoutRecovery() {
         Task { @MainActor in
             guard let provider = WatchAppComposition.workoutProvider else { return }
@@ -54,6 +71,15 @@ enum WatchAppComposition {
     /// Referências para o delegate do app (recuperação do treino).
     @MainActor private(set) static var workoutProvider: WatchWorkoutProvider?
     @MainActor private(set) static weak var model: WatchSessionModel?
+    /// Abertura pelo iPhone recebida antes de o modelo existir (consumida no `.task` da cena).
+    @MainActor private static var pendingPhoneLaunch = false
+
+    @MainActor static func notePendingPhoneLaunch() { pendingPhoneLaunch = true }
+
+    @MainActor static func consumePendingPhoneLaunch() -> Bool {
+        defer { pendingPhoneLaunch = false }
+        return pendingPhoneLaunch
+    }
 
     @MainActor static func make() -> Result {
         #if DEBUG

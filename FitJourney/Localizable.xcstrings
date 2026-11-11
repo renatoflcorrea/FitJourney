@@ -15391,6 +15391,56 @@
           }
         }
       }
+    },
+    "Definir carga" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set load"
+          }
+        }
+      }
+    },
+    "Primeira carga definida — salva automaticamente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First load set — saved automatically"
+          }
+        }
+      }
+    },
+    "Iniciar no Apple Watch automaticamente" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start on Apple Watch automatically"
+          }
+        }
+      }
+    },
+    "Ao iniciar um treino no iPhone, o FitJourney abre no relógio já gravando (frequência cardíaca e calorias do relógio). Exige o app no Apple Watch e o Saúde conectado. O app Exercício da Apple não é aberto." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When you start a workout on iPhone, FitJourney opens on your watch already recording (heart rate and calories from the watch). Requires the Apple Watch app and Health connected. Apple’s Workout app is not opened."
+          }
+        }
+      }
+    },
+    "0 = sem carga definida. O treino usa a última carga registrada deste exercício." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "0 = no load set. The workout uses the last load logged for this exercise."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -100,7 +100,7 @@ Foundation puro, testado; `TrainingEnums`, `HealthAnalysis` e `HealthWorkoutType
 
 ### Persistence (`FitJourney/Persistence/`)
 - **SchemaV1** com 17 modelos (treino, sessão, dieta, chat), sem stages de migração; CloudKit-compatível (padrões/opcionais, sem `.unique`, relações opcionais com `deleteRule`), `cloudKitDatabase: .none` por ora. Enums em `…Raw`, compostos em `…Data` JSON via `StorageCoding` (leitura tolerante, preserva desconhecidos).
-- **Treino**: `TrainingProgram → Routine → RoutineExercise → SetPrescription` (cascade); `Exercise` do catálogo com nullify. `initialLoad` imutável pela execução; `currentLoad` só ao finalizar com confirmação.
+- **Treino**: `TrainingProgram → Routine → RoutineExercise → SetPrescription` (cascade); `Exercise` do catálogo com nullify. `initialLoad` imutável pela execução; `currentLoad` só ao finalizar com confirmação — exceto a **primeira definição** (ficha sem carga ou com peso 0), aplicada sempre (P2.8).
 - **Sessão**: `WorkoutSession → SessionExercise → SetLog` (cascade) com **snapshot da prescrição** no início; campos do motor (`revision`, `appliedCommandIDsData`, `lastCommandAt`, `holdStartedAt`, `restTotalSeconds`, notas/dor com carimbos).
 - **Invariantes só em código**: um programa ativo, uma dieta ativa, uma sessão em andamento (`ProgramStore.activate`, `NutritionStore.switchActive`, `SessionStore.start` + `SessionEngine`).
 - **Seed** versionado e idempotente (`catalogKey`, `addedInVersion`); exercício embutido apagado não volta. Descanso do catálogo opcional (nil = padrão dos Ajustes).
@@ -153,7 +153,8 @@ sequenceDiagram
 
 - Descanso, pausa, sustentação/cardio derivam de datas; pausa desloca `holdStartedAt`/`restEndsAt`; `restFinished` emitido uma vez (tolerância 30 s).
 - Treino esquecido: `staleSessionPrompt` (finalizar na última série / continuar / descartar). `discard` apaga o registro e deixa tombstone (5 últimas).
-- Encerrar: resumo e snapshot terminal calculados antes do save; aplica só as propostas de carga confirmadas; humor/nota.
+- Encerrar: resumo e snapshot terminal calculados antes do save; aplica as propostas de carga confirmadas + as de primeira definição (`LoadUpdateProposal.isFirstDefinition`, também pelo relógio e no treino esquecido); humor/nota.
+- Memória de carga (P2.8): `plannedLoad` = carga da ficha se definida (peso 0 = vazia; peso corporal 0 vale), senão `SessionStore.lastUsedLoad` (última série concluída com carga do exercício, qualquer ficha), senão `nil` ("Definir carga" no iPhone/relógio, nunca "0 kg") — vale para início, `addExercise`, `addSet`, substituição e `adjustLoad` sem base. Concluir/ajustar uma série propaga a carga às seguintes pendentes não editadas do mesmo exercício que mostravam a mesma carga (`propagateLoad`; espelhado no `SessionReducer`).
 
 ### Relógio ↔ iPhone (WatchLink v2)
 - **IDs determinísticos** UUIDv5 com namespace = `sessionID` (`exercise:`, `set:`, `extra-set:`, `added-exercise:`, `added-set:`) — o relógio cita séries antes do 1º snapshot sem retenção.
@@ -164,6 +165,7 @@ sequenceDiagram
 
 ### HealthKit e espelhamento
 - iPhone: `HealthWorkoutController.attach(to: engine)` segue os eventos; ordem obrigatória eventos/metadata/energia → `endCollection` → `finishWorkout`; falha → gravação simples; sessão espelhada marcada nunca é regravada; espelho caído = `.mirrorDisconnected` (não retoma gravação local); reconciliação de sessões sem treino (7 dias, uma vez); `unlinkWorkout` marca como reconciliada.
+- Início automático (P2.8, `Services/Watch/WatchAutoStarter.swift`): sessão iniciada no iPhone + `fj.autoStartWatchWorkout` (padrão ligado) + app do relógio instalado + Saúde com escrita → `HKHealthStore.startWatchApp(with:)` (`WatchAppLaunching`). O relógio recebe em `WatchAppDelegate.handle(_ workoutConfiguration:)` → `WatchSessionModel.handlePhoneWorkoutLaunch()` grava a sessão do próximo snapshot (≤ 90 s) pelo fluxo "gravar no relógio"; o iPhone adota a gravação ao receber `.recording`. Falha/sem confirmação (20 s) → o iPhone segue gravando.
 - Relógio: `WatchWorkoutProvider` — `stopActivity` → espera `.stopped` (≤ 5 s) → eventos/metadata (`ExternalUUID`) → `endCollection` → `finishWorkout` → `end()` → `.saved(id)` durável; fim externo grava o coletado; recuperação via `handleActiveWorkoutRecovery` com contexto persistido.
 
 ### Coach de IA

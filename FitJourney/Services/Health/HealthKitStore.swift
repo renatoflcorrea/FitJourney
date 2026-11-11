@@ -4,7 +4,7 @@ import HealthKit
 /// `HealthStoreProtocol` real sobre um único `HKHealthStore` (a Apple recomenda um por app).
 /// Não validável no simulador: exige iPhone (+ Apple Watch/sensor para FC).
 @MainActor
-final class HealthKitStore: HealthStoreProtocol {
+final class HealthKitStore: HealthStoreProtocol, WatchAppLaunching {
     /// Instância única do app.
     static let shared = HealthKitStore()
 
@@ -67,6 +67,14 @@ final class HealthKitStore: HealthStoreProtocol {
             // MainActor se perde: fica na fila do `MirroredWorkoutSession`).
             let remote = MirroredWorkoutSession(session: session)
             Task { @MainActor in handler(remote) }
+        }
+    }
+
+    func startWatchApp(type: HealthWorkoutType) async throws {
+        let configuration = type.workoutConfiguration
+        let store = healthStore
+        try await awaitCompletion { completion in
+            store.startWatchApp(with: configuration, completion: completion)
         }
     }
 
