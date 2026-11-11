@@ -1,0 +1,53 @@
+import Foundation
+
+/// Resumo compacto do programa ativo para o relógio fora de sessão (SPEC §6.4): fichas, exercícios,
+/// prescrição e cargas atuais. Vai por `applicationContext`; o relógio abre a lista sem o iPhone.
+struct ProgramDigest: Codable, Sendable, Hashable {
+    var generatedAt: Date
+    var programID: UUID
+    var name: String
+    /// "free" | "sequential" | "weekly" (`ScheduleMode.rawValue`).
+    var scheduleMode: String
+    /// Ficha(s) sugerida(s) para hoje, em ordem (vazio = descanso/sem fichas).
+    var suggestedRoutineIDs: [UUID]
+    var routines: [Routine]
+
+    struct Routine: Codable, Sendable, Hashable, Identifiable {
+        /// `Routine.id` (vai no comando `start`).
+        var id: UUID
+        var name: String
+        var symbol: String
+        var lastCompletedAt: Date?
+        var estimatedDurationSeconds: Int
+        var exercises: [Exercise]
+    }
+
+    struct Exercise: Codable, Sendable, Hashable, Identifiable {
+        /// `RoutineExercise.id`.
+        var id: UUID
+        /// Exercício do catálogo.
+        var exerciseID: UUID?
+        var name: String
+        var measurementKind: WatchMeasurementKind
+        var groupID: UUID?
+        var restSeconds: Int?
+        var sets: [ExerciseSet]
+    }
+
+    struct ExerciseSet: Codable, Sendable, Hashable, Identifiable {
+        /// `SetPrescription.id`.
+        var id: UUID
+        var kind: WatchSetKind
+        var targetText: String
+        var repTarget: WatchRepTarget?
+        var effort: WatchEffort?
+        /// Carga atual (senão a inicial).
+        var load: WatchLoad?
+        var holdSeconds: Int?
+        var restSeconds: Int?
+    }
+
+    var suggestedRoutines: [Routine] {
+        suggestedRoutineIDs.compactMap { id in routines.first { $0.id == id } }
+    }
+}

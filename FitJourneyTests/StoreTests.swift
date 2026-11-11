@@ -218,7 +218,7 @@ struct SessionStoreTests {
         let logs = exercise.sortedSets
 
         try f.sessions.completeSet(logs[1], at: t0.addingTimeInterval(100))
-        #expect(logs[1].reps == 8)          // piso da faixa
+        #expect(logs[1].reps == nil)        // reps opcionais (D2): "feita dentro do alvo"
         #expect(logs[1].load == .kg(30))    // carga planejada
         #expect(logs[1].completedAt == t0.addingTimeInterval(100))
         #expect(exercise.status == .inProgress)

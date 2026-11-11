@@ -15,6 +15,8 @@ struct SessionSummary: Sendable, Hashable {
     var completedSets: Int
     var totalSets: Int
     var skippedExercises: [String]
+    /// Alguma série válida concluída sem reps realizadas: o volume usa o piso do alvo (SPEC D2).
+    var hasEstimatedVolume: Bool = false
     var personalRecords: [PersonalRecord]
     /// Propostas de atualização de carga atual (R-T2) — padrão: todas marcadas.
     var loadProposals: [LoadUpdateProposal]
@@ -68,10 +70,13 @@ struct SessionStore {
 
     /// Inicia a sessão copiando a prescrição da ficha (snapshot). `routine == nil` = treino livre.
     /// Cada `SetLog` nasce com `plannedLoad` = carga atual (ou inicial) da série prescrita.
+    /// - Parameter id: ID da sessão (o comando `start` do relógio já traz o seu); padrão: novo.
     @discardableResult
-    func start(routine: Routine?, at date: Date = .now) throws -> WorkoutSession {
+    func start(routine: Routine?, at date: Date = .now, id: UUID = UUID()) throws -> WorkoutSession {
         guard try inProgressSession() == nil else { throw SessionStoreError.sessionAlreadyInProgress }
         let session = WorkoutSession(routineName: routine?.name ?? String(localized: "Treino livre"), startedAt: date)
+        session.id = id
+        session.lastActivityAt = date
         session.routineID = routine?.id
         session.programID = routine?.program?.id
         context.insert(session)
@@ -108,10 +113,11 @@ struct SessionStore {
 
     // MARK: Durante
 
-    /// Conclui a série com os valores exibidos (padrão: alvo/carga planejada) e inicia o descanso.
+    /// Conclui a série com a carga exibida (padrão: carga planejada) e inicia o descanso.
+    /// Reps são opcionais (SPEC D2): sem `reps`, a série fica "feita dentro do alvo" (`reps == nil`).
     func completeSet(_ log: SetLog, reps: Int? = nil, load: Load? = nil, durationSeconds: Double? = nil,
                      distanceMeters: Double? = nil, at date: Date = .now, startRest: Bool = true) throws {
-        log.reps = reps ?? log.reps ?? log.repTarget?.defaultReps
+        log.reps = reps ?? log.reps
         log.load = load ?? log.load ?? log.plannedLoad
         if let durationSeconds { log.durationSeconds = durationSeconds }
         else if log.durationSeconds == nil, let hold = log.targetHoldSeconds { log.durationSeconds = Double(hold) }
@@ -123,8 +129,8 @@ struct SessionStore {
             refreshStatus(exercise, at: date)
             if startRest, let session = exercise.session, session.status == .inProgress {
                 var clock = session.clock
-                // Em bi-set/circuito, descanso só ao fim da rodada: o último exercício do grupo descansa.
-                if isEndOfRound(exercise) {
+                // Em bi-set/circuito, descanso só ao fim da rodada (SessionFlow.isEndOfRound).
+                if SessionFlow.isEndOfRound(after: exercise.id, in: session.flowStates) {
                     clock.startRest(seconds: log.restSeconds ?? exercise.restSeconds ?? 0, at: date)
                 } else {
                     clock.skipRest()
@@ -154,9 +160,21 @@ struct SessionStore {
         try context.save()
     }
 
+    /// Soma `delta` (na unidade da carga) à carga exibida da série: a registrada, senão a planejada,
+    /// senão zero (peso corporal em exercícios sem carga). Carga absoluta nunca fica negativa.
+    func adjustLoad(_ log: SetLog, by delta: Double, at date: Date = .now) throws {
+        let kind = log.sessionExercise?.measurementKind ?? .repsAndLoad
+        let base = log.load ?? log.plannedLoad ?? (kind == .repsOnly ? .bodyweight(delta: 0, unit: .kg) : .kg(0))
+        var adjusted = base.adding(delta)
+        if case .weight(let value, let unit) = adjusted, value < 0 { adjusted = .weight(value: 0, unit: unit) }
+        log.load = adjusted
+        markEditedIfFinished(log, at: date)
+        try context.save()
+    }
+
     /// Série extra (copia alvo/carga da última). Sem `prescriptionID`: não atualiza a ficha.
     @discardableResult
-    func addSet(to exercise: SessionExercise, kind: SetKind = .working) throws -> SetLog {
+    func addSet(to exercise: SessionExercise, kind: SetKind = .working, at date: Date = .now) throws -> SetLog {
         let last = exercise.sortedSets.last
         let log = SetLog(sortIndex: (last?.sortIndex ?? -1) + 1, kind: kind,
                          repTarget: last?.repTarget, plannedLoad: last?.load ?? last?.plannedLoad)
@@ -164,7 +182,7 @@ struct SessionStore {
         log.targetHoldSeconds = last?.targetHoldSeconds
         context.insert(log)
         log.sessionExercise = exercise
-        refreshStatus(exercise, at: .now)
+        refreshStatus(exercise, at: date)
         try context.save()
         return log
     }
@@ -218,11 +236,12 @@ struct SessionStore {
         try context.save()
     }
 
-    func skipExercise(_ exercise: SessionExercise, reason: SkipReason? = nil, text: String? = nil) throws {
+    func skipExercise(_ exercise: SessionExercise, reason: SkipReason? = nil, text: String? = nil,
+                      at date: Date = .now) throws {
         exercise.status = .skipped
         exercise.skipReason = reason
         exercise.skipReasonText = text
-        exercise.updatedAt = .now
+        exercise.updatedAt = date
         try context.save()
     }
 
@@ -236,11 +255,11 @@ struct SessionStore {
     }
 
     /// Conclusão manual: com séries pendentes vira "concluído parcialmente".
-    func completeExercise(_ exercise: SessionExercise) throws {
+    func completeExercise(_ exercise: SessionExercise, at date: Date = .now) throws {
         let sets = exercise.sets ?? []
         exercise.status = SessionExerciseRules.manualCompletionStatus(
             completedSets: sets.filter(\.isCompleted).count, totalSets: sets.count)
-        exercise.updatedAt = .now
+        exercise.updatedAt = date
         try context.save()
     }
 
@@ -275,12 +294,14 @@ struct SessionStore {
         let allSets = exercises.flatMap(\.sortedSets)
         let performedByExercise = Dictionary(grouping: exercises.filter { $0.exerciseID != nil }, by: { $0.exerciseID! })
             .mapValues { $0.flatMap(\.performedSets) }
+        let performed = allSets.map(\.performed)
         return SessionSummary(
             durationSeconds: session.clock.elapsed(at: date),
-            volumeKg: WorkoutMetrics.volumeKg(allSets.map(\.performed)),
+            volumeKg: WorkoutMetrics.volumeKg(performed),
             completedSets: allSets.filter(\.isCompleted).count,
             totalSets: allSets.count,
             skippedExercises: exercises.filter { $0.status == .skipped }.map(\.name),
+            hasEstimatedVolume: WorkoutMetrics.hasEstimatedVolume(performed),
             personalRecords: WorkoutMetrics.personalRecords(
                 session: performedByExercise,
                 history: try historyBests(exerciseIDs: Set(performedByExercise.keys), excluding: session)),
@@ -365,13 +386,6 @@ struct SessionStore {
         if log.sessionExercise?.session?.status == .completed { log.edited = true }
     }
 
-    /// Último exercício do grupo (ou exercício sem grupo) = fim da rodada.
-    private func isEndOfRound(_ exercise: SessionExercise) -> Bool {
-        guard let groupID = exercise.groupID, let session = exercise.session else { return true }
-        let group = session.sortedExercises.filter { $0.groupID == groupID }
-        return group.last?.persistentModelID == exercise.persistentModelID
-    }
-
     private func prescriptionsByID(for session: WorkoutSession) throws -> [UUID: SetPrescription] {
         let ids = Set((session.exercises ?? []).flatMap { ($0.sets ?? []).compactMap(\.prescriptionID) })
         guard !ids.isEmpty else { return [:] }
@@ -401,5 +415,16 @@ struct SessionStore {
         var perExercise: [UUID: [[PerformedSet]]] = [:]
         for (key, sets) in bySession { perExercise[key.exerciseID, default: []].append(sets) }
         return perExercise.mapValues { WorkoutMetrics.bests(history: $0) }
+    }
+}
+
+extension WorkoutSession {
+    /// Estado dos exercícios para as regras puras de `SessionFlow`, na ordem da sessão.
+    var flowStates: [SessionFlow.ExerciseState] {
+        sortedExercises.map { exercise in
+            let sets = exercise.sets ?? []
+            return SessionFlow.ExerciseState(id: exercise.id, groupID: exercise.groupID, status: exercise.status,
+                                             completedSets: sets.filter(\.isCompleted).count, totalSets: sets.count)
+        }
     }
 }
