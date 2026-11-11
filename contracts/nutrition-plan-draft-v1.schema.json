@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fitjourney.app/contracts/nutrition-plan-draft-v1.schema.json",
+  "title": "NutritionPlanDraft",
+  "description": "Rascunho de plano alimentar (FitJourney v1). Valores nutricionais são estimativas; nada é salvo sem revisão do usuário. Macros em gramas; campos desconhecidos = null.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "goal",
+    "notes",
+    "targets",
+    "days"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do plano (até 80 caracteres)."
+    },
+    "goal": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "targets": {
+      "$ref": "#/$defs/targets"
+    },
+    "days": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 7,
+      "items": {
+        "$ref": "#/$defs/day"
+      }
+    }
+  },
+  "$defs": {
+    "targets": {
+      "description": "Metas diárias (null = sem meta).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kcal",
+        "protein",
+        "carbs",
+        "fat",
+        "fiber",
+        "waterMilliliters"
+      ],
+      "properties": {
+        "kcal": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Meta diária de kcal."
+        },
+        "protein": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "carbs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "fat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "fiber": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "waterMilliliters": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        }
+      }
+    },
+    "day": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "weekdays",
+        "meals"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Ex.: \"Todos os dias\", \"Dia de treino\"."
+        },
+        "weekdays": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "type": "string",
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ]
+          },
+          "description": "Vazio = todos os dias. Um dia da semana não pode aparecer em dois dias do plano."
+        },
+        "meals": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/meal"
+          }
+        }
+      }
+    },
+    "meal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "time",
+        "notes",
+        "items"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "Horário HH:MM (24 h)."
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "quantity",
+        "unit",
+        "kcal",
+        "protein",
+        "carbs",
+        "fat",
+        "fiber",
+        "notes",
+        "substitutions"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "grams",
+            "milliliters",
+            "unit",
+            "tablespoon",
+            "cup",
+            "slice",
+            "serving"
+          ]
+        },
+        "kcal": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "protein": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "carbs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "fat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "fiber": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "substitutions": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/substitution"
+          }
+        }
+      }
+    },
+    "substitution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "quantity",
+        "unit",
+        "kcal",
+        "protein",
+        "carbs",
+        "fat",
+        "notes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "grams",
+            "milliliters",
+            "unit",
+            "tablespoon",
+            "cup",
+            "slice",
+            "serving"
+          ]
+        },
+        "kcal": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "protein": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "carbs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "fat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
