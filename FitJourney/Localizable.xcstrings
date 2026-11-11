@@ -5878,6 +5878,266 @@
     },
     "−15 s" : {
       "localizations" : {}
+    },
+    "ChatGPT (login) · Experimental / não oficial" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT (sign-in) · Experimental / unofficial"
+          }
+        }
+      }
+    },
+    "ChatGPT (login)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT (sign-in)"
+          }
+        }
+      }
+    },
+    "O login do ChatGPT expirou ou foi recusado. Entre de novo em Ajustes de IA." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The ChatGPT sign-in expired or was rejected. Sign in again in AI Settings."
+          }
+        }
+      }
+    },
+    "não foi possível ler o login do ChatGPT no Keychain" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "could not read the ChatGPT sign-in from the Keychain"
+          }
+        }
+      }
+    },
+    "o ChatGPT (login) não usa chave de API" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT (sign-in) does not use an API key"
+          }
+        }
+      }
+    },
+    "Entre de novo no ChatGPT" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in to ChatGPT again"
+          }
+        }
+      }
+    },
+    "Entrar de novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in again"
+          }
+        }
+      }
+    },
+    "Entre com o ChatGPT" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in with ChatGPT"
+          }
+        }
+      }
+    },
+    "Este provedor usa o login da sua assinatura ChatGPT, sem chave de API." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This provider uses your ChatGPT subscription sign-in, no API key."
+          }
+        }
+      }
+    },
+    "Experimental e não oficial. Usa o login da sua assinatura ChatGPT por um endpoint não documentado (o mesmo do Codex CLI), que pode mudar ou parar de funcionar sem aviso. Usar esse acesso em outro app é uma zona cinzenta dos termos da OpenAI: só para uso pessoal, por sua conta e risco. As conversas contam no limite de uso da sua assinatura." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimental and unofficial. Uses your ChatGPT subscription sign-in through an undocumented endpoint (the same one as the Codex CLI), which may change or stop working without notice. Using this access in another app is a gray area of OpenAI's terms: personal use only, at your own risk. Conversations count toward your subscription's usage limit."
+          }
+        }
+      }
+    },
+    "Conectado · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connected · %@"
+          }
+        }
+      }
+    },
+    "Sem chave de API: entra com a sua conta ChatGPT. As requisições vão direto do aparelho ao ChatGPT." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No API key: sign in with your ChatGPT account. Requests go straight from the device to ChatGPT."
+          }
+        }
+      }
+    },
+    "Experimental / não oficial" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Experimental / unofficial"
+          }
+        }
+      }
+    },
+    "Conta ChatGPT" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT account"
+          }
+        }
+      }
+    },
+    "Sair" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign out"
+          }
+        }
+      }
+    },
+    "Os tokens do login ficam só no Keychain deste aparelho, fora de backups. Sair apaga o login daqui." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign-in tokens stay only in this device's Keychain, outside backups. Signing out deletes them here."
+          }
+        }
+      }
+    },
+    "Aguardando o ChatGPT…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Waiting for ChatGPT…"
+          }
+        }
+      }
+    },
+    "A porta 1455 está ocupada. Entre na página pelo navegador e cole aqui o endereço em que ele parar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Port 1455 is busy. Sign in on the page in the browser and paste here the address where it stops."
+          }
+        }
+      }
+    },
+    "Abrir a página de login" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open the sign-in page"
+          }
+        }
+      }
+    },
+    "Cole o endereço ou o código" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste the address or code"
+          }
+        }
+      }
+    },
+    "Concluir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish"
+          }
+        }
+      }
+    },
+    "Entrar com ChatGPT" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sign in with ChatGPT"
+          }
+        }
+      }
+    },
+    "Isso não parece um endereço de login. Cole a URL inteira em que o navegador parou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That does not look like a sign-in address. Paste the full URL where the browser stopped."
+          }
+        }
+      }
+    },
+    "O ChatGPT não aprovou o login." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT did not approve the sign-in."
+          }
+        }
+      }
+    },
+    "A resposta do login não corresponde a este pedido. Tente de novo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The sign-in answer does not match this request. Try again."
+          }
+        }
+      }
+    },
+    "Não foi possível concluir o login no ChatGPT. Tente de novo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not finish the ChatGPT sign-in. Try again."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
