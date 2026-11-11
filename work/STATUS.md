@@ -44,8 +44,8 @@
 
 - P6.6 inglês completo + QA de acessibilidade integrado (`377f289`); evidências e pendências em `work/evidence/ciclo-6/qa/RELATORIO.md`.
 - `docs/CODEBASE_MAP.md` gerado pelo Cartographer.
+- P6.7 pendências de acessibilidade integradas (`331b15f`); P5.6 `get_health_summary` real integrado (`f958e9b`). **Plano de implementação concluído.**
 
 ## Próximo
-- Pendências do QA (RELATORIO.md): subtítulo de Hoje em AX, seletor kg/lb em AX, nome longo da ficha em AX, doca grande em AX4, botões do descanso no relógio em texto grande; dados de exemplo/catálogo em pt-BR no idioma en.
-- `get_health_summary` do Coach ainda é stub — ligar ao `HealthQueries` (com consentimento Saúde).
+- Nomes de exercícios em en também no VoiceOver da sessão, no Coach e no relógio (hoje só nas telas).
 - **Usuário**: teste em iPhone + Apple Watch (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações) via `make device TEAM=<TEAM> DEVICE_ID=<udid>`; chave de API ou login ChatGPT para o Coach.

@@ -6,7 +6,7 @@ total_tokens: 756597
 
 # Codebase Map — FitJourney
 
-> Gerado pelo Cartographer em 2026-11-11 (commit `377f289`). Estado e pendências: `work/STATUS.md`. Comportamento: `SPEC.md`. Plano: `docs/PLANO.md`. IA: `docs/ia.md`. Design: `DESIGN_DIRECTION.md`.
+> Gerado pelo Cartographer em 2026-11-11 (commit `377f289`; atualizado em `f958e9b` com P6.7 e P5.6). Estado e pendências: `work/STATUS.md`. Comportamento: `SPEC.md`. Plano: `docs/PLANO.md`. IA: `docs/ia.md`. Design: `DESIGN_DIRECTION.md`.
 
 App iPhone (SwiftUI, Swift 6 com concorrência `complete`, SwiftData, HealthKit, iOS 26+, Liquid Glass, sem dependências de terceiros) para planejar e registrar treinos de academia e dieta, com app do Apple Watch que controla a sessão, Live Activity/Dynamic Island, Apple Health e Coach de IA (OpenAI, Anthropic, OpenRouter, endereço próprio e ChatGPT por login — experimental). pt-BR principal, en completo.
 
@@ -217,7 +217,7 @@ sequenceDiagram
 - Em `SessionStore.completeSet` o descanso do exercício da sessão já inclui o do catálogo (chamada passa `exercise: nil`).
 - Live Activity: ActivityKit não tem alerta silencioso (som desligado = sem alerta, notificação silenciosa); request só em primeiro plano (retry no foreground).
 - HealthKit: leitura negada é indistinguível de "sem dados"; nada disso valida no simulador.
-- `get_health_summary` do Coach ainda é stub "unavailable" (compartilhar Saúde não tem efeito prático hoje).
+- `get_health_summary` (`FitnessToolbox+Health.swift`) só com `Sharing.health`; sem `Sharing.workouts` as sessões do app ficam de fora; campos sem leitura vêm `null` + `status` (nunca zero); dia corrente é parcial e fica fora das médias.
 - `docs/ia.md` lista itens do plano não portados (`GeminiGateway`, `GatewayRouter`) — Gemini só via OpenRouter.
 - Zip sem Zip64 (4 GB, 65.535 entradas). `.xcodeproj` não é versionado (`make project`). Team de assinatura só por variável (`make device TEAM=…`).
 - Tokens do relógio (`WF`) espelham os do iPhone manualmente; a extensão compila 4 arquivos de tokens e o catálogo do app.
