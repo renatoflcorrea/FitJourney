@@ -55,6 +55,49 @@ struct WatchLoadMemoryTests {
         #expect(!isLoadUnset(s.exercises[0].sets[1]))
     }
 
+    @Test func adjustWithoutPlannedLoadStartsFromLastKnownInSession() throws {
+        var base = snapshot()
+        // 1ª série concluída com 26 kg; a 2ª ficou com "0 kg" planejado (vazia).
+        base.exercises[0].sets[0].isCompleted = true
+        base.exercises[0].sets[0].completedAt = t0
+        base.exercises[0].sets[0].load = WatchLoad(value: 26)
+        base.exercises[0].sets[1].plannedLoad = WatchLoad(value: 0)
+        let setID = base.exercises[0].sets[1].id
+        #expect(SessionReducer.loadBase(setID: setID, in: base) == WatchLoad(value: 26))
+        let s = try #require(SessionReducer.apply(command(.adjustLoad(setID: setID, delta: 2.5), base), to: base))
+        #expect(s.exercises[0].sets[1].load == WatchLoad(value: 28.5))
+
+        // Nada conhecido: base 0 (o relógio não tem o histórico antigo; o snapshot do iPhone confirma).
+        let empty = snapshot(clearingLoads: true)
+        #expect(SessionReducer.loadBase(setID: empty.exercises[0].sets[0].id, in: empty) == WatchLoad(value: 0))
+    }
+
+    @Test func extraSetCarriesOnlySameKindLoad() throws {
+        let base = snapshot()
+        let exercise = base.exercises[0]
+        var s = try #require(SessionReducer.apply(command(.addSet(exerciseID: exercise.id, kind: nil), base), to: base))
+        #expect(s.exercises[0].sets.last?.plannedLoad == WatchLoad(value: 26))
+        #expect(s.exercises[0].sets.last?.load == nil)
+        s = try #require(SessionReducer.apply(command(.addSet(exerciseID: exercise.id, kind: .warmup), s), to: s))
+        #expect(s.exercises[0].sets.last?.plannedLoad == nil) // válida não alimenta aquecimento
+    }
+
+    @Test func recordingRequestBeforeSnapshotRecordsThatSession() {
+        let clock = TestClock(t0)
+        let health = FixedHealthProvider(access: .authorized)
+        let (model, _) = model(health, clock: clock)
+        let snap = snapshot()
+        model.handlePhoneWorkoutLaunch()
+        model.handle(.recordingRequest(sessionID: snap.sessionID))
+        var other = snap
+        other.sessionID = UUID()
+        model.receive(snapshot: other) // outra sessão: não grava
+        #expect(health.began == 0)
+        model.receive(snapshot: snap)
+        #expect(health.began == 1)
+        #expect(model.recordingSessionID == snap.sessionID)
+    }
+
     @Test func unsetLoadDetection() {
         var set = snapshot().exercises[0].sets[0]
         #expect(!isLoadUnset(set))

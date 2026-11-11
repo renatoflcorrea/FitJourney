@@ -237,6 +237,40 @@ struct LoadMemorySessionTests {
         #expect(item.sortedSets.filter { $0.kind == .working }.allSatisfy { $0.currentLoad == nil })
     }
 
+    @Test func warmupHistoryNeverFeedsWorkingSets() throws {
+        let f = try EngineFixture()
+        let program = try f.base.programs.createProgram(name: "P", activate: true)
+        let a = try f.base.programs.addRoutine(to: program, name: "A", symbol: "A")
+        let bench = try f.base.exercise("bench-press")
+        let item = try f.base.programs.addExercise(bench, to: a, setCount: 2, repTarget: .fixed(reps: 10), load: nil)
+        let warmup = SetPrescription(sortIndex: -1, kind: .warmup, repTarget: .fixed(reps: 15), initialLoad: nil)
+        f.context.insert(warmup)
+        warmup.routineExercise = item
+        try f.context.save()
+
+        // 1ª sessão: só o aquecimento ganha carga (20 kg).
+        let first = try f.start(a)
+        let sets = try f.sets(0)
+        complete(f, sets[0].id, load: WatchLoad(value: 20), at: 60, session: first)
+        #expect(try f.sets(0)[1].plannedLoad == nil) // aquecimento não propaga para as válidas
+        f.apply(.finish(rpe: nil, applyLoadProposalIDs: []), at: 300, session: first)
+        let store = f.base.sessions
+        #expect(try store.lastUsedLoad(exerciseID: bench.id, working: false) == .kg(20))
+        #expect(try store.lastUsedLoad(exerciseID: bench.id, working: true) == nil)
+
+        // 2ª sessão: aquecimento lembra 20 kg; válidas continuam sem carga ("Definir carga").
+        let second = try f.start(a, at: 3_600)
+        var snap = try f.snapshot.exercises[0].sets
+        #expect(snap[0].plannedLoad == WatchLoad(value: 20))
+        #expect(snap.dropFirst().allSatisfy { $0.plannedLoad == nil })
+        // Ajustar uma válida sem carga parte de 0, não dos 20 kg do aquecimento; série extra válida idem.
+        f.apply(.adjustLoad(setID: snap[1].id, delta: 5), at: 3_610, session: second)
+        #expect(try f.sets(0)[1].load == WatchLoad(value: 5))
+        f.apply(.addSet(exerciseID: try f.snapshot.exercises[0].id, kind: .warmup), at: 3_620, session: second)
+        snap = try f.snapshot.exercises[0].sets
+        #expect(snap.last?.plannedLoad == WatchLoad(value: 20)) // extra de aquecimento: última de aquecimento
+    }
+
     @Test func editorDefaultsToLastKnownLoad() throws {
         let f = try EngineFixture()
         let program = try starter(f)

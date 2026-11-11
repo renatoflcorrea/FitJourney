@@ -8,6 +8,14 @@ import Testing
 final class FakeAutoStartLink: WatchAutoStartLink {
     var isWatchAppInstalled = true
     var watchRecordingSessionID: UUID?
+    var isReachable = true
+    var recordingRequests = 0
+
+    func requestWatchRecording() -> Bool {
+        guard isReachable else { return false }
+        recordingRequests += 1
+        return true
+    }
 }
 
 @MainActor
@@ -21,9 +29,12 @@ final class FakeWatchLauncher: WatchAppLaunching {
     var error: Error?
     /// Simula o relógio confirmando a gravação logo depois de abrir.
     var onLaunch: (() -> Void)?
+    /// Simula a completion do HealthKit que nunca volta.
+    var hangs = false
 
     func startWatchApp(type: HealthWorkoutType) async throws {
         launched.append(type)
+        if hangs { try await Task.sleep(for: .seconds(30)) }
         if let error { throw error }
         onLaunch?()
     }
@@ -47,6 +58,7 @@ struct WatchAutoStarterTests {
         let link = FakeAutoStartLink(), health = FakeAutoStartHealth(), launcher = FakeWatchLauncher()
         let starter = WatchAutoStarter(engine: fixture.engine, link: link, health: health, launcher: launcher, defaults: defaults)
         starter.confirmationTimeout = .milliseconds(30)
+        starter.launchTimeout = .milliseconds(50)
         return Rig(fixture: fixture, link: link, health: health, launcher: launcher, starter: starter, defaults: defaults)
     }
 
@@ -76,6 +88,40 @@ struct WatchAutoStarterTests {
         await r.starter.sessionStarted(id)
         #expect(r.launcher.launched.count == 1)
         #expect(r.starter.state == .timedOut(sessionID: id))
+        #expect(r.link.recordingRequests == 1) // pedido com o ID da sessão, uma vez
+    }
+
+    @Test func recordingRequestWaitsForReachability() async throws {
+        let r = try make()
+        r.link.isReachable = false
+        let id = try start(r, origin: .phone)
+        await r.starter.sessionStarted(id)
+        #expect(r.link.recordingRequests == 0)
+        #expect(r.starter.state == .timedOut(sessionID: id))
+    }
+
+    @Test func launchThatNeverReturnsTimesOut() async throws {
+        let r = try make()
+        r.launcher.hangs = true
+        let id = try start(r, origin: .phone)
+        await r.starter.sessionStarted(id)
+        guard case .failed(let failed, _) = r.starter.state else {
+            Issue.record("estado inesperado: \(r.starter.state)")
+            return
+        }
+        #expect(failed == id)
+        #expect(r.link.recordingRequests == 0)
+    }
+
+    @Test func detachCancelsAttemptAndResetsState() async throws {
+        let r = try make()
+        r.starter.confirmationTimeout = .seconds(30)
+        let id = try start(r, origin: .phone)
+        r.starter.attempt(for: id)
+        for _ in 0..<200 where r.starter.state != .awaitingWatch(sessionID: id) { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(r.starter.state == .awaitingWatch(sessionID: id))
+        r.starter.detach()
+        #expect(r.starter.state == .idle)
     }
 
     @Test func launchFailureIsReported() async throws {
@@ -129,8 +175,15 @@ struct WatchAutoStarterTests {
         let r = try make()
         r.starter.attach()
         defer { r.starter.detach() }
-        _ = try start(r, origin: .phone)
-        for _ in 0..<200 where r.launcher.launched.isEmpty { try await Task.sleep(for: .milliseconds(10)) }
+        r.starter.confirmationTimeout = .seconds(30)
+        let id = try start(r, origin: .phone)
+        for _ in 0..<200 where r.starter.state != .awaitingWatch(sessionID: id) { try await Task.sleep(for: .milliseconds(5)) }
         #expect(r.launcher.launched.count == 1)
+        // A espera roda à parte: o fluxo de eventos segue livre (outro evento é processado na hora).
+        r.fixture.apply(.pause, at: 10, session: id)
+        let link = r.link
+        link.watchRecordingSessionID = id
+        for _ in 0..<200 where r.starter.state != .watchRecording(sessionID: id) { try await Task.sleep(for: .milliseconds(5)) }
+        #expect(r.starter.state == .watchRecording(sessionID: id))
     }
 }

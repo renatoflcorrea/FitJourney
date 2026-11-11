@@ -134,6 +134,8 @@ final class WatchSessionModel {
     @ObservationIgnored private var recordingPaused = false
     /// Aberto pelo iPhone para gravar (`handlePhoneWorkoutLaunch`): vale até esta data.
     @ObservationIgnored private var phoneLaunchUntil: Date?
+    /// Sessão pedida pelo iPhone (`recordingRequest`); `nil` = a próxima sessão ativa (só `startWatchApp`).
+    @ObservationIgnored private var phoneLaunchSessionID: UUID?
     @ObservationIgnored private var lastMetricsSentAt: Date?
     @ObservationIgnored private var cardioStartElapsed: [UUID: TimeInterval] = [:]
     @ObservationIgnored private var coalesceTask: Task<Void, Never>?
@@ -287,7 +289,14 @@ final class WatchSessionModel {
         case .programDigest(let digest): receive(digest: digest)
         case .incompatible(let compatibility): incompatibility = compatibility
         case .recordingRequest(let sessionID):
-            if display?.sessionID == sessionID { startRecordingOnWatch() }
+            if display?.sessionID == sessionID {
+                startRecordingOnWatch()
+            } else {
+                // Pedido chegou antes do snapshot da sessão (app recém-aberto pelo iPhone): grava quando ela chegar.
+                phoneLaunchUntil = now.addingTimeInterval(phoneLaunchWindow)
+                phoneLaunchSessionID = sessionID
+                requestSnapshot()
+            }
         case .command, .snapshotRequest, .liveMetrics, .workoutStatus: break // mensagens do relógio para o iPhone
         }
     }
@@ -505,6 +514,8 @@ final class WatchSessionModel {
     /// "gravar no relógio" (`workoutStatus(.recording)` → o iPhone adota a gravação remota, sem gravação dupla).
     /// Sem sessão nesse prazo, nada acontece (o iPhone segue gravando).
     func handlePhoneWorkoutLaunch() {
+        // Um `recordingRequest` já recebido (com o ID da sessão) continua valendo.
+        if phoneLaunchUntil.map({ now > $0 }) ?? true { phoneLaunchSessionID = nil }
         phoneLaunchUntil = now.addingTimeInterval(phoneLaunchWindow)
         requestSnapshot()
     }
@@ -513,10 +524,13 @@ final class WatchSessionModel {
         guard let until = phoneLaunchUntil else { return }
         guard now <= until else {
             phoneLaunchUntil = nil
+            phoneLaunchSessionID = nil
             return
         }
-        guard let snapshot, snapshot.status == .active || snapshot.status == .paused else { return }
+        guard let snapshot, snapshot.status == .active || snapshot.status == .paused,
+              phoneLaunchSessionID.map({ $0 == snapshot.sessionID }) ?? true else { return }
         phoneLaunchUntil = nil
+        phoneLaunchSessionID = nil
         guard recordingSessionID != snapshot.sessionID, healthAccess != .denied else { return }
         watchRecordedSessionIDs.insert(snapshot.sessionID)
         beginRecordingIfNeeded(snapshot)
@@ -554,8 +568,7 @@ final class WatchSessionModel {
 
     /// Soma `delta` (múltiplo do passo) à carga da série; respeita os limites.
     func adjustLoad(setID: UUID, by delta: Double) {
-        guard delta != 0, let set = display?.exercises.flatMap(\.sets).first(where: { $0.id == setID }) else { return }
-        let base = set.load ?? set.plannedLoad ?? WatchLoad(value: 0)
+        guard delta != 0, let display, let base = SessionReducer.loadBase(setID: setID, in: display) else { return }
         let target = WatchLoadStepping.clamp(base.value + delta, for: base)
         let effective = target - base.value
         guard abs(effective) >= WatchLoadStepping.step / 2 else { return }
@@ -564,8 +577,7 @@ final class WatchSessionModel {
 
     /// Valor absoluto vindo da Coroa: converte em `adjustLoad`.
     func setLoad(setID: UUID, to value: Double) {
-        guard let set = display?.exercises.flatMap(\.sets).first(where: { $0.id == setID }) else { return }
-        let base = set.load ?? set.plannedLoad ?? WatchLoad(value: 0)
+        guard let display, let base = SessionReducer.loadBase(setID: setID, in: display) else { return }
         adjustLoad(setID: setID, by: value - base.value)
     }
 

@@ -81,8 +81,9 @@ struct SessionStore {
 
     /// Última carga realmente usada num exercício (P2.8): a da série concluída mais recente com carga definida
     /// (peso 0 não conta; peso corporal sim), de qualquer ficha ou treino livre — inclusive da sessão em
-    /// andamento. Prefere séries válidas a aquecimento/preparatória. `nil` = nunca registrada.
-    func lastUsedLoad(exerciseID: UUID?) throws -> Load? {
+    /// andamento. Separado por tipo: série válida só herda de série válida e aquecimento/preparatória só de
+    /// aquecimento/preparatória (a carga de aquecimento nunca vira a de trabalho). `nil` = nunca registrada.
+    func lastUsedLoad(exerciseID: UUID?, working: Bool = true) throws -> Load? {
         guard let eid = exerciseID else { return nil }
         let id: UUID? = eid
         var descriptor = FetchDescriptor<SetLog>(
@@ -91,11 +92,11 @@ struct SessionStore {
             },
             sortBy: [SortDescriptor(\.completedAt, order: .reverse)]
         )
-        descriptor.fetchLimit = 40
-        let recent = try context.fetch(descriptor).compactMap { log -> (load: Load, working: Bool)? in
-            Load.defined(log.load).map { ($0, log.kind.isWorking) }
-        }
-        return (recent.first { $0.working } ?? recent.first)?.load
+        descriptor.fetchLimit = 60
+        return try context.fetch(descriptor).lazy
+            .filter { $0.kind.isWorking == working }
+            .compactMap { Load.defined($0.load) }
+            .first
     }
 
     /// Carga planejada de uma série (P2.8): a da ficha se definida (peso 0 = vazia), senão `fallback`
@@ -115,12 +116,17 @@ struct SessionStore {
     func start(routine: Routine?, at date: Date = .now, id: UUID = UUID()) throws -> WorkoutSession {
         guard try inProgressSession() == nil else { throw SessionStoreError.sessionAlreadyInProgress }
         // Consultas antes de inserir qualquer coisa (o histórico não inclui a sessão nova).
-        var history: [UUID: Load] = [:]
+        struct HistoryKey: Hashable { var exerciseID: UUID; var working: Bool }
+        var history: [HistoryKey: Load] = [:]
+        var looked: Set<HistoryKey> = []
         for item in routine?.sortedExercises ?? [] {
-            guard let exerciseID = item.exercise?.id, history[exerciseID] == nil,
-                  item.sortedSets.contains(where: { Load.defined($0.effectiveLoad) == nil }),
-                  let last = try lastUsedLoad(exerciseID: exerciseID) else { continue }
-            history[exerciseID] = last
+            // Cardio não tem carga: nem consulta.
+            guard let exercise = item.exercise, exercise.measurementKind != .timeOrDistance else { continue }
+            for set in item.sortedSets where Load.defined(set.effectiveLoad) == nil {
+                let key = HistoryKey(exerciseID: exercise.id, working: set.kind.isWorking)
+                guard looked.insert(key).inserted else { continue }
+                history[key] = try lastUsedLoad(exerciseID: exercise.id, working: key.working)
+            }
         }
         let session = WorkoutSession(routineName: routine?.name ?? String(localized: "Treino livre"), startedAt: date)
         session.id = id
@@ -147,7 +153,9 @@ struct SessionStore {
 
             for prescription in item.sortedSets {
                 let planned = Self.plannedLoad(prescribed: prescription.effectiveLoad,
-                                               fallback: exercise.flatMap { history[$0.id] })
+                                               fallback: exercise.flatMap {
+                                                   history[HistoryKey(exerciseID: $0.id, working: prescription.kind.isWorking)]
+                                               })
                 let log = SetLog(sortIndex: prescription.sortIndex, kind: prescription.kind,
                                  repTarget: prescription.repTarget, plannedLoad: planned,
                                  prescriptionID: prescription.id)
@@ -223,7 +231,7 @@ struct SessionStore {
     func adjustLoad(_ log: SetLog, by delta: Double, at date: Date = .now) throws {
         let kind = log.sessionExercise?.measurementKind ?? .repsAndLoad
         let shown = displayedLoad(log)
-        let base = try shown ?? lastUsedLoad(exerciseID: log.sessionExercise?.exerciseID)
+        let base = try shown ?? lastUsedLoad(exerciseID: log.sessionExercise?.exerciseID, working: log.kind.isWorking)
             ?? (kind == .repsOnly ? .bodyweight(delta: 0, unit: .kg) : .kg(0))
         var adjusted = base.adding(delta)
         if case .weight(let value, let unit) = adjusted, value < 0 { adjusted = .weight(value: 0, unit: unit) }
@@ -239,8 +247,10 @@ struct SessionStore {
     @discardableResult
     func addSet(to exercise: SessionExercise, kind: SetKind = .working, at date: Date = .now, id: UUID = UUID()) throws -> SetLog {
         let last = exercise.sortedSets.last
-        let carried = Load.defined(last?.load) ?? Load.defined(last?.plannedLoad)
-        let planned = try carried ?? lastUsedLoad(exerciseID: exercise.exerciseID)
+        // Carga da última série só se for do mesmo tipo (aquecimento não alimenta válida, e vice-versa).
+        let sameKind = last.map { $0.kind.isWorking == kind.isWorking } ?? false
+        let carried = sameKind ? (Load.defined(last?.load) ?? Load.defined(last?.plannedLoad)) : nil
+        let planned = try carried ?? lastUsedLoad(exerciseID: exercise.exerciseID, working: kind.isWorking)
         let log = SetLog(sortIndex: (last?.sortIndex ?? -1) + 1, kind: kind,
                          repTarget: last?.repTarget, plannedLoad: planned)
         log.id = id
@@ -356,7 +366,9 @@ struct SessionStore {
     /// Troca o exercício na hora; a origem fica registrada e a série perde o vínculo com a ficha. As séries
     /// pendentes passam a planejar a última carga usada no novo exercício (senão ficam sem carga).
     func substitute(_ sessionExercise: SessionExercise, with exercise: Exercise, at date: Date = .now) throws {
-        let planned = exercise.measurementKind == .timeOrDistance ? nil : try lastUsedLoad(exerciseID: exercise.id)
+        let hasLoad = exercise.measurementKind != .timeOrDistance
+        let plannedWorking = hasLoad ? try lastUsedLoad(exerciseID: exercise.id, working: true) : nil
+        let plannedWarmup = hasLoad ? try lastUsedLoad(exerciseID: exercise.id, working: false) : nil
         if sessionExercise.substitutedFromExerciseID == nil && sessionExercise.substitutedFromName == nil {
             sessionExercise.substitutedFromExerciseID = sessionExercise.exerciseID
             sessionExercise.substitutedFromName = sessionExercise.name
@@ -368,7 +380,7 @@ struct SessionStore {
         for log in sessionExercise.sets ?? [] {
             log.prescriptionID = nil
             if !log.isCompleted {
-                log.plannedLoad = planned
+                log.plannedLoad = log.kind.isWorking ? plannedWorking : plannedWarmup
                 log.load = nil
             }
         }
