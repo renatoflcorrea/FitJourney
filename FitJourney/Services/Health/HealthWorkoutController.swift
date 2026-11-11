@@ -310,6 +310,19 @@ final class HealthWorkoutController {
         return true
     }
 
+    /// Desfaz o vínculo ("Desfazer" na UI): zera o ID e marca a sessão como já reconciliada, para o próximo
+    /// launch não gravar um treino duplicado no Saúde.
+    @discardableResult
+    func unlinkWorkout(from sessionID: UUID) -> Bool {
+        guard linkWorkout(nil, to: sessionID) else { return false }
+        var attempted = idList(Self.reconciledKey)
+        if !attempted.contains(sessionID) {
+            attempted.append(sessionID)
+            saveIDList(attempted, key: Self.reconciledKey)
+        }
+        return true
+    }
+
     private func linkWorkout(_ workoutID: UUID?, to session: WorkoutSession) {
         session.healthKitWorkoutID = workoutID
         session.updatedAt = now()
