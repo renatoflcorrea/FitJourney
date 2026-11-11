@@ -7,6 +7,9 @@ struct ToolOutcome: Sendable, Hashable {
     var content: String
     var isError: Bool = false
     var proposal: CoachProposal?
+    /// Ferramentas de escrita propostas (`propose_routine_changes`/`propose_nutrition_changes`/`propose_food_log`):
+    /// o cartão de alteração (nada gravado).
+    var changeSet: CopilotChangeSet?
 }
 
 /// Ferramentas do Coach (SPEC §7) executadas sobre os dados locais.
@@ -40,6 +43,9 @@ final class FitnessToolbox {
         case getHealthSummary = "get_health_summary"
         case proposeProgram = "propose_program"
         case proposeNutritionPlan = "propose_nutrition_plan"
+        case proposeRoutineChanges = "propose_routine_changes"
+        case proposeNutritionChanges = "propose_nutrition_changes"
+        case proposeFoodLog = "propose_food_log"
     }
 
     let context: ModelContext
@@ -86,6 +92,9 @@ final class FitnessToolbox {
         case .getProfile: sharing.profile
         case .listPrograms, .getProgram, .getWorkoutHistory, .getExerciseProgress: sharing.workouts
         case .listNutritionPlans, .getNutritionLog: sharing.nutrition
+        // Escrita proposta: só sobre o que o usuário compartilha (o diff lê o estado atual).
+        case .proposeRoutineChanges: sharing.workouts
+        case .proposeNutritionChanges, .proposeFoodLog: sharing.nutrition
         case .getHealthSummary: sharing.health
         // Catálogo do app (não é dado pessoal) e propostas (só validam o que o modelo enviou).
         case .listExercises, .proposeProgram, .proposeNutritionPlan: true
@@ -131,6 +140,8 @@ final class FitnessToolbox {
         case .proposeNutritionPlan:
             ToolSpec(name: name.rawValue, description: "Propõe um plano alimentar como RASCUNHO (valores são estimativas). O app valida e mostra um cartão para revisar e salvar; nada é gravado.",
                      parametersSchema: DraftValidation.toolParameters(fromContract: DraftSchemas.nutritionPlanDraftV1))
+        case .proposeRoutineChanges, .proposeNutritionChanges, .proposeFoodLog:
+            copilotSpec(name)
         }
     }
 
@@ -165,6 +176,7 @@ final class FitnessToolbox {
         switch name {
         case .proposeProgram: return proposeProgram(call)
         case .proposeNutritionPlan: return proposeNutritionPlan(call)
+        case .proposeRoutineChanges, .proposeNutritionChanges, .proposeFoodLog: return proposeChanges(name, call)
         default: break
         }
         guard let args = (try? JSONValue.parse(call.argumentsJSON.isEmpty ? "{}" : call.argumentsJSON))?.objectValue else {
@@ -184,7 +196,8 @@ final class FitnessToolbox {
             case .getNutritionLog: return try nutritionLog(from: args["from"]?.stringValue, to: args["to"]?.stringValue)
             case .getHealthSummary:
                 return try await healthSummary(from: args["from"]?.stringValue, to: args["to"]?.stringValue)
-            case .proposeProgram, .proposeNutritionPlan: return error("internal", "unreachable")
+            case .proposeProgram, .proposeNutritionPlan, .proposeRoutineChanges, .proposeNutritionChanges, .proposeFoodLog:
+                return error("internal", "unreachable")
             }
         } catch is CancellationError {
             return self.error("cancelled", "Leitura cancelada.")
@@ -242,11 +255,13 @@ final class FitnessToolbox {
         guard let program = try context.fetch(descriptor).first else { return error("not_found", "Programa não encontrado.") }
         let routines = program.sortedRoutines.map { routine -> JSONValue in
             .object([
+                "id": .string(routine.id.uuidString),
                 "name": .string(routine.name), "symbol": .string(routine.symbol),
                 "weekdays": .array(routine.weekdays.sorted().map { .string($0.rawValue) }),
                 "notes": Self.text(routine.notes),
                 "exercises": .array(routine.sortedExercises.map { item in
                     .object([
+                        "id": .string(item.id.uuidString),
                         "name": .string(item.displayName),
                         "catalogKey": item.exercise?.catalogKey.map(JSONValue.string) ?? .null,
                         "grouped": .bool(item.groupID != nil),
@@ -396,10 +411,17 @@ final class FitnessToolbox {
             if plan.isActive {
                 object["days"] = .array(plan.sortedDays.map { day in
                     .object([
+                        "id": .string(day.id.uuidString),
                         "name": .string(day.name),
                         "weekdays": .array(day.weekdays.sorted().map { .string($0.rawValue) }),
                         "meals": .array(day.sortedMeals.map { meal in
                             .object([
+                                "id": .string(meal.id.uuidString),
+                                "itemList": .array(meal.sortedItems.map { item in
+                                    .object(["id": .string(item.id.uuidString), "name": .string(item.name),
+                                             "quantity": .number(Self.round(item.quantity)), "unit": .string(item.unit.rawValue),
+                                             "kcal": item.kcal.map { .number(Self.round($0)) } ?? .null])
+                                }),
                                 "name": .string(meal.name), "time": .string(Self.timeString(minutes: meal.minutesFromMidnight)),
                                 "items": .string(meal.sortedItems.map { "\(Self.round($0.quantity)) \($0.unit.rawValue) \($0.name)" }.joined(separator: "; ")),
                                 "plannedKcal": meal.plannedValues.kcal.map { .number(Self.round($0)) } ?? .null,

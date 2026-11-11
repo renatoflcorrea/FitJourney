@@ -191,6 +191,10 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
             switch message.role {
             case .system:
                 continue
+            case .user where !message.parts.isEmpty:
+                input.append(.object([
+                    "type": .string("message"), "role": .string("user"), "content": .array(inputContent(message)),
+                ]))
             case .user:
                 input.append(messageItem(role: "user", type: "input_text", text: message.content))
             case .assistant:
@@ -237,6 +241,29 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
             if options.parallelToolCalls { body["parallel_tool_calls"] = .bool(true) }
         }
         return .object(body)
+    }
+
+    /// Anexos antes do texto: imagem → `input_image` (data URL), PDF → `input_file` (`file_data` data URL),
+    /// arquivo de texto → `input_text`.
+    static func inputContent(_ message: LLMMessage) -> [JSONValue] {
+        var content: [JSONValue] = message.parts.map { part in
+            switch part {
+            case let .text(text):
+                .object(["type": .string("input_text"), "text": .string(text)])
+            case .image:
+                .object(["type": .string("input_image"), "image_url": .string(part.dataURL ?? "")])
+            case let .pdf(filename, _):
+                .object(["type": .string("input_file"), "filename": .string(filename),
+                         "file_data": .string(part.dataURL ?? "")])
+            case let .fileText(filename, text):
+                .object(["type": .string("input_text"),
+                         "text": .string(LLMContentPart.fileTextBody(filename: filename, text: text))])
+            }
+        }
+        if !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            content.append(.object(["type": .string("input_text"), "text": .string(message.content)]))
+        }
+        return content
     }
 
     private static func messageItem(role: String, type: String, text: String) -> JSONValue {
