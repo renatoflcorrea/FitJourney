@@ -7,13 +7,13 @@ enum WatchTransportEvent: Sendable, Equatable {
     case reachability(Bool)
 }
 
-/// PONTO DE INJEÇÃO (W2/W3b): canal relógio ↔ iPhone.
+/// Canal relógio ↔ iPhone.
 ///
-/// - Implementação real (W2/W3b): `WCSession` (`applicationContext` ↔ `ProgramDigest`, `sendMessage` com
-///   `WatchLinkCodec` para comandos com iPhone alcançável, `transferUserInfo` para a fila offline) e, durante
-///   a sessão, o canal de dados da `HKWorkoutSession` espelhada (`sendToRemoteWorkoutSession`). Ela decide
-///   sozinha qual canal usar em `send`; o modelo só conhece "enviar" e "o que chegou".
-/// - Hoje: `MockWatchTransport` (previews, testes e harness de screenshots).
+/// - Real: `WatchConnectivityTransport` (`applicationContext` ↔ `ProgramDigest`/snapshot, `sendMessageData` com
+///   resposta quando alcançável, `transferUserInfo` como fila offline) e, durante a sessão espelhada, o canal
+///   de dados da `HKWorkoutSession` (`WatchWorkoutDataChannel`). Ele decide sozinho qual canal usar em `send`;
+///   o modelo só conhece "enviar" e "o que chegou".
+/// - Previews/testes/harness: `MockWatchTransport` (DEBUG).
 ///
 /// Contrato: `send` nunca lança nem bloqueia (pode enfileirar); reenviar o mesmo `commandID` é seguro
 /// (o iPhone é idempotente), então o modelo reenvia os pendentes sempre que a alcançabilidade volta.
@@ -27,9 +27,21 @@ protocol WatchTransport: AnyObject {
     func send(_ message: WatchLinkMessage)
 }
 
-/// Transporte de lançamento até o W2: nunca alcança o iPhone e não entrega nada — o relógio mostra
-/// "Abra o FitJourney no iPhone". PENDÊNCIA DE LANÇAMENTO: sem o `WatchConnectivityTransport` do W2 o app
-/// do relógio não sincroniza; não publicar antes disso.
+/// Canal de dados da `HKWorkoutSession` espelhada no iPhone (`sendToRemoteWorkoutSession`). Implementado
+/// pelo `WatchWorkoutProvider`; o `WatchConnectivityTransport` prefere este canal enquanto ele existe.
+@MainActor
+protocol WatchWorkoutDataChannel: AnyObject {
+    /// A sessão do relógio está espelhada no iPhone (o canal entrega dados).
+    var isMirroring: Bool { get }
+    func sendToPhone(_ data: Data) async throws
+    /// Dados recebidos do iPhone pelo canal (envelopes do `WatchLinkCodec`).
+    var onDataFromPhone: (@MainActor (Data) -> Void)? { get set }
+    /// O espelhamento ligou/desligou.
+    var onMirroringChange: (@MainActor (Bool) -> Void)? { get set }
+}
+
+/// Nunca alcança o iPhone e não entrega nada — o relógio mostra "Abra o FitJourney no iPhone". Só para
+/// ambientes sem `WCSession` (não suportado); o app usa o `WatchConnectivityTransport`.
 @MainActor
 final class UnavailableWatchTransport: WatchTransport {
     let isReachable = false

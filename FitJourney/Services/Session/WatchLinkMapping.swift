@@ -112,8 +112,9 @@ enum SessionSnapshotBuilder {
             }
         }()
         let proposals = session.status == .inProgress ? ((try? store.loadProposals(for: session)) ?? []) : []
+        let workoutType = HealthSessionTimeline.make(session: session, context: store.context).workoutType
 
-        return SessionSnapshot(
+        var snapshot = SessionSnapshot(
             sessionID: session.id,
             revision: revision ?? session.revision,
             status: resolvedStatus,
@@ -139,6 +140,7 @@ enum SessionSnapshotBuilder {
                     restSeconds: exercise.restSeconds,
                     sets: exercise.sortedSets.map { log in
                         let repTarget = log.repTarget
+                        let cardio = log.cardioTarget
                         return SessionSnapshot.ExerciseSet(
                             id: log.id,
                             kind: WatchSetKind(log.kind),
@@ -156,8 +158,16 @@ enum SessionSnapshotBuilder {
                             distanceMeters: log.distanceMeters,
                             restSeconds: log.restSeconds ?? exercise.restSeconds,
                             isCompleted: log.isCompleted,
-                            completedAt: log.completedAt)
-                    })
+                            completedAt: log.completedAt,
+                            targetDurationSeconds: cardio?.durationSeconds,
+                            targetDistanceMeters: cardio?.distanceMeters,
+                            level: log.level,
+                            speedKmh: log.speedKmh,
+                            inclinePercent: log.inclinePercent)
+                    },
+                    notes: exercise.notes.isEmpty ? nil : exercise.notes,
+                    painLocation: exercise.painLocation,
+                    painScore: exercise.painLevel)
             },
             metrics: SessionSnapshot.Metrics(
                 completedSets: allSets.filter(\.isCompleted).count,
@@ -170,6 +180,13 @@ enum SessionSnapshotBuilder {
                 SessionSnapshot.LoadProposal(prescriptionID: $0.prescriptionID, exerciseName: $0.exerciseName,
                                              from: $0.from.map(WatchLoad.init), to: WatchLoad($0.to))
             })
+        snapshot.focusedExerciseID = session.focusedExerciseID
+        snapshot.restTotalSeconds = session.restEndsAt == nil ? nil : session.restTotalSeconds
+        snapshot.appliedCommandIDs = Array(session.appliedCommandIDs.suffix(SessionSnapshot.appliedCommandWindow))
+        snapshot.currentGroup = SessionSnapshot.groupRound(exercises: snapshot.exercises, currentID: currentID)
+        snapshot.notes = session.notes.isEmpty ? nil : session.notes
+        snapshot.workoutType = workoutType.rawValue
+        return snapshot
     }
 
     static func prescriptions(ids: Set<UUID>, context: ModelContext) throws -> [UUID: SetPrescription] {
@@ -222,9 +239,21 @@ enum ProgramDigestBuilder {
                                     effort: set.effort.map(WatchEffort.init),
                                     load: set.effectiveLoad.map(WatchLoad.init),
                                     holdSeconds: set.holdSeconds,
-                                    restSeconds: set.restSeconds ?? rest)
+                                    restSeconds: set.restSeconds ?? rest,
+                                    targetDurationSeconds: set.cardio?.durationSeconds,
+                                    targetDistanceMeters: set.cardio?.distanceMeters)
                             })
-                    })
+                    },
+                    workoutType: workoutType(of: routine).rawValue)
             })
+    }
+
+    /// Mesma regra do Saúde no fim da sessão (`HealthWorkoutType.derive`), pela ficha.
+    static func workoutType(of routine: Routine) -> HealthWorkoutType {
+        HealthWorkoutType.derive(from: routine.sortedExercises.map { item in
+            HealthWorkoutTypeInput(measurementKind: item.exercise?.measurementKind ?? .repsAndLoad,
+                                   primaryMuscles: item.exercise?.primaryMuscles ?? [],
+                                   equipment: item.exercise?.equipment, name: item.displayName)
+        })
     }
 }

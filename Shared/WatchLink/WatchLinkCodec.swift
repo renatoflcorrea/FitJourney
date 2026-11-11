@@ -12,6 +12,12 @@ enum WatchLinkMessage: Codable, Sendable, Hashable {
     case snapshotRequest
     /// iPhone → relógio: programa ativo (`nil` = sem programa ativo).
     case programDigest(ProgramDigest?)
+    /// Relógio → iPhone: FC/energia da `HKWorkoutSession` do relógio (v2).
+    case liveMetrics(WatchLiveMetricsPayload)
+    /// Relógio → iPhone: quem grava o treino no Saúde e o treino gravado (v2).
+    case workoutStatus(WatchWorkoutStatus)
+    /// iPhone → relógio: "gravar no relógio" a sessão em andamento (FC do relógio; v2).
+    case recordingRequest(sessionID: UUID)
     /// Qualquer lado: recebi uma mensagem de versão que não suporto. Formato estável, legível por
     /// qualquer versão — o emissor mostra "atualize o app" (o lado com `currentVersion` menor).
     case incompatible(WatchLinkCompatibility)

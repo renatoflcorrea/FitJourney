@@ -154,7 +154,7 @@ struct WatchLinkCodecTests {
         #expect(throws: WatchLinkCodecError.unsupportedVersion(0)) { try WatchLinkCodec.decode(old) }
         #expect(throws: WatchLinkCodecError.malformed) { try WatchLinkCodec.decode(Data("nope".utf8)) }
         // Mensagem desconhecida na mesma versão → malformada (ignorar).
-        let unknown = Data(#"{"schemaVersion":1,"message":{"teleport":{}}}"#.utf8)
+        let unknown = Data(#"{"schemaVersion":2,"message":{"teleport":{}}}"#.utf8)
         #expect(throws: WatchLinkCodecError.malformed) { try WatchLinkCodec.decode(unknown) }
         let envelope = try WatchLinkCodec.decodeEnvelope(try WatchLinkCodec.encode(.snapshotRequest))
         #expect(envelope.schemaVersion == WatchLinkProtocol.schemaVersion)

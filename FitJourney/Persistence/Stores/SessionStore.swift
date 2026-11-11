@@ -81,6 +81,7 @@ struct SessionStore {
 
     /// Inicia a sessão copiando a prescrição da ficha (snapshot). `routine == nil` = treino livre.
     /// Cada `SetLog` nasce com `plannedLoad` = carga atual (ou inicial) da série prescrita.
+    /// IDs de `SessionExercise`/`SetLog` determinísticos (`WatchLinkIDs`, protocolo v2): o relógio calcula os mesmos.
     /// - Parameter id: ID da sessão (o comando `start` do relógio já traz o seu); padrão: novo.
     @discardableResult
     func start(routine: Routine?, at date: Date = .now, id: UUID = UUID()) throws -> WorkoutSession {
@@ -98,6 +99,7 @@ struct SessionStore {
             let snapshot = SessionExercise(name: item.displayName,
                                            measurementKind: exercise?.measurementKind ?? .repsAndLoad,
                                            sortIndex: item.sortIndex)
+            snapshot.id = WatchLinkIDs.sessionExerciseID(sessionID: id, routineExerciseID: item.id)
             snapshot.exerciseID = exercise?.id
             snapshot.routineExerciseID = item.id
             snapshot.laterality = exercise?.laterality ?? .bilateral
@@ -111,6 +113,7 @@ struct SessionStore {
                 let log = SetLog(sortIndex: prescription.sortIndex, kind: prescription.kind,
                                  repTarget: prescription.repTarget, plannedLoad: prescription.effectiveLoad,
                                  prescriptionID: prescription.id)
+                log.id = WatchLinkIDs.setLogID(sessionID: id, prescriptionID: prescription.id)
                 log.targetHoldSeconds = prescription.holdSeconds
                 log.restSeconds = prescription.restSeconds ?? snapshot.restSeconds
                 log.cardioTarget = prescription.cardio
@@ -184,13 +187,16 @@ struct SessionStore {
     }
 
     /// Série extra (copia alvo/carga da última). Sem `prescriptionID`: não atualiza a ficha.
+    /// - Parameter id: o motor passa `WatchLinkIDs.extraSetID` (determinístico); padrão: novo.
     @discardableResult
-    func addSet(to exercise: SessionExercise, kind: SetKind = .working, at date: Date = .now) throws -> SetLog {
+    func addSet(to exercise: SessionExercise, kind: SetKind = .working, at date: Date = .now, id: UUID = UUID()) throws -> SetLog {
         let last = exercise.sortedSets.last
         let log = SetLog(sortIndex: (last?.sortIndex ?? -1) + 1, kind: kind,
                          repTarget: last?.repTarget, plannedLoad: last?.load ?? last?.plannedLoad)
+        log.id = id
         log.restSeconds = last?.restSeconds ?? exercise.restSeconds
         log.targetHoldSeconds = last?.targetHoldSeconds
+        log.cardioTarget = last?.cardioTarget
         context.insert(log)
         log.sessionExercise = exercise
         refreshStatus(exercise, at: date)
@@ -198,23 +204,68 @@ struct SessionStore {
         return log
     }
 
-    func removeSet(_ log: SetLog) throws {
+    func removeSet(_ log: SetLog, at date: Date = .now) throws {
         let exercise = log.sessionExercise
         context.delete(log)
         if let exercise {
             exercise.sets?.removeAll { $0.persistentModelID == log.persistentModelID }
-            refreshStatus(exercise, at: .now)
+            refreshStatus(exercise, at: date)
         }
+        try save()
+    }
+
+    func changeKind(_ log: SetLog, to kind: SetKind, at date: Date = .now) throws {
+        log.kind = kind
+        markEditedIfFinished(log, at: date)
+        try save()
+    }
+
+    /// Alvo da sustentação (isométrico) ou duração alvo (cardio), em segundos.
+    func updateHoldTarget(_ log: SetLog, seconds: Int, at date: Date = .now) throws {
+        if log.sessionExercise?.measurementKind == .timeOrDistance {
+            var target = log.cardioTarget ?? CardioTarget()
+            target.durationSeconds = seconds
+            log.cardioTarget = target
+        } else {
+            log.targetHoldSeconds = seconds
+        }
+        markEditedIfFinished(log, at: date)
+        try save()
+    }
+
+    /// Cardio realizado: nível/velocidade/inclinação (substitui; `nil` limpa).
+    func updateCardio(_ log: SetLog, level: Int?, speedKmh: Double?, inclinePercent: Double?, at date: Date = .now) throws {
+        log.level = level
+        log.speedKmh = speedKmh
+        log.inclinePercent = inclinePercent
+        markEditedIfFinished(log, at: date)
+        try save()
+    }
+
+    func setNote(_ exercise: SessionExercise, text: String, at date: Date = .now) throws {
+        exercise.notes = text
+        exercise.updatedAt = date
+        try save()
+    }
+
+    /// Dor/desconforto (local + 0–10), sem interpretação.
+    func setPain(_ exercise: SessionExercise, location: String?, level: Int?, at date: Date = .now) throws {
+        exercise.painLocation = location
+        exercise.painLevel = level
+        exercise.updatedAt = date
         try save()
     }
 
     /// Adiciona um exercício não previsto (ou o primeiro do treino livre) com `setCount` séries,
     /// no fim ou logo depois de `after`.
+    /// - Parameter commandID: o motor passa o do comando `addExercise` (IDs determinísticos, `WatchLinkIDs`).
     @discardableResult
     func addExercise(_ exercise: Exercise, to session: WorkoutSession, setCount: Int = 3,
-                     repTarget: RepTarget = .fixed(reps: 10), after: SessionExercise? = nil) throws -> SessionExercise {
+                     repTarget: RepTarget = .fixed(reps: 10), after: SessionExercise? = nil,
+                     commandID: UUID? = nil) throws -> SessionExercise {
         let snapshot = SessionExercise(name: exercise.name, measurementKind: exercise.measurementKind,
                                        sortIndex: (session.exercises ?? []).map(\.sortIndex).max().map { $0 + 1 } ?? 0)
+        if let commandID { snapshot.id = WatchLinkIDs.addedExerciseID(sessionID: session.id, commandID: commandID) }
         snapshot.exerciseID = exercise.id
         snapshot.laterality = exercise.laterality
         snapshot.restSeconds = exercise.defaultRestSeconds
@@ -222,6 +273,7 @@ struct SessionStore {
         snapshot.session = session
         for index in 0..<max(0, setCount) {
             let log = SetLog(sortIndex: index, kind: .working, repTarget: repTarget)
+            if let commandID { log.id = WatchLinkIDs.addedSetID(sessionID: session.id, commandID: commandID, index: index) }
             log.restSeconds = exercise.defaultRestSeconds
             context.insert(log)
             log.sessionExercise = snapshot

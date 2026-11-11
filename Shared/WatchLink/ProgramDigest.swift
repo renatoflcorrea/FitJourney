@@ -20,6 +20,8 @@ struct ProgramDigest: Codable, Sendable, Hashable {
         var lastCompletedAt: Date?
         var estimatedDurationSeconds: Int
         var exercises: [Exercise]
+        /// Tipo do treino no Saúde (`HealthWorkoutType.rawValue`), derivado da ficha no iPhone (v2).
+        var workoutType: String? = nil
     }
 
     struct Exercise: Codable, Sendable, Hashable, Identifiable {
@@ -45,6 +47,9 @@ struct ProgramDigest: Codable, Sendable, Hashable {
         var load: WatchLoad?
         var holdSeconds: Int?
         var restSeconds: Int?
+        /// Cardio: duração/distância alvo (v2).
+        var targetDurationSeconds: Int? = nil
+        var targetDistanceMeters: Double? = nil
     }
 
     var suggestedRoutines: [Routine] {

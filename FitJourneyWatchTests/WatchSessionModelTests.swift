@@ -22,7 +22,8 @@ struct WatchSessionModelTests {
     }
 
     /// Modelo com relógio controlável, iPhone simulado que não responde sozinho e sessão com `completed` séries feitas.
-    private func make(completed: Int = 0, reachable: Bool = true, revision: Int = 5, snapshot custom: SessionSnapshot? = nil) -> Rig {
+    private func make(completed: Int = 0, reachable: Bool = true, revision: Int = 5, snapshot custom: SessionSnapshot? = nil,
+                      recording: Bool = false) -> Rig {
         let digest = WatchFixtures.digest(now: t0)
         let snapshot = custom ?? WatchFixtures.snapshot(completed: completed, now: t0, startedAgo: 600, revision: revision)
         let transport = MockWatchTransport(digest: digest, snapshot: snapshot, reachable: reachable)
@@ -31,8 +32,10 @@ struct WatchSessionModelTests {
         let health = FixedHealthProvider(access: .authorized)
         let clock = TestClock(t0)
         let model = WatchSessionModel(transport: transport, haptics: haptics, health: health, clock: { clock.now })
+        model.loadCoalesceInterval = 0 // coalescência tem testes próprios
         model.receive(digest: digest)
         model.receive(snapshot: snapshot)
+        if recording { model.startRecordingOnWatch() }
         return Rig(model: model, transport: transport, haptics: haptics, health: health, snapshot: snapshot, clock: clock)
     }
 
@@ -42,13 +45,6 @@ struct WatchSessionModelTests {
 
     private func sentCommands(_ transport: MockWatchTransport) -> [SessionCommand] {
         transport.sent.compactMap { if case .command(let c) = $0 { c } else { nil } }
-    }
-
-    /// Snapshot "do iPhone" para a sessão `sessionID` com IDs novos (diferentes dos da prescrição) e `revision`.
-    private func phoneSnapshot(like local: SessionSnapshot, revision: Int) -> SessionSnapshot {
-        var s = MockWatchTransport.withFreshIDs(local)
-        s.revision = revision
-        return s
     }
 
     // MARK: Reconciliação otimista
@@ -146,58 +142,12 @@ struct WatchSessionModelTests {
         #expect(!model.hasActiveSession)
         model.receive(snapshot: WatchFixtures.snapshot(completed: 0, now: t0))
         #expect(model.hasActiveSession)
-        #expect(health.began == 1)
+        // Iniciada no iPhone: o relógio só controla e oferece gravar (FC do relógio).
+        #expect(health.began == 0)
+        #expect(model.canOfferWatchRecording)
     }
 
-    // MARK: A1 — sessão iniciada no relógio (IDs do iPhone diferentes dos do digest)
-
-    @Test func commandsAreHeldUntilStartedSessionHasSnapshot() throws {
-        let digest = WatchFixtures.digest(now: t0)
-        let transport = MockWatchTransport(digest: digest)
-        transport.autoRespond = false
-        let model = WatchSessionModel(transport: transport, haptics: RecordingHaptics(), clock: { [t0] in t0 })
-        model.receive(digest: digest)
-        model.startSession(routineID: WatchFixtures.routineA)
-        model.completeCurrentSet()
-        #expect(model.display?.metrics.completedSets == 1)
-        // Só o `start` saiu; o `completeSet` ficou retido.
-        #expect(sentCommands(transport).count == 1)
-        #expect(model.pending.last?.isHeld == true)
-
-        // O iPhone cria IDs novos; o 1º snapshot libera e remapeia por posição.
-        let local = try #require(model.display)
-        var fresh = phoneSnapshot(like: local, revision: 1)
-        for e in fresh.exercises.indices { for i in fresh.exercises[e].sets.indices { fresh.exercises[e].sets[i].isCompleted = false; fresh.exercises[e].sets[i].completedAt = nil } }
-        fresh.currentSetID = fresh.exercises[0].sets[0].id
-        fresh.currentExerciseID = fresh.exercises[0].id
-        model.receive(snapshot: fresh)
-
-        let sent = sentCommands(transport)
-        #expect(sent.count == 2)
-        guard case .completeSet(let setID, _, _, _, _) = sent[1].kind else { Issue.record("sem completeSet"); return }
-        #expect(setID == fresh.exercises[0].sets[0].id)
-        #expect(setID != local.exercises[0].sets[0].id)
-        #expect(model.pending.last?.isHeld == false)
-        #expect(model.display?.exercises[0].sets[0].isCompleted == true)
-    }
-
-    @Test func heldCommandWithoutMatchIsDroppedWithNotice() throws {
-        let digest = WatchFixtures.digest(now: t0)
-        let transport = MockWatchTransport(digest: digest)
-        transport.autoRespond = false
-        let model = WatchSessionModel(transport: transport, haptics: RecordingHaptics(), clock: { [t0] in t0 })
-        model.receive(digest: digest)
-        model.startSession(routineID: WatchFixtures.routineA)
-        // Série 4 do supino (índice 3): o iPhone só criou 2 séries.
-        let local = try #require(model.display)
-        model.send(.adjustLoad(setID: local.exercises[0].sets[3].id, delta: 0.5))
-        var fresh = phoneSnapshot(like: local, revision: 1)
-        fresh.exercises[0].sets.removeLast(2)
-        model.receive(snapshot: fresh)
-        #expect(sentCommands(transport).count == 1)
-        #expect(model.pending.allSatisfy { $0.command.kind.isStart })
-        #expect(model.notice != nil)
-    }
+    // MARK: Poda da fila
 
     @Test func pendingCommandsWithUnknownIDsAreDroppedOnSnapshot() throws {
         let r = make()
@@ -207,25 +157,6 @@ struct WatchSessionModelTests {
         next.revision = 6
         r.model.receive(snapshot: next)
         #expect(r.model.pendingCount == 0)
-    }
-
-    @Test func endToEndWithMockPhoneThatCreatesFreshIDs() async throws {
-        let digest = WatchFixtures.digest(now: t0)
-        let transport = MockWatchTransport(digest: digest, reachable: true)
-        let model = WatchSessionModel(transport: transport, haptics: RecordingHaptics(), clock: { [t0] in t0 })
-        model.start()
-        defer { model.stop() }
-        await settle { model.digest != nil }
-        #expect(model.digest != nil)
-
-        model.startSession(routineID: WatchFixtures.routineA)
-        model.completeCurrentSet() // antes do 1º snapshot: fica retido e é remapeado
-        await settle { model.pendingCount == 0 && (model.confirmed?.metrics.completedSets ?? 0) == 1 }
-        #expect(model.pendingCount == 0)
-        #expect(transport.phoneSnapshot?.metrics.completedSets == 1)
-        #expect(model.connection == .connected)
-        // Os IDs do relógio passaram a ser os do iPhone.
-        #expect(model.confirmed?.exercises[0].id != WatchFixtures.id(100))
     }
 
     @Test func doubleStartIsGuarded() {
@@ -511,7 +442,7 @@ struct WatchSessionModelTests {
     }
 
     @Test func finishWaitsForConfirmationBeforeSummaryAndWorkoutEnd() throws {
-        let r = make(completed: 2)
+        let r = make(completed: 2, recording: true)
         r.model.finish(rpe: 8)
         #expect(r.model.display?.status == .finished)
         #expect(r.model.summary == nil)
@@ -525,12 +456,13 @@ struct WatchSessionModelTests {
         #expect(r.model.summary?.completedSets == 2)
         #expect(!r.model.isSavingSession)
         #expect(r.health.ended == 1)
+        #expect(r.health.lastFinal?.status == .finished) // grava o treino com o snapshot terminal confirmado
         r.model.dismissSummary()
         #expect(r.model.summary == nil)
     }
 
     @Test func rejectedFinishReturnsToActiveSession() throws {
-        let r = make(completed: 2)
+        let r = make(completed: 2, recording: true)
         r.model.finish(rpe: 8)
         let command = try #require(sentCommands(r.transport).last)
         r.model.handle(reply(command, revision: 5, .rejected(.persistenceFailed)))

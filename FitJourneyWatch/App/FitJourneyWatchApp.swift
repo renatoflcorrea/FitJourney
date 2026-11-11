@@ -1,7 +1,9 @@
 import SwiftUI
+import WatchKit
 
 @main
 struct FitJourneyWatchApp: App {
+    @WKApplicationDelegateAdaptor(WatchAppDelegate.self) private var delegate
     @State private var model: WatchSessionModel
     private let initialPage: Int
     private let override: (@MainActor () -> AnyView)?
@@ -25,11 +27,22 @@ struct FitJourneyWatchApp: App {
     }
 }
 
+/// Recuperação do treino do Saúde quando o app do relógio é reaberto com uma `HKWorkoutSession` em curso.
+final class WatchAppDelegate: NSObject, WKApplicationDelegate {
+    func handleActiveWorkoutRecovery() {
+        Task { @MainActor in
+            guard let provider = WatchAppComposition.workoutProvider else { return }
+            await provider.recoverActiveWorkout()
+            WatchAppComposition.model?.reevaluateRecording()
+        }
+    }
+}
+
 /// Composição das dependências do app.
 ///
-/// PONTO DE INJEÇÃO (W2/W3b): hoje o transporte é o `UnavailableWatchTransport` (o `MockWatchTransport`, só DEBUG, serve a previews/testes/harness) e a saúde é o
-/// `UnavailableHealthProvider`. O W2 troca por um `WatchConnectivityTransport` (+ canal da `HKWorkoutSession`
-/// espelhada) e o W3b por um `HealthKitWorkoutProvider` — só aqui, sem mexer em modelo nem telas.
+/// Release: `WatchConnectivityTransport` (`WCSession` + canal da `HKWorkoutSession` espelhada) e
+/// `WatchWorkoutProvider` (`HKWorkoutSession` no relógio). DEBUG com `-FJWScene`: harness de screenshots com o
+/// `MockWatchTransport` (só DEBUG, também usado em previews/testes).
 enum WatchAppComposition {
     struct Result {
         var model: WatchSessionModel
@@ -38,14 +51,20 @@ enum WatchAppComposition {
         var rootOverride: (@MainActor () -> AnyView)?
     }
 
+    /// Referências para o delegate do app (recuperação do treino).
+    @MainActor private(set) static var workoutProvider: WatchWorkoutProvider?
+    @MainActor private(set) static weak var model: WatchSessionModel?
+
     @MainActor static func make() -> Result {
         #if DEBUG
         if let scene = WatchHarnessScene.fromLaunchArguments() { return scene.build() }
         #endif
-        // Sem canal real ainda: o relógio abre como "nunca sincronizou" (iPhone fora de alcance, sem dados).
-        // PENDÊNCIA DE LANÇAMENTO: trocar `UnavailableWatchTransport` pelo transporte real do W2.
-        let transport = UnavailableWatchTransport()
-        let model = WatchSessionModel(transport: transport, haptics: SystemWatchHaptics())
+        let provider = WatchWorkoutProvider()
+        let transport = WatchConnectivityTransport(session: WCWatchLinkSession(), workoutChannel: provider)
+        transport.activate()
+        let model = WatchSessionModel(transport: transport, haptics: SystemWatchHaptics(), health: provider)
+        workoutProvider = provider
+        self.model = model
         return Result(model: model, initialPage: 1, rootOverride: nil)
     }
 }

@@ -37,7 +37,9 @@ import SwiftData
 /// - se o W2 souber o ID da sessão antes do `sessionStarted`, chama `markMirrored(_:)`;
 /// - ao finalizar, o estado fica `.awaitingRemoteWorkout` até o W2 chamar `linkWorkout(_:to:)` com o
 ///   `uuid` do treino do relógio (que deve trazer o ID da sessão em `HKMetadataKeyExternalUUID`);
-/// - descartar uma sessão espelhada chama `onMirroredSessionDiscarded` (o W2 encerra no relógio).
+/// - descartar uma sessão espelhada chama `onMirroredSessionDiscarded` (o W2 encerra no relógio);
+/// - o relógio avisa que grava (`WatchWorkoutStatus.recording`, mesmo sem espelho): o W2 chama
+///   `adoptRemoteRecording(_:)` — marca a sessão e descarta a gravação local já iniciada.
 ///
 /// **Espelho caiu com a sessão em andamento:** a marca é mantida e o estado vira `.mirrorDisconnected`.
 /// O relógio continua gravando sozinho (SPEC §6.4: segue offline e reconcilia), então o iPhone **não**
@@ -97,6 +99,8 @@ final class HealthWorkoutController {
 
     /// W2: chamado ao descartar uma sessão espelhada (encerrar a sessão no relógio).
     @ObservationIgnored var onMirroredSessionDiscarded: ((UUID) -> Void)?
+    /// W2: a sessão espelhada do relógio conectou (`true`) ou caiu (`false`) — o transporte reavalia o alcance.
+    @ObservationIgnored var onRemoteSessionChange: ((Bool) -> Void)?
 
     @ObservationIgnored private let store: any HealthStoreProtocol
     @ObservationIgnored private let authorization: HealthAuthorization
@@ -355,6 +359,7 @@ final class HealthWorkoutController {
             self.remoteEnded(error: error)
         }
         state = .mirrored(sessionID: currentSessionID)
+        onRemoteSessionChange?(true)
     }
 
     /// Envia dados ao relógio pela sessão espelhada.
@@ -376,6 +381,22 @@ final class HealthWorkoutController {
         saveIDList(ids, key: Self.mirroredKey)
     }
 
+    /// O relógio confirmou que grava o treino desta sessão (W2, `WatchWorkoutStatus.recording`): marca a sessão e
+    /// descarta a gravação local que já tenha começado (o iPhone não grava outro treino para ela).
+    func adoptRemoteRecording(_ sessionID: UUID) {
+        markMirrored(sessionID)
+        guard currentSessionID == sessionID else { return }
+        recorder?.discard()
+        recorder = nil
+        recorderType = nil
+        switch state {
+        case .recording(let id, _) where id == sessionID, .paused(let id, _) where id == sessionID:
+            state = remote != nil ? .mirrored(sessionID: sessionID) : .mirrorDisconnected(sessionID: sessionID)
+        default:
+            break
+        }
+    }
+
     /// Remove a marca de espelho (o relógio confirmadamente não vai gravar o treino).
     func unmarkMirrored(_ sessionID: UUID) {
         saveIDList(idList(Self.mirroredKey).filter { $0 != sessionID }, key: Self.mirroredKey)
@@ -387,6 +408,7 @@ final class HealthWorkoutController {
     private func remoteEnded(error: String?) {
         remote = nil
         if let error { lastError = error }
+        onRemoteSessionChange?(false)
         // A marca fica: o relógio grava o treino mesmo desconectado.
         if let id = currentSessionID, fetchSession(id)?.status == .inProgress {
             state = .mirrorDisconnected(sessionID: id)
@@ -419,11 +441,13 @@ final class HealthWorkoutController {
             candidate = live
             live.onLiveUpdate = { [weak self] update in self?.receive(update) }
             if !isRecovered { try await live.start(at: session.startedAt) }
-            // Espelho chegou ou sessão encerrada/trocada enquanto iniciava.
-            if remote != nil {
+            // Espelho chegou, o relógio assumiu a gravação, ou a sessão encerrou/trocou enquanto iniciava.
+            if remote != nil || isMirrored(sessionID) {
                 live.discard()
                 markMirrored(sessionID)
-                if currentSessionID == sessionID { state = .mirrored(sessionID: sessionID) }
+                if currentSessionID == sessionID {
+                    state = remote != nil ? .mirrored(sessionID: sessionID) : .mirrorDisconnected(sessionID: sessionID)
+                }
                 return
             }
             guard currentSessionID == sessionID else {

@@ -65,6 +65,11 @@ enum WatchFormat {
         return h > 0 ? String(format: "%d:%02d:%02d", h, m, s) : String(format: "%d:%02d", m, s)
     }
 
+    /// Duração alvo de cardio como o iPhone escreve (`SessionDisplay.targetText`): "20 min" ou "2:30".
+    static func cardioTargetText(seconds: Int) -> String {
+        seconds % 60 == 0 ? "\(seconds / 60) min" : String(format: "%d:%02d", seconds / 60, seconds % 60)
+    }
+
     /// Alvo como prescrito: "alvo 8–12 · RIR 2".
     static func target(text: String, effort: WatchEffort?) -> String {
         var parts = ["alvo \(text)"]

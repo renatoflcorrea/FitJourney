@@ -22,6 +22,10 @@
 	<false/>
 	<key>WKApplication</key>
 	<true/>
+	<key>WKBackgroundModes</key>
+	<array>
+		<string>workout-processing</string>
+	</array>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>br.com.renatocorrea.fitjourney</string>
 </dict>
