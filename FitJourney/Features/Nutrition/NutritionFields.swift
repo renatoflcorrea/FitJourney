@@ -1,49 +1,75 @@
+import SwiftData
 import SwiftUI
 
 // Campos de formulário compartilhados pelos editores da dieta.
 
-/// Número opcional ("vazio = sem valor"), com vírgula ou ponto decimal.
+/// Número opcional ("vazio = sem valor"). Aceita "2.600", "1.234,5", "12,5"; texto inválido mostra erro
+/// inline e mantém o valor anterior (nunca zera). `zeroIsNil`: 0 = sem meta.
 struct OptionalDoubleField: View {
     private let title: LocalizedStringKey
     @Binding private var value: Double?
     private let unit: String?
+    private let field: NutritionInput.Field
+    private let zeroIsNil: Bool
     @State private var text = ""
+    @State private var isInvalid = false
     @FocusState private var isFocused: Bool
 
-    init(_ title: LocalizedStringKey, value: Binding<Double?>, unit: String? = nil) {
+    init(_ title: LocalizedStringKey, value: Binding<Double?>, unit: String? = nil,
+         field: NutritionInput.Field = .grams, zeroIsNil: Bool = false) {
         self.title = title
         self._value = value
         self.unit = unit
+        self.field = field
+        self.zeroIsNil = zeroIsNil
     }
 
     var body: some View {
-        LabeledContent {
-            HStack(spacing: FJSpacing.xs) {
-                TextField("", text: $text, prompt: Text("—"))
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .font(FJFont.numberBody)
-                    .focused($isFocused)
-                    .fjKeyboardDone($isFocused)
-                if let unit {
-                    Text(unit).font(FJFont.unit).foregroundStyle(FJColor.textSecondary)
+        VStack(alignment: .leading, spacing: FJSpacing.xxs) {
+            LabeledContent {
+                HStack(spacing: FJSpacing.xs) {
+                    TextField("", text: $text, prompt: Text("—"))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .font(FJFont.numberBody)
+                        .focused($isFocused)
+                        .fjKeyboardDone($isFocused)
+                    if let unit {
+                        Text(unit).font(FJFont.unit).foregroundStyle(FJColor.textSecondary)
+                    }
                 }
+            } label: {
+                Text(title)
             }
-        } label: {
-            Text(title)
+            if isInvalid {
+                Label("Valor inválido. Máximo \(FJFormat.number(field.maximum, maxFractionDigits: 0)).",
+                      systemImage: "exclamationmark.circle")
+                    .font(FJFont.caption)
+                    .foregroundStyle(FJColor.destructive)
+            }
         }
-        .onAppear { text = Self.format(value) }
+        .onAppear { text = NutritionInput.format(value) }
         .onChange(of: text) { _, new in
             guard isFocused else { return } // só edição do usuário altera o valor
-            let trimmed = new.trimmingCharacters(in: .whitespaces)
-            value = trimmed.isEmpty ? nil : NumberStepperField.parse(trimmed, allowsSign: false).map { max(0, $0) }
+            switch NutritionInput.parse(new, field: field) {
+            case .empty:
+                isInvalid = false
+                value = nil
+            case .value(let number):
+                isInvalid = false
+                value = (zeroIsNil && number == 0) ? nil : number
+            case .invalid:
+                isInvalid = true // mantém o valor anterior
+            }
         }
-        .onChange(of: value) { _, new in if !isFocused { text = Self.format(new) } }
-        .accessibilityElement(children: .combine)
-    }
-
-    static func format(_ value: Double?) -> String {
-        value.map { $0.formatted(.number.grouping(.never).precision(.fractionLength(0...1))) } ?? ""
+        .onChange(of: isFocused) { _, focused in
+            // Ao sair do campo, volta ao último valor válido.
+            if !focused {
+                isInvalid = false
+                text = NutritionInput.format(value)
+            }
+        }
+        .onChange(of: value) { _, new in if !isFocused { text = NutritionInput.format(new) } }
     }
 }
 
@@ -65,7 +91,7 @@ struct NutrientFields: View {
     var includesFiber = true
 
     var body: some View {
-        OptionalDoubleField("Calorias", value: $values.kcal, unit: "kcal")
+        OptionalDoubleField("Calorias", value: $values.kcal, unit: "kcal", field: .kcal)
         OptionalDoubleField("Proteína", value: $values.protein, unit: "g")
         OptionalDoubleField("Carboidrato", value: $values.carbs, unit: "g")
         OptionalDoubleField("Gordura", value: $values.fat, unit: "g")
@@ -82,6 +108,14 @@ extension FoodUnit {
         case .grams, .milliliters: 10
         default: 1
         }
+    }
+}
+
+extension ModelContext {
+    /// Salva só no contexto principal (autosave ligado). Contextos de rascunho (autosave desligado,
+    /// ex.: "Novo plano") só persistem quando quem os criou confirma.
+    func commitEdits() throws {
+        if autosaveEnabled { try save() }
     }
 }
 

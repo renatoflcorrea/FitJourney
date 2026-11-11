@@ -31,7 +31,8 @@ struct NutritionRulesTests {
         #expect(NutritionTotals.mealStatus(entryStatuses: []) == .pending)
         #expect(NutritionTotals.mealStatus(entryStatuses: [.done, .done]) == .done)
         #expect(NutritionTotals.mealStatus(entryStatuses: [.done, .adjusted]) == .adjusted)
-        #expect(NutritionTotals.mealStatus(entryStatuses: [nil]) == .adjusted)
+        #expect(NutritionTotals.mealStatus(entryStatuses: [nil]) == .pending) // avulso vinculado = registro parcial
+        #expect(NutritionTotals.mealStatus(entryStatuses: [.done, nil]) == .adjusted)
         #expect(NutritionTotals.mealStatus(entryStatuses: [.skipped]) == .skipped)
     }
 

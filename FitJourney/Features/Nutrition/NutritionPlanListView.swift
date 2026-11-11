@@ -23,10 +23,10 @@ extension NutritionPlan {
 
     var targetsSummary: String? {
         var parts: [String] = []
-        if let kcal = targetKcal { parts.append("\(FJFormat.number(kcal, maxFractionDigits: 0)) kcal") }
-        if let p = targetProtein { parts.append("P \(FJFormat.number(p, maxFractionDigits: 0)) g") }
-        if let c = targetCarbs { parts.append("C \(FJFormat.number(c, maxFractionDigits: 0)) g") }
-        if let f = targetFat { parts.append("G \(FJFormat.number(f, maxFractionDigits: 0)) g") }
+        if let kcal = targetKcal, kcal > 0 { parts.append("\(FJFormat.number(kcal, maxFractionDigits: 0)) kcal") }
+        if let p = targetProtein, p > 0 { parts.append("P \(FJFormat.number(p, maxFractionDigits: 0)) g") }
+        if let c = targetCarbs, c > 0 { parts.append("C \(FJFormat.number(c, maxFractionDigits: 0)) g") }
+        if let f = targetFat, f > 0 { parts.append("G \(FJFormat.number(f, maxFractionDigits: 0)) g") }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -92,12 +92,16 @@ struct NutritionPlanListView: View {
             }
         }
         .sheet(isPresented: $showNewPlan) { NewPlanSheet() }
-        .confirmationDialog("Excluir este plano?", isPresented: Binding(get: { planToDelete != nil },
+        .confirmationDialog(planToDelete?.isActive == true ? "Excluir o plano ativo?" : "Excluir este plano?", isPresented: Binding(get: { planToDelete != nil },
                                                                        set: { if !$0 { planToDelete = nil } }),
                             titleVisibility: .visible, presenting: planToDelete) { plan in
-            Button("Excluir \(plan.name)", role: .destructive) { delete(plan) }
-        } message: { _ in
-            Text("Refeições e itens do plano serão apagados. Os registros já feitos continuam no histórico.")
+            Button(plan.isActive ? "Excluir o plano ativo" : "Excluir \(plan.name)", role: .destructive) { delete(plan) }
+        } message: { plan in
+            if plan.isActive {
+                Text("Este é o plano ativo. Sem ele, o dia mostra só registros avulsos até você criar ou ativar outro. Refeições e itens serão apagados; os registros já feitos continuam no histórico.")
+            } else {
+                Text("Refeições e itens do plano serão apagados. Os registros já feitos continuam no histórico.")
+            }
         }
         .confirmationDialog("Ativar este plano?", isPresented: Binding(get: { planToActivate != nil },
                                                                       set: { if !$0 { planToActivate = nil } }),
@@ -110,7 +114,7 @@ struct NutritionPlanListView: View {
 
     @ViewBuilder private func actions(for plan: NutritionPlan) -> some View {
         Button("Excluir", systemImage: "trash", role: .destructive) { planToDelete = plan }
-        Button("Duplicar", systemImage: "plus.square.on.square") { duplicate(plan) }.tint(.indigo)
+        Button("Duplicar", systemImage: "plus.square.on.square") { duplicate(plan) }.tint(FJColor.coachFill)
     }
 
     private var store: NutritionStore { NutritionStore(context: context) }
@@ -165,20 +169,25 @@ private struct PlanRow: View {
     }
 }
 
-/// Sheet "Criar dieta": cria o plano, abre o editor e, ao salvar, oferece ativar.
+/// Sheet "Criar dieta": edita um plano num contexto de rascunho (nada é persistido antes de confirmar);
+/// ao salvar, ativa direto se não há dieta ativa, senão pergunta.
 struct NewPlanSheet: View {
-    @Environment(\.modelContext) private var context
+    @Environment(\.modelContext) private var mainContext
     @Environment(\.dismiss) private var dismiss
+    @State private var draft: ModelContext?
     @State private var plan: NutritionPlan?
     @State private var showActivate = false
     @State private var currentActive: NutritionPlan?
+    @State private var savedID: PersistentIdentifier?
+    @State private var errorMessage: String?
 
     var body: some View {
         EditorSheet(title: "Novo plano", confirmTitle: "Salvar",
                     canConfirm: !(plan?.name.trimmingCharacters(in: .whitespaces).isEmpty ?? true),
-                    onCancel: cancel, onConfirm: confirm) {
-            if let plan {
+                    onCancel: { dismiss() }, onConfirm: confirm) {
+            if let plan, let draft {
                 PlanEditorView(plan: plan, isNew: true)
+                    .environment(\.modelContext, draft)
             } else {
                 FJLoadingState()
             }
@@ -187,9 +196,14 @@ struct NewPlanSheet: View {
         .task { createIfNeeded() }
         .confirmationDialog(activateTitle, isPresented: $showActivate, titleVisibility: .visible) {
             Button("Ativar agora") { activate() }
-            Button("Agora não", role: .cancel) { finish() }
+            Button("Agora não", role: .cancel) { dismiss() }
         } message: {
             if let currentActive { Text("\(currentActive.name) vai para o histórico.") }
+        }
+        .alert("Não foi possível salvar", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
@@ -197,36 +211,41 @@ struct NewPlanSheet: View {
 
     private func createIfNeeded() {
         guard plan == nil else { return }
+        let context = ModelContext(mainContext.container)
+        context.autosaveEnabled = false
         let new = NutritionPlan(name: "")
         context.insert(new)
         let day = NutritionDay(name: String(localized: "Todos os dias"))
         context.insert(day)
         day.plan = new
+        draft = context
         plan = new
     }
 
-    private func cancel() {
-        if let plan { context.delete(plan) }
-        try? context.save()
-        dismiss()
-    }
-
     private func confirm() {
-        guard let plan else { return }
+        guard let plan, let draft else { return }
         plan.name = plan.name.trimmingCharacters(in: .whitespaces)
         plan.updatedAt = .now
-        try? context.save()
-        let store = NutritionStore(context: context)
-        currentActive = try? store.activePlan()
-        if currentActive == nil { activate() } else { showActivate = true }
+        do {
+            try draft.save()
+            savedID = plan.persistentModelID
+            currentActive = try NutritionStore(context: mainContext).activePlan()
+            if currentActive == nil { activate() } else { showActivate = true }
+        } catch {
+            errorMessage = String(localized: "Tente de novo. Nada foi perdido.")
+        }
     }
 
     private func activate() {
-        if let plan { try? NutritionStore(context: context).switchActive(to: plan) }
-        finish()
+        do {
+            if let savedID, let saved = mainContext.model(for: savedID) as? NutritionPlan {
+                try NutritionStore(context: mainContext).switchActive(to: saved)
+            }
+            dismiss()
+        } catch {
+            errorMessage = String(localized: "O plano foi salvo, mas não foi ativado. Ative pela lista de planos.")
+        }
     }
-
-    private func finish() { dismiss() }
 }
 
 #Preview("Planos") {

@@ -1,15 +1,31 @@
 import SwiftData
 import SwiftUI
 
-/// Editor de plano alimentar (DESIGN §4.10). Edita os modelos ao vivo (autosave);
-/// dieta anterior abre somente leitura com "Duplicar e editar" / "Reativar".
+/// Editor de plano alimentar (DESIGN §4.10). Edita os modelos ao vivo (autosave no contexto principal;
+/// em "Novo plano" o contexto é um rascunho que só persiste ao confirmar). Dieta anterior abre somente
+/// leitura com "Duplicar e editar" (abre a cópia aqui mesmo) / "Reativar".
 struct PlanEditorView: View {
+    @State private var current: NutritionPlan
+    var isNew = false
+
+    init(plan: NutritionPlan, isNew: Bool = false) {
+        _current = State(initialValue: plan)
+        self.isNew = isNew
+    }
+
+    var body: some View {
+        PlanEditorForm(plan: current, isNew: isNew) { current = $0 }
+            .id(current.id)
+    }
+}
+
+private struct PlanEditorForm: View {
     enum Variation: Hashable { case allDays, byWeekday }
 
     @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
     @Bindable var plan: NutritionPlan
-    var isNew = false
+    let isNew: Bool
+    let onSwitch: (NutritionPlan) -> Void
 
     @State private var variation: Variation = .allDays
     @State private var didSetup = false
@@ -21,7 +37,7 @@ struct PlanEditorView: View {
 
     private var hasEnd: Binding<Bool> {
         Binding(get: { plan.endDate != nil },
-                set: { plan.endDate = $0 ? (plan.endDate ?? Calendar.current.date(byAdding: .month, value: 3, to: plan.startDate)) : nil })
+                set: { plan.endDate = $0 ? (plan.endDate ?? Calendar.autoupdatingCurrent.date(byAdding: .month, value: 3, to: plan.startDate)) : nil })
     }
 
     var body: some View {
@@ -36,7 +52,10 @@ struct PlanEditorView: View {
             }
             if let errorMessage {
                 Section {
-                    FJBanner("Não foi possível concluir", message: LocalizedStringKey(errorMessage), tone: .destructive)
+                    FJBanner("Não foi possível concluir", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                             actionTitle: "Fechar") { self.errorMessage = nil }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
                 }
             }
             Group {
@@ -48,7 +67,7 @@ struct PlanEditorView: View {
         }
         .scrollContentBackground(.hidden)
         .fjScreenBackground()
-        .navigationTitle(plan.name.isEmpty ? "Novo plano" : LocalizedStringKey(plan.name))
+        .navigationTitle(plan.name.isEmpty ? String(localized: "Novo plano") : plan.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if readOnly {
@@ -61,9 +80,8 @@ struct PlanEditorView: View {
             }
         }
         .task { setupIfNeeded() }
-        .onDisappear {
-            plan.updatedAt = .now
-            try? context.save()
+        .onChange(of: plan.startDate) { _, start in
+            if let end = plan.endDate, end < start { plan.endDate = start } // fim nunca antes do início
         }
         .confirmationDialog("Usar o mesmo plano em todos os dias?", isPresented: $showCollapseConfirm, titleVisibility: .visible) {
             Button("Manter só a primeira variação", role: .destructive, action: collapseToUniform)
@@ -74,7 +92,10 @@ struct PlanEditorView: View {
         .confirmationDialog("Apagar esta variação?", isPresented: Binding(get: { dayToDelete != nil },
                                                                         set: { if !$0 { dayToDelete = nil } }),
                             titleVisibility: .visible, presenting: dayToDelete) { day in
-            Button("Apagar variação", role: .destructive) { context.delete(day); try? context.save() }
+            Button("Apagar variação", role: .destructive) {
+                context.delete(day)
+                commit()
+            }
         } message: { _ in Text("As refeições dela serão apagadas.") }
     }
 
@@ -90,7 +111,7 @@ struct PlanEditorView: View {
             Toggle("Definir fim", isOn: hasEnd)
                 .tint(FJColor.nutritionFill)
             if let end = plan.endDate {
-                DatePicker("Fim", selection: Binding(get: { end }, set: { plan.endDate = $0 }),
+                DatePicker("Fim", selection: Binding(get: { end }, set: { plan.endDate = max($0, plan.startDate) }),
                            in: plan.startDate..., displayedComponents: .date)
             }
             Picker("Autor", selection: $plan.author) {
@@ -102,16 +123,16 @@ struct PlanEditorView: View {
 
     private var targetsSection: some View {
         Section {
-            OptionalDoubleField("Calorias", value: $plan.targetKcal, unit: "kcal")
-            OptionalDoubleField("Proteína", value: $plan.targetProtein, unit: "g")
-            OptionalDoubleField("Carboidrato", value: $plan.targetCarbs, unit: "g")
-            OptionalDoubleField("Gordura", value: $plan.targetFat, unit: "g")
-            OptionalDoubleField("Fibra", value: $plan.targetFiber, unit: "g")
-            OptionalDoubleField("Água", value: $plan.targetWaterMilliliters, unit: "ml")
+            OptionalDoubleField("Calorias", value: $plan.targetKcal, unit: "kcal", field: .kcal, zeroIsNil: true)
+            OptionalDoubleField("Proteína", value: $plan.targetProtein, unit: "g", zeroIsNil: true)
+            OptionalDoubleField("Carboidrato", value: $plan.targetCarbs, unit: "g", zeroIsNil: true)
+            OptionalDoubleField("Gordura", value: $plan.targetFat, unit: "g", zeroIsNil: true)
+            OptionalDoubleField("Fibra", value: $plan.targetFiber, unit: "g", zeroIsNil: true)
+            OptionalDoubleField("Água", value: $plan.targetWaterMilliliters, unit: "ml", field: .milliliters, zeroIsNil: true)
         } header: {
             Text("Metas diárias")
         } footer: {
-            Text("Todas opcionais. Vazio = sem meta.")
+            Text("Todas opcionais. Vazio ou 0 = sem meta.")
         }
     }
 
@@ -126,7 +147,7 @@ struct PlanEditorView: View {
             Text("Variação")
         } footer: {
             if variation == .byWeekday {
-                Text("Ex.: dia de treino x descanso. A variação sem dias marcados vale para os dias que nenhuma outra cobre.")
+                Text("Ex.: dia de treino x descanso. A variação sem dias marcados vale para os dias que nenhuma outra cobre (só pode haver uma).")
             }
         }
         if variation == .allDays {
@@ -145,6 +166,10 @@ struct PlanEditorView: View {
     }
 
     // MARK: Lógica
+
+    private func commit() {
+        do { try context.commitEdits() } catch { errorMessage = String(localized: "Tente de novo. Nada foi perdido.") }
+    }
 
     private func setupIfNeeded() {
         guard !didSetup else { return }
@@ -169,7 +194,7 @@ struct PlanEditorView: View {
         guard let keep = days.first else { return }
         for other in days.dropFirst() { context.delete(other) }
         keep.weekdays = []
-        try? context.save()
+        commit()
         variation = .allDays
     }
 
@@ -182,8 +207,11 @@ struct PlanEditorView: View {
         return day
     }
 
+    /// Nova variação já começa no primeiro dia da semana livre (só uma variação pode valer para "demais dias").
     private func addVariant() {
-        addDay(name: String(localized: "Nova variação"), weekdays: [])
+        let taken = plan.sortedDays.reduce(into: Set<Weekday>()) { $0.formUnion($1.weekdays) }
+        let free = Weekday.allCases.first { !taken.contains($0) }
+        addDay(name: String(localized: "Nova variação"), weekdays: free.map { [$0] } ?? [])
     }
 
     private func reactivate() {
@@ -194,8 +222,8 @@ struct PlanEditorView: View {
 
     private func duplicateAndEdit() {
         do {
-            _ = try NutritionStore(context: context).duplicate(plan)
-            dismiss()
+            let copy = try NutritionStore(context: context).duplicate(plan)
+            onSwitch(copy) // abre a cópia (editável) no próprio editor
         } catch {
             errorMessage = String(localized: "Tente de novo. Nada foi perdido.")
         }
@@ -225,13 +253,27 @@ struct DayVariantEditor: View {
     @Environment(\.modelContext) private var context
     @Bindable var day: NutritionDay
     let plan: NutritionPlan
+    @State private var errorMessage: String?
 
     private func owner(of weekday: Weekday) -> NutritionDay? {
         plan.sortedDays.first { $0.id != day.id && $0.weekdays.contains(weekday) }
     }
 
+    /// Outra variação já vale para "demais dias" e esta também (sem dias marcados).
+    private var hasFallbackConflict: Bool {
+        day.appliesToAllDays && plan.sortedDays.contains { $0.id != day.id && $0.appliesToAllDays }
+    }
+
     var body: some View {
         Form {
+            if let errorMessage {
+                Section {
+                    FJBanner("Não foi possível concluir", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                             actionTitle: "Fechar") { self.errorMessage = nil }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+            }
             Section("Variação") {
                 TextField("Nome (ex.: Dia de treino)", text: $day.name)
             }
@@ -251,6 +293,13 @@ struct DayVariantEditor: View {
                 }
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
+                if hasFallbackConflict {
+                    FJBanner("Já existe uma variação para os demais dias",
+                             message: "Marque ao menos um dia aqui, ou esta variação não será usada.",
+                             tone: .attention, systemImage: "exclamationmark.triangle")
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                }
             } header: {
                 Text("Dias da semana")
             } footer: {
@@ -272,15 +321,14 @@ struct DayVariantEditor: View {
         }
         .scrollContentBackground(.hidden)
         .fjScreenBackground()
-        .navigationTitle(day.name.isEmpty ? "Variação" : LocalizedStringKey(day.name))
+        .navigationTitle(day.name.isEmpty ? String(localized: "Variação") : day.name)
         .navigationBarTitleDisplayMode(.inline)
-        .onDisappear { try? context.save() }
     }
 
     private func copy(from other: NutritionDay) {
         let store = NutritionStore(context: context)
         for meal in other.sortedMeals { store.copyMeal(meal, into: day, name: meal.name) }
-        try? context.save()
+        do { try context.commitEdits() } catch { errorMessage = String(localized: "Tente de novo. Nada foi perdido.") }
     }
 }
 

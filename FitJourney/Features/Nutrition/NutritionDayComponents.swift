@@ -38,7 +38,7 @@ struct NutritionTotalsCard: View {
                         FJGoalBar("Gordura", value: totals.fat, goal: targets.fat, unit: "g")
                     }
                 }
-                if let goal = targets.kcal {
+                if let goal = targets.kcal, goal > 0 {
                     Text("de \(FJFormat.number(goal, maxFractionDigits: 0)) kcal")
                         .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 }
@@ -68,7 +68,7 @@ struct NutritionTotalsCard: View {
 
     private var kcalSpoken: String {
         let consumed = FJFormat.number(totals.kcal, maxFractionDigits: 0)
-        guard let goal = targets.kcal else { return String(localized: "\(consumed) quilocalorias consumidas") }
+        guard let goal = targets.kcal, goal > 0 else { return String(localized: "\(consumed) quilocalorias consumidas") }
         return String(localized: "\(consumed) de \(FJFormat.number(goal, maxFractionDigits: 0)) quilocalorias")
     }
 }
@@ -127,16 +127,24 @@ struct WaterCard: View {
                     }
                     .accessibilityHidden(true)
                 }
-                .contextMenu {
-                    if isEditable {
-                        Button("Adicionar copo", systemImage: "plus", action: onAdd)
-                        Button("Remover último copo", systemImage: "minus", role: .destructive, action: onRemove)
-                            .disabled(total <= 0)
-                    }
+            }
+            .contextMenu {
+                if isEditable {
+                    Button("Adicionar copo", systemImage: "plus", action: onAdd)
+                    Button("Remover último copo", systemImage: "minus", role: .destructive, action: onRemove)
+                        .disabled(total <= 0)
                 }
             }
         }
         .accessibilityElement(children: .contain)
+        .accessibilityAdjustableAction { direction in
+            guard isEditable else { return }
+            switch direction {
+            case .increment: onAdd()
+            case .decrement: onRemove()
+            @unknown default: break
+            }
+        }
     }
 }
 
@@ -166,7 +174,7 @@ struct TimelineRow<Content: View>: View {
     }
 
     var body: some View {
-        if dynamicTypeSize.isAccessibilitySize {
+        if dynamicTypeSize >= .xxLarge {
             VStack(alignment: .leading, spacing: FJSpacing.xs) {
                 timeText.padding(.horizontal, FJSpacing.xs)
                 content()
@@ -175,7 +183,8 @@ struct TimelineRow<Content: View>: View {
         } else {
             HStack(alignment: .top, spacing: FJSpacing.s) {
                 timeText
-                    .frame(width: 54, alignment: .trailing)
+                    .frame(minWidth: 54, alignment: .trailing)
+                    .fixedSize()
                     .padding(.top, FJSpacing.m)
                 Rectangle()
                     .fill(FJColor.separator)
@@ -204,20 +213,7 @@ struct MealCard: View {
     private var isEditable: Bool { phase != .future }
     private var isSkipped: Bool { row.status == .skipped }
 
-    private var plannedKcal: Double? {
-        let items = row.meal.sortedItems
-        let known = items.compactMap(\.kcal)
-        return known.isEmpty ? nil : known.reduce(0, +)
-    }
-
-    private var loggedKcal: Double? {
-        let known = row.entries.compactMap(\.kcal)
-        return known.isEmpty ? nil : known.reduce(0, +)
-    }
-
-    private var kcalText: String? {
-        NutritionFormat.kcal(row.status == .done || row.status == .adjusted ? loggedKcal : plannedKcal)
-    }
+    private var kcalText: String? { NutritionFormat.kcal(row.kcalSummary) }
 
     private var summary: String {
         let names = (row.status == .adjusted ? row.entries.map(\.name) : row.meal.sortedItems.map(\.name))
@@ -251,19 +247,21 @@ struct MealCard: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: FJSpacing.xs) {
-            HStack(alignment: .firstTextBaseline) {
+            FJAdaptiveStack(spacing: FJSpacing.xs, verticalAlignment: .firstTextBaseline) {
                 Text(row.meal.name.isEmpty ? String(localized: "Refeição") : row.meal.name)
                     .font(FJFont.cardTitle)
                     .foregroundStyle(FJColor.textPrimary)
                     .strikethrough(isSkipped)
                 Spacer(minLength: FJSpacing.s)
-                if let kcalText {
-                    Text(kcalText).font(FJFont.numberCaption).foregroundStyle(FJColor.textSecondary)
+                HStack(spacing: FJSpacing.s) {
+                    if let kcalText {
+                        Text(kcalText).font(FJFont.numberCaption).foregroundStyle(FJColor.textSecondary)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(FJColor.textTertiary)
+                        .rotationEffect(isExpanded ? .degrees(180) : .zero)
                 }
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(FJColor.textTertiary)
-                    .rotationEffect(isExpanded ? .degrees(180) : .zero)
             }
             if !isExpanded {
                 Text(summary)
@@ -278,29 +276,33 @@ struct MealCard: View {
     }
 
     @ViewBuilder private var statusTag: some View {
-        let time = row.loggedAt.map { NutritionFormat.clock($0) } ?? ""
+        let time = row.loggedAt.map { NutritionFormat.clock($0) }
         switch row.display {
         case .pending: FJTag("Pendente", systemImage: "circle")
         case .next: FJTag(row.scheduledAt <= .now ? "Agora" : "Próxima", systemImage: "fork.knife", area: .nutrition)
         case .overdue: FJTag("Pendente", systemImage: "clock")
         case .noRecord: FJTag("Sem registro", systemImage: "minus.circle")
         case .planned: FJTag("Planejada", systemImage: "calendar")
-        case .done: FJTag("Feita \(time)", systemImage: "checkmark.circle.fill", tone: .success)
-        case .adjusted: FJTag("Ajustada \(time)", systemImage: "pencil", tone: .attention)
+        case .done:
+            if let time { FJTag("Feita \(time)", systemImage: "checkmark.circle.fill", tone: .success) }
+            else { FJTag("Feita", systemImage: "checkmark.circle.fill", tone: .success) }
+        case .adjusted:
+            if let time { FJTag("Ajustada \(time)", systemImage: "pencil", tone: .attention) }
+            else { FJTag("Ajustada", systemImage: "pencil", tone: .attention) }
         case .skipped: FJTag("Pulada", systemImage: "forward.fill")
         }
     }
 
     private var stateSpoken: String {
-        let time = row.loggedAt.map { NutritionFormat.clock($0) } ?? ""
+        let time = row.loggedAt.map { NutritionFormat.clock($0) }
         return switch row.display {
         case .pending: String(localized: "pendente")
         case .next: String(localized: "próxima refeição")
         case .overdue: String(localized: "pendente, atrasada")
         case .noRecord: String(localized: "sem registro")
         case .planned: String(localized: "planejada")
-        case .done: String(localized: "feita às \(time)")
-        case .adjusted: String(localized: "feita com alteração às \(time)")
+        case .done: time.map { String(localized: "feita às \($0)") } ?? String(localized: "feita")
+        case .adjusted: time.map { String(localized: "feita com alteração às \($0)") } ?? String(localized: "feita com alteração")
         case .skipped: String(localized: "pulada")
         }
     }
@@ -326,6 +328,17 @@ struct MealCard: View {
                 if row.meal.sortedItems.isEmpty {
                     Text("Esta refeição ainda não tem itens. Use Ajustar para registrar o que você comeu.")
                         .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                }
+            }
+            if let summary = row.kcalSummary, summary.isPartial {
+                Label(NutritionFormat.itemsWithoutKcal(summary.itemsWithoutKcal), systemImage: "info.circle")
+                    .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+            }
+            let partial = row.entries.filter { $0.mealStatus == nil }
+            if row.status == .pending, !partial.isEmpty {
+                Text("Registrado nesta refeição").font(FJFont.overline).foregroundStyle(FJColor.textSecondary)
+                ForEach(partial) { entry in
+                    itemLine(name: entry.name, quantity: entry.quantity, unit: entry.unit, kcal: entry.kcal, hasSubstitutions: false)
                 }
             }
         }
@@ -361,6 +374,7 @@ struct MealCard: View {
                                   action: onDone)
                         .disabled(!row.canMarkDone)
                         .opacity(row.canMarkDone ? 1 : 0.4)
+                        .accessibilityHint(row.canMarkDone ? "" : String(localized: "Indisponível: a refeição não tem itens. Use Ajustar para registrar o que comeu."))
                     Text("Feita").font(FJFont.label.weight(.semibold))
                 }
                 FJSecondaryButton("Ajustar", systemImage: "pencil", fillsWidth: false, action: onAdjust)
@@ -402,7 +416,15 @@ struct ExtraEntryCard: View {
                         .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 }
             }
-            if showsOffPlanTag { FJTag("Fora da dieta", systemImage: "fork.knife") }
+            if entry.mealID == nil {
+                if showsOffPlanTag { FJTag("Fora da dieta", systemImage: "fork.knife") }
+            } else {
+                if let name = entry.mealName, !name.isEmpty {
+                    FJTag("\(name) · refeição removida", systemImage: "fork.knife")
+                } else {
+                    FJTag("Refeição removida", systemImage: "fork.knife")
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .fjCard()
@@ -410,10 +432,21 @@ struct ExtraEntryCard: View {
         .accessibilityLabel(spoken)
     }
 
+    /// Entrada de refeição que não está no plano do dia: usa o nome gravado, sem juízo.
+    private var orphanLabel: String {
+        let removed = String(localized: "refeição removida")
+        guard let name = entry.mealName, !name.isEmpty else { return removed }
+        return "\(name) · \(removed)"
+    }
+
     private var spoken: String {
         var parts = [entry.name, NutritionFormat.quantity(entry.quantity, entry.unit), NutritionFormat.clock(entry.date)]
         if let kcal = NutritionFormat.kcal(entry.kcal) { parts.append(kcal) }
-        if showsOffPlanTag { parts.append(String(localized: "fora da dieta")) }
+        if entry.mealID == nil {
+            if showsOffPlanTag { parts.append(String(localized: "fora da dieta")) }
+        } else {
+            parts.append(orphanLabel)
+        }
         return parts.joined(separator: ", ")
     }
 }

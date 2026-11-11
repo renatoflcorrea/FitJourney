@@ -7,9 +7,14 @@ struct MealsSection: View {
     let day: NutritionDay
     @State private var newMeal: Meal?
     @State private var mealToDelete: Meal?
+    @State private var errorMessage: String?
 
     var body: some View {
         Section {
+            if let errorMessage {
+                FJBanner("Não foi possível concluir", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                         actionTitle: "Fechar") { self.errorMessage = nil }
+            }
             if day.sortedMeals.isEmpty {
                 FJEmptyState("Adicione a primeira refeição", systemImage: "fork.knife",
                              message: "Café da manhã, almoço, lanche… com horário e itens.",
@@ -19,7 +24,7 @@ struct MealsSection: View {
                     NavigationLink { MealEditorView(meal: meal) } label: { MealRow(meal: meal) }
                         .swipeActions(edge: .trailing) {
                             Button("Excluir", systemImage: "trash", role: .destructive) { mealToDelete = meal }
-                            Button("Duplicar", systemImage: "plus.square.on.square") { duplicate(meal) }.tint(.indigo)
+                            Button("Duplicar", systemImage: "plus.square.on.square") { duplicate(meal) }.tint(FJColor.coachFill)
                         }
                         .contextMenu {
                             Button("Duplicar", systemImage: "plus.square.on.square") { duplicate(meal) }
@@ -36,7 +41,7 @@ struct MealsSection: View {
         .sheet(item: $newMeal) { meal in
             EditorSheet(title: "Nova refeição", confirmTitle: "Adicionar",
                         canConfirm: !meal.name.trimmingCharacters(in: .whitespaces).isEmpty,
-                        onCancel: { discard(meal) }, onConfirm: { commit(meal) }) {
+                        onCancel: { discard(meal) }, onConfirm: { confirm(meal) }) {
                 MealEditorView(meal: meal)
             }
             .interactiveDismissDisabled()
@@ -44,7 +49,7 @@ struct MealsSection: View {
         .confirmationDialog("Excluir esta refeição?", isPresented: Binding(get: { mealToDelete != nil },
                                                                           set: { if !$0 { mealToDelete = nil } }),
                             titleVisibility: .visible, presenting: mealToDelete) { meal in
-            Button("Excluir \(meal.name)", role: .destructive) { context.delete(meal); try? context.save() }
+            Button("Excluir \(meal.name)", role: .destructive) { context.delete(meal); commit() }
         } message: { _ in Text("Os itens dela serão apagados.") }
     }
 
@@ -58,21 +63,25 @@ struct MealsSection: View {
         newMeal = meal
     }
 
+    private func commit() {
+        do { try context.commitEdits() } catch { errorMessage = String(localized: "Tente de novo. Nada foi perdido.") }
+    }
+
     private func discard(_ meal: Meal) {
         context.delete(meal)
-        try? context.save()
+        commit()
         newMeal = nil
     }
 
-    private func commit(_ meal: Meal) {
+    private func confirm(_ meal: Meal) {
         meal.name = meal.name.trimmingCharacters(in: .whitespaces)
-        try? context.save()
+        commit()
         newMeal = nil
     }
 
     private func duplicate(_ meal: Meal) {
         NutritionStore(context: context).copyMeal(meal, into: day, name: String(localized: "\(meal.name) (cópia)"))
-        try? context.save()
+        commit()
     }
 }
 
@@ -92,9 +101,10 @@ private struct MealRow: View {
                             .accessibilityLabel("Com lembrete")
                     }
                 }
-                let count = meal.items?.count ?? 0
-                let kcal = NutritionFormat.kcal(meal.plannedValues.kcal.flatMap { $0 > 0 ? $0 : nil })
-                Text([count == 1 ? String(localized: "1 item") : String(localized: "\(count) itens"), kcal]
+                let summary = meal.plannedKcalSummary
+                let count = summary.itemCount
+                Text([count == 1 ? String(localized: "1 item") : String(localized: "\(count) itens"),
+                      NutritionFormat.kcal(summary)]
                     .compactMap(\.self).joined(separator: " · "))
                     .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
             }
@@ -110,12 +120,13 @@ struct MealEditorView: View {
     @Environment(\.modelContext) private var context
     @Bindable var meal: Meal
     @State private var newItem: MealItem?
+    @State private var errorMessage: String?
 
     private var time: Binding<Date> {
         Binding(
             get: { meal.time(on: .now) },
             set: {
-                let parts = Calendar.current.dateComponents([.hour, .minute], from: $0)
+                let parts = Calendar.autoupdatingCurrent.dateComponents([.hour, .minute], from: $0)
                 meal.minutesFromMidnight = (parts.hour ?? 0) * 60 + (parts.minute ?? 0)
             }
         )
@@ -123,6 +134,14 @@ struct MealEditorView: View {
 
     var body: some View {
         Form {
+            if let errorMessage {
+                Section {
+                    FJBanner("Não foi possível concluir", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                             actionTitle: "Fechar") { self.errorMessage = nil }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+            }
             Section {
                 TextField("Nome", text: $meal.name)
                     .textInputAutocapitalization(.sentences)
@@ -136,7 +155,7 @@ struct MealEditorView: View {
                 Toggle("Lembrete", isOn: $meal.reminderEnabled)
                     .tint(FJColor.nutritionFill)
             } footer: {
-                if meal.reminderEnabled { Text("O aviso será enviado no horário da refeição.") }
+                Text("Lembretes chegam em breve: a preferência fica salva, mas ainda não notifica.")
             }
             Section {
                 let items = meal.sortedItems
@@ -160,15 +179,14 @@ struct MealEditorView: View {
         }
         .scrollContentBackground(.hidden)
         .fjScreenBackground()
-        .navigationTitle(meal.name.isEmpty ? "Refeição" : LocalizedStringKey(meal.name))
+        .navigationTitle(meal.name.isEmpty ? String(localized: "Refeição") : meal.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .primaryAction) { EditButton() } }
-        .onDisappear { try? context.save() }
         .sheet(item: $newItem) { item in
             EditorSheet(title: "Novo item", confirmTitle: "Adicionar",
-                        canConfirm: !item.name.trimmingCharacters(in: .whitespaces).isEmpty,
-                        onCancel: { context.delete(item); try? context.save(); newItem = nil },
-                        onConfirm: { try? context.save(); newItem = nil }) {
+                        canConfirm: !item.name.trimmingCharacters(in: .whitespaces).isEmpty && item.quantity > 0,
+                        onCancel: { context.delete(item); commit(); newItem = nil },
+                        onConfirm: { commit(); newItem = nil }) {
                 ItemEditorView(item: item)
             }
             .interactiveDismissDisabled()
@@ -183,9 +201,13 @@ struct MealEditorView: View {
         newItem = item
     }
 
+    private func commit() {
+        do { try context.commitEdits() } catch { errorMessage = String(localized: "Tente de novo. Nada foi perdido.") }
+    }
+
     private func delete(_ item: MealItem) {
         context.delete(item)
-        try? context.save()
+        commit()
     }
 
     private func move(_ items: [MealItem], from source: IndexSet, to destination: Int) {
@@ -280,8 +302,12 @@ struct ItemEditorView: View {
         }
         .scrollContentBackground(.hidden)
         .fjScreenBackground()
-        .navigationTitle(item.name.isEmpty ? "Item" : LocalizedStringKey(item.name))
+        .navigationTitle(item.name.isEmpty ? String(localized: "Item") : item.name)
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: editingSubstitution) { _, new in
+            // Ao sair da edição, substituição sem nome não é salva.
+            if new == nil { item.substitutions.removeAll { $0.name.trimmingCharacters(in: .whitespaces).isEmpty } }
+        }
         .navigationDestination(item: $editingSubstitution) { id in
             if let index = item.substitutions.firstIndex(where: { $0.id == id }) {
                 SubstitutionEditor(substitution: $item.substitutions[index])
@@ -293,7 +319,6 @@ struct ItemEditorView: View {
             suggestions = (((try? store.favoriteFoods()) ?? []) + ((try? store.recentFoods(limit: 10)) ?? []))
                 .filter { seen.insert($0.id).inserted }
         }
-        .onDisappear { try? context.save() }
     }
 
     private func fill(_ food: FoodItem) {
@@ -325,7 +350,7 @@ struct SubstitutionEditor: View {
         }
         .scrollContentBackground(.hidden)
         .fjScreenBackground()
-        .navigationTitle(substitution.name.isEmpty ? "Substituição" : LocalizedStringKey(substitution.name))
+        .navigationTitle(substitution.name.isEmpty ? String(localized: "Substituição") : substitution.name)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

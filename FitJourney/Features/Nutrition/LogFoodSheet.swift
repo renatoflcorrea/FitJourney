@@ -15,7 +15,8 @@ struct LogFoodSheet: View {
     @State private var time = Date.now
     @State private var values = NutrientValues()
     @State private var estimation: EstimationSource = .informed
-    @State private var mealID: UUID?
+    @State private var choice: MealChoice = .none
+    @State private var orphanName: String?
     @State private var notes = ""
     @State private var suggestions: [FoodItem] = []
     @State private var meals: [Meal] = []
@@ -25,12 +26,20 @@ struct LogFoodSheet: View {
     @State private var didLoad = false
     @FocusState private var nameFocused: Bool
 
+    /// Vínculo escolhido: nenhum (fora da dieta), uma refeição do plano do dia, ou o atual que não está mais no plano.
+    enum MealChoice: Hashable {
+        case none
+        case meal(UUID)
+        case orphan
+    }
+
     init(day: Date, editing: FoodEntry? = nil) {
         self.day = day
         self.editing = editing
     }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
+    private var canSave: Bool { !trimmedName.isEmpty && quantity > 0 }
 
     private var filteredSuggestions: [FoodItem] {
         let query = trimmedName
@@ -73,6 +82,7 @@ struct LogFoodSheet: View {
                                        range: 0...9_999, fractionDigits: 1)
                     FoodUnitPicker(unit: $unit)
                     DatePicker("Horário", selection: $time, displayedComponents: .hourAndMinute)
+                    LabeledContent("Dia", value: NutritionFormat.dayTitle(entryDay, now: .now))
                 }
                 Section {
                     DisclosureGroup("Calorias e macros (opcional)") {
@@ -85,12 +95,15 @@ struct LogFoodSheet: View {
                     }
                     .pickerStyle(.segmented)
                 }
-                if !meals.isEmpty {
+                if !meals.isEmpty || orphanName != nil {
                     Section {
-                        Picker("Vincular a uma refeição", selection: $mealID) {
-                            Text(hasPlan ? "Nenhuma — fora da dieta" : "Nenhuma").tag(UUID?.none)
+                        Picker("Vincular a uma refeição", selection: $choice) {
+                            Text(hasPlan ? "Nenhuma — fora da dieta" : "Nenhuma").tag(MealChoice.none)
                             ForEach(meals) { meal in
-                                Text("\(NutritionFormat.clock(minutes: meal.minutesFromMidnight)) · \(meal.name)").tag(UUID?.some(meal.id))
+                                Text("\(NutritionFormat.clock(minutes: meal.minutesFromMidnight)) · \(meal.name)").tag(MealChoice.meal(meal.id))
+                            }
+                            if let orphanName {
+                                Text("\(orphanName) · refeição removida").tag(MealChoice.orphan)
                             }
                         }
                     }
@@ -113,7 +126,7 @@ struct LogFoodSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 FJPrimaryButton(editing == nil ? "Registrar" : "Salvar", area: .nutrition, action: save)
-                    .disabled(trimmedName.isEmpty)
+                    .disabled(!canSave)
                     .padding(.horizontal, FJSpacing.screenMargin)
                     .padding(.bottom, FJSpacing.s)
             }
@@ -134,7 +147,7 @@ struct LogFoodSheet: View {
         let favorites = (try? store.favoriteFoods()) ?? []
         var seen = Set<UUID>()
         suggestions = (favorites + recents).filter { seen.insert($0.id).inserted }
-        let plan = try? store.activePlan()
+        let plan = try? store.plan(covering: day)
         hasPlan = plan != nil
         meals = plan?.day(for: day)?.sortedMeals ?? []
 
@@ -145,9 +158,16 @@ struct LogFoodSheet: View {
             time = entry.date
             values = entry.values
             estimation = entry.estimation
-            mealID = entry.mealID
             notes = entry.notes
-            if let id = entry.mealID, !meals.contains(where: { $0.id == id }) { mealID = nil }
+            if let id = entry.mealID {
+                if meals.contains(where: { $0.id == id }) {
+                    choice = .meal(id)
+                } else {
+                    // Refeição que não está mais no plano do dia: preserva o vínculo.
+                    choice = .orphan
+                    orphanName = (entry.mealName?.isEmpty == false) ? entry.mealName : String(localized: "Refeição")
+                }
+            }
         } else {
             time = Self.defaultTime(for: day)
             nameFocused = true
@@ -155,7 +175,7 @@ struct LogFoodSheet: View {
     }
 
     /// Hoje: agora. Outro dia: meio-dia daquele dia (editável).
-    private static func defaultTime(for day: Date, now: Date = .now, calendar: Calendar = .current) -> Date {
+    private static func defaultTime(for day: Date, now: Date = .now, calendar: Calendar = .autoupdatingCurrent) -> Date {
         calendar.isDate(day, inSameDayAs: now) ? now
             : (calendar.date(bySettingHour: 12, minute: 0, second: 0, of: day) ?? day)
     }
@@ -168,9 +188,12 @@ struct LogFoodSheet: View {
         estimation = food.estimation
     }
 
+    /// Dia do registro: o da entrada em edição, ou o dia recebido.
+    private var entryDay: Date { editing?.date ?? day }
+
     /// Mantém a data do dia exibido e usa só hora/minuto do seletor.
     private var entryDate: Date {
-        let calendar = Calendar.current
+        let calendar = Calendar.autoupdatingCurrent
         if let editing, calendar.isDate(time, inSameDayAs: editing.date) { return time }
         let parts = calendar.dateComponents([.hour, .minute], from: time)
         return calendar.date(bySettingHour: parts.hour ?? 12, minute: parts.minute ?? 0, second: 0, of: day) ?? time
@@ -178,11 +201,19 @@ struct LogFoodSheet: View {
 
     private func save() {
         let store = NutritionStore(context: context)
-        let meal = meals.first { $0.id == mealID }
+        var meal: Meal?
+        var link = NutritionEntryLink.none
+        switch choice {
+        case .none: break
+        case .meal(let id):
+            meal = meals.first { $0.id == id }
+            if let meal { link = .meal(meal) }
+        case .orphan: link = .keep
+        }
         do {
             if let editing {
                 try store.update(editing, name: trimmedName, quantity: quantity, unit: unit, values: values,
-                                 estimation: estimation, at: entryDate, meal: meal, notes: notes)
+                                 estimation: estimation, at: entryDate, link: link, notes: notes)
             } else {
                 try store.logFood(name: trimmedName, quantity: quantity, unit: unit, values: values,
                                   estimation: estimation, at: entryDate, meal: meal, notes: notes)

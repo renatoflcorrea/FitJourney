@@ -10,7 +10,7 @@ struct AdjustMealSheet: View {
     let onSave: ([AdjustDraftItem]) -> Void
     @State private var drafts: [AdjustDraftItem]
 
-    init(meal: Meal, date: Date, existing: [FoodEntry], onSave: @escaping ([AdjustDraftItem]) -> Void) {
+    init(meal: Meal, existing: [FoodEntry], onSave: @escaping ([AdjustDraftItem]) -> Void) {
         self.meal = meal
         self.onSave = onSave
         _drafts = State(initialValue: AdjustDraftItem.drafts(for: meal, entries: existing))
@@ -54,7 +54,7 @@ struct AdjustMealSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 FJPrimaryButton("Salvar ajuste", area: .nutrition) {
-                    onSave(drafts.filter { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty })
+                    onSave(drafts)
                     dismiss()
                 }
                 .disabled(!canSave)
@@ -85,7 +85,7 @@ private struct AdjustItemRow: View {
                     }
                 }
                 .tint(FJColor.nutritionFill)
-                .accessibilityLabel(Text("\(item.name), \(item.included ? "comi" : "não comi")"))
+                .accessibilityLabel(Text(verbatim: "\(item.name), \(item.included ? String(localized: "comi") : String(localized: "não comi"))"))
             }
             if item.included {
                 NumberStepperField("Quantidade", value: $item.quantity, unit: item.unit.symbol,
@@ -94,8 +94,8 @@ private struct AdjustItemRow: View {
                     FoodUnitPicker(unit: $item.unit)
                     OptionalDoubleField("Calorias", value: Binding(
                         get: { item.values.kcal },
-                        set: { item.baseValues.kcal = $0; item.baseQuantity = item.quantity }
-                    ), unit: "kcal")
+                        set: { item.setKcal($0) }
+                    ), unit: "kcal", field: .kcal)
                 }
                 if !item.substitutions.isEmpty {
                     Menu {
@@ -119,7 +119,7 @@ private struct AdjustItemRow: View {
     let meal = (try? container.mainContext.fetch(FetchDescriptor<Meal>()).first { $0.name == "Almoço" }) ?? nil
     return Group {
         if let meal {
-            AdjustMealSheet(meal: meal, date: .now, existing: []) { _ in }
+            AdjustMealSheet(meal: meal, existing: []) { _ in }
         }
     }
     .modelContainer(container)

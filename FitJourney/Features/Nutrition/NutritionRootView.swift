@@ -70,8 +70,8 @@ struct NutritionDayView: View {
             case .log(let entry):
                 LogFoodSheet(day: model.registrationDate, editing: entry)
             case .adjust(let meal):
-                AdjustMealSheet(meal: meal, date: model.date, existing: model.entries(for: meal)) { items in
-                    model.saveAdjusted(meal, items: items)
+                AdjustMealSheet(meal: meal, existing: model.entries(for: meal)) { drafts in
+                    model.saveAdjusted(meal, drafts: drafts)
                 }
             case .newPlan:
                 NewPlanSheet()
@@ -87,6 +87,7 @@ struct NutritionDayView: View {
         .task { model.attach(context) }
         .onAppear { model.reload() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.reload() } }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in model.dayChanged() }
     }
 
     // MARK: Navegação de dia
@@ -116,18 +117,24 @@ struct NutritionDayView: View {
     // MARK: Linha do tempo
 
     @ViewBuilder private var timeline: some View {
-        if !model.hasPlan {
+        switch model.coverage {
+        case .noPlan:
             FJCard {
                 FJEmptyState("Cadastre sua dieta", systemImage: "fork.knife",
                              message: "Monte refeições e metas para marcar como feitas com 1 toque. Você pode registrar comidas avulsas mesmo sem plano.",
                              actionTitle: "Criar dieta", area: .nutrition) { sheet = .newPlan }
             }
-        } else if !model.hasMealsPlanned {
-            Text(model.phase == .today ? "Nenhuma refeição planejada para hoje" : "Nenhuma refeição planejada para este dia")
-                .font(FJFont.label)
-                .foregroundStyle(FJColor.textSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, FJSpacing.xs)
+        case .outsideVigency(let name):
+            FJBanner("Fora da vigência do plano", message: "\(name) não cobre este dia. Registros avulsos continuam funcionando.",
+                     systemImage: "calendar.badge.exclamationmark", actionTitle: "Ver plano") { showPlans = true }
+        case .covered:
+            if !model.hasMealsPlanned {
+                Text(model.phase == .today ? "Nenhuma refeição planejada para hoje" : "Nenhuma refeição planejada para este dia")
+                    .font(FJFont.label)
+                    .foregroundStyle(FJColor.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, FJSpacing.xs)
+            }
         }
         if !model.timeline.isEmpty {
             FJSectionHeader("Refeições", subtitle: model.phase == .future ? "Plano do dia, somente leitura" : nil)
