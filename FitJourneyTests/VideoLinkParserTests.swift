@@ -9,6 +9,8 @@ struct VideoLinkParserTests {
         "https://m.youtube.com/watch?v=dQw4w9WgXcQ",
         "https://youtu.be/dQw4w9WgXcQ",
         "https://youtu.be/dQw4w9WgXcQ?si=abc",
+        "https://youtu.be/dQw4w9WgXcQ?t=30",
+        "https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ",
         "youtu.be/dQw4w9WgXcQ",
         "https://www.youtube.com/shorts/dQw4w9WgXcQ",
         "https://www.youtube.com/embed/dQw4w9WgXcQ",
@@ -29,6 +31,11 @@ struct VideoLinkParserTests {
         ("https://vimeo.com/channels/staffpicks/76979871", "76979871"),
         ("https://player.vimeo.com/video/76979871?h=abc", "76979871"),
         ("vimeo.com/76979871", "76979871"),
+        ("https://vimeo.com/76979871/a1b2c3d4e5", "76979871"),
+        ("https://vimeo.com/showcase/11111/video/76979871", "76979871"),
+        ("https://vimeo.com/album/22222/video/76979871", "76979871"),
+        ("https://vimeo.com/groups/motion/videos/76979871", "76979871"),
+        ("https://vimeo.com/channels/123/76979871", "76979871"),
     ])
     func recognizesVimeo(link: String, id: String) throws {
         let video = try #require(VideoLinkParser.parse(link))
@@ -36,6 +43,21 @@ struct VideoLinkParserTests {
         #expect(video.videoID == id)
         #expect(video.embedURL?.absoluteString == "https://player.vimeo.com/video/\(id)?playsinline=1")
         #expect(video.watchURL.absoluteString == "https://vimeo.com/\(id)")
+    }
+
+    /// Coleções (showcase/álbum/grupo/perfil) sem segmento de vídeo não têm ID de vídeo.
+    @Test(arguments: [
+        "https://vimeo.com/showcase/11111",
+        "https://vimeo.com/album/22222",
+        "https://vimeo.com/groups/motion",
+        "https://vimeo.com/groups/motion/videos",
+        "https://vimeo.com/user12345",
+        "https://vimeo.com/channels/staffpicks",
+    ])
+    func vimeoCollectionsAreNotVideos(link: String) throws {
+        let video = try #require(VideoLinkParser.parse(link))
+        #expect(video.provider == .other)
+        #expect(video.videoID == nil)
     }
 
     @Test func otherURLsBecomeOther() throws {

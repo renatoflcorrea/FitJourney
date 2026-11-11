@@ -107,6 +107,14 @@ struct CurrentLoadPolicyTests {
         #expect(CurrentLoadPolicy.proposals(for: [skipped, extra, sameInPounds]).isEmpty)
     }
 
+    @Test func extraSetsDoNotBlockProposals() {
+        let entry = CurrentLoadPolicy.ExerciseEntry(exerciseName: "Supino", sets: [
+            .init(prescriptionID: p1, kind: .working, currentLoad: .kg(30), usedLoad: .kg(32), isCompleted: true),
+            .init(prescriptionID: nil, kind: .working, currentLoad: nil, usedLoad: nil, isCompleted: false),
+        ])
+        #expect(CurrentLoadPolicy.proposals(for: [entry]).map(\.prescriptionID) == [p1])
+    }
+
     @Test func bodyweightDeltaChangeIsProposed() {
         let entry = CurrentLoadPolicy.ExerciseEntry(exerciseName: "Barra", sets: [
             .init(prescriptionID: p1, kind: .working, currentLoad: .bodyweight(delta: 0, unit: .kg),
@@ -194,6 +202,32 @@ struct SessionClockTests {
         #expect(clock.restRemaining(at: t0.addingTimeInterval(500)) == 40)
         clock.resume(at: t0.addingTimeInterval(120))
         #expect(clock.restRemaining(at: t0.addingTimeInterval(130)) == 30)
+    }
+
+    @Test func startAndAdjustRestWhilePaused() {
+        var clock = SessionClock(startedAt: t0)
+        clock.pause(at: t0.addingTimeInterval(100))
+        clock.startRest(seconds: 60, at: t0.addingTimeInterval(130)) // conta a partir da pausa
+        #expect(clock.restRemaining(at: t0.addingTimeInterval(500)) == 60)
+        clock.adjustRest(by: 15, at: t0.addingTimeInterval(500))
+        #expect(clock.restRemaining(at: t0.addingTimeInterval(500)) == 75)
+        clock.adjustRest(by: -100, at: t0.addingTimeInterval(500))
+        #expect(clock.restEndsAt == nil)
+        clock.startRest(seconds: 30, at: t0.addingTimeInterval(500))
+        clock.resume(at: t0.addingTimeInterval(200))
+        #expect(clock.restRemaining(at: t0.addingTimeInterval(210)) == 20)
+    }
+
+    @Test func finishClearsRestAndIgnoresLaterTransitions() {
+        var clock = SessionClock(startedAt: t0)
+        clock.startRest(seconds: 90, at: t0.addingTimeInterval(10))
+        clock.finish(at: t0.addingTimeInterval(50))
+        #expect(clock.restEndsAt == nil)
+        #expect(clock.restRemaining(at: t0.addingTimeInterval(60)) == nil)
+        clock.startRest(seconds: 90, at: t0.addingTimeInterval(60))
+        clock.pause(at: t0.addingTimeInterval(70))
+        #expect(clock.restEndsAt == nil && !clock.isPaused)
+        #expect(clock.elapsed(at: t0.addingTimeInterval(1_000)) == 50)
     }
 
     @Test func exerciseStatusRules() {

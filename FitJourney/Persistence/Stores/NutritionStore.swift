@@ -72,7 +72,7 @@ struct NutritionStore {
     @discardableResult
     func markMealDone(_ meal: Meal, on date: Date, at time: Date? = nil) throws -> [FoodEntry] {
         try clearMeal(meal, on: date, save: false)
-        let when = time ?? meal.time(on: date, calendar: calendar)
+        let when = entryTime(time, meal: meal, on: date)
         let entries = meal.sortedItems.map { item in
             let entry = FoodEntry(name: item.name, quantity: item.quantity, unit: item.unit, date: when, values: item.values)
             entry.mealID = meal.id
@@ -101,7 +101,7 @@ struct NutritionStore {
     func logAdjustedMeal(_ meal: Meal, on date: Date, items: [(name: String, quantity: Double, unit: FoodUnit, values: NutrientValues)],
                          at time: Date? = nil) throws -> [FoodEntry] {
         try clearMeal(meal, on: date, save: false)
-        let when = time ?? meal.time(on: date, calendar: calendar)
+        let when = entryTime(time, meal: meal, on: date)
         let entries = items.map { item in
             let entry = FoodEntry(name: item.name, quantity: item.quantity, unit: item.unit, date: when, values: item.values)
             entry.mealID = meal.id
@@ -184,6 +184,8 @@ struct NutritionStore {
     }
 
     /// Cria/atualiza o `FoodItem` de mesmo nome (sem diferenciar maiúsculas) com os valores da última porção.
+    /// Dívida aceita: busca O(n) em todos os `FoodItem` (comparação sem acento não cabe em `#Predicate`);
+    /// trocar por uma chave normalizada indexada se a lista crescer.
     private func recordUsage(name: String, quantity: Double, unit: FoodUnit, values: NutrientValues,
                              estimation: EstimationSource, at date: Date) throws {
         let key = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -211,6 +213,17 @@ struct NutritionStore {
         ))
         for entry in existing { context.delete(entry) }
         if save { try context.save() }
+    }
+
+    /// Horário da entrada da refeição sempre dentro do dia alvo: sem `time` → horário do plano;
+    /// `time` em outro dia → mesma hora/minuto aplicada ao dia de `date` (as entradas não podem
+    /// cair em outro dia, senão o status da refeição do dia ficaria errado).
+    private func entryTime(_ time: Date?, meal: Meal, on date: Date) -> Date {
+        guard let time else { return meal.time(on: date, calendar: calendar) }
+        if calendar.isDate(time, inSameDayAs: date) { return time }
+        let parts = calendar.dateComponents([.hour, .minute, .second], from: time)
+        return calendar.date(bySettingHour: parts.hour ?? 0, minute: parts.minute ?? 0, second: parts.second ?? 0, of: date)
+            ?? meal.time(on: date, calendar: calendar)
     }
 
     private func dayBounds(_ date: Date) -> (Date, Date) {

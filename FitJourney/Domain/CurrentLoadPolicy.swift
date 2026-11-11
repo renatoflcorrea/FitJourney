@@ -15,7 +15,8 @@ struct LoadUpdateProposal: Sendable, Hashable, Identifiable {
 /// Padrão: para cada exercício, **se todas as séries válidas foram concluídas**, propõe
 /// a carga usada em cada série válida concluída cuja carga difere da carga atual
 /// (ou da inicial, quando ainda não há atual). Aquecimento/preparatória nunca atualizam.
-/// Séries sem prescrição de origem (extras adicionadas na hora) são ignoradas.
+/// Séries sem prescrição de origem (extras adicionadas na hora, ou cuja ficha foi apagada) são ignoradas
+/// — não contam para "todas concluídas".
 enum CurrentLoadPolicy {
     struct SetEntry: Sendable, Hashable {
         var prescriptionID: UUID?
@@ -44,7 +45,8 @@ enum CurrentLoadPolicy {
     static func proposals(for exercises: [ExerciseEntry]) -> [LoadUpdateProposal] {
         exercises.flatMap { exercise -> [LoadUpdateProposal] in
             guard exercise.isEligible else { return [] }
-            let working = exercise.sets.filter { $0.kind.isWorking }
+            // Séries extras (sem prescrição de origem) não bloqueiam nem geram propostas.
+            let working = exercise.sets.filter { $0.kind.isWorking && $0.prescriptionID != nil }
             guard !working.isEmpty, working.allSatisfy(\.isCompleted) else { return [] }
             return working.compactMap { set in
                 guard let id = set.prescriptionID, let used = set.usedLoad else { return nil }

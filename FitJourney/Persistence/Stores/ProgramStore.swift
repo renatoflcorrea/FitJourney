@@ -3,6 +3,9 @@ import SwiftData
 
 /// Operações de programas/fichas que mantêm invariantes (ex.: um único programa ativo).
 /// Fino de propósito: as telas leem com `@Query` e chamam o store para mutações com regra.
+///
+/// Dívida aceita: com CloudKit (futuro) dois aparelhos podem ativar programas diferentes offline;
+/// será preciso autocura do invariante "um ativo" ao receber mudanças remotas (ex.: o mais recente vence).
 @MainActor
 struct ProgramStore {
     let context: ModelContext
@@ -33,7 +36,21 @@ struct ProgramStore {
             ScheduleResolver.RoutineInfo(id: $0.id, sortIndex: $0.sortIndex, weekdays: $0.weekdays,
                                          lastCompletedAt: last[$0.id])
         }
-        return ScheduleResolver.suggestion(mode: program.scheduleMode, routines: infos, today: date, calendar: calendar)
+        return ScheduleResolver.suggestion(mode: program.scheduleMode, routines: infos,
+                                           lastCompletedRoutineID: try lastCompletedSession(programID: program.id)?.routineID,
+                                           today: date, calendar: calendar)
+    }
+
+    /// Sessão concluída mais recente do programa (âncora do modo sequencial).
+    func lastCompletedSession(programID: UUID) throws -> WorkoutSession? {
+        let completed = SessionStatus.completed.rawValue
+        let pid: UUID? = programID
+        var descriptor = FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.programID == pid && $0.statusRaw == completed },
+            sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
     }
 
     /// Data da última sessão concluída de cada ficha do programa.

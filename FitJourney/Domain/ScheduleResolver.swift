@@ -38,7 +38,9 @@ enum ScheduleResolver {
         }
     }
 
-    static func suggestion(mode: ScheduleMode, routines: [RoutineInfo],
+    /// - Parameter lastCompletedRoutineID: ficha da sessão concluída mais recente do programa.
+    ///   É a âncora do modo sequencial; se a ficha não existe mais, cai no fallback por datas.
+    static func suggestion(mode: ScheduleMode, routines: [RoutineInfo], lastCompletedRoutineID: UUID? = nil,
                            today: Date, calendar: Calendar = .current) -> ScheduleSuggestion {
         let ordered = routines.sorted { ($0.sortIndex, $0.id.uuidString) < ($1.sortIndex, $1.id.uuidString) }
         guard !ordered.isEmpty else { return .noRoutines }
@@ -57,12 +59,20 @@ enum ScheduleResolver {
             return .routine(leastRecent.id)
 
         case .sequential:
-            // Próxima após a concluída mais recentemente (circular); nenhuma feita → a primeira.
-            let lastDone = ordered.enumerated()
-                .filter { $0.element.lastCompletedAt != nil }
-                .max { $0.element.lastCompletedAt! < $1.element.lastCompletedAt! }
-            guard let lastDone else { return .routine(ordered[0].id) }
-            return .routine(ordered[(lastDone.offset + 1) % ordered.count].id)
+            // Próxima após a última concluída (circular).
+            if let anchor = lastCompletedRoutineID, let index = ordered.firstIndex(where: { $0.id == anchor }) {
+                return .routine(ordered[(index + 1) % ordered.count].id)
+            }
+            // Fallback (âncora ausente ou apagada): a mais recente entre as que restam;
+            // empate de datas → a de maior ordem conta como a última. Nenhuma feita → a primeira.
+            var lastIndex: Int?
+            for (index, routine) in ordered.enumerated() {
+                guard let date = routine.lastCompletedAt else { continue }
+                if let current = lastIndex, let best = ordered[current].lastCompletedAt, date < best { continue }
+                lastIndex = index
+            }
+            guard let lastIndex else { return .routine(ordered[0].id) }
+            return .routine(ordered[(lastIndex + 1) % ordered.count].id)
 
         case .weekly:
             let weekday = Weekday(date: today, calendar: calendar)

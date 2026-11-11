@@ -43,9 +43,11 @@ enum PersistenceController {
     static func makeAppContainer() -> ModelContainer {
         do {
             let container = try makeContainer()
-            try ExerciseCatalogSeeder.seedIfNeeded(in: container.mainContext)
+            try ExerciseCatalogSeeder.seedIfNeeded(in: container.mainContext, defaults: .standard)
             return container
         } catch {
+            // Dívida aceita: falha ao abrir o banco derruba o app. Antes do lançamento, trocar por
+            // tela de erro com opção de exportar/recuperar em vez de `fatalError`.
             fatalError("Não foi possível abrir o banco do FitJourney: \(error)")
         }
     }

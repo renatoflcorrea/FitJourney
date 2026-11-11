@@ -99,7 +99,7 @@ final class Routine {
     /// Dias da semana (modo semanal).
     var weekdays: Set<Weekday> {
         get { StorageCoding.decodeWeekdays(weekdaysRaw) }
-        set { weekdaysRaw = StorageCoding.encodeWeekdays(newValue) }
+        set { weekdaysRaw = StorageCoding.encodeWeekdays(newValue, preservingUnknownIn: weekdaysRaw) }
     }
 
     var sortedExercises: [RoutineExercise] { (exercises ?? []).sorted { $0.sortIndex < $1.sortIndex } }
@@ -153,12 +153,12 @@ final class Exercise {
 
     var primaryMuscles: [MuscleGroup] {
         get { StorageCoding.decodeList(MuscleGroup.self, from: primaryMusclesRaw) }
-        set { primaryMusclesRaw = StorageCoding.encodeList(newValue) }
+        set { primaryMusclesRaw = StorageCoding.encodeList(newValue, preservingUnknownIn: primaryMusclesRaw) }
     }
 
     var secondaryMuscles: [MuscleGroup] {
         get { StorageCoding.decodeList(MuscleGroup.self, from: secondaryMusclesRaw) }
-        set { secondaryMusclesRaw = StorageCoding.encodeList(newValue) }
+        set { secondaryMusclesRaw = StorageCoding.encodeList(newValue, preservingUnknownIn: secondaryMusclesRaw) }
     }
 
     var equipment: Equipment {
@@ -177,8 +177,8 @@ final class Exercise {
     }
 
     var media: [MediaRef] {
-        get { StorageCoding.decode([MediaRef].self, from: mediaData) ?? [] }
-        set { mediaData = newValue.isEmpty ? nil : StorageCoding.encode(newValue) }
+        get { StorageCoding.decodeList(MediaRef.self, from: mediaData) }
+        set { mediaData = StorageCoding.encodeList(newValue, preservingUnknownIn: mediaData) }
     }
 }
 

@@ -13,10 +13,15 @@ struct CatalogExercise: Sendable, Hashable {
     var laterality: Laterality = .bilateral
     var kind: MeasurementKind = .repsAndLoad
     var rest: Int = 90
+    /// Versão do catálogo em que o exercício entrou (só versões novas são semeadas em bases existentes).
+    var addedInVersion: Int = 1
 }
 
 /// Catálogo inicial (~60 exercícios comuns). Nomes em pt-BR; `nameEN` fica para a localização en.
 enum ExerciseCatalog {
+    /// Suba ao adicionar exercícios (marcando-os com `addedInVersion: version`).
+    static let version = 1
+
     static let all: [CatalogExercise] = [
         // Peito
         .init(key: "bench-press", name: "Supino reto com barra", nameEN: "Barbell Bench Press", primary: [.chest], secondary: [.triceps, .shoulders], equipment: .barbell, rest: 120),
@@ -107,16 +112,31 @@ enum ExerciseCatalog {
     static func entry(forKey key: String) -> CatalogExercise? { all.first { $0.key == key } }
 }
 
-/// Seed idempotente: insere apenas os exercícios embutidos cuja `catalogKey` ainda não existe.
-/// Rodar de novo (ou depois de uma versão adicionar exercícios) nunca duplica.
+/// Seed versionado e idempotente.
+///
+/// - Base nova: insere o catálogo inteiro e grava `seededCatalogVersion`.
+/// - Versão do catálogo subiu: insere só os exercícios com `addedInVersion` maior que a versão
+///   já semeada e cuja `catalogKey` ainda não existe.
+/// - Mesma versão: não faz nada — **um exercício embutido apagado pelo usuário não volta**.
+///
+/// `defaults == nil` (testes/previews em memória) ignora o registro de versão e insere toda
+/// chave ausente. Com CloudKit (futuro), dois aparelhos podem semear o mesmo exercício:
+/// a deduplicação deve agrupar por `catalogKey` mantendo o registro mais antigo e
+/// reapontando `RoutineExercise.exercise` antes de apagar os duplicados.
 @MainActor
 enum ExerciseCatalogSeeder {
+    static let versionKey = "seededCatalogVersion"
+
     @discardableResult
-    static func seedIfNeeded(in context: ModelContext) throws -> Int {
+    static func seedIfNeeded(in context: ModelContext, defaults: UserDefaults? = nil,
+                             catalog: [CatalogExercise] = ExerciseCatalog.all,
+                             version: Int = ExerciseCatalog.version) throws -> Int {
+        let seededVersion = defaults?.integer(forKey: versionKey) ?? 0
+        guard defaults == nil || seededVersion < version else { return 0 }
         let existing = try context.fetch(FetchDescriptor<Exercise>(predicate: #Predicate { $0.catalogKey != nil }))
         let keys = Set(existing.compactMap(\.catalogKey))
         var inserted = 0
-        for item in ExerciseCatalog.all where !keys.contains(item.key) {
+        for item in catalog where item.addedInVersion > seededVersion && !keys.contains(item.key) {
             context.insert(Exercise(name: item.name, primaryMuscles: item.primary, secondaryMuscles: item.secondary,
                                     equipment: item.equipment, laterality: item.laterality,
                                     measurementKind: item.kind, defaultRestSeconds: item.rest,
@@ -124,6 +144,7 @@ enum ExerciseCatalogSeeder {
             inserted += 1
         }
         if inserted > 0 { try context.save() }
+        defaults?.set(version, forKey: versionKey)
         return inserted
     }
 }

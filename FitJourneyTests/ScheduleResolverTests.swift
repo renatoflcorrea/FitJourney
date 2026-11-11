@@ -79,4 +79,62 @@ struct ScheduleResolverTests {
         #expect(ScheduleResolver.suggestion(mode: .weekly, routines: routines, today: tuesday, calendar: calendar) == .rest)
         #expect(ScheduleSuggestion.rest.routineIDs.isEmpty)
     }
+
+    @Test func sequentialAnchorsOnLastCompletedRoutineID() {
+        // Datas dizem "B por último", mas a sessão concluída mais recente do programa foi A.
+        let routines = [
+            ScheduleResolver.RoutineInfo(id: a, sortIndex: 0, lastCompletedAt: daysAgo(2)),
+            ScheduleResolver.RoutineInfo(id: b, sortIndex: 1, lastCompletedAt: daysAgo(1)),
+            ScheduleResolver.RoutineInfo(id: c, sortIndex: 2),
+        ]
+        #expect(ScheduleResolver.suggestion(mode: .sequential, routines: routines, lastCompletedRoutineID: a,
+                                            today: wednesday) == .routine(b))
+        #expect(ScheduleResolver.suggestion(mode: .sequential, routines: routines, lastCompletedRoutineID: c,
+                                            today: wednesday) == .routine(a))
+    }
+
+    @Test func sequentialFallsBackWhenLastRoutineWasDeleted() {
+        let deleted = UUID()
+        let routines = [
+            ScheduleResolver.RoutineInfo(id: a, sortIndex: 0, lastCompletedAt: daysAgo(3)),
+            ScheduleResolver.RoutineInfo(id: c, sortIndex: 2, lastCompletedAt: daysAgo(5)),
+        ]
+        #expect(ScheduleResolver.suggestion(mode: .sequential, routines: routines, lastCompletedRoutineID: deleted,
+                                            today: wednesday) == .routine(c))
+        let neverDone = [ScheduleResolver.RoutineInfo(id: a, sortIndex: 0), ScheduleResolver.RoutineInfo(id: c, sortIndex: 1)]
+        #expect(ScheduleResolver.suggestion(mode: .sequential, routines: neverDone, lastCompletedRoutineID: deleted,
+                                            today: wednesday) == .routine(a))
+    }
+
+    @Test func tiesAreDeterministic() {
+        let same = daysAgo(1)
+        let routines = [
+            ScheduleResolver.RoutineInfo(id: a, sortIndex: 0, lastCompletedAt: same),
+            ScheduleResolver.RoutineInfo(id: b, sortIndex: 1, lastCompletedAt: same),
+            ScheduleResolver.RoutineInfo(id: c, sortIndex: 2, lastCompletedAt: daysAgo(4)),
+        ]
+        // Sequencial sem âncora: empate → a de maior ordem conta como última (B) → C.
+        #expect(ScheduleResolver.suggestion(mode: .sequential, routines: routines, today: wednesday) == .routine(c))
+        // Livre: empate na menos recente → a primeira na ordem.
+        let freeTie = [
+            ScheduleResolver.RoutineInfo(id: b, sortIndex: 1, lastCompletedAt: same),
+            ScheduleResolver.RoutineInfo(id: a, sortIndex: 0, lastCompletedAt: same),
+        ]
+        #expect(ScheduleResolver.suggestion(mode: .free, routines: freeTie, today: wednesday) == .routine(a))
+    }
+
+    @Test func weekStartingOnSundayDoesNotChangeMapping() {
+        var sundayFirst = calendar
+        sundayFirst.firstWeekday = 1
+        let sunday = sundayFirst.date(from: DateComponents(year: 2026, month: 11, day: 15, hour: 10))!
+        #expect(Weekday(date: sunday, calendar: sundayFirst) == .sunday)
+        #expect(Weekday(date: wednesday, calendar: sundayFirst) == .wednesday)
+        let routines = [
+            ScheduleResolver.RoutineInfo(id: a, sortIndex: 0, weekdays: [.sunday]),
+            ScheduleResolver.RoutineInfo(id: b, sortIndex: 1, weekdays: [.monday]),
+        ]
+        #expect(ScheduleResolver.suggestion(mode: .weekly, routines: routines, today: sunday, calendar: sundayFirst)
+            == .routines([a]))
+        #expect(Weekday.allCases.first == .monday)
+    }
 }

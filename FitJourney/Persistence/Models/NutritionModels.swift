@@ -91,7 +91,7 @@ final class NutritionDay {
 
     var weekdays: Set<Weekday> {
         get { StorageCoding.decodeWeekdays(weekdaysRaw) }
-        set { weekdaysRaw = StorageCoding.encodeWeekdays(newValue) }
+        set { weekdaysRaw = StorageCoding.encodeWeekdays(newValue, preservingUnknownIn: weekdaysRaw) }
     }
 
     var appliesToAllDays: Bool { weekdaysRaw.isEmpty }
@@ -130,8 +130,11 @@ final class Meal {
     var sortedItems: [MealItem] { (items ?? []).sorted { $0.sortIndex < $1.sortIndex } }
 
     /// Horário da refeição numa data.
+    /// Usa `bySettingHour` (respeita horário de verão, ao contrário de somar segundos à meia-noite).
     func time(on date: Date, calendar: Calendar = .current) -> Date {
-        calendar.startOfDay(for: date).addingTimeInterval(TimeInterval(minutesFromMidnight * 60))
+        let minutes = min(max(0, minutesFromMidnight), 24 * 60 - 1)
+        return calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: date)
+            ?? calendar.startOfDay(for: date).addingTimeInterval(TimeInterval(minutes * 60))
     }
 
     /// Soma planejada (só para exibir o plano — nunca conta como realizado).
@@ -187,8 +190,8 @@ final class MealItem {
     }
 
     var substitutions: [MealSubstitution] {
-        get { StorageCoding.decode([MealSubstitution].self, from: substitutionsData) ?? [] }
-        set { substitutionsData = newValue.isEmpty ? nil : StorageCoding.encode(newValue) }
+        get { StorageCoding.decodeList(MealSubstitution.self, from: substitutionsData) }
+        set { substitutionsData = StorageCoding.encodeList(newValue, preservingUnknownIn: substitutionsData) }
     }
 }
 

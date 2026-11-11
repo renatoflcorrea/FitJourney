@@ -111,12 +111,22 @@ enum VideoLinkParser {
             return numeric(components[1])
         }
         guard host == "vimeo.com" else { return nil }
-        // vimeo.com/123, vimeo.com/channels/x/123, vimeo.com/groups/x/videos/123, vimeo.com/123/hash
-        return components.lazy.compactMap(numeric).first
+        // Com segmento video/videos, o vídeo é o numérico seguinte:
+        // vimeo.com/groups/x/videos/123, vimeo.com/showcase/9/video/123, vimeo.com/album/9/video/123.
+        if let index = components.firstIndex(where: { $0 == "video" || $0 == "videos" }) {
+            return components.indices.contains(index + 1) ? numeric(components[index + 1]) : nil
+        }
+        // Senão, só vimeo.com/123, vimeo.com/123/<hash> e vimeo.com/channels/<nome>/123.
+        // showcase/album/groups sem "video" apontam para coleções, não vídeos.
+        switch components.count {
+        case 1, 2: return numeric(components[0])
+        case 3 where components[0] == "channels": return numeric(components[2])
+        default: return nil
+        }
     }
 
     private static func numeric(_ candidate: String) -> String? {
-        guard !candidate.isEmpty, candidate.allSatisfy(\.isASCII), candidate.allSatisfy(\.isNumber) else { return nil }
+        guard !candidate.isEmpty, candidate.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
         return candidate
     }
 }

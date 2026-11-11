@@ -49,12 +49,19 @@ struct SessionStore {
 
     /// Última execução concluída de um exercício ("última vez: 3×10 com 32 kg").
     func lastPerformance(exerciseID: UUID, before date: Date = .distantFuture) throws -> SessionExercise? {
-        for session in try completedSessions() where session.startedAt < date {
-            if let match = session.sortedExercises.first(where: { $0.exerciseID == exerciseID && $0.status != .skipped }) {
-                return match
-            }
-        }
-        return nil
+        let completed = SessionStatus.completed.rawValue
+        let skipped = SessionExerciseStatus.skipped.rawValue
+        let eid: UUID? = exerciseID
+        var descriptor = FetchDescriptor<SessionExercise>(
+            predicate: #Predicate { item in
+                item.exerciseID == eid && item.statusRaw != skipped
+                    && item.session?.statusRaw == completed
+                    && (item.session?.startedAt ?? date) < date
+            },
+            sortBy: [SortDescriptor(\.session?.startedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
     }
 
     // MARK: Início
@@ -308,7 +315,7 @@ struct SessionStore {
         session.clock = clock
         session.status = .completed
         session.sessionRPE = sessionRPE.map { min(10, max(1, $0)) }
-        session.mood = mood
+        session.mood = mood.map { min(5, max(1, $0)) }
         if let notes { session.notes = notes }
         session.updatedAt = date
         for exercise in session.exercises ?? [] where exercise.status == .inProgress {
@@ -372,16 +379,27 @@ struct SessionStore {
         return Dictionary(found.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
     }
 
-    /// Melhores marcas históricas (sessões concluídas, exceto esta) por exercício.
+    /// Melhores marcas históricas (sessões concluídas, exceto esta) dos exercícios informados.
+    /// Busca só os `SessionExercise` desses exercícios e agrupa por sessão — o mesmo exercício
+    /// feito 2× numa sessão soma num único volume da sessão.
     private func historyBests(exerciseIDs: Set<UUID>, excluding session: WorkoutSession) throws -> [UUID: ExerciseBests] {
         guard !exerciseIDs.isEmpty else { return [:] }
-        var perSession: [UUID: [[PerformedSet]]] = [:]
-        for past in try completedSessions() where past.persistentModelID != session.persistentModelID {
-            for exercise in past.exercises ?? [] {
-                guard let id = exercise.exerciseID, exerciseIDs.contains(id) else { continue }
-                perSession[id, default: []].append(exercise.performedSets)
+        let ids: [UUID?] = exerciseIDs.map { $0 }
+        let completed = SessionStatus.completed.rawValue
+        let current: UUID? = session.id
+        let items = try context.fetch(FetchDescriptor<SessionExercise>(
+            predicate: #Predicate { item in
+                ids.contains(item.exerciseID) && item.session?.statusRaw == completed && item.session?.id != current
             }
+        ))
+        struct Key: Hashable { var exerciseID: UUID; var sessionID: UUID }
+        var bySession: [Key: [PerformedSet]] = [:]
+        for item in items {
+            guard let exerciseID = item.exerciseID, let sessionID = item.session?.id else { continue }
+            bySession[Key(exerciseID: exerciseID, sessionID: sessionID), default: []].append(contentsOf: item.performedSets)
         }
-        return perSession.mapValues { WorkoutMetrics.bests(history: $0) }
+        var perExercise: [UUID: [[PerformedSet]]] = [:]
+        for (key, sets) in bySession { perExercise[key.exerciseID, default: []].append(sets) }
+        return perExercise.mapValues { WorkoutMetrics.bests(history: $0) }
     }
 }
