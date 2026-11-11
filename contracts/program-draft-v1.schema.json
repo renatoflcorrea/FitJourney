@@ -1,0 +1,435 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fitjourney.app/contracts/program-draft-v1.schema.json",
+  "title": "ProgramDraft",
+  "description": "Rascunho de programa de treino (FitJourney v1). Nada é salvo sem revisão do usuário. Cargas na unidade indicada; campos não aplicáveis = null.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "goal",
+    "goalText",
+    "scheduleMode",
+    "durationWeeks",
+    "notes",
+    "routines"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Nome do programa (até 80 caracteres)."
+    },
+    "goal": {
+      "type": "string",
+      "enum": [
+        "hypertrophy",
+        "strength",
+        "endurance",
+        "fatLoss",
+        "conditioning",
+        "rehabilitation",
+        "other"
+      ],
+      "description": "Tag de objetivo."
+    },
+    "goalText": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Objetivo em texto livre."
+    },
+    "scheduleMode": {
+      "type": "string",
+      "enum": [
+        "free",
+        "sequential",
+        "weekly"
+      ],
+      "description": "free = escolhe a ficha no dia; sequential = rodízio A→B→C; weekly = fichas em dias da semana."
+    },
+    "durationWeeks": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "maximum": 52,
+      "description": "Duração sugerida em semanas."
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Observações gerais."
+    },
+    "routines": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 7,
+      "items": {
+        "$ref": "#/$defs/routine"
+      }
+    }
+  },
+  "$defs": {
+    "routine": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "symbol",
+        "weekdays",
+        "notes",
+        "exercises"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nome da ficha (ex.: \"A — Peito e tríceps\")."
+        },
+        "symbol": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Letra curta exibida no avatar (ex.: \"A\")."
+        },
+        "weekdays": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "type": "string",
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ]
+          },
+          "description": "Dias da semana (obrigatório no modo weekly; vazio nos demais)."
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "exercises": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 15,
+          "items": {
+            "$ref": "#/$defs/exercise"
+          }
+        }
+      }
+    },
+    "exercise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "catalogKey",
+        "restSeconds",
+        "groupLabel",
+        "notes",
+        "sets"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Nome do exercício em pt-BR."
+        },
+        "catalogKey": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Chave do catálogo do app quando conhecida (de list_exercises), senão null."
+        },
+        "restSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Descanso padrão entre séries."
+        },
+        "groupLabel": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Mesmo rótulo na mesma ficha = bi-set/tri-set/circuito."
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/set"
+          }
+        }
+      }
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "repTarget",
+        "holdSeconds",
+        "load",
+        "restSeconds",
+        "tempo",
+        "rir",
+        "rpe",
+        "cardio",
+        "notes"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "warmup",
+            "feeder",
+            "working",
+            "dropSet",
+            "restPause",
+            "toFailure",
+            "backOff"
+          ]
+        },
+        "repTarget": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/repTarget"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "holdSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 600,
+          "description": "Sustentação (isométricos)."
+        },
+        "load": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/load"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "restSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 600,
+          "description": "Descanso após esta série (sobrescreve o do exercício)."
+        },
+        "tempo": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Cadência, ex.: \"3-1-1-0\"."
+        },
+        "rir": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Repetições em reserva alvo."
+        },
+        "rpe": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 10,
+          "description": "RPE alvo (use rir OU rpe)."
+        },
+        "cardio": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/cardio"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "repTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "reps",
+        "min",
+        "max"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fixed",
+            "range",
+            "amrap"
+          ],
+          "description": "fixed usa reps; range usa min e max; amrap = máximo possível."
+        },
+        "reps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 100
+        },
+        "min": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 100
+        },
+        "max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 100
+        }
+      }
+    },
+    "load": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "value",
+        "unit"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "weight",
+            "bodyweight"
+          ],
+          "description": "weight = carga absoluta; bodyweight = peso corporal com value de lastro (+) ou assistência (−)."
+        },
+        "value": {
+          "type": "number",
+          "minimum": -200,
+          "maximum": 1000
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "kg",
+            "lb"
+          ]
+        }
+      }
+    },
+    "cardio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "durationSeconds",
+        "distanceMeters",
+        "level",
+        "speedKmh",
+        "inclinePercent",
+        "heartRateZone"
+      ],
+      "properties": {
+        "durationSeconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 14400
+        },
+        "distanceMeters": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "level": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 50
+        },
+        "speedKmh": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 50
+        },
+        "inclinePercent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": -10,
+          "maximum": 40
+        },
+        "heartRateZone": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    }
+  }
+}
