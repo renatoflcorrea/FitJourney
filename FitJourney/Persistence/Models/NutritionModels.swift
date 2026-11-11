@@ -275,6 +275,9 @@ final class FoodEntry {
     /// Status para entradas de refeição planejada (done/adjusted/skipped); `nil` em avulsas.
     var mealStatusRaw: String?
     var notes: String = ""
+    /// Item do plano (`MealItem.id`) de onde a entrada veio; `nil` em avulsas. Reabre o ajuste casado
+    /// com o item mesmo quando ele foi trocado por uma substituição.
+    var plannedItemID: UUID?
 
     init(name: String, quantity: Double, unit: FoodUnit, date: Date = .now,
          values: NutrientValues = NutrientValues(), estimation: EstimationSource = .informed) {

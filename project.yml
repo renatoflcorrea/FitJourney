@@ -15,7 +15,7 @@ targets:
   FitJourney:
     type: application
     platform: iOS
-    sources: [FitJourney]
+    sources: [FitJourney, Shared/WatchLink]
     info:
       path: FitJourney/App/Info.plist
       properties:

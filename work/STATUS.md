@@ -13,9 +13,19 @@
 - P0.1/P0.4 + W0 integrados (`d88201a`): DESIGN_DIRECTION (iPhone + §9 watchOS), DesignSystem revisado (teclado do stepper, Reduzir Movimento, VoiceOver), AccentColor laranja. Protótipo v2 (com relógio) no mesmo link.
 - Padrões assumidos para as perguntas abertas do design (podem mudar): doca espera toque após o descanso; laranja queimado `#D4450C` com texto branco; atenção/recorde amarelos diferenciados por símbolo; relógio com páginas horizontais; Coroa ajusta a próxima carga no descanso; cargas atualizadas pela regra padrão ao finalizar no relógio; treino livre fora do relógio por ora.
 
+- P1.3 Biblioteca + mídia integrada (`0e1b632`), revisão com 3 altas corrigidas (órfãos, rollback do duplicar, WebView endurecido).
+- P3.1+P3.2 Dieta integrada (`1dc0a2a`), vigência do plano, parsing pt-BR, regras puras em Domain; aba ainda não ligada no AppRoot (junto com P1.1).
+- P2.1 Motor da sessão integrado (`f313870`, 122 testes): idempotência com tombstones, ordem por série, save atômico, compatibilidade de protocolo, comandos add/substitute/reorder.
+- Infra: simulador próprio por worktree (AGENTS.md); `FJ-main` para o supervisor.
+
 ## Em andamento
-- P2.1 Motor da sessão (Opus) entregue (`c8d8963`, 107 testes) — em revisão (review-code).
-- P1.1+P1.4 Programas e Hoje (Sonnet) ∥ P1.3 Biblioteca + mídia (Sonnet) ∥ P3.1+P3.2 Dieta (Sonnet).
+- P1.1+P1.4 Programas/Hoje (Sonnet) — implementando.
+- P1.2 Editor de ficha (Sonnet) — correções da revisão (grupo ao arrastar, R-T2, unidade kg/lb, ProgramStore atômico).
+- P5.1+P5.2 Núcleo de IA (Opus).
+- P2.2–P2.5 Tela da sessão/encerramento/histórico/acessório (Sonnet).
+- P4.1 Apple Health no iPhone (Opus).
+- W3a App watchOS (UI + transporte simulado) (Sonnet).
 
 ## Próximo
-- Integrar P2.1 e Ciclo 1 → P1.2 editor de ficha (usa `ExercisePicker`) ∥ P2.2–P2.5 tela da sessão → Cartographer.
+- Integrar P1.1 + ligar abas (Dieta, sessão, `MediaMaintenance.runAtLaunch`, `restore`/`handleForeground`, StarterProgram → SampleProgramFactory) → P4.2/P4.3 (FC, aba Saúde) → W2/W3b (transporte real + HKWorkoutSession no relógio) → P5.3/P5.4 (UI do Coach) → P3.3 lembretes → Ciclo 6 → Cartographer.
+- Pedir ao design tokens oficiais de cor de ficha (RoutineColor) e promover `FlowLayout`.

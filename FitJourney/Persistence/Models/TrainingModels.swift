@@ -105,9 +105,18 @@ final class Routine {
     var sortedExercises: [RoutineExercise] { (exercises ?? []).sorted { $0.sortIndex < $1.sortIndex } }
 
     /// Duração estimada (SPEC §3.2), em segundos.
+    /// Em bi-set/circuito o descanso só vale ao fim da rodada (último membro do grupo); os demais
+    /// membros contam apenas a transição (`groupTransitionSeconds`).
     var estimatedDurationSeconds: Int {
-        let rests = sortedExercises.flatMap { re in
-            re.sortedSets.map { $0.restSeconds ?? re.restSeconds ?? re.exercise?.defaultRestSeconds ?? 90 }
+        let ordered = sortedExercises
+        let rests = ordered.enumerated().flatMap { index, re in
+            let next = index + 1 < ordered.count ? ordered[index + 1] : nil
+            let restsOnlyAtRoundEnd = re.groupID != nil && next?.groupID == re.groupID
+            return re.sortedSets.map { set in
+                restsOnlyAtRoundEnd
+                    ? RoutineEstimate.groupTransitionSeconds
+                    : (set.restSeconds ?? re.restSeconds ?? re.exercise?.defaultRestSeconds ?? 90)
+            }
         }
         return RoutineEstimate.durationSeconds(restSeconds: rests)
     }
