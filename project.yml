@@ -23,6 +23,9 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         # HKWorkoutSession no iPhone (iOS 26+) segue gravando com o app em segundo plano.
         UIBackgroundModes: [workout-processing]
+        # Coach com servidor compatível na rede local (Ollama): HTTP só para endereços locais.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     entitlements:
       path: FitJourney/App/FitJourney.entitlements
       properties:
@@ -40,6 +43,7 @@ targets:
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: "O FitJourney grava seus treinos no app Saúde."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "O FitJourney usa fotos e vídeos da galeria para ilustrar exercícios."
         INFOPLIST_KEY_NSCameraUsageDescription: "O FitJourney usa a câmera para fotografar exercícios."
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "O FitJourney acessa a rede local só se você configurar o Coach com um servidor de IA no seu computador (ex.: Ollama)."
         SWIFT_EMIT_LOC_STRINGS: YES
   FitJourneyTests:
     type: bundle.unit-test
