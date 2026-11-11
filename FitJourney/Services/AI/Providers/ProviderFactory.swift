@@ -4,6 +4,8 @@ import Foundation
 struct ResolvedChat: Sendable {
     var gateway: any ChatGateway & StructuredCompleting
     var model: String
+    /// Orçamento de contexto (tokens aproximados) para a janela do histórico.
+    var contextBudgetTokens: Int = ProviderSettings.cloudContextTokens
 }
 
 /// Composição pura: configurações + segredo → gateway. Sem rede, sem log.
@@ -50,7 +52,7 @@ enum ProviderFactory {
         case .anthropic: AnthropicMessagesGateway(configuration: configuration, client: client)
         case .openAI, .openRouter, .custom: OpenAICompatibleChatGateway(configuration: configuration, client: client)
         }
-        return ResolvedChat(gateway: gateway, model: settings.model)
+        return ResolvedChat(gateway: gateway, model: settings.model, contextBudgetTokens: settings.contextBudgetTokens)
     }
 
     /// Lê configurações e chave e monta o gateway. Lança `AIError.notConfigured` se faltar algo.

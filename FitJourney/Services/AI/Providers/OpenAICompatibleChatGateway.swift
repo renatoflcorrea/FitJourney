@@ -30,6 +30,9 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
                         guard let event = parser.consume(line: line) else { continue }
                         switch event {
                         case .done:
+                            guard state.pendingFinish != nil || state.sawContent else {
+                                throw AIError.network(code: URLError.networkConnectionLost.rawValue, retryable: true)
+                            }
                             state.finish(into: continuation)
                             continuation.finish()
                             return
@@ -38,6 +41,10 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
                         }
                     }
                     if case let .data(payload) = parser.flush() { try state.consume(payload, into: continuation) }
+                    // Sem `[DONE]` nem `finish_reason`: a conexão caiu no meio; chamadas parciais são descartadas.
+                    guard state.pendingFinish != nil else {
+                        throw AIError.network(code: URLError.networkConnectionLost.rawValue, retryable: true)
+                    }
                     state.finish(into: continuation)
                     continuation.finish()
                 } catch {
@@ -54,6 +61,8 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
         var tools = ToolCallAccumulator()
         var pendingFinish: FinishReason?
         var finished = false
+        /// Algum quadro válido chegou (servidores compatíveis às vezes mandam `[DONE]` sem `finish_reason`).
+        var sawContent = false
 
         mutating func consume(_ payload: String,
                               into continuation: AsyncThrowingStream<ChatEvent, any Error>.Continuation) throws {
@@ -62,6 +71,7 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
             if let error = chunk.error {
                 throw AIError.server(status: 200, message: Redactor.redact(error.message ?? "stream error"))
             }
+            sawContent = true
             // Azure abre o stream com um quadro sem `choices`.
             if !announced, let model = chunk.model, !model.isEmpty {
                 announced = true
@@ -144,15 +154,15 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
             do {
                 return try await perform(strictTools ? candidate : Self.relaxingTools(candidate))
             } catch AIError.badRequest(status: 400, let message) {
+                // Só repete quando o erro cita o parâmetro recusado; qualquer outro 400 sobe como está.
                 let lower = message.lowercased()
-                if strictTools, !candidate.tools.isEmpty, !relaxedTools,
-                   ["strict", "tools", "function"].contains(where: lower.contains) {
+                if strictTools, !candidate.tools.isEmpty, !relaxedTools, lower.contains("strict") {
                     strictTools = false
                     relaxedTools = true
                     continue
                 }
                 guard configuration.quirks.structuredOutputFallback,
-                      ["response_format", "json_schema", "schema", "structured"].contains(where: lower.contains)
+                      lower.contains("response_format") || lower.contains("json_schema")
                 else { throw AIError.badRequest(status: 400, message: message) }
                 switch candidate.responseFormat {
                 case let .jsonSchema(_, schema, _):

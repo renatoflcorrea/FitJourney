@@ -22,14 +22,24 @@ struct CoachProfile: Codable, Sendable, Hashable {
     /// Preferências alimentares e alergias.
     var foodPreferences: String?
 
-    /// O que o usuário aceita enviar ao provedor (SPEC §7, privacidade).
+    /// O que o usuário aceita enviar ao provedor (SPEC §7, privacidade). **Tudo nasce desligado**;
+    /// a UI pede consentimento na primeira abertura (`CoachProfileStore.grantConsent(sharing:)`).
     var sharing: Sharing = Sharing()
 
     struct Sharing: Codable, Sendable, Hashable {
-        var profile: Bool = true
-        var workouts: Bool = true
-        var nutrition: Bool = true
+        var profile: Bool = false
+        var workouts: Bool = false
+        var nutrition: Bool = false
         var health: Bool = false
+
+        init(profile: Bool = false, workouts: Bool = false, nutrition: Bool = false, health: Bool = false) {
+            self.profile = profile
+            self.workouts = workouts
+            self.nutrition = nutrition
+            self.health = health
+        }
+
+        static let none = Sharing()
     }
 
     init() {}
@@ -62,12 +72,32 @@ struct CoachProfile: Codable, Sendable, Hashable {
     }
 }
 
-/// Persistência do perfil em UserDefaults (chave versionada).
-struct CoachProfileStore: Sendable {
+/// Persistência do perfil e do consentimento em UserDefaults (chaves versionadas).
+struct CoachProfileStore {
     static let key = "coach.profile.v1"
-    nonisolated(unsafe) let defaults: UserDefaults
+    static let consentKey = "coach.consent.v1"
+    let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+
+    /// O usuário já passou pela tela de consentimento (aceitando ou não compartilhar dados).
+    var hasConsented: Bool { defaults.object(forKey: Self.consentKey) as? Date != nil }
+
+    /// Registra o consentimento e o que o usuário escolheu compartilhar.
+    func grantConsent(sharing: CoachProfile.Sharing, at date: Date = .now) {
+        var profile = load()
+        profile.sharing = sharing
+        save(profile)
+        defaults.set(date, forKey: Self.consentKey)
+    }
+
+    /// Revoga: desliga todo compartilhamento e volta a pedir consentimento.
+    func revokeConsent() {
+        var profile = load()
+        profile.sharing = .none
+        save(profile)
+        defaults.removeObject(forKey: Self.consentKey)
+    }
 
     func load() -> CoachProfile {
         guard let data = defaults.data(forKey: Self.key),

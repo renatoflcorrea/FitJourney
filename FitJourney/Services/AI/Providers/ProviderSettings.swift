@@ -8,13 +8,27 @@ struct ProviderSettings: Codable, Sendable, Hashable {
     var models: [AIProviderID: String]
     /// URL base do provedor `custom` (ex.: `http://localhost:11434/v1` para Ollama).
     var customBaseURL: URL?
+    /// Janela de contexto (tokens aproximados) do provedor `custom`; `nil` = padrão conservador.
+    var customContextTokens: Int?
 
     static let `default` = ProviderSettings(provider: .openAI, models: [:], customBaseURL: nil)
 
-    init(provider: AIProviderID, models: [AIProviderID: String] = [:], customBaseURL: URL? = nil) {
+    /// Orçamento de contexto padrão (tokens aproximados) para provedores na nuvem e para `custom`.
+    static let cloudContextTokens = 32_000
+    static let customDefaultContextTokens = 8_000
+
+    init(provider: AIProviderID, models: [AIProviderID: String] = [:], customBaseURL: URL? = nil,
+         customContextTokens: Int? = nil) {
         self.provider = provider
         self.models = models
         self.customBaseURL = customBaseURL
+        self.customContextTokens = customContextTokens
+    }
+
+    /// Orçamento de contexto do provedor atual, em tokens aproximados (≈ 4 caracteres por token).
+    var contextBudgetTokens: Int {
+        guard provider == .custom else { return Self.cloudContextTokens }
+        return max(2_000, min(customContextTokens ?? Self.customDefaultContextTokens, 200_000))
     }
 
     /// Modelo escolhido para o provedor atual, ou o primeiro sugerido do catálogo.
@@ -32,7 +46,7 @@ struct ProviderSettings: Codable, Sendable, Hashable {
         provider == .custom ? customBaseURL : ProviderCatalog.descriptor(for: provider).defaultBaseURL
     }
 
-    private enum CodingKeys: String, CodingKey { case provider, models, customBaseURL }
+    private enum CodingKeys: String, CodingKey { case provider, models, customBaseURL, customContextTokens }
 
     init(from decoder: any Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -42,6 +56,7 @@ struct ProviderSettings: Codable, Sendable, Hashable {
             AIProviderID(rawValue: key).map { ($0, value) }
         })
         customBaseURL = try? values.decodeIfPresent(URL.self, forKey: .customBaseURL)
+        customContextTokens = try? values.decodeIfPresent(Int.self, forKey: .customContextTokens)
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -49,6 +64,7 @@ struct ProviderSettings: Codable, Sendable, Hashable {
         try container.encode(provider, forKey: .provider)
         try container.encode(Dictionary(uniqueKeysWithValues: models.map { ($0.key.rawValue, $0.value) }), forKey: .models)
         try container.encodeIfPresent(customBaseURL, forKey: .customBaseURL)
+        try container.encodeIfPresent(customContextTokens, forKey: .customContextTokens)
     }
 }
 
@@ -75,15 +91,36 @@ enum ProviderReadiness: Sendable, Equatable {
               url.user == nil, url.password == nil, url.fragment == nil else { return false }
         if scheme == "https" { return true }
         guard scheme == "http" else { return false }
-        return host == "localhost" || host == "127.0.0.1" || host.hasSuffix(".local")
-            || host.hasPrefix("192.168.") || host.hasPrefix("10.")
+        return isLocalNetworkHost(host)
+    }
+
+    /// `localhost`, `*.local` (Bonjour) ou IPv4 de rede privada/loopback/CGNAT:
+    /// 10/8, 172.16/12, 192.168/16, 100.64/10, 127/8. Nomes comuns e IPv6 não contam.
+    static func isLocalNetworkHost(_ host: String) -> Bool {
+        let host = host.lowercased()
+        if host == "localhost" { return true }
+        if host.hasSuffix(".local"), host.count > ".local".count { return true }
+        let parts = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard parts.count == 4 else { return false }
+        var octets: [Int] = []
+        for part in parts {
+            guard !part.isEmpty, part.count <= 3, part.allSatisfy(\.isASCII), part.allSatisfy(\.isNumber),
+                  let value = Int(part), (0 ... 255).contains(value) else { return false }
+            octets.append(value)
+        }
+        switch (octets[0], octets[1]) {
+        case (10, _), (127, _), (192, 168): return true
+        case (172, 16 ... 31): return true
+        case (100, 64 ... 127): return true
+        default: return false
+        }
     }
 }
 
 /// Persistência das configurações em UserDefaults (chave versionada).
-struct ProviderSettingsStore: Sendable {
+struct ProviderSettingsStore {
     static let key = "coach.providerSettings.v1"
-    nonisolated(unsafe) let defaults: UserDefaults
+    let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 

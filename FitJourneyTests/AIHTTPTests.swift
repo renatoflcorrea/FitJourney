@@ -64,8 +64,20 @@ final class StubURLProtocol: URLProtocol, @unchecked Sendable {
             client?.urlProtocol(self, didFailWithError: URLError(.resourceUnavailable))
             return
         }
-        if let response = HTTPURLResponse(url: request.url ?? URL(fileURLWithPath: "/"), statusCode: stub.statusCode,
-                                          httpVersion: "HTTP/1.1", headerFields: stub.headers) {
+        let response = HTTPURLResponse(url: request.url ?? URL(fileURLWithPath: "/"), statusCode: stub.statusCode,
+                                       httpVersion: "HTTP/1.1", headerFields: stub.headers)
+        if (300 ..< 400).contains(stub.statusCode), let response,
+           let location = stub.headers.first(where: { $0.key.caseInsensitiveCompare("Location") == .orderedSame })?.value,
+           let destination = URL(string: location, relativeTo: request.url)?.absoluteURL {
+            var redirected = request
+            redirected.url = destination
+            client?.urlProtocol(self, wasRedirectedTo: redirected, redirectResponse: response)
+            client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+            client?.urlProtocol(self, didLoad: stub.body)
+            client?.urlProtocolDidFinishLoading(self)
+            return
+        }
+        if let response {
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
         }
         client?.urlProtocol(self, didLoad: stub.body)

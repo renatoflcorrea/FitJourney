@@ -19,7 +19,10 @@ enum ExerciseMatcher {
         }
         let target = normalize(name)
         guard !target.isEmpty else { return nil }
-        if let hit = exercises.first(where: { normalize($0.name) == target }) { return hit }
+        // Empate de nome: prefere o do catálogo embutido (tem catalogKey), depois o mais antigo.
+        let sameName = exercises.filter { normalize($0.name) == target }
+            .sorted { ($0.catalogKey == nil ? 1 : 0, $0.createdAt) < ($1.catalogKey == nil ? 1 : 0, $1.createdAt) }
+        if let hit = sameName.first { return hit }
         if let entry = ExerciseCatalog.all.first(where: { normalize($0.nameEN) == target }) {
             return exercises.first { $0.catalogKey == entry.key }
         }
@@ -49,11 +52,30 @@ struct DraftApplier {
 
     @discardableResult
     func makeProgram(from draft: ProgramDraft, startDate: Date = .now) throws -> TrainingProgram {
+        do {
+            return try insertProgram(from: draft, startDate: startDate)
+        } catch {
+            context.rollback() // nada pela metade
+            throw error
+        }
+    }
+
+    @discardableResult
+    func makeNutritionPlan(from draft: NutritionPlanDraft, startDate: Date = .now) throws -> NutritionPlan {
+        do {
+            return try insertNutritionPlan(from: draft, startDate: startDate)
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    private func insertProgram(from draft: ProgramDraft, startDate: Date) throws -> TrainingProgram {
         var catalog = try context.fetch(FetchDescriptor<Exercise>())
         let program = TrainingProgram(name: draft.name.trimmed(max: 80), goal: draft.goal,
                                       scheduleMode: draft.scheduleMode, startDate: startDate, origin: .ai)
-        program.goalText = draft.goalText ?? ""
-        program.notes = draft.notes ?? ""
+        program.goalText = (draft.goalText ?? "").trimmed(max: 300)
+        program.notes = (draft.notes ?? "").trimmed(max: 1000)
         program.isActive = false
         if let weeks = draft.durationWeeks, weeks > 0 {
             program.endDate = calendar.date(byAdding: .day, value: weeks * 7 - 1, to: calendar.startOfDay(for: startDate))
@@ -65,7 +87,7 @@ struct DraftApplier {
             let symbol = routineDraft.symbol?.trimmed(max: 2) ?? (r < letters.count ? String(letters[r]) : "")
             let routine = Routine(name: routineDraft.name.trimmed(max: 80), symbol: symbol, sortIndex: r,
                                   weekdays: Set(routineDraft.weekdays))
-            routine.notes = routineDraft.notes ?? ""
+            routine.notes = (routineDraft.notes ?? "").trimmed(max: 1000)
             context.insert(routine)
             routine.program = program
 
@@ -90,7 +112,7 @@ struct DraftApplier {
                     return id
                 }
                 let item = RoutineExercise(sortIndex: e, groupID: groupID, restSeconds: exerciseDraft.restSeconds,
-                                           notes: exerciseDraft.notes ?? "")
+                                           notes: (exerciseDraft.notes ?? "").trimmed(max: 500))
                 context.insert(item)
                 item.routine = routine
                 item.exercise = exercise
@@ -99,10 +121,10 @@ struct DraftApplier {
                     let set = SetPrescription(sortIndex: s, kind: setDraft.kind, repTarget: setDraft.repTarget?.repTarget,
                                               initialLoad: setDraft.load?.load, restSeconds: setDraft.restSeconds)
                     set.holdSeconds = setDraft.holdSeconds
-                    set.tempo = setDraft.tempo
+                    set.tempo = setDraft.tempo.map { $0.trimmed(max: 20) }
                     set.effort = setDraft.effort
                     set.cardio = setDraft.cardio?.target
-                    set.notes = setDraft.notes ?? ""
+                    set.notes = (setDraft.notes ?? "").trimmed(max: 300)
                     context.insert(set)
                     set.routineExercise = item
                 }
@@ -112,10 +134,9 @@ struct DraftApplier {
         return program
     }
 
-    @discardableResult
-    func makeNutritionPlan(from draft: NutritionPlanDraft, startDate: Date = .now) throws -> NutritionPlan {
-        let plan = NutritionPlan(name: draft.name.trimmed(max: 80), goal: draft.goal ?? "", startDate: startDate, author: .ai)
-        plan.notes = draft.notes ?? ""
+    private func insertNutritionPlan(from draft: NutritionPlanDraft, startDate: Date) throws -> NutritionPlan {
+        let plan = NutritionPlan(name: draft.name.trimmed(max: 80), goal: (draft.goal ?? "").trimmed(max: 300), startDate: startDate, author: .ai)
+        plan.notes = (draft.notes ?? "").trimmed(max: 1000)
         plan.targets = draft.targets.targets
         plan.isActive = false
         context.insert(plan)
@@ -127,13 +148,13 @@ struct DraftApplier {
             for (m, mealDraft) in dayDraft.meals.enumerated() {
                 let meal = Meal(name: mealDraft.name.trimmed(max: 80), minutesFromMidnight: mealDraft.minutesFromMidnight ?? 0,
                                 sortIndex: m)
-                meal.notes = mealDraft.notes ?? ""
+                meal.notes = (mealDraft.notes ?? "").trimmed(max: 500)
                 context.insert(meal)
                 meal.day = day
                 for (i, itemDraft) in mealDraft.items.enumerated() {
                     let item = MealItem(name: itemDraft.name.trimmed(max: 120), quantity: max(0, itemDraft.quantity),
                                         unit: itemDraft.unit, values: itemDraft.values, sortIndex: i)
-                    item.notes = itemDraft.notes ?? ""
+                    item.notes = (itemDraft.notes ?? "").trimmed(max: 300)
                     item.substitutions = itemDraft.substitutions.map(\.substitution)
                     context.insert(item)
                     item.meal = meal

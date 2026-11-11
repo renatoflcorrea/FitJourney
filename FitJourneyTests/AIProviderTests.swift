@@ -7,7 +7,7 @@ private func openAIGateway(host: String, provider: AIProviderID = .openAI,
     OpenAICompatibleChatGateway(
         configuration: EndpointConfiguration(provider: provider, baseURL: try #require(URL(string: "https://\(host)/v1")),
                                              auth: .bearer("test-key-not-real"), quirks: quirks),
-        client: HTTPClient(session: StubURLProtocol.makeSession()))
+        client: HTTPClient(session: StubURLProtocol.makeSession(), retryPolicy: .none))
 }
 
 private func anthropicGateway(host: String) throws -> AnthropicMessagesGateway {
@@ -15,7 +15,7 @@ private func anthropicGateway(host: String) throws -> AnthropicMessagesGateway {
         configuration: EndpointConfiguration(provider: .anthropic, baseURL: try #require(URL(string: "https://\(host)/v1")),
                                              auth: .header(name: "x-api-key", value: "test-key-not-real"),
                                              quirks: ProviderQuirks(strictTools: false)),
-        client: HTTPClient(session: StubURLProtocol.makeSession()))
+        client: HTTPClient(session: StubURLProtocol.makeSession(), retryPolicy: .none))
 }
 
 private let sampleTool = ToolSpec(name: "list_programs", description: "Lista programas",
@@ -193,11 +193,12 @@ struct AIAnthropicGatewayTests {
         let events = try await collect(try anthropicGateway(host: host).stream(
             ChatRequest(model: "claude-opus-5-5", messages: [.system("sys"), .user("oi")], temperature: 0.2,
                         tools: [sampleTool], toolChoice: .required)))
+        // Blocos fechados (raciocínio, tool_use) só saem em message_stop: um `fallback` pode invalidá-los.
         #expect(events == [
             .started(id: "msg_1", model: "claude-opus-5-5"),
             .reasoningDelta("pensando"),
-            .reasoningBlock(ReasoningBlock(kind: .thinking, text: "pensando", signature: "sig123")),
             .delta("Vou ver seus programas."),
+            .reasoningBlock(ReasoningBlock(kind: .thinking, text: "pensando", signature: "sig123")),
             .toolCall(id: "toolu_1", name: "list_programs", argumentsJSON: #"{"include_archived": true}"#),
             .usage(TokenUsage(promptTokens: 50, completionTokens: 40)),
             .finished(reason: .toolCalls),
@@ -211,7 +212,11 @@ struct AIAnthropicGatewayTests {
         let body = try #require(StubURLProtocol.bodies(host: host).first)
         #expect(body["system"] == .string("sys"))
         #expect(body["temperature"] == nil) // API 2026-10-21 recusa temperature
-        #expect(body["max_tokens"] == .number(Double(AnthropicMessagesGateway.defaultMaxTokens)))
+        #expect(body["max_tokens"] == .number(Double(AnthropicMessagesGateway.defaultStreamMaxTokens)))
+        #expect(body["thinking"] == .object(["type": .string("adaptive"), "display": .string("summarized")]))
+        #expect(body["output_config"]?["effort"] == .string("medium"))
+        #expect(body["fallbacks"] == .string("default"))
+        #expect(request.value(forHTTPHeaderField: "anthropic-beta") == AnthropicMessagesGateway.fallbackBeta)
         #expect(body["tool_choice"]?["type"] == .string("auto")) // forçado é recusado pelos modelos atuais
         let tool = try #require(body["tools"]?.arrayValue?.first)
         #expect(tool["input_schema"]?["type"] == .string("object"))
@@ -285,6 +290,9 @@ struct AIAnthropicGatewayTests {
         #expect(completion.finishReason == .toolCalls)
         let body = try #require(StubURLProtocol.bodies(host: host).first)
         #expect(body["output_config"]?["format"]?["type"] == .string("json_schema"))
+        #expect(body["output_config"]?["effort"] == .string("medium"))
+        #expect(body["max_tokens"] == .number(Double(AnthropicMessagesGateway.defaultMaxTokens)))
+        #expect(body["fallbacks"] == nil) // haiku 5.5 não tem fallback server-side
         #expect(body["stream"] == nil)
     }
 }
@@ -327,6 +335,9 @@ struct AIProviderConfigurationTests {
         #expect(ProviderReadiness.evaluate(ProviderSettings(provider: .custom), hasAPIKey: false) == .invalidEndpoint)
         let ollama = ProviderSettings(provider: .custom, customBaseURL: URL(string: "http://localhost:11434/v1"))
         #expect(ProviderReadiness.evaluate(ollama, hasAPIKey: false) == .ready)
+        #expect(ollama.contextBudgetTokens == ProviderSettings.customDefaultContextTokens)
+        #expect(ProviderSettings(provider: .custom, customContextTokens: 16_000).contextBudgetTokens == 16_000)
+        #expect(ProviderSettings(provider: .openAI).contextBudgetTokens == ProviderSettings.cloudContextTokens)
         let insecure = ProviderSettings(provider: .custom, customBaseURL: URL(string: "http://example.com/v1"))
         #expect(ProviderReadiness.evaluate(insecure, hasAPIKey: false) == .invalidEndpoint)
         let withUser = ProviderSettings(provider: .custom, customBaseURL: URL(string: "https://user:pw@example.com/v1"))

@@ -18,6 +18,7 @@ struct ToolboxFixture {
         calendar.timeZone = TimeZone(identifier: "America/Sao_Paulo")!
         self.calendar = calendar
         today = calendar.date(from: DateComponents(year: 2026, month: 11, day: 11, hour: 12))!
+        profile.sharing = CoachProfile.Sharing(profile: true, workouts: true, nutrition: true, health: false)
     }
 
     func toolbox() -> FitnessToolbox {
@@ -81,10 +82,18 @@ struct AIToolboxTests {
         fixture.profile.sharing.nutrition = false
         fixture.profile.sharing.health = true
         let names = Set(fixture.toolbox().specs.map(\.name))
-        #expect(!names.contains("get_workout_history"))
-        #expect(!names.contains("get_exercise_progress"))
-        #expect(!names.contains("get_nutrition_log"))
+        for hidden in ["get_workout_history", "get_exercise_progress", "list_programs", "get_program",
+                       "list_nutrition_plans", "get_nutrition_log"] {
+            #expect(!names.contains(hidden), "\(hidden)")
+        }
         #expect(names.contains("get_health_summary"))
+        #expect(names.isSuperset(of: ["list_exercises", "propose_program", "propose_nutrition_plan"]))
+        #expect(try fixture.run(fixture.toolbox(), "list_programs", #"{"include_archived":false}"#).0["error"] == .string("not_shared"))
+        #expect(try fixture.run(fixture.toolbox(), "list_nutrition_plans").0["error"] == .string("not_shared"))
+
+        // Padrão sem consentimento: nada pessoal é oferecido.
+        fixture.profile.sharing = .none
+        #expect(Set(fixture.toolbox().specs.map(\.name)) == ["list_exercises", "propose_program", "propose_nutrition_plan"])
         let (json, outcome) = try fixture.run(fixture.toolbox(), "get_workout_history", #"{"from":"2026-11-01","to":"2026-11-10","exercise":null}"#)
         #expect(outcome.isError)
         #expect(json["error"] == .string("not_shared"))

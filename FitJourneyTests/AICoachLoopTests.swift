@@ -150,7 +150,7 @@ struct AICoachLoopTests {
         #expect(resent.isError)
     }
 
-    @Test("máximo de 6 voltas; a última vai com toolChoice none")
+    @Test("máximo de 6 voltas; a última vai com toolChoice none e, se insistir, falha com texto claro")
     func maxRounds() async throws {
         let fixture = try ToolboxFixture(seed: false)
         let steps = (0 ..< CoachConversationService.maxToolRounds).map { index in
@@ -159,7 +159,10 @@ struct AICoachLoopTests {
         let gateway = ScriptedGateway(steps)
         let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m") }
         let conversation = try service.createConversation()
-        #expect(await service.send("oi", in: conversation))
+        #expect(await service.send("oi", in: conversation) == false)
+        #expect(service.lastError == .incomplete(.toolRoundLimit))
+        #expect(conversation.sortedMessages.last?.state == .failed)
+        #expect(conversation.sortedMessages.last?.failureReason == AIError.IncompleteReason.toolRoundLimit.localizedDescription)
         #expect(gateway.requests.count == CoachConversationService.maxToolRounds)
         #expect(gateway.requests.dropLast().allSatisfy { $0.toolChoice == .auto })
         #expect(gateway.requests.last?.toolChoice == ToolChoice.none)
@@ -238,30 +241,168 @@ struct AICoachLoopTests {
         #expect(try CoachConversationService.repairInterruptedMessages(in: fixture.context) == 0)
     }
 
-    @Test("janela de contexto: orçamento, começa no usuário e não deixa ferramenta órfã")
+    @Test("janela: o turno atual nunca é cortado; prefixo começa no usuário e perde o raciocínio")
     func contextWindow() {
         let long = String(repeating: "a", count: 100)
-        let history: [LLMMessage] = [
+        let prefix: [LLMMessage] = [
             .user(long), .assistant(long),
-            .user("q"), .assistant("", toolCalls: [ToolCall(id: "t1", name: "x", argumentsJSON: "{}")]),
+            .user("q"), LLMMessage(role: .assistant, content: "", toolCalls: [ToolCall(id: "t1", name: "x", argumentsJSON: "{}")],
+                                   reasoningBlocks: [ReasoningBlock(kind: .thinking, text: "velho", signature: "s")]),
             .toolResult(id: "t1", name: "x", content: long),
             .assistant("resposta"),
-            .user("nova"),
         ]
-        let fitted = ContextWindow.fit(history, limit: 130)
-        #expect(fitted.messages.first?.role == .user)
-        #expect(fitted.messages.map(\.role) == [.user, .assistant, .tool, .assistant, .user])
+        let current: [LLMMessage] = [.user("nova")]
+        let fitted = ContextWindow.fitPrefix(prefix, current: current, budgetCharacters: 4 + 130)
+        #expect(fitted.messages.map(\.role) == [.user, .assistant, .tool, .assistant])
+        #expect(fitted.messages.allSatisfy { $0.reasoningBlocks.isEmpty })
         #expect(fitted.droppedCount == 2)
 
-        // Chamada sem resultado (cancelada) e resultado sem chamada somem.
+        // Turno atual maior que o orçamento: prefixo some, turno fica (quem decide é o chamador).
+        let huge = ContextWindow.fitPrefix(prefix, current: [.user(String(repeating: "b", count: 10_000))], budgetCharacters: 500)
+        #expect(huge.messages.isEmpty)
+        #expect(huge.droppedCount == prefix.count)
+    }
+
+    @Test("janela: prefixo [assistant, tool] sem usuário é descartado inteiro")
+    func prefixWithoutUser() {
+        let prefix: [LLMMessage] = [
+            .assistant("", toolCalls: [ToolCall(id: "a", name: "x", argumentsJSON: "{}")]),
+            .toolResult(id: "a", name: "x", content: "r"),
+        ]
+        let fitted = ContextWindow.fitPrefix(prefix, current: [.user("oi")], budgetCharacters: 10_000)
+        #expect(fitted.messages.isEmpty)
+        #expect(fitted.droppedCount == 2)
+    }
+
+    @Test("sanitize: chamada sem resultado e resultado sem chamada somem")
+    func sanitize() {
         let broken: [LLMMessage] = [
             .user("oi"), .assistant("vou ver", toolCalls: [ToolCall(id: "a", name: "x", argumentsJSON: "{}")]),
             .toolResult(id: "zzz", name: "x", content: "órfão"),
-            .assistant("", toolCalls: [ToolCall(id: "b", name: "x", argumentsJSON: "{}")]),
+            .assistant("  ", toolCalls: [ToolCall(id: "b", name: "x", argumentsJSON: "{}")]),
         ]
         let clean = ContextWindow.sanitize(broken)
         #expect(clean.map(\.role) == [.user, .assistant])
         #expect(clean[1].toolCalls.isEmpty)
         #expect(clean[1].content == "vou ver")
+    }
+
+    @Test("o orçamento conta system e schemas das ferramentas")
+    func budgetCountsTools() async throws {
+        let fixture = try ToolboxFixture(seed: false)
+        let gateway = ScriptedGateway([.events([.delta("a"), .finished(reason: .stop)]),
+                                       .events([.delta("b"), .finished(reason: .stop)])])
+        let toolsCost = ContextWindow.toolsCost(fixture.toolbox().specs)
+        let tokens = (CoachPrompt.system.count + toolsCost) / ContextWindow.charactersPerToken + 30
+        let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m", contextBudgetTokens: tokens) }
+        let conversation = try service.createConversation()
+        // Sobram ~120 caracteres além de system + ferramentas: a 1ª troca (200 + 1) não cabe mais.
+        #expect(await service.send(String(repeating: "x", count: 200), in: conversation))
+        #expect(await service.send("segunda", in: conversation))
+        let second = try #require(gateway.requests.last)
+        #expect(second.messages.map(\.role) == [.system, .user])
+        #expect(second.messages.last?.content.hasSuffix("segunda") == true)
+        #expect(second.messages.last?.content.contains("2 mensagens anteriores") == true)
+        #expect(second.tools.count == fixture.toolbox().specs.count)
+    }
+
+    @Test("A1: system/tools fixos, pedidos só-anexar e raciocínio só do turno atual")
+    func appendOnlyTurn() async throws {
+        let fixture = try ToolboxFixture(seed: false)
+        let thinking = ReasoningBlock(kind: .thinking, text: "pensei", signature: "sig")
+        let gateway = ScriptedGateway([
+            // turno 1
+            .events([.reasoningBlock(thinking), .delta("Olá!"), .finished(reason: .stop)]),
+            // turno 2, volta 1: pede ferramenta com raciocínio
+            .events([.reasoningBlock(thinking), .toolCall(id: "c1", name: "get_profile", argumentsJSON: "{}"),
+                     .finished(reason: .toolCalls)]),
+            // turno 2, volta 2: texto final
+            .events([.delta("Pronto."), .finished(reason: .stop)]),
+        ])
+        let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m") }
+        let conversation = try service.createConversation()
+        #expect(await service.send("oi", in: conversation))
+        #expect(await service.send("meu perfil?", in: conversation))
+        #expect(gateway.requests.count == 3)
+        let round1 = gateway.requests[1], round2 = gateway.requests[2]
+
+        // Turno anterior: texto fica, raciocínio sai.
+        let previous = try #require(round1.messages.first { $0.role == .assistant })
+        #expect(previous.content == "Olá!")
+        #expect(previous.reasoningBlocks.isEmpty)
+        // Turno atual: o raciocínio da volta 1 é reenviado na volta 2.
+        let currentAssistant = try #require(round2.messages.last { $0.role == .assistant })
+        #expect(currentAssistant.reasoningBlocks == [thinking])
+        // Mesmo system e mesmas ferramentas; a volta 2 só acrescenta à volta 1.
+        #expect(round1.messages.first == round2.messages.first)
+        #expect(round1.tools == round2.tools)
+        #expect(Array(round2.messages.prefix(round1.messages.count)) == round1.messages)
+        #expect(round2.messages.count == round1.messages.count + 2)
+    }
+
+    @Test("A2: término por limite não executa ferramentas e para como .stopped")
+    func lengthStops() async throws {
+        let fixture = try ToolboxFixture(seed: false)
+        let gateway = ScriptedGateway([
+            .events([.delta("Plano parcial"), .toolCall(id: "p", name: "propose_program", argumentsJSON: #"{"name":"#),
+                     .finished(reason: .length)]),
+        ])
+        let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m") }
+        let conversation = try service.createConversation()
+        #expect(await service.send("treino", in: conversation) == false)
+        #expect(service.lastError == .incomplete(.length))
+        #expect(gateway.requests.count == 1)
+        #expect(!conversation.sortedMessages.contains { $0.role == .tool })
+        let assistant = try #require(conversation.sortedMessages.last)
+        #expect(assistant.state == .stopped)
+        #expect(assistant.content == "Plano parcial")
+        #expect(assistant.toolCalls.isEmpty)
+        #expect(assistant.failureReason == AIError.IncompleteReason.length.localizedDescription)
+    }
+
+    @Test("A2: recusa descarta o parcial e falha; filtro de conteúdo falha")
+    func refusalFails() async throws {
+        let fixture = try ToolboxFixture(seed: false)
+        let gateway = ScriptedGateway([
+            .events([.delta("Começo"), .finished(reason: .refusal)]),
+            .events([.delta("x"), .finished(reason: .contentFilter)]),
+        ])
+        let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m") }
+        let conversation = try service.createConversation()
+        #expect(await service.send("a", in: conversation) == false)
+        #expect(service.lastError == .incomplete(.refusal))
+        #expect(conversation.sortedMessages.last?.state == .failed)
+        #expect(conversation.sortedMessages.last?.content == "")
+        #expect(await service.send("b", in: conversation) == false)
+        #expect(service.lastError == .incomplete(.contentFilter))
+    }
+
+    @Test("A3/M7: resultado grande é truncado em JSON válido; antigos são compactados, propostas ficam")
+    func toolResultLimitsAndRetention() async throws {
+        let big = String(repeating: "z", count: CoachConversationService.maxToolResultCharacters + 500)
+        let limited = CoachConversationService.limitToolResult(big)
+        #expect(limited.count <= CoachConversationService.maxToolResultCharacters)
+        let parsed = try JSONValue.parse(limited)
+        #expect(parsed["truncated"] == .bool(true))
+        #expect(CoachConversationService.limitToolResult("{}") == "{}")
+
+        let fixture = try ToolboxFixture()
+        var steps: [ScriptedGateway.Step] = [
+            .events([.toolCall(id: "p0", name: "propose_program", argumentsJSON: DraftExamples.program), .finished(reason: .toolCalls)]),
+            .events([.delta("ok"), .finished(reason: .stop)]),
+        ]
+        for _ in 0 ... CoachConversationService.toolResultRetentionTurns {
+            steps.append(.events([.delta("ok"), .finished(reason: .stop)]))
+        }
+        let gateway = ScriptedGateway(steps)
+        let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m") }
+        let conversation = try service.createConversation()
+        #expect(await service.send("proponha", in: conversation))
+        for index in 0 ... CoachConversationService.toolResultRetentionTurns {
+            #expect(await service.send("mais \(index)", in: conversation))
+        }
+        let tool = try #require(conversation.sortedMessages.first { $0.role == .tool })
+        #expect(tool.content == CoachConversationService.compactedToolResult)
+        #expect(tool.proposal != nil) // o cartão continua disponível
     }
 }

@@ -9,13 +9,27 @@ import SwiftData
 ///    no meio deixa uma linha `.streaming` que `repairInterruptedMessages` troca por `.stopped`.
 /// 3. Se o modelo pedir ferramentas, executa localmente (`FitnessToolbox`), grava os resultados
 ///    (papel `tool`, com a proposta quando houver) e continua — no máximo `maxToolRounds` voltas;
-///    a última volta vai com `toolChoice = .none` para forçar uma resposta em texto.
+///    a última volta vai com `toolChoice = .none` e, se mesmo assim vierem ferramentas, falha com
+///    `AIError.incomplete(.toolRoundLimit)`.
 /// 4. `stop()` cancela: o parcial fica, estado `.stopped`. Erro: estado `.failed` com motivo sem segredos.
+///
+/// **Histórico só-anexar dentro do turno** (verificação de edição de histórico dos modelos com thinking
+/// vinculado à conversa): `system`, `tools` e o prefixo (histórico antes da mensagem do usuário, já
+/// encaixado na janela) são fixados uma vez por envio; cada volta só acrescenta mensagens. Blocos de
+/// raciocínio só são reenviados no turno em andamento — os de turnos anteriores são removidos (remoção
+/// pela frente do histórico é permitida; pelo meio, não).
 @MainActor
 @Observable
 final class CoachConversationService {
     static let maxToolRounds = 6
     static let persistInterval: Duration = .milliseconds(100)
+    /// Teto do texto do usuário enviado ao provedor.
+    static let maxUserTextCharacters = 8_000
+    /// Teto de cada resultado de ferramenta gravado/enviado (acima disso vira `{"truncated":true,…}`).
+    static let maxToolResultCharacters = 10_000
+    /// Resultados de ferramenta das últimas N mensagens do usuário ficam completos; os mais antigos são
+    /// compactados num marcador (o modelo chama a ferramenta de novo se precisar). Propostas ficam.
+    static let toolResultRetentionTurns = 3
 
     /// Conversa com resposta em andamento (`nil` = ocioso).
     private(set) var runningConversationID: UUID?
@@ -28,19 +42,17 @@ final class CoachConversationService {
     @ObservationIgnored private let toolbox: FitnessToolbox
     @ObservationIgnored private let resolveChat: @MainActor () throws -> ResolvedChat
     @ObservationIgnored private let systemPrompt: String
-    @ObservationIgnored private let characterBudget: Int
     @ObservationIgnored private var currentTask: Task<Bool, Never>?
 
     /// - Parameter resolveChat: monta o gateway a cada envio (pega mudanças de provedor/chave);
     ///   em produção, `{ try ProviderFactory.makeChat(secrets: KeychainSecretStore()) }`.
     init(context: ModelContext, toolbox: FitnessToolbox,
          resolveChat: @escaping @MainActor () throws -> ResolvedChat,
-         systemPrompt: String = CoachPrompt.system, characterBudget: Int = ContextWindow.characterBudget) {
+         systemPrompt: String = CoachPrompt.system) {
         self.context = context
         self.toolbox = toolbox
         self.resolveChat = resolveChat
         self.systemPrompt = systemPrompt
-        self.characterBudget = characterBudget
     }
 
     // MARK: - API pública
@@ -69,7 +81,7 @@ final class CoachConversationService {
         runningConversationID = conversation.id
         let task = Task { @MainActor () -> Bool in
             do {
-                try await self.run(trimmed, in: conversation)
+                try await self.run(String(trimmed.prefix(Self.maxUserTextCharacters)), in: conversation)
                 return true
             } catch {
                 if !Self.isCancellation(error) {
@@ -108,6 +120,7 @@ final class CoachConversationService {
     private func run(_ text: String, in conversation: ChatConversation) async throws {
         let chat = try resolveChat()
 
+        compactOldToolResults(in: conversation)
         let user = ChatMessage(role: .user, content: text, sortIndex: conversation.nextSortIndex)
         context.insert(user)
         user.conversation = conversation
@@ -117,12 +130,27 @@ final class CoachConversationService {
         conversation.updatedAt = .now
         try context.save()
 
+        // Fixos durante todo o envio: system, tools e o prefixo encaixado na janela.
+        let tools = toolbox.specs
+        let system = systemPrompt
+        let prefix = conversation.sortedMessages.filter { $0.sortIndex < user.sortIndex }.compactMap(Self.historyMessage)
+        let budget = chat.contextBudgetTokens * ContextWindow.charactersPerToken
+        let overhead = system.count + ContextWindow.toolsCost(tools)
+        var window = ContextWindow.fitPrefix(prefix, current: [user.llmMessage], budgetCharacters: budget - overhead)
+        let note = window.droppedCount > 0
+            ? "[Nota do app: \(window.droppedCount) mensagens anteriores desta conversa não foram incluídas.]\n\n" : nil
+        if let note, !window.messages.isEmpty { window.messages[0].content = note + window.messages[0].content }
+        let frozenPrefix = window.messages
+
         for round in 0 ..< Self.maxToolRounds {
             try Task.checkCancellation()
             let finalRound = round == Self.maxToolRounds - 1
-            let tools = toolbox.specs
-            let request = makeRequest(conversation: conversation, model: chat.model, tools: tools,
-                                      toolChoice: tools.isEmpty ? nil : (finalRound ? ToolChoice.none : .auto))
+            var current = conversation.sortedMessages.filter { $0.sortIndex >= user.sortIndex }.compactMap(Self.historyMessage)
+            if let note, frozenPrefix.isEmpty, !current.isEmpty { current[0].content = note + current[0].content }
+            let request = ChatRequest(
+                model: chat.model, messages: [.system(system)] + ContextWindow.sanitize(frozenPrefix + current),
+                tools: tools, toolChoice: tools.isEmpty ? nil : (finalRound ? ToolChoice.none : .auto),
+                metadata: ["module": "coach"])
 
             let assistant = ChatMessage(role: .assistant, content: "", state: .streaming, sortIndex: conversation.nextSortIndex)
             assistant.modelID = chat.model
@@ -133,12 +161,19 @@ final class CoachConversationService {
             try context.save()
 
             let calls = try await consume(chat.gateway.stream(request), into: assistant)
-            guard !calls.isEmpty, !finalRound else { break }
+            guard !calls.isEmpty else { break }
+            if finalRound {
+                assistant.state = .failed
+                assistant.failureReason = AIError.IncompleteReason.toolRoundLimit.localizedDescription
+                try context.save()
+                throw AIError.incomplete(.toolRoundLimit)
+            }
 
             for call in calls {
                 try Task.checkCancellation()
                 let outcome = toolbox.execute(call)
-                let result = ChatMessage(role: .tool, content: outcome.content, sortIndex: conversation.nextSortIndex)
+                let result = ChatMessage(role: .tool, content: Self.limitToolResult(outcome.content),
+                                         sortIndex: conversation.nextSortIndex)
                 result.toolCallID = call.id
                 result.toolName = call.name
                 result.toolResultIsError = outcome.isError
@@ -154,6 +189,7 @@ final class CoachConversationService {
     }
 
     /// Drena o stream gravando o parcial; devolve as chamadas de ferramenta do turno.
+    /// Término por limite, recusa ou filtro não executa ferramentas e lança `AIError.incomplete`.
     private func consume(_ stream: AsyncThrowingStream<ChatEvent, any Error>,
                          into message: ChatMessage) async throws -> [ToolCall] {
         var content = ""
@@ -161,6 +197,7 @@ final class CoachConversationService {
         var calls: [ToolCall] = []
         var blocks: [ReasoningBlock] = []
         var usage: TokenUsage?
+        var finish: FinishReason?
         let clock = ContinuousClock()
         var lastWrite = clock.now
 
@@ -192,19 +229,29 @@ final class CoachConversationService {
                     calls.append(ToolCall(id: id, name: name, argumentsJSON: arguments))
                 case let .usage(value):
                     usage = value
-                case .finished:
-                    break
+                case let .finished(reason):
+                    finish = reason
                 }
             }
             // Um stream cancelado termina sem erro: confira antes de marcar como completo.
             try Task.checkCancellation()
+            message.promptTokens = usage?.promptTokens
+            message.completionTokens = usage?.completionTokens
+
+            if let incomplete = Self.incompleteReason(finish) {
+                if incomplete == .refusal { content = "" } // a skill manda descartar o parcial de uma recusa
+                write(incomplete == .length ? .stopped : .failed)
+                message.failureReason = incomplete.localizedDescription
+                try context.save()
+                throw AIError.incomplete(incomplete)
+            }
             write(.complete)
             message.toolCalls = calls
             message.reasoningBlocks = blocks
-            message.promptTokens = usage?.promptTokens
-            message.completionTokens = usage?.completionTokens
             try context.save()
             return calls
+        } catch let error as AIError where error.isIncomplete {
+            throw error
         } catch {
             if Self.isCancellation(error) {
                 write(.stopped)
@@ -218,19 +265,45 @@ final class CoachConversationService {
         }
     }
 
-    private func makeRequest(conversation: ChatConversation, model: String, tools: [ToolSpec],
-                             toolChoice: ToolChoice?) -> ChatRequest {
-        let history = conversation.sortedMessages
-            .filter { !($0.role == .assistant && $0.state == .streaming) }
-            .filter { !($0.state == .failed && $0.content.isEmpty) }
-            .map(\.llmMessage)
-        let window = ContextWindow.fit(history, limit: characterBudget)
-        var system = systemPrompt
-        if window.droppedCount > 0 {
-            system += "\n\n(\(window.droppedCount) mensagens anteriores desta conversa não foram incluídas.)"
+    private static func incompleteReason(_ finish: FinishReason?) -> AIError.IncompleteReason? {
+        switch finish {
+        case .length: .length
+        case .refusal: .refusal
+        case .contentFilter: .contentFilter
+        default: nil
         }
-        return ChatRequest(model: model, messages: [.system(system)] + window.messages, tools: tools,
-                           toolChoice: toolChoice, metadata: ["module": "coach"])
+    }
+
+    /// Mensagem persistida → fio (sem as respostas em andamento e as falhas vazias).
+    private static func historyMessage(_ message: ChatMessage) -> LLMMessage? {
+        if message.role == .assistant, message.state == .streaming { return nil }
+        if message.state == .failed, message.content.isEmpty { return nil }
+        return message.llmMessage
+    }
+
+    /// Resultado acima do teto vira um objeto JSON válido com o começo do conteúdo.
+    static func limitToolResult(_ content: String) -> String {
+        guard content.count > maxToolResultCharacters else { return content }
+        return JSONValue.object([
+            "truncated": .bool(true),
+            "originalLength": .number(Double(content.count)),
+            "partial": .string(String(content.prefix(maxToolResultCharacters - 200))),
+        ]).jsonString()
+    }
+
+    static let compactedToolResult = #"{"compacted":true,"note":"Resultado antigo removido; chame a ferramenta de novo se precisar."}"#
+
+    /// Retenção (M7): resultados de ferramenta anteriores às últimas `toolResultRetentionTurns` mensagens
+    /// do usuário viram um marcador. Roda antes de fixar o prefixo, então não altera o turno em andamento.
+    private func compactOldToolResults(in conversation: ChatConversation) {
+        let messages = conversation.sortedMessages
+        let userIndices = messages.filter { $0.role == .user }.map(\.sortIndex)
+        guard userIndices.count >= Self.toolResultRetentionTurns else { return }
+        let cutoff = userIndices[userIndices.count - Self.toolResultRetentionTurns]
+        for message in messages where message.role == .tool && message.sortIndex < cutoff
+            && message.content != Self.compactedToolResult {
+            message.content = Self.compactedToolResult
+        }
     }
 
     static func isCancellation(_ error: any Error) -> Bool {
@@ -238,10 +311,20 @@ final class CoachConversationService {
     }
 }
 
-/// Encaixa o histórico no orçamento de caracteres, do mais novo para o mais antigo, e diz quanto
-/// cortou em vez de truncar em silêncio. Mantém pares chamada/resultado de ferramenta coerentes.
+extension AIError {
+    var isIncomplete: Bool {
+        if case .incomplete = self { true } else { false }
+    }
+}
+
+/// Encaixa o histórico no orçamento (≈ 4 caracteres por token), do mais novo para o mais antigo, e diz
+/// quanto cortou em vez de truncar em silêncio.
+///
+/// - O turno em andamento (última mensagem do usuário + o que veio depois) é sempre mantido.
+/// - O prefixo começa sempre numa mensagem do usuário e perde os blocos de raciocínio.
+/// - Pares chamada/resultado de ferramenta ficam coerentes (`sanitize`).
 enum ContextWindow {
-    static let characterBudget = 48_000
+    static let charactersPerToken = 4
 
     struct Result: Sendable {
         var messages: [LLMMessage]
@@ -253,21 +336,37 @@ enum ContextWindow {
             + message.reasoningBlocks.reduce(0) { $0 + $1.text.count }
     }
 
-    static func fit(_ history: [LLMMessage], limit: Int = characterBudget) -> Result {
+    /// Caracteres que as definições de ferramenta ocupam no pedido.
+    static func toolsCost(_ tools: [ToolSpec]) -> Int {
+        tools.reduce(0) { $0 + $1.name.count + $1.description.count + $1.parametersSchema.count }
+    }
+
+    /// Encaixa `prefix` no que sobra de `budgetCharacters` depois do turno `current` (que nunca é cortado).
+    /// Devolve só o prefixo encaixado (sem raciocínio, começando no usuário, saneado).
+    static func fitPrefix(_ prefix: [LLMMessage], current: [LLMMessage], budgetCharacters: Int) -> Result {
+        var remaining = budgetCharacters - current.reduce(0) { $0 + cost($1) }
         var kept: [LLMMessage] = []
-        var used = 0
-        for message in history.reversed() {
+        for message in prefix.reversed() {
             let c = cost(message)
-            if used + c > limit, !kept.isEmpty { break }
-            used += c
+            if c > remaining { break }
+            remaining -= c
             kept.insert(message, at: 0)
         }
-        // Começa sempre numa mensagem do usuário (nunca num resultado de ferramenta solto).
         if let firstUser = kept.firstIndex(where: { $0.role == .user }) {
             kept.removeFirst(firstUser)
+        } else {
+            kept = []
         }
-        let sanitized = sanitize(kept)
-        return Result(messages: sanitized, droppedCount: history.count - sanitized.count)
+        let sanitized = sanitize(stripReasoning(kept))
+        return Result(messages: sanitized, droppedCount: prefix.count - sanitized.count)
+    }
+
+    static func stripReasoning(_ messages: [LLMMessage]) -> [LLMMessage] {
+        messages.map { message in
+            var copy = message
+            copy.reasoningBlocks = []
+            return copy
+        }
     }
 
     /// Remove chamadas sem resultado (ex.: cancelado no meio das ferramentas) e resultados sem chamada,
@@ -281,7 +380,9 @@ enum ContextWindow {
             case .assistant:
                 message.toolCalls = message.toolCalls.filter { answered.contains($0.id) }
                 issued.formUnion(message.toolCalls.map(\.id))
-                if message.content.isEmpty, message.toolCalls.isEmpty { continue }
+                if message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, message.toolCalls.isEmpty {
+                    continue
+                }
             case .tool:
                 guard let id = message.toolCallID, issued.contains(id) else { continue }
             case .user, .system:

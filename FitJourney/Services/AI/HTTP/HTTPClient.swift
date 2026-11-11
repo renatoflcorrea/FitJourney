@@ -12,22 +12,85 @@ struct HTTPClient: Sendable {
         static let standard = Timeouts(chat: 120)
     }
 
+    /// Repetição antes do stream começar: 429, 529/503 e `overloaded`, honrando `Retry-After`.
+    struct RetryPolicy: Sendable, Hashable {
+        var maxRetries: Int = 2
+        var baseDelay: TimeInterval = 1
+        /// Atraso máximo aceito; um `Retry-After` maior desiste e devolve o erro.
+        var maxDelay: TimeInterval = 20
+
+        static let standard = RetryPolicy()
+        static let none = RetryPolicy(maxRetries: 0)
+
+        /// Atraso para a tentativa `attempt` (0, 1…), ou `nil` se não deve repetir.
+        func delay(for error: any Error, attempt: Int) -> TimeInterval? {
+            guard attempt < maxRetries, let error = error as? AIError else { return nil }
+            let backoff = baseDelay * pow(2, Double(attempt))
+            switch error {
+            case let .rateLimited(retryAfter):
+                let wait = retryAfter ?? backoff
+                return wait <= maxDelay ? wait : nil
+            case let .server(status, message):
+                let overloaded = status == 529 || status == 503 || message.lowercased().contains("overloaded")
+                return overloaded ? min(backoff, maxDelay) : nil
+            default:
+                return nil
+            }
+        }
+    }
+
+    /// Sessão efêmera própria (sem cache em disco nem cookies); redirecionamentos são recusados.
+    static let sharedSession: URLSession = {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.httpCookieStorage = nil
+        return URLSession(configuration: configuration)
+    }()
+
     private let session: URLSession
     private let sensitiveHeaderNames: Set<String>
+    let retryPolicy: RetryPolicy
 
-    init(session: URLSession = .shared, sensitiveHeaderNames: Set<String> = []) {
+    init(session: URLSession = HTTPClient.sharedSession, sensitiveHeaderNames: Set<String> = [],
+         retryPolicy: RetryPolicy = .standard) {
         self.session = session
         self.sensitiveHeaderNames = Set(sensitiveHeaderNames.map { $0.lowercased() })
+        self.retryPolicy = retryPolicy
     }
 
     func addingSensitiveHeaders(_ names: some Sequence<String>) -> HTTPClient {
-        HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames.union(names.map { $0.lowercased() }))
+        HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames.union(names.map { $0.lowercased() }),
+                   retryPolicy: retryPolicy)
     }
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await withRetry { try await dataOnce(for: request) }
+    }
+
+    func bytes(for request: URLRequest) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
+        try await withRetry { try await bytesOnce(for: request) }
+    }
+
+    private func withRetry<Value>(_ operation: () async throws -> Value) async throws -> Value {
+        var attempt = 0
+        while true {
+            do {
+                return try await operation()
+            } catch {
+                guard let delay = retryPolicy.delay(for: error, attempt: attempt) else { throw error }
+                attempt += 1
+                do {
+                    try await Task.sleep(for: .seconds(delay))
+                } catch {
+                    throw AIError.cancelled
+                }
+            }
+        }
+    }
+
+    private func dataOnce(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         do {
-            let (data, response) = try await session.data(
-                for: request, delegate: RedirectCredentialDelegate(sensitiveHeaderNames: sensitiveHeaderNames))
+            let (data, response) = try await session.data(for: request, delegate: RedirectRefusingDelegate())
             guard let http = response as? HTTPURLResponse else {
                 throw AIError.network(code: URLError.badServerResponse.rawValue, retryable: false)
             }
@@ -38,10 +101,9 @@ struct HTTPClient: Sendable {
         }
     }
 
-    func bytes(for request: URLRequest) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
+    private func bytesOnce(for request: URLRequest) async throws -> (URLSession.AsyncBytes, HTTPURLResponse) {
         do {
-            let (bytes, response) = try await session.bytes(
-                for: request, delegate: RedirectCredentialDelegate(sensitiveHeaderNames: sensitiveHeaderNames))
+            let (bytes, response) = try await session.bytes(for: request, delegate: RedirectRefusingDelegate())
             guard let http = response as? HTTPURLResponse else {
                 throw AIError.network(code: URLError.badServerResponse.rawValue, retryable: false)
             }
@@ -87,6 +149,8 @@ struct HTTPClient: Sendable {
         }
         let message = errorMessage(from: Data(safeBody.utf8))
         switch status {
+        case 300 ..< 400:
+            throw AIError.badRequest(status: status, message: "redirecionamento recusado")
         case 401, 403:
             throw AIError.unauthorized(message: message)
         case 429:
@@ -122,33 +186,12 @@ struct HTTPClient: Sendable {
     }
 }
 
-/// Sem isto a URLSession repassa cabeçalhos de credencial em redirecionamentos para outra origem.
-private final class RedirectCredentialDelegate: NSObject, URLSessionTaskDelegate, Sendable {
-    private let sensitiveHeaderNames: Set<String>
-
-    init(sensitiveHeaderNames: Set<String>) {
-        self.sensitiveHeaderNames = sensitiveHeaderNames
-    }
-
+/// Recusa qualquer redirecionamento: a API de um provedor não deveria redirecionar, e seguir um
+/// redirecionamento poderia levar a credencial (Authorization/x-api-key) para outra origem.
+/// O 3xx vira erro de status no `validate`.
+private final class RedirectRefusingDelegate: NSObject, URLSessionTaskDelegate, Sendable {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
                     newRequest request: URLRequest) async -> URLRequest? {
-        guard let source = response.url, let destination = request.url else { return request }
-        var redirected = request
-        if Self.origin(source) != Self.origin(destination) {
-            let credentials: Set = ["authorization", "proxy-authorization", "cookie", "x-api-key", "api-key"]
-            for header in (redirected.allHTTPHeaderFields ?? [:]).keys {
-                let normalized = header.lowercased()
-                if credentials.contains(normalized) || sensitiveHeaderNames.contains(normalized) {
-                    redirected.setValue(nil, forHTTPHeaderField: header)
-                }
-            }
-        }
-        return redirected
-    }
-
-    private static func origin(_ url: URL) -> String {
-        let scheme = url.scheme?.lowercased() ?? ""
-        let port = url.port ?? (scheme == "https" ? 443 : scheme == "http" ? 80 : -1)
-        return "\(scheme)://\(url.host?.lowercased() ?? ""):\(port)"
+        nil
     }
 }

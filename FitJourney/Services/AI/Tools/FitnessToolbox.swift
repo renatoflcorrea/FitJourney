@@ -24,6 +24,9 @@ final class FitnessToolbox {
     static let maxListItems = 50
     static let maxNutritionEntries = 200
     static let maxProgressSessions = 20
+    /// Janela de `get_exercise_progress` (dias) e teto de sessões lidas para calcular as marcas.
+    static let progressWindowDays = 365
+    static let progressScanLimit = 400
 
     enum Name: String, CaseIterable, Sendable {
         case getProfile = "get_profile"
@@ -63,10 +66,11 @@ final class FitnessToolbox {
     private func isShared(_ name: Name, _ sharing: CoachProfile.Sharing) -> Bool {
         switch name {
         case .getProfile: sharing.profile
-        case .getWorkoutHistory, .getExerciseProgress: sharing.workouts
-        case .getNutritionLog: sharing.nutrition
+        case .listPrograms, .getProgram, .getWorkoutHistory, .getExerciseProgress: sharing.workouts
+        case .listNutritionPlans, .getNutritionLog: sharing.nutrition
         case .getHealthSummary: sharing.health
-        case .listPrograms, .getProgram, .listExercises, .listNutritionPlans, .proposeProgram, .proposeNutritionPlan: true
+        // Catálogo do app (não é dado pessoal) e propostas (só validam o que o modelo enviou).
+        case .listExercises, .proposeProgram, .proposeNutritionPlan: true
         }
     }
 
@@ -88,7 +92,7 @@ final class FitnessToolbox {
                          "exercise": #"{"type":["string","null"],"description":"Filtra por nome de exercício."}"#,
                      ]))
         case .getExerciseProgress:
-            ToolSpec(name: name.rawValue, description: "Evolução de um exercício: últimas 20 sessões (séries, volume, 1RM estimado Epley) e melhores marcas, em kg.",
+            ToolSpec(name: name.rawValue, description: "Evolução de um exercício no último ano: até 20 sessões recentes (séries, volume, 1RM estimado Epley) e melhores marcas, em kg.",
                      parametersSchema: objectSchema(["exercise": #"{"type":"string","description":"Nome do exercício."}"#]))
         case .listExercises:
             ToolSpec(name: name.rawValue, description: "Catálogo de exercícios do app (até 50) com catalogKey para usar em propose_program.",
@@ -289,8 +293,12 @@ final class FitnessToolbox {
         let catalog = try context.fetch(FetchDescriptor<Exercise>())
         let matched = ExerciseMatcher.match(name: name ?? "", catalogKey: nil, in: catalog)
         let completed = SessionStatus.completed.rawValue
-        let sessions = try context.fetch(FetchDescriptor<WorkoutSession>(
-            predicate: #Predicate { $0.statusRaw == completed }, sortBy: [SortDescriptor(\.startedAt, order: .reverse)]))
+        let since = calendar.date(byAdding: .day, value: -Self.progressWindowDays, to: calendar.startOfDay(for: now())) ?? .distantPast
+        var descriptor = FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.statusRaw == completed && $0.startedAt >= since },
+            sortBy: [SortDescriptor(\.startedAt, order: .reverse)])
+        descriptor.fetchLimit = Self.progressScanLimit
+        let sessions = try context.fetch(descriptor)
         var rows: [JSONValue] = []
         var history: [[PerformedSet]] = []
         for session in sessions {
@@ -321,6 +329,7 @@ final class FitnessToolbox {
             "exercise": .string(matched?.name ?? name ?? ""),
             "sessions": .array(rows),
             "totalSessions": .number(Double(history.count)),
+            "window": .string("Últimos \(Self.progressWindowDays) dias."),
             "bests": .object([
                 "heaviestKg": .number(Self.round(bests.heaviestLoadKg)),
                 "bestSessionVolumeKg": .number(Self.round(bests.bestSessionVolumeKg)),

@@ -10,9 +10,25 @@ import Foundation
 ///   `content_block_stop`, `message_delta` (stop_reason + usage), `message_stop`, `error`.
 /// - Versão de API `2026-10-21`: não aceita `temperature`/`top_p`/`top_k`, então `temperature` é ignorada.
 /// - Modelos atuais recusam `tool_choice` forçado (`any`/`tool`): `.required`/`.tool` viram `auto`.
+/// - Modelos com pensamento adaptativo (`AnthropicModelSupport`): `thinking: adaptive` com
+///   `display: summarized` (o raciocínio resumido aparece na UI em vez de uma pausa longa) e
+///   `output_config.effort: medium` explícito (Opus 5.5 já usa medium; Sonnet 5.5 usaria high).
+/// - Recusas: modelos com fallback server-side recebem `fallbacks: "default"` (beta
+///   `server-side-fallback-2026-07-01`). Depois de um bloco `fallback`, o raciocínio e os `tool_use`
+///   anteriores à fronteira são descartados (regra de reenvio da skill); o texto parcial continua.
+/// - Verificação de edição de histórico (thinking vinculado à conversa): o laço do Coach é só-anexar
+///   dentro do turno e remove os blocos de turnos anteriores (remoção pela frente é permitida). Não
+///   usamos `block_binding.prefix_mismatch_behavior` (beta; exige adaptive em todo modelo e qualquer
+///   valor liga a verificação). Um 400 de assinatura de thinking é recuperado com uma nova tentativa
+///   sem os blocos (strip-and-retry, a recuperação que a skill indica fora do beta).
+/// - Stream sem `message_stop` é conexão perdida (`AIError.network`, repetível).
 struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
     static let apiVersion = "2026-10-21"
+    /// Streaming: 64k (sem risco de timeout HTTP); uma vez: 16k (abaixo dos timeouts).
+    static let defaultStreamMaxTokens = 64_000
     static let defaultMaxTokens = 16_000
+    static let fallbackBeta = "server-side-fallback-2026-07-01"
+    static let effort = "medium"
 
     var provider: AIProviderID { configuration.provider }
 
@@ -30,7 +46,9 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
         AsyncThrowingStream { continuation in
             let task = Task {
                 do {
-                    let (bytes, _) = try await client.bytes(for: makeRequest(request, stream: true))
+                    let (bytes, _) = try await withThinkingRecovery(request) { candidate in
+                        try await client.bytes(for: makeRequest(candidate, stream: true))
+                    }
                     var state = StreamState()
                     var parser = SSEParser()
                     for try await line in SSEParser.lines(from: bytes) {
@@ -41,9 +59,12 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
                             return
                         }
                     }
-                    if case let .data(payload) = parser.flush() { _ = try state.consume(payload, into: continuation) }
-                    state.finish(into: continuation)
-                    continuation.finish()
+                    if case let .data(payload) = parser.flush(), try state.consume(payload, into: continuation) {
+                        continuation.finish()
+                        return
+                    }
+                    // Sem `message_stop`: conexão perdida. Blocos abertos (tool_use pela metade) são descartados.
+                    throw AIError.network(code: URLError.networkConnectionLost.rawValue, retryable: true)
                 } catch {
                     continuation.finish(throwing: HTTPClient.normalize(error))
                 }
@@ -65,6 +86,9 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
         }
 
         var blocks: [Int: Block] = [:]
+        /// Blocos fechados, emitidos só em `message_stop` (um bloco `fallback` pode invalidá-los antes).
+        var closedToolCalls: [ToolCall] = []
+        var closedReasoning: [ReasoningBlock] = []
         var inputTokens = 0
         var outputTokens = 0
         var stopReason: FinishReason?
@@ -96,6 +120,13 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
                                           signature: block?["signature"]?.stringValue ?? "")
                 case "redacted_thinking":
                     blocks[index] = Block(kind: .redactedThinking, data: block?["data"]?.stringValue ?? "")
+                case "fallback":
+                    // Fronteira de fallback server-side: raciocínio e tool_use anteriores não são reenviados
+                    // nem executados; o texto já recebido segue como contexto de continuação.
+                    closedToolCalls = []
+                    closedReasoning = []
+                    blocks = blocks.filter { $0.value.kind == .text }
+                    blocks[index] = Block(kind: .other)
                 default:
                     blocks[index] = Block(kind: .other)
                 }
@@ -118,7 +149,7 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
                 }
             case "content_block_stop":
                 let index = object["index"].flatMap(Self.int) ?? 0
-                if let block = blocks.removeValue(forKey: index) { emit(block, into: continuation) }
+                if let block = blocks.removeValue(forKey: index) { close(block) }
             case "message_delta":
                 if let reason = object["delta"]?["stop_reason"]?.stringValue {
                     stopReason = AnthropicMessagesGateway.finishReason(reason)
@@ -144,16 +175,16 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
             return false
         }
 
-        func emit(_ block: Block, into continuation: AsyncThrowingStream<ChatEvent, any Error>.Continuation) {
+        mutating func close(_ block: Block) {
             switch block.kind {
             case .toolUse:
                 let json = block.json.trimmingCharacters(in: .whitespacesAndNewlines)
-                continuation.yield(.toolCall(id: block.id, name: block.name, argumentsJSON: json.isEmpty ? "{}" : json))
+                closedToolCalls.append(ToolCall(id: block.id, name: block.name, argumentsJSON: json.isEmpty ? "{}" : json))
             case .thinking:
-                continuation.yield(.reasoningBlock(ReasoningBlock(kind: .thinking, text: block.thinking,
-                                                                  signature: block.signature.isEmpty ? nil : block.signature)))
+                closedReasoning.append(ReasoningBlock(kind: .thinking, text: block.thinking,
+                                                      signature: block.signature.isEmpty ? nil : block.signature))
             case .redactedThinking:
-                continuation.yield(.reasoningBlock(ReasoningBlock(kind: .redactedThinking, data: block.data)))
+                closedReasoning.append(ReasoningBlock(kind: .redactedThinking, data: block.data))
             case .text, .other:
                 break
             }
@@ -162,9 +193,12 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
         mutating func finish(into continuation: AsyncThrowingStream<ChatEvent, any Error>.Continuation) {
             guard !finished else { return }
             finished = true
-            // Blocos não fechados (stream cortado): entrega o que houver.
-            for index in blocks.keys.sorted() { if let block = blocks[index] { emit(block, into: continuation) } }
+            // Blocos ainda abertos em `message_stop` não são confiáveis: descartados.
             blocks = [:]
+            for block in closedReasoning { continuation.yield(.reasoningBlock(block)) }
+            for call in closedToolCalls {
+                continuation.yield(.toolCall(id: call.id, name: call.name, argumentsJSON: call.argumentsJSON))
+            }
             continuation.yield(.usage(TokenUsage(promptTokens: inputTokens, completionTokens: outputTokens)))
             continuation.yield(.finished(reason: stopReason ?? .stop))
         }
@@ -178,7 +212,9 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
     // MARK: - Uma vez
 
     func complete(_ request: ChatRequest) async throws -> ChatCompletion {
-        let (data, _) = try await client.data(for: makeRequest(request, stream: false))
+        let (data, _) = try await withThinkingRecovery(request) { candidate in
+            try await client.data(for: makeRequest(candidate, stream: false))
+        }
         guard let object = try? JSONValue.parse(String(decoding: data, as: UTF8.self)) else {
             throw AIError.decoding(context: "anthropic message", message: "invalid JSON")
         }
@@ -199,6 +235,9 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
                 blocks.append(ReasoningBlock(kind: .thinking, text: thinking, signature: block["signature"]?.stringValue))
             case "redacted_thinking":
                 blocks.append(ReasoningBlock(kind: .redactedThinking, data: block["data"]?.stringValue))
+            case "fallback":
+                calls = []
+                blocks = []
             default:
                 break
             }
@@ -219,13 +258,25 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
         var urlRequest = configuration.request(path: "messages", timeout: configuration.timeouts.chat)
         urlRequest.setValue(Self.apiVersion, forHTTPHeaderField: "anthropic-version")
 
+        let defaultMax = stream ? Self.defaultStreamMaxTokens : Self.defaultMaxTokens
         var body: [String: JSONValue] = [
             "model": .string(request.model),
-            "max_tokens": .number(Double(request.maxTokens ?? Self.defaultMaxTokens)),
+            "max_tokens": .number(Double(request.maxTokens ?? defaultMax)),
             "messages": .array(Self.wireMessages(request.messages)),
         ]
         if stream { body["stream"] = .bool(true) }
-        let system = request.messages.filter { $0.role == .system }.map(\.content).joined(separator: "\n\n")
+        var outputConfig: [String: JSONValue] = [:]
+        if AnthropicModelSupport.supportsAdaptiveThinking(request.model) {
+            body["thinking"] = .object(["type": .string("adaptive"), "display": .string("summarized")])
+            outputConfig["effort"] = .string(Self.effort)
+        }
+        if AnthropicModelSupport.supportsServerFallbacks(request.model) {
+            urlRequest.setValue(Self.fallbackBeta, forHTTPHeaderField: "anthropic-beta")
+            body["fallbacks"] = .string("default")
+        }
+        let system = request.messages.filter { $0.role == .system }
+            .map { $0.content.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+            .joined(separator: "\n\n")
         if !system.isEmpty { body["system"] = .string(system) }
         if !request.tools.isEmpty {
             body["tools"] = .array(try request.tools.map { spec in
@@ -245,10 +296,9 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
         case .text, .jsonObject:
             break // `jsonObject` não existe aqui; o pedido de JSON vai no prompt e o decodificador tolera prosa
         case let .jsonSchema(_, schema, _):
-            body["output_config"] = .object(["format": .object([
-                "type": .string("json_schema"), "schema": try JSONValue.parse(schema),
-            ])])
+            outputConfig["format"] = .object(["type": .string("json_schema"), "schema": try JSONValue.parse(schema)])
         }
+        if !outputConfig.isEmpty { body["output_config"] = .object(outputConfig) }
         urlRequest.httpBody = Data(JSONValue.object(body).jsonString().utf8)
         return urlRequest
     }
@@ -269,12 +319,14 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
             case .system:
                 continue
             case .user:
-                append("user", message.content.isEmpty ? [] : [.object(["type": .string("text"), "text": .string(message.content)])])
+                let text = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                append("user", text.isEmpty ? [] : [.object(["type": .string("text"), "text": .string(text)])])
             case .tool:
                 var block: [String: JSONValue] = [
                     "type": .string("tool_result"),
                     "tool_use_id": .string(message.toolCallID ?? ""),
-                    "content": .string(message.content),
+                    "content": .string(message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        ? "{}" : message.content),
                 ]
                 if message.isError { block["is_error"] = .bool(true) }
                 append("user", [.object(block)])
@@ -289,8 +341,10 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
                         return .object(["type": .string("redacted_thinking"), "data": .string(reasoning.data ?? "")])
                     }
                 }
-                if !message.content.isEmpty {
-                    blocks.append(.object(["type": .string("text"), "text": .string(message.content)]))
+                // A API recusa blocos de texto vazios/só espaços (e espaço no fim do último bloco).
+                let text = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !text.isEmpty {
+                    blocks.append(.object(["type": .string("text"), "text": .string(text)]))
                 }
                 for call in message.toolCalls {
                     let input = (try? JSONValue.parse(call.argumentsJSON)).flatMap { $0.objectValue.map(JSONValue.object) }
@@ -304,6 +358,30 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
         return result.map { .object(["role": .string($0.role), "content": .array($0.blocks)]) }
     }
 
+    /// Um 400 de assinatura de thinking (verificação de edição de histórico) é recuperado uma vez,
+    /// reenviando sem nenhum bloco de raciocínio.
+    private func withThinkingRecovery<Value>(_ request: ChatRequest,
+                                             perform: (ChatRequest) async throws -> Value) async throws -> Value {
+        do {
+            return try await perform(request)
+        } catch let AIError.badRequest(status, message)
+            where status == 400 && Self.isThinkingBindingError(message)
+            && request.messages.contains(where: { !$0.reasoningBlocks.isEmpty }) {
+            var stripped = request
+            stripped.messages = stripped.messages.map { message in
+                var copy = message
+                copy.reasoningBlocks = []
+                return copy
+            }
+            return try await perform(stripped)
+        }
+    }
+
+    static func isThinkingBindingError(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return lower.contains("thinking") && (lower.contains("signature") || lower.contains("different conversation"))
+    }
+
     static func finishReason(_ raw: String?) -> FinishReason {
         switch raw {
         case "max_tokens", "model_context_window_exceeded": .length
@@ -311,5 +389,23 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
         case "refusal": .refusal
         default: .stop
         }
+    }
+}
+
+/// O que cada família de modelo Claude aceita (IDs da skill `claude-api`, cache de 2026-11).
+enum AnthropicModelSupport {
+    /// `thinking: {type: adaptive}` + `output_config.effort`. Haiku 4.5 e anteriores ficam de fora
+    /// (usariam `budget_tokens`) e recebem o pedido sem esses campos.
+    static func supportsAdaptiveThinking(_ model: String) -> Bool {
+        let id = model.lowercased()
+        let families = ["claude-fable-", "claude-mythos-", "claude-opus-5", "claude-sonnet-5", "claude-haiku-5",
+                        "claude-opus-4-6", "claude-opus-4-7", "claude-opus-4-8", "claude-sonnet-4-6"]
+        return families.contains { id.hasPrefix($0) }
+    }
+
+    /// Modelos que aceitam `fallbacks: "default"` (recusa por classificador → modelo alternativo no servidor).
+    static func supportsServerFallbacks(_ model: String) -> Bool {
+        ["claude-fable-5-2", "claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"]
+            .contains(model.lowercased())
     }
 }

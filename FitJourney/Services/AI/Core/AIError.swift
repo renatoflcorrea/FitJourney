@@ -18,6 +18,12 @@ enum AIError: Error, Sendable, Hashable {
     /// Resposta ilegível.
     case decoding(context: String, message: String)
     case cancelled
+    /// A resposta terminou sem poder ser usada (limite de tamanho, recusa, filtro, limite de voltas).
+    case incomplete(IncompleteReason)
+
+    enum IncompleteReason: String, Sendable, Hashable {
+        case length, refusal, contentFilter, toolRoundLimit
+    }
 
     var isRetryable: Bool {
         switch self {
@@ -51,6 +57,20 @@ extension AIError: LocalizedError {
             String(localized: "Não foi possível ler a resposta do provedor.")
         case .cancelled:
             String(localized: "Interrompido.")
+        case let .incomplete(reason):
+            reason.localizedDescription
+        }
+    }
+}
+
+extension AIError.IncompleteReason {
+    var localizedDescription: String {
+        switch self {
+        case .length: String(localized: "A resposta atingiu o limite de tamanho e foi interrompida.")
+        case .refusal: String(localized: "O modelo não quis responder a este pedido. Tente reformular.")
+        case .contentFilter: String(localized: "O provedor bloqueou a resposta pelo filtro de conteúdo.")
+        case .toolRoundLimit:
+            String(localized: "O Coach consultou dados demais nesta resposta e parou. Tente um pedido mais específico.")
         }
     }
 }
