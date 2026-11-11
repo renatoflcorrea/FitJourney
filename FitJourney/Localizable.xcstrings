@@ -1770,16 +1770,7 @@
       }
     },
     "Treino em andamento: %@": {},
-    "Treino livre": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Free workout"
-          }
-        }
-      }
-    },
+    "Treino livre": {},
     "Treinos": {
       "localizations": {
         "en": {
