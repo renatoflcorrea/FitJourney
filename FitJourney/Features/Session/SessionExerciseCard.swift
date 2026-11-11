@@ -322,7 +322,11 @@ struct SessionSetRow: View {
     }
 
     private func loadStepper(label: LocalizedStringKey, showsSign: Bool, range: ClosedRange<Double>) -> some View {
-        NumberStepperField(label, value: loadBinding, unit: unitText, step: 0.5, range: range, fractionDigits: 2, showsSign: showsSign)
+        NumberStepperField(label, value: loadBinding, unit: unitText, step: LoadDisplay.step(forLoadIn: nativeUnit), range: range, fractionDigits: 2, showsSign: showsSign)
+    }
+
+    private var nativeUnit: WeightUnit {
+        WeightUnit(rawValue: (SessionPresentation.displayLoad(entry)?.unit ?? .kg).rawValue) ?? .kg
     }
 
     private var unitText: String {

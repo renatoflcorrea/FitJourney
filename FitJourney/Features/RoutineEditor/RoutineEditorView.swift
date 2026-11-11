@@ -94,7 +94,7 @@ struct RoutineEditorView: View {
                 .accessibilityLabel(Text("Nome da ficha"))
 
             HStack(spacing: FJSpacing.m) {
-                RoutineBadge(routine: routine)
+                FJRoutineBadge(symbol: routine.symbol, name: routine.name, colorName: routine.colorName)
                 TextField("Letra ou símbolo", text: Binding(
                     get: { routine.symbol },
                     set: { routine.symbol = String($0.prefix(2)) }
@@ -132,28 +132,7 @@ struct RoutineEditorView: View {
     private var colorPicker: some View {
         VStack(alignment: .leading, spacing: FJSpacing.s) {
             Text("Cor").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: FJSpacing.s) {
-                    ForEach(RoutineColor.allCases, id: \.self) { option in
-                        let isOn = RoutineColor(name: routine.colorName) == option
-                        Button {
-                            routine.colorName = option.rawValue
-                        } label: {
-                            Circle()
-                                .fill(option.fill)
-                                .frame(width: 32, height: 32)
-                                .overlay {
-                                    if isOn { Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(option.onFill) }
-                                }
-                                .frame(width: FJSize.minTap, height: FJSize.minTap)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(Text(option.localizedName))
-                        .accessibilityAddTraits(isOn ? [.isButton, .isSelected] : .isButton)
-                    }
-                }
-            }
+            FJRoutineColorPicker(colorName: $routine.colorName)
         }
     }
 
@@ -353,7 +332,7 @@ struct MoveCopySheet: View {
                             dismiss()
                         } label: {
                             HStack(spacing: FJSpacing.m) {
-                                RoutineBadge(routine: target)
+                                FJRoutineBadge(symbol: target.symbol, name: target.name, colorName: target.colorName)
                                 Text(target.name.isEmpty ? String(localized: "Sem nome") : target.name)
                                     .foregroundStyle(FJColor.textPrimary)
                                 Spacer()

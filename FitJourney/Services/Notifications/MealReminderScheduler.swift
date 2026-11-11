@@ -102,13 +102,20 @@ extension MealReminderScheduling {
 final class MealReminderScheduler: MealReminderScheduling {
     private let center: MealReminderNotificationCenter
     private let calendar: Calendar
+    private let defaults: UserDefaults
     private var tail: Task<Void, Never>?
 
+    /// Chave do liga/desliga geral de Ajustes (`AppPreferenceKeys.mealReminders`); ausente = ligado.
+    static let enabledKey = "fj.mealReminders"
+
     init(center: MealReminderNotificationCenter = UserNotificationMealReminderCenter(),
-         calendar: Calendar = .autoupdatingCurrent) {
+         calendar: Calendar = .autoupdatingCurrent, defaults: UserDefaults = .standard) {
         self.center = center
         self.calendar = calendar
+        self.defaults = defaults
     }
+
+    private var isEnabled: Bool { defaults.object(forKey: Self.enabledKey) as? Bool ?? true }
 
     func authorization() async -> RestNotificationAuthorization { await center.authorization() }
     func requestAuthorization() async -> Bool { await center.requestAuthorization() }
@@ -141,6 +148,11 @@ final class MealReminderScheduler: MealReminderScheduling {
     }
 
     private func perform(context: ModelContext, now: Date) async {
+        // Desligado em Ajustes: nada de agendar (launch, primeiro plano e edição do plano passam por aqui).
+        guard isEnabled else {
+            await removeOwned(except: [])
+            return
+        }
         switch await center.authorization() {
         case .authorized: break
         case .notDetermined, .denied:

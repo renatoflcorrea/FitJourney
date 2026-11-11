@@ -54,6 +54,10 @@ struct CoachRootView: View {
         .onAppear(perform: refresh)
         .onChange(of: path) { refresh() }
         .onChange(of: scenePhase) { if scenePhase == .active { refresh() } }
+        .onReceive(NotificationCenter.default.publisher(for: .fjDataWillReset)) { _ in
+            // Substituir/apagar tudo: nenhuma resposta em curso pode escrever em conversas que vão sumir.
+            service?.stop()
+        }
         .onReceive(NotificationCenter.default.publisher(for: .coachConsentChanged)) { _ in
             // Revogação (ou nova concessão) em Ajustes: para qualquer resposta e revalida o gate.
             if !CoachProfileStore(defaults: defaults).hasConsented { service?.stop() }

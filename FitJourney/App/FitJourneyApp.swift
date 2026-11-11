@@ -21,6 +21,8 @@ struct FitJourneyApp: App {
     private let mealReminders: MealReminderScheduler
     private let notificationDelegate: AppNotificationDelegate
     private let categoryRegistry: NotificationCategoryRegistry
+    /// Exportar/importar/apagar vivem aqui: sobrevivem ao reset da árvore e mostram o resultado depois dele.
+    @State private var dataTransfer: DataTransferModel
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -50,6 +52,7 @@ struct FitJourneyApp: App {
 
         let engine = SessionEngine(context: container.mainContext, notifications: UserNotificationRestScheduler())
         let authorization = HealthAuthorization(store: HealthKitStore.shared)
+        _dataTransfer = State(initialValue: DataTransferModel(container: container))
         _sessionEngine = State(initialValue: engine)
         _sessionCoordinator = State(initialValue: SessionCoordinator(engine: engine))
         _healthAuthorization = State(initialValue: authorization)
@@ -69,6 +72,7 @@ struct FitJourneyApp: App {
                 .environment(healthAuthorization)
                 .environment(healthController)
                 .environment(watchLink)
+                .environment(dataTransfer)
                 .environment(\.mealReminderScheduler, mealReminders)
                 .task {
                     await categoryRegistry.apply()
@@ -88,9 +92,11 @@ struct FitJourneyApp: App {
                     watchLink.start()
                 }
                 .task {
-                    // FC ao vivo na tela da sessão (zona exige FC máx configurada — entra com os Ajustes).
+                    // FC ao vivo na tela da sessão; a zona usa a FC máxima de Ajustes (ou 220 − idade do perfil).
+                    let zones = HeartRateZoneProvider()
                     for await sample in healthController.heartRateUpdates() {
-                        sessionCoordinator.heartRate = SessionHeartRate(bpm: Int(sample.bpm.rounded()), zone: nil)
+                        sessionCoordinator.heartRate = SessionHeartRate(bpm: Int(sample.bpm.rounded()),
+                                                                        zone: zones.zone(for: sample.bpm))
                     }
                 }
                 .task(priority: .utility) {

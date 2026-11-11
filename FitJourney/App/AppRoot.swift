@@ -6,6 +6,12 @@ struct AppRoot: View {
     enum Tab: Hashable { case today, training, nutrition, health, coach }
 
     @State private var selection: Tab = Self.initialTab
+    /// Muda depois de substituir/apagar tudo: recria as abas (os modelos antigos deixaram de existir).
+    @State private var resetGeneration = 0
+    /// Entre `fjDataWillReset` e `fjDataDidReset` as abas não existem.
+    @State private var isResetting = false
+    /// Modelo de Dados de nível superior: guarda o resultado de substituir/apagar para mostrar após o reset.
+    @Environment(DataTransferModel.self) private var transfer: DataTransferModel?
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
 
     private static var initialTab: Tab {
@@ -22,6 +28,33 @@ struct AppRoot: View {
     }
 
     var body: some View {
+        Group {
+            if isResetting {
+                // Estado neutro bloqueante: nenhuma view com modelos antigos fica viva durante a escrita.
+                ProgressView("Atualizando dados…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .fjScreenBackground()
+                    .allowsHitTesting(false)
+            } else {
+                tabs
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .fjDataWillReset)) { _ in
+            sessionCoordinator?.isPresented = false
+            isResetting = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .fjDataDidReset)) { _ in
+            sessionCoordinator?.engine.restore()
+            selection = .today
+            resetGeneration += 1
+            isResetting = false
+        }
+        .alert(item: Binding(get: { transfer?.announcement }, set: { transfer?.announcement = $0 })) { item in
+            Alert(title: Text(verbatim: item.title), message: Text(verbatim: item.message))
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: $selection) {
             SwiftUI.Tab("Hoje", systemImage: "sun.max", value: Tab.today) {
                 TodayView(onOpenTraining: { selection = .training })
@@ -42,6 +75,7 @@ struct AppRoot: View {
         .tabBarMinimizeBehavior(.onScrollDown)
         .modifier(OptionalSessionHost(coordinator: sessionCoordinator))
         .tint(FJColor.training)
+        .id(resetGeneration)
     }
 }
 

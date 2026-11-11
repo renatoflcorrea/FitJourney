@@ -183,7 +183,7 @@ struct TrainingRootView: View {
                     }
                     .accessibilityLabel(Text("Ações do programa"))
                 }
-                FlowLayout(spacing: FJSpacing.s) {
+                FJFlowLayout(spacing: FJSpacing.s) {
                     FJTag(LocalizedStringKey(program.goal.localizedName), area: .training)
                     FJTag(LocalizedStringKey(program.scheduleMode.localizedName), systemImage: program.scheduleMode.systemImage)
                     if let week = program.weekProgressText(on: now) { FJTag(LocalizedStringKey(week)) }
@@ -293,7 +293,7 @@ private struct RoutineRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: FJSpacing.m) {
-            RoutineBadge(routine: routine)
+            FJRoutineBadge(symbol: routine.symbol, name: routine.name, colorName: routine.colorName)
             VStack(alignment: .leading, spacing: FJSpacing.xs) {
                 Text(verbatim: routine.name).font(FJFont.cardTitle)
                 Text(verbatim: routine.summaryText)

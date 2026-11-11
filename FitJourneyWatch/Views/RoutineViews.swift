@@ -64,13 +64,17 @@ struct RoutineRow: View {
     let routine: ProgramDigest.Routine
     let overline: String?
     let highlighted: Bool
+    /// `Routine.colorName` da ficha. O resumo do iPhone (`ProgramDigest.Routine`) ainda não o carrega:
+    /// sem nome, o selo fica laranja.
+    var colorName: String?
 
     var body: some View {
         HStack(spacing: 8) {
             Text(routine.symbol)
                 .font(.system(.subheadline, design: .rounded).weight(.bold))
+                .foregroundStyle(WatchRoutineColor.onFill(colorName))
                 .frame(width: 26, height: 26)
-                .background(WF.trainingFill, in: RoundedRectangle(cornerRadius: 8))
+                .background(WatchRoutineColor.fill(colorName), in: RoundedRectangle(cornerRadius: 8))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 if let overline {

@@ -536,10 +536,12 @@ final class FitnessToolbox {
         return .string(String(value.prefix(500)))
     }
 
-    static func loadText(_ load: Load?) -> String {
-        guard let load else { return "" }
-        let unit = load.unit.rawValue
-        switch load {
+    /// Na unidade preferida de Ajustes, sempre com o símbolo ("80kg", "176.4lb").
+    static func loadText(_ load: Load?, displayUnit: WeightUnit = WeightUnitPreference.current) -> String {
+        guard let original = load else { return "" }
+        let shown = LoadDisplay.load(original, in: displayUnit)
+        let unit = shown.unit.rawValue
+        switch shown {
         case let .weight(value, _): return "\(format(value))\(unit)"
         case let .bodyweight(delta, _):
             return delta == 0 ? "PC" : "PC\(delta > 0 ? "+" : "")\(format(delta))\(unit)"

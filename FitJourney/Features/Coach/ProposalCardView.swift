@@ -199,10 +199,13 @@ struct ProgramReviewView: View {
                     NavigationLink {
                         RoutineEditorView(routine: routine)
                     } label: {
-                        VStack(alignment: .leading, spacing: FJSpacing.xxs) {
-                            Text(routine.symbol.isEmpty ? routine.name : "\(routine.symbol) · \(routine.name)")
-                            Text("\(routine.sortedExercises.count) exercícios")
-                                .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                        HStack(spacing: FJSpacing.m) {
+                            FJRoutineBadge(symbol: routine.symbol, name: routine.name, colorName: routine.colorName, size: .sm)
+                            VStack(alignment: .leading, spacing: FJSpacing.xxs) {
+                                Text(routine.name)
+                                Text("\(routine.sortedExercises.count) exercícios")
+                                    .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                            }
                         }
                     }
                 }

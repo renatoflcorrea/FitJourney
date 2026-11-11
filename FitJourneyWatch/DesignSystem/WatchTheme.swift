@@ -31,6 +31,31 @@ enum WF {
     static let caption = Font.footnote
 }
 
+/// Cores de ficha no relógio (sempre escuro): tons `dark` da tabela §2.1.1, espelho de `FJRoutineColor.dark`.
+/// Nome vazio, ausente ou desconhecido = laranja.
+enum WatchRoutineColor {
+    private static let ink: UInt32 = 0x1A1206
+    private static let white: UInt32 = 0xFFFFFF
+
+    private static let tones: [String: (fill: UInt32, onFill: UInt32)] = [
+        "orange": (0xD4450C, white),
+        "green": (0x1C8540, white),
+        "pink": (0xC92C75, white),
+        "blue": (0x1F71CC, white),
+        "purple": (0x8349EE, white),
+        "teal": (0x5AD1D6, ink),
+        "yellow": (0xFFD23F, ink),
+        "gray": (0xAEB7C2, ink),
+    ]
+
+    static func fill(_ name: String?) -> Color { Color(wfHex: tone(name).fill) }
+    static func onFill(_ name: String?) -> Color { Color(wfHex: tone(name).onFill) }
+
+    private static func tone(_ name: String?) -> (fill: UInt32, onFill: UInt32) {
+        tones[(name ?? "").lowercased()] ?? tones["orange"]!
+    }
+}
+
 extension Color {
     init(wfHex hex: UInt32) {
         self.init(.sRGB,
