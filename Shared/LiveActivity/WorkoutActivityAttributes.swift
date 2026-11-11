@@ -4,6 +4,10 @@ import Foundation
 /// Atividade ao Vivo da sessão de treino (DESIGN_DIRECTION §4.14). Compilado no app e na extensão
 /// `FitJourneyWidgets` — só Foundation/ActivityKit.
 ///
+/// Privacidade (decisão registrada, §4.14): a Tela Bloqueada mostra o nome da ficha e do exercício, a
+/// série, a carga e o alvo — é o propósito da atividade (consultar sem desbloquear). Nada de saúde (FC,
+/// dor, anotações) entra no estado. Quem não quiser isso visível desliga em Ajustes › Treino.
+///
 /// Uma atividade por sessão (`sessionID`). O app monta o `ContentState` a partir do `SessionSnapshot`
 /// (`LiveActivityStateMapper`) com os textos já formatados (unidade de carga, alvo como prescrito);
 /// a extensão só desenha. Tempos são datas: os contadores são desenhados pelo sistema
@@ -49,10 +53,12 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         var effortText: String?
         /// Detalhe por extenso para o VoiceOver ("26 quilos, alvo 8 a 12 repetições").
         var spokenDetail: String
-        /// Fim e duração total (com ajustes) do descanso em curso.
+        /// Fim e duração total (com ajustes) do descanso em curso. A duração vem do snapshot (ou do
+        /// descanso prescrito); sem ela não há barra, só a contagem.
         var restEndsAt: Date?
         var restTotalSeconds: Double?
-        /// Sustentação/cardio em curso (início já deslocado pelas pausas) e alvo em segundos.
+        /// Sustentação/cardio em curso (início já deslocado pelas pausas) e alvo em segundos. Sustentação
+        /// com alvo conta regressivo até ele; sem alvo, e o cardio sempre, contam progressivo (o alvo é texto).
         var holdStartedAt: Date?
         var holdTargetSeconds: Int?
         /// Base do tempo de sessão: `startedAt + pausas acumuladas` (contagem progressiva pelo sistema).
@@ -78,23 +84,29 @@ extension WorkoutActivityAttributes.ContentState {
         return .resting
     }
 
-    /// Início do descanso (para a barra regressiva).
-    var restStartsAt: Date? {
-        guard let restEndsAt else { return nil }
-        return restEndsAt.addingTimeInterval(-max(1, restTotalSeconds ?? 1))
-    }
-
-    /// Intervalo do descanso para `Text(timerInterval:)`/`ProgressView(timerInterval:)`.
+    /// Intervalo da barra do descanso (início…fim); `nil` sem a duração total.
     var restInterval: ClosedRange<Date>? {
-        guard let restEndsAt, let start = restStartsAt, start < restEndsAt else { return nil }
-        return start...restEndsAt
+        guard let restEndsAt, let total = restTotalSeconds, total >= 1 else { return nil }
+        return restEndsAt.addingTimeInterval(-total)...restEndsAt
     }
 
-    /// Fim da sustentação (início + alvo).
+    /// Intervalo da contagem regressiva do descanso (só o fim importa; o início é uma data estável anterior).
+    var restCountdownInterval: ClosedRange<Date>? {
+        guard let restEndsAt else { return nil }
+        if let restInterval { return restInterval }
+        return min(sessionTimerStart, restEndsAt.addingTimeInterval(-1))...restEndsAt
+    }
+
+    /// A contagem da sustentação/cardio é regressiva (sustentação com alvo) ou progressiva.
+    var holdCountsDown: Bool { phase == .hold && (holdTargetSeconds ?? 0) > 0 }
+
+    /// Intervalo da sustentação/cardio: até o alvo (regressiva) ou aberto (progressiva, como a sessão).
     var holdInterval: ClosedRange<Date>? {
         guard let holdStartedAt else { return nil }
-        let target = TimeInterval(max(1, holdTargetSeconds ?? 0))
-        return holdStartedAt...holdStartedAt.addingTimeInterval(holdTargetSeconds == nil ? 8 * 3_600 : target)
+        if holdCountsDown, let target = holdTargetSeconds {
+            return holdStartedAt...holdStartedAt.addingTimeInterval(TimeInterval(target))
+        }
+        return holdStartedAt...holdStartedAt.addingTimeInterval(24 * 3_600)
     }
 
     /// Intervalo aberto do tempo de sessão (o sistema encerra atividades em 8 h).

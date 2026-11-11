@@ -26,6 +26,9 @@ struct FitJourneyApp: App {
     /// Atividade ao Vivo + Dynamic Island da sessão (P6.4). Também atende os botões +15 s/Pular
     /// (`LiveActivityIntentRouter`), inclusive quando o sistema acorda o app só para o intent.
     private let liveActivity: LiveActivityController
+    /// Serviços da sessão que não dependem de UI (Saúde, canal do relógio, Atividade ao Vivo). Roda uma
+    /// vez: no `.task` da cena ou antes, quando um intent da atividade acorda o app sem cena.
+    private let backgroundServices: AppBackgroundServices
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -69,9 +72,19 @@ struct FitJourneyApp: App {
         let controller = HealthWorkoutController(
             store: HealthKitStore.shared, authorization: authorization, context: container.mainContext)
         _healthController = State(initialValue: controller)
-        _watchLink = State(initialValue: PhoneWatchLink(
-            engine: engine, health: controller,
-            workoutFinder: PhoneWatchLink.finder(reading: HealthQueries.live)))
+        let link = PhoneWatchLink(engine: engine, health: controller,
+                                  workoutFinder: PhoneWatchLink.finder(reading: HealthQueries.live))
+        _watchLink = State(initialValue: link)
+        let services = AppBackgroundServices {
+            // Recuperar sessões espelhadas do relógio e acoplar o Saúde aos eventos do motor
+            // (retoma a gravação de uma sessão em andamento e reconcilia treinos pendentes).
+            controller.startObservingMirroredSessions()
+            controller.attach(to: engine)
+            link.start()
+            live.start()
+        }
+        backgroundServices = services
+        live.onWake = { services.start() }
     }
 
     var body: some Scene {
@@ -95,14 +108,7 @@ struct FitJourneyApp: App {
                         liveActivity.handleForeground()
                     }
                 }
-                .task {
-                    // Recuperar sessões espelhadas do relógio e acoplar o Saúde aos eventos do motor
-                    // (retoma a gravação de uma sessão em andamento e reconcilia treinos pendentes).
-                    healthController.startObservingMirroredSessions()
-                    healthController.attach(to: sessionEngine)
-                    watchLink.start()
-                    liveActivity.start()
-                }
+                .task { backgroundServices.start() }
                 .task {
                     // FC ao vivo na tela da sessão; a zona usa a FC máxima de Ajustes (ou 220 − idade do perfil).
                     let zones = HeartRateZoneProvider()
@@ -119,5 +125,19 @@ struct FitJourneyApp: App {
                 }
         }
         .modelContainer(modelContainer)
+    }
+}
+
+/// Inicialização única dos serviços sem UI (o `.task` da cena e o intent que acorda o app chamam `start()`).
+@MainActor
+final class AppBackgroundServices {
+    private var work: (() -> Void)?
+
+    init(_ work: @escaping () -> Void) { self.work = work }
+
+    func start() {
+        guard let work else { return }
+        self.work = nil
+        work()
     }
 }

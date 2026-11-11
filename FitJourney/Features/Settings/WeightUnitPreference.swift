@@ -14,8 +14,8 @@ enum WeightUnitPreference {
 ///
 /// Com efeito hoje: `weightUnit` e `loadStep` (exibição e steppers), `maxHeartRate` (aba Saúde e zona ao
 /// vivo na sessão) e `mealReminders` (`MealReminderScheduler`). **Sem consumidor ainda** (e por isso
-/// escondidas em Ajustes até existirem): `weekStart`, `defaultRestSeconds`, `restSound`; `liveActivity`
-/// aparece desabilitada ("em breve"). As chaves existem e já são apagadas por "Apagar tudo".
+/// escondidas em Ajustes até existirem): `weekStart`, `defaultRestSeconds`, `restSound`. `liveActivity` (padrão
+/// ligado) é lida pelo `LiveActivityController`. As chaves existem e já são apagadas por "Apagar tudo".
 enum AppPreferenceKeys {
     /// "kg" | "lb" (ver `WeightUnitPreference`).
     static let weightUnit = WeightUnitPreference.key
@@ -31,7 +31,8 @@ enum AppPreferenceKeys {
     static let restSound = "fj.restSound"
     /// FC máxima manual em bpm; 0/ausente = pela idade (aba Saúde e zona ao vivo na sessão).
     static let maxHeartRate = "fj.maxHeartRate"
-    /// Atividade ao Vivo (ciclo 6; sem consumidor: a feature ainda não existe).
+    /// Atividade ao Vivo + Dynamic Island da sessão (padrão ligado; ausente = ligado). Consumidor:
+    /// `LiveActivityController` (pede/encerra a atividade; a notificação de descanso segue sem ela).
     static let liveActivity = "fj.liveActivity"
     /// Lembretes de refeição globais (padrão ligado). Consumidor: `MealReminderScheduler`
     /// (`MealReminderScheduler.enabledKey` tem o mesmo valor).

@@ -61,7 +61,7 @@ enum LiveActivityStateMapper {
             effortText: phase == .finished ? nil : set?.effort.map(effortText),
             spokenDetail: "",
             restEndsAt: phase == .resting ? snapshot.restEndsAt : nil,
-            restTotalSeconds: phase == .resting ? restTotal(snapshot, now: now) : nil,
+            restTotalSeconds: phase == .resting ? restTotal(snapshot, exercise: focus?.exercise) : nil,
             holdStartedAt: phase == .hold || phase == .cardio ? snapshot.holdStartedAt : nil,
             holdTargetSeconds: phase == .hold ? set?.targetHoldSeconds
                 : phase == .cardio ? set?.targetDurationSeconds : nil,
@@ -110,11 +110,12 @@ enum LiveActivityStateMapper {
         return nil
     }
 
-    /// Duração total do descanso (com ajustes); sem o valor, o tempo restante.
-    private static func restTotal(_ snapshot: SessionSnapshot, now: Date) -> Double? {
-        guard let end = snapshot.restEndsAt else { return nil }
-        let remaining = end.timeIntervalSince(now)
-        return max(snapshot.restTotalSeconds ?? remaining, remaining, 1)
+    /// Duração total do descanso (com ajustes); sem o valor no snapshot, o descanso prescrito do
+    /// exercício. Nunca depende de `now` (o estado tem de ser estável para a deduplicação).
+    private static func restTotal(_ snapshot: SessionSnapshot, exercise: SessionSnapshot.Exercise?) -> Double? {
+        guard snapshot.restEndsAt != nil else { return nil }
+        if let total = snapshot.restTotalSeconds, total >= 1 { return total }
+        return exercise?.restSeconds.flatMap { $0 > 0 ? Double($0) : nil }
     }
 
     static func effortText(_ effort: WatchEffort) -> String {

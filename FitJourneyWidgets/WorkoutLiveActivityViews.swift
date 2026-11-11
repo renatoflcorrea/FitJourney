@@ -154,7 +154,7 @@ struct LiveActivityBody: View {
     }
 
     @ViewBuilder private var countdown: some View {
-        if let interval = state.restInterval {
+        if let interval = state.restCountdownInterval {
             Text(timerInterval: interval, countsDown: true)
                 .font(FJFont.timer(size: timerSize))
                 .foregroundStyle(palette.accent)
@@ -183,8 +183,10 @@ struct LiveActivityBody: View {
         var next = [state.setPositionText, state.spokenDetail.isEmpty ? nil : state.spokenDetail]
             .compactMap { $0 }.joined(separator: ", ")
         if next.isEmpty { next = state.exerciseName }
-        guard let interval = state.restInterval else { return Text("Descanso. A seguir: \(next)") }
-        return Text("Descanso, \(Text(timerInterval: interval, countsDown: true)) restantes. A seguir: \(next)")
+        // Rótulo estático (o contador do sistema não entra num elemento `.ignore`): o horário do fim.
+        guard let end = state.restEndsAt else { return Text("Descanso. A seguir: \(next)") }
+        let time = end.formatted(date: .omitted, time: .shortened)
+        return Text("Descanso até \(time). A seguir: \(next)")
     }
 
     private func actionLabel(_ key: LocalizedStringKey, fill: Color, text: Color) -> some View {
@@ -225,7 +227,7 @@ struct LiveActivityBody: View {
     private var holdOrCardio: some View {
         HStack(alignment: .center, spacing: FJSpacing.l) {
             if let interval = state.holdInterval {
-                Text(timerInterval: interval, countsDown: phase == .hold)
+                Text(timerInterval: interval, countsDown: state.holdCountsDown)
                     .font(FJFont.timer(size: timerSize))
                     .foregroundStyle(palette.accent)
                     .lineLimit(1)

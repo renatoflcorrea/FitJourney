@@ -66,6 +66,8 @@ targets:
       - FitJourney/DesignSystem/Tokens/FJFont.swift
       - FitJourney/DesignSystem/Tokens/FJFormat.swift
       - FitJourney/DesignSystem/Tokens/FJLayout.swift
+      # Mesmo catálogo de strings do app (textos da atividade e dos intents).
+      - FitJourney/Localizable.xcstrings
     info:
       path: FitJourneyWidgets/Info.plist
       properties:

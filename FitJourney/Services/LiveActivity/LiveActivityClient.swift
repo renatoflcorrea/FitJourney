@@ -27,8 +27,11 @@ protocol LiveActivityClient: AnyObject {
     /// Inicia (só funciona com o app em primeiro plano). Devolve o ID da atividade.
     func request(attributes: WorkoutActivityAttributes, state: WorkoutActivityAttributes.ContentState,
                  staleDate: Date?) throws -> String
+    /// Atualiza; `false` = a atividade não existe mais ou não está ativa (nada foi mostrado).
     func update(id: String, state: WorkoutActivityAttributes.ContentState, staleDate: Date?,
-                alert: LiveActivityAlert?) async
+                alert: LiveActivityAlert?) async -> Bool
+    /// Chama `onEnd` quando o sistema encerrar a atividade (dispensada pelo usuário, limite de 8 h…).
+    func observeEnd(id: String, onEnd: @escaping @MainActor @Sendable (String) -> Void)
     /// Encerra com o estado final (`nil` = mantém o último) e a política de saída.
     func end(id: String, state: WorkoutActivityAttributes.ContentState?, dismissal: LiveActivityDismissal) async
 }
@@ -58,8 +61,12 @@ final class ActivityKitLiveActivityClient: LiveActivityClient {
     }
 
     func update(id: String, state: WorkoutActivityAttributes.ContentState, staleDate: Date?,
-                alert: LiveActivityAlert?) async {
+                alert: LiveActivityAlert?) async -> Bool {
         await Self.update(id: id, content: ActivityContent(state: state, staleDate: staleDate), alert: alert)
+    }
+
+    func observeEnd(id: String, onEnd: @escaping @MainActor @Sendable (String) -> Void) {
+        Task.detached { await Self.watch(id: id, onEnd: onEnd) }
     }
 
     func end(id: String, state: WorkoutActivityAttributes.ContentState?, dismissal: LiveActivityDismissal) async {
@@ -68,13 +75,26 @@ final class ActivityKitLiveActivityClient: LiveActivityClient {
 
     // `Activity` não é `Sendable`: é buscada e usada fora do `@MainActor`, sem atravessar isolamento.
 
-    private nonisolated static func update(id: String, content: Content, alert: LiveActivityAlert?) async {
-        guard let activity = WorkoutActivity.activities.first(where: { $0.id == id }) else { return }
+    private nonisolated static func watch(id: String, onEnd: @escaping @MainActor @Sendable (String) -> Void) async {
+        guard let activity = WorkoutActivity.activities.first(where: { $0.id == id }) else {
+            await onEnd(id)
+            return
+        }
+        for await state in activity.activityStateUpdates where state == .ended || state == .dismissed {
+            await onEnd(id)
+            return
+        }
+    }
+
+    private nonisolated static func update(id: String, content: Content, alert: LiveActivityAlert?) async -> Bool {
+        guard let activity = WorkoutActivity.activities.first(where: { $0.id == id }),
+              activity.activityState == .active || activity.activityState == .stale else { return false }
         let configuration = alert.map {
             AlertConfiguration(title: LocalizedStringResource(stringLiteral: $0.title),
                                body: LocalizedStringResource(stringLiteral: $0.body), sound: .default)
         }
         await activity.update(content, alertConfiguration: configuration)
+        return true
     }
 
     private nonisolated static func end(id: String, content: Content?, dismissal: LiveActivityDismissal) async {

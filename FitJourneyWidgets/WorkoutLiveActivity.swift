@@ -100,7 +100,7 @@ struct IslandCompactTrailing: View {
     var body: some View {
         switch phase {
         case .resting:
-            if let interval = state.restInterval {
+            if let interval = state.restCountdownInterval {
                 Text(timerInterval: interval, countsDown: true)
                     .font(.body.weight(.semibold).monospacedDigit())
                     .foregroundStyle(palette.accent)
@@ -109,7 +109,7 @@ struct IslandCompactTrailing: View {
             }
         case .hold, .cardio:
             if let interval = state.holdInterval {
-                Text(timerInterval: interval, countsDown: phase == .hold)
+                Text(timerInterval: interval, countsDown: state.holdCountsDown)
                     .font(.body.weight(.semibold).monospacedDigit())
                     .foregroundStyle(palette.accent)
                     .multilineTextAlignment(.trailing)

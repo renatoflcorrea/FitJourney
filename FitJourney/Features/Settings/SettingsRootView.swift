@@ -1,5 +1,7 @@
+import ActivityKit
 import SwiftData
 import SwiftUI
+import UIKit
 
 /// Ajustes (DESIGN_DIRECTION §4.12): sheet a partir do avatar em Hoje, `Form` nativo (sem vidro).
 /// Preferências em `UserDefaults` via `@AppStorage` (chaves em `AppPreferenceKeys`).
@@ -13,6 +15,12 @@ struct SettingsRootView: View {
     @AppStorage(AppPreferenceKeys.weightUnit) private var weightUnitRaw = WeightUnit.kg.rawValue
     @AppStorage(AppPreferenceKeys.loadStep) private var loadStep = 0.0
     @AppStorage(AppPreferenceKeys.maxHeartRate) private var maxHeartRate = 0.0
+    /// Atividade ao Vivo (padrão ligado; consumidor: `LiveActivityController`).
+    @AppStorage(AppPreferenceKeys.liveActivity) private var liveActivity = true
+    /// Atividades ao Vivo permitidas em Ajustes do iPhone › FitJourney (relido ao voltar ao app).
+    @State private var systemLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
 
     @State private var profile = CoachProfile()
     @State private var providerSettings = ProviderSettings.default
@@ -148,14 +156,30 @@ struct SettingsRootView: View {
     private var trainingSection: some View {
         Section {
             heartRateRows
-            // Sem consumidor ainda: "Atividade ao Vivo" aparece desabilitada (a feature vem no ciclo 6).
-            LabeledContent("Atividade ao Vivo") {
-                Text("Em breve").foregroundStyle(FJColor.textSecondary)
-            }
+            liveActivityRows
         } header: {
             Text("Treino")
         } footer: {
-            Text("A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil.")
+            Text("A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island.")
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { systemLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled }
+        }
+    }
+
+    /// Atividade ao Vivo (§4.14): desligada nos Ajustes do iPhone → aviso + Abrir Ajustes; senão, o toggle.
+    @ViewBuilder
+    private var liveActivityRows: some View {
+        if systemLiveActivities {
+            Toggle("Atividade ao Vivo", isOn: $liveActivity)
+        } else {
+            LabeledContent("Atividade ao Vivo") {
+                Text("Desativada nos Ajustes do iPhone").foregroundStyle(FJColor.textSecondary)
+                    .multilineTextAlignment(.trailing)
+            }
+            Button("Abrir Ajustes") {
+                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            }
         }
     }
 

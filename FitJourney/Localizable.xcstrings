@@ -909,7 +909,16 @@
     },
     "Descanso ao fim da rodada: %@": {},
     "Descanso ao fim da rodada: %lld s": {},
-    "Descanso concluído": {},
+    "Descanso concluído": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest complete"
+          }
+        }
+      }
+    },
     "Descanso encerrado": {},
     "Descanso padrão": {
       "localizations": {
@@ -1989,8 +1998,26 @@
       }
     },
     "Pulada": {},
-    "Pular": {},
-    "Pular descanso": {},
+    "Pular": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip"
+          }
+        }
+      }
+    },
+    "Pular descanso": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip rest"
+          }
+        }
+      }
+    },
     "Qua": {
       "localizations": {
         "en": {
@@ -2191,7 +2218,16 @@
         }
       }
     },
-    "Sessão": {},
+    "Sessão": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session"
+          }
+        }
+      }
+    },
     "Seus dados continuam salvos. Tente de novo.": {
       "localizations": {
         "en": {
@@ -3790,6 +3826,336 @@
           "stringUnit": {
             "state": "translated",
             "value": "The app is back to first use."
+          }
+        }
+      }
+    },
+    "Série %lld de %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set %lld of %lld"
+          }
+        }
+      }
+    },
+    "alvo %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "target %@"
+          }
+        }
+      }
+    },
+    "alvo %@ repetições": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "target %@ reps"
+          }
+        }
+      }
+    },
+    "%lld de %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of %lld"
+          }
+        }
+      }
+    },
+    "%lld de %lld exercícios": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of %lld exercises"
+          }
+        }
+      }
+    },
+    "%lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld/%lld"
+          }
+        }
+      }
+    },
+    "Ajustar descanso": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adjust rest"
+          }
+        }
+      }
+    },
+    "Adiciona tempo ao descanso do treino em andamento.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adds time to the rest of the workout in progress."
+          }
+        }
+      }
+    },
+    "Encerra o descanso do treino em andamento.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ends the rest of the workout in progress."
+          }
+        }
+      }
+    },
+    "Segundos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seconds"
+          }
+        }
+      }
+    },
+    "DESCANSO": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "REST"
+          }
+        }
+      }
+    },
+    "DESCANSO CONCLUÍDO": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "REST COMPLETE"
+          }
+        }
+      }
+    },
+    "SUSTENTAÇÃO": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HOLD"
+          }
+        }
+      }
+    },
+    "PAUSADO": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "PAUSED"
+          }
+        }
+      }
+    },
+    "TREINO COMPLETO": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WORKOUT COMPLETE"
+          }
+        }
+      }
+    },
+    "TREINO CONCLUÍDO": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "WORKOUT SAVED"
+          }
+        }
+      }
+    },
+    "Tempo de treino": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout time"
+          }
+        }
+      }
+    },
+    "A seguir": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up next"
+          }
+        }
+      }
+    },
+    "Adicionar 15 segundos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add 15 seconds"
+          }
+        }
+      }
+    },
+    "+ 15 s": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ 15 s"
+          }
+        }
+      }
+    },
+    "Finalize no app para salvar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish in the app to save"
+          }
+        }
+      }
+    },
+    "Descanso. A seguir: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest. Up next: %@"
+          }
+        }
+      }
+    },
+    "Descanso até %@. A seguir: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest until %1$@. Up next: %2$@"
+          }
+        }
+      }
+    },
+    "FitJourney, descanso": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney, rest"
+          }
+        }
+      }
+    },
+    "FitJourney, descanso concluído": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney, rest complete"
+          }
+        }
+      }
+    },
+    "FitJourney, série": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney, set"
+          }
+        }
+      }
+    },
+    "FitJourney, sustentação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney, hold"
+          }
+        }
+      }
+    },
+    "FitJourney, cardio": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney, cardio"
+          }
+        }
+      }
+    },
+    "FitJourney, pausado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney, paused"
+          }
+        }
+      }
+    },
+    "FitJourney, treino completo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney, workout complete"
+          }
+        }
+      }
+    },
+    "FitJourney, treino concluído": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney, workout saved"
+          }
+        }
+      }
+    },
+    "Desativada nos Ajustes do iPhone": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turned off in iPhone Settings"
+          }
+        }
+      }
+    },
+    "A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max heart rate sets the heart rate zones. Without a manual value, we use 220 minus the age in your profile. The Live Activity shows the workout and rest on the Lock Screen and in the Dynamic Island."
           }
         }
       }

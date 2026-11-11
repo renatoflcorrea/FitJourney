@@ -32,8 +32,20 @@ final class FakeLiveActivityClient: LiveActivityClient {
         return id
     }
 
-    func update(id: String, state: State, staleDate: Date?, alert: LiveActivityAlert?) async {
+    var observed: [String: @MainActor @Sendable (String) -> Void] = [:]
+
+    func update(id: String, state: State, staleDate: Date?, alert: LiveActivityAlert?) async -> Bool {
+        guard existing.contains(where: { $0.id == id }) else { return false }
         updates.append(Update(id: id, state: state, staleDate: staleDate, alert: alert))
+        return true
+    }
+
+    func observeEnd(id: String, onEnd: @escaping @MainActor @Sendable (String) -> Void) { observed[id] = onEnd }
+
+    /// O sistema encerrou (usuário dispensou).
+    func systemDismiss(_ id: String) {
+        existing.removeAll { $0.id == id }
+        observed[id]?(id)
     }
 
     func end(id: String, state: State?, dismissal: LiveActivityDismissal) async {
@@ -234,7 +246,7 @@ struct LiveActivityControllerTests {
         gate = LiveActivityRestNotificationGate(wrapping: notifications)
         controller = LiveActivityController(engine: source, client: client, gate: gate, defaults: defaults,
                                             now: { clock.now }, unit: { .kg }, routineColorName: { _ in "blue" },
-                                            restDoneHold: .milliseconds(20))
+                                            isAppActive: { false }, restDoneHold: .milliseconds(20))
     }
 
     private func feed(_ snapshot: SessionSnapshot) async {
@@ -372,7 +384,6 @@ struct LiveActivityControllerTests {
         await controller.waitUntilIdle()
         #expect(client.requests.isEmpty)
         #expect(client.updates.map(\.id) == ["mine"])
-        controller.stop()
     }
 
     @Test func reconcileWithoutSessionEndsEverything() async {
@@ -382,7 +393,6 @@ struct LiveActivityControllerTests {
         #expect(source.restoreCount == 1)
         #expect(client.ends.map(\.id) == ["old"])
         #expect(controller.current == nil)
-        controller.stop()
     }
 }
 
@@ -397,10 +407,11 @@ struct LiveActivityIntentTests {
         let client = FakeLiveActivityClient()
         let controller = LiveActivityController(engine: source, client: client,
                                                 defaults: UserDefaults(suiteName: "li-\(UUID().uuidString)")!,
-                                                now: { Date(timeIntervalSinceReferenceDate: 800_000_500) }, unit: { .kg })
+                                                now: { Date(timeIntervalSinceReferenceDate: 800_000_500) }, unit: { .kg },
+                                                isAppActive: { false })
         source.snapshot = s.make(restEndsAt: Date(timeIntervalSinceReferenceDate: 800_000_600), restTotal: 120)
         LiveActivityIntentRouter.handler = controller
-        defer { LiveActivityIntentRouter.handler = nil; controller.stop() }
+        defer { LiveActivityIntentRouter.handler = nil }
 
         _ = try await AdjustRestIntent(sessionID: s.sessionID, seconds: 15).perform()
         _ = try await SkipRestIntent(sessionID: s.sessionID).perform()
@@ -413,11 +424,10 @@ struct LiveActivityIntentTests {
         let staleSession = UUID()
         client.existing = [LiveActivityRecord(id: "stale", sessionID: staleSession)]
         let controller = LiveActivityController(engine: source, client: client,
-                                                defaults: UserDefaults(suiteName: "li-\(UUID().uuidString)")!)
+                                                defaults: UserDefaults(suiteName: "li-\(UUID().uuidString)")!, isAppActive: { false })
         await controller.perform(.skipRest, sessionID: staleSession)
         #expect(source.sent.isEmpty)
         #expect(client.ends.map(\.id) == ["stale"])
-        controller.stop()
     }
 
     /// Fluxo real: motor + controlador, +15 s e Pular pelos intents com a sessão em descanso.
@@ -427,8 +437,7 @@ struct LiveActivityIntentTests {
         let clock = f.clock
         let controller = LiveActivityController(engine: f.engine, client: client,
                                                 defaults: UserDefaults(suiteName: "li-\(UUID().uuidString)")!,
-                                                now: { clock.now }, unit: { .kg })
-        defer { controller.stop() }
+                                                now: { clock.now }, unit: { .kg }, isAppActive: { false })
         let session = try f.start(try f.makeRoutine())
         controller.handle(try f.snapshot)
         await controller.waitUntilIdle()
