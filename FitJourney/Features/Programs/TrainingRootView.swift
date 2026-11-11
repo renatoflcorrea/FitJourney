@@ -9,6 +9,7 @@ struct TrainingRootView: View {
            sort: \TrainingProgram.startDate, order: .reverse) private var pastPrograms: [TrainingProgram]
     @Query(filter: #Predicate<TrainingProgram> { $0.isArchived }) private var archivedPrograms: [TrainingProgram]
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
 
     /// "Agora" da tela: atualizado ao aparecer, ao voltar ao primeiro plano e na virada do dia.
     @State private var now = Date.now
@@ -17,7 +18,6 @@ struct TrainingRootView: View {
     @State private var sheet: Sheet?
     @State private var routineToDelete: Routine?
     @State private var confirmArchive = false
-    @State private var showComingSoon = false
     @State private var errorMessage: String?
 
     private enum Sheet: Identifiable {
@@ -62,7 +62,7 @@ struct TrainingRootView: View {
             .navigationDestination(for: Shortcut.self) { shortcut in
                 switch shortcut {
                 case .library: ExerciseLibraryView()
-                case .history: HistoryPlaceholder() // TODO(P2.4)
+                case .history: WorkoutHistoryView()
                 case .programs: ProgramsListView()
                 }
             }
@@ -110,7 +110,6 @@ struct TrainingRootView: View {
             .alert("Não foi possível concluir", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: { Text(errorMessage ?? "") }
-            .comingSoonAlert(isPresented: $showComingSoon)
         }
     }
 
@@ -222,7 +221,7 @@ struct TrainingRootView: View {
                         RoutineRow(routine: routine, program: program, lastDone: last[routine.id], now: now)
                     }
                     .contextMenu {
-                        Button("Iniciar", systemImage: "play.fill") { showComingSoon = true } // TODO(P2.2)
+                        Button("Iniciar", systemImage: "play.fill") { sessionCoordinator?.start(routine: routine) }
                         NavigationLink(value: routine) { Label("Editar", systemImage: "pencil") }
                         Button("Duplicar", systemImage: "plus.square.on.square") {
                             perform { try RoutineActions(context: context).duplicate(routine) }

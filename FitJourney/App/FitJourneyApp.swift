@@ -4,9 +4,14 @@ import SwiftUI
 @main
 struct FitJourneyApp: App {
     private let modelContainer: ModelContainer
-    /// Motor da sessão de treino (única porta de escrita da sessão). A tela de treino (P2.2) o lê do ambiente.
+    /// Motor da sessão de treino (única porta de escrita da sessão).
     @State private var sessionEngine: SessionEngine
-    @Environment(\.scenePhase) private var scenePhase
+    /// Apresentação da sessão (tela cheia, acessório, treino esquecido). O `sessionHost` no `AppRoot`
+    /// chama `restoreIfNeeded()` no launch e `handleForeground()` ao voltar ao primeiro plano.
+    @State private var sessionCoordinator: SessionCoordinator
+    /// Apple Health: autorização contextual e gravação do treino acoplada ao motor (SPEC §6).
+    @State private var healthAuthorization: HealthAuthorization
+    @State private var healthController: HealthWorkoutController
 
     init() {
         let container = PersistenceController.makeAppContainer()
@@ -22,22 +27,38 @@ struct FitJourneyApp: App {
         modelContainer = container
 
         let engine = SessionEngine(context: container.mainContext, notifications: UserNotificationRestScheduler())
-        engine.restore()
+        let authorization = HealthAuthorization(store: HealthKitStore.shared)
         _sessionEngine = State(initialValue: engine)
+        _sessionCoordinator = State(initialValue: SessionCoordinator(engine: engine))
+        _healthAuthorization = State(initialValue: authorization)
+        _healthController = State(initialValue: HealthWorkoutController(
+            store: HealthKitStore.shared, authorization: authorization, context: container.mainContext))
     }
 
     var body: some Scene {
         WindowGroup {
             AppRoot()
                 .environment(sessionEngine)
+                .environment(sessionCoordinator)
+                .environment(healthAuthorization)
+                .environment(healthController)
+                .task {
+                    // Recuperar sessões espelhadas do relógio e acoplar o Saúde aos eventos do motor
+                    // (retoma a gravação de uma sessão em andamento e reconcilia treinos pendentes).
+                    healthController.startObservingMirroredSessions()
+                    healthController.attach(to: sessionEngine)
+                }
+                .task {
+                    // FC ao vivo na tela da sessão (zona exige FC máx configurada — entra com os Ajustes).
+                    for await sample in healthController.heartRateUpdates() {
+                        sessionCoordinator.heartRate = SessionHeartRate(bpm: Int(sample.bpm.rounded()), zone: nil)
+                    }
+                }
                 .task(priority: .utility) {
                     // Limpeza de mídia órfã/temporária, fora do caminho crítico do launch.
                     _ = await MediaMaintenance.runAtLaunch(container: modelContainer)
                 }
         }
         .modelContainer(modelContainer)
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { sessionEngine.handleForeground() }
-        }
     }
 }

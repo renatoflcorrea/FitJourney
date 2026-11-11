@@ -176,11 +176,13 @@ func userMessage(for error: Error) -> String {
 
 /// Aviso do DESIGN §5.5: treino em andamento impede trocar/arquivar/excluir programa.
 struct SessionBlockBanner: View {
+    @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
+
     var body: some View {
         FJBanner("Há um treino em andamento",
                  message: "Finalize ou descarte o treino em andamento antes de trocar, arquivar ou excluir programas.",
                  tone: .attention, actionTitle: "Ver treino") {
-            // TODO(P2.2): abrir a sessão em andamento.
+            sessionCoordinator?.present()
         }
     }
 }

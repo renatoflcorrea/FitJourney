@@ -8,6 +8,7 @@ struct TodayView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
     @Query(filter: #Predicate<TrainingProgram> { $0.isActive }) private var activePrograms: [TrainingProgram]
     /// Só para saber se existe algum programa (primeiro uso x "nenhum ativo"); busca no máximo um.
     @Query(TodayView.anyProgramDescriptor) private var anyProgram: [TrainingProgram]
@@ -15,7 +16,6 @@ struct TodayView: View {
     /// "Agora" da tela: atualizado ao voltar ao primeiro plano e na virada do dia (a sugestão depende da data).
     @State private var now = Date.now
     @State private var showPicker = false
-    @State private var showComingSoon = false
     @State private var createFromScratch = false
     @State private var errorMessage: String?
 
@@ -58,7 +58,6 @@ struct TodayView: View {
             .alert("Não foi possível concluir", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: { Text(errorMessage ?? "") }
-            .comingSoonAlert(isPresented: $showComingSoon)
         }
         .onAppear { now = .now }
         .onChange(of: scenePhase) { _, phase in if phase == .active { now = .now } }
@@ -187,10 +186,10 @@ struct TodayView: View {
         FJSecondaryButton("Treino livre", systemImage: "plus") { startWorkout(nil) }
     }
 
-    /// TODO(P2.2): iniciar a sessão de verdade (`SessionEngine`, injetado no ambiente pelo `FitJourneyApp`)
-    /// e abrir a tela de treino. `routine == nil` = treino livre.
+    /// Inicia (ou reabre, se já houver uma em andamento) a sessão e abre a tela de treino.
+    /// `routine == nil` = treino livre.
     private func startWorkout(_ routine: Routine?) {
-        showComingSoon = true
+        sessionCoordinator?.start(routine: routine)
     }
 }
 

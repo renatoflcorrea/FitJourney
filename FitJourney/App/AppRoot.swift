@@ -6,6 +6,7 @@ struct AppRoot: View {
     enum Tab: Hashable { case today, training, nutrition, health }
 
     @State private var selection: Tab = Self.initialTab
+    @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
 
     private static var initialTab: Tab {
         #if DEBUG
@@ -35,7 +36,17 @@ struct AppRoot: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
+        .modifier(OptionalSessionHost(coordinator: sessionCoordinator))
         .tint(FJColor.training)
+    }
+}
+
+/// Instala o host da sessão quando há coordenador no ambiente (previews podem não ter).
+private struct OptionalSessionHost: ViewModifier {
+    let coordinator: SessionCoordinator?
+
+    func body(content: Content) -> some View {
+        if let coordinator { content.sessionHost(coordinator) } else { content }
     }
 }
 
