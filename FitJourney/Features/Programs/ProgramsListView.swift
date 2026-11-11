@@ -49,20 +49,34 @@ struct ProgramDetailView: View {
     @State private var confirmDelete = false
     @State private var editing: TrainingProgram?
     @State private var errorMessage: String?
+    @State private var blockedBySession = false
+    /// Exclusão é feita só depois que a tela sai (evita ler o modelo apagado enquanto ela ainda renderiza).
+    @State private var deleteOnDisappear = false
 
     private var currentActive: TrainingProgram? {
         activePrograms.first { $0.persistentModelID != program.persistentModelID }
     }
 
     var body: some View {
+        if program.isDeleted || program.modelContext == nil {
+            Color.clear.accessibilityHidden(true)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         List {
+            if blockedBySession {
+                Section { SessionBlockBanner().listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
+            }
             Section {
                 VStack(alignment: .leading, spacing: FJSpacing.s) {
                     Text(verbatim: program.name).font(FJFont.sectionTitle)
                     if !program.goalText.isEmpty {
                         Text(verbatim: program.goalText).font(FJFont.label).foregroundStyle(FJColor.textSecondary)
                     }
-                    FlowRow {
+                    FlowLayout(spacing: FJSpacing.s) {
                         FJTag(LocalizedStringKey(program.goal.localizedName), area: .training)
                         FJTag(LocalizedStringKey(program.scheduleMode.localizedName), systemImage: program.scheduleMode.systemImage)
                         FJTag(LocalizedStringKey(program.originText))
@@ -134,7 +148,8 @@ struct ProgramDetailView: View {
         .confirmationDialog(Text("Excluir \(program.name)?"), isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Excluir programa", role: .destructive) {
                 perform {
-                    try ProgramStore(context: context).delete(program)
+                    try ProgramStore(context: context).ensureNoSession(in: program) // falha antes de sair da tela
+                    deleteOnDisappear = true
                     dismiss()
                 }
             }
@@ -145,14 +160,23 @@ struct ProgramDetailView: View {
         .alert("Não foi possível concluir", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
+        .onDisappear {
+            guard deleteOnDisappear else { return }
+            deleteOnDisappear = false
+            try? ProgramStore(context: context).delete(program)
+        }
     }
 
+    /// Cria a cópia na hora e abre o editor dela; cancelar a edição mantém a cópia (inativa).
     private func duplicate() {
         perform { editing = try ProgramStore(context: context).duplicate(program) }
     }
 
     private func perform(_ work: () throws -> Void) {
-        do { try work() } catch { errorMessage = error.localizedDescription }
+        blockedBySession = false
+        do { try work() } catch ProgramStoreError.sessionInProgress {
+            blockedBySession = true
+        } catch { errorMessage = userMessage(for: error) }
     }
 }
 

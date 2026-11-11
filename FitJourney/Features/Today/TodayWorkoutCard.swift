@@ -6,6 +6,7 @@ struct TodayWorkoutCard: View {
     let program: TrainingProgram
     let routine: Routine
     let lastDone: Date?
+    let now: Date
     let badge: LocalizedStringKey
     let isPrimary: Bool
     let onStart: (Routine?) -> Void
@@ -16,7 +17,7 @@ struct TodayWorkoutCard: View {
     var body: some View {
         FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.m) {
-                Text(verbatim: program.name + (program.weekProgressText.map { " · \($0)" } ?? ""))
+                Text(verbatim: program.name + (program.weekProgressText(on: now).map { " · \($0)" } ?? ""))
                     .font(FJFont.overline)
                     .foregroundStyle(FJColor.textSecondary)
 
@@ -29,7 +30,7 @@ struct TodayWorkoutCard: View {
                 }
                 .accessibilityElement(children: .combine)
 
-                Text(verbatim: "\(routine.summaryText) · \(lastDoneText(lastDone))")
+                Text(verbatim: "\(routine.summaryText) · \(lastDoneText(lastDone, now: now))")
                     .font(FJFont.label)
                     .foregroundStyle(FJColor.textSecondary)
 

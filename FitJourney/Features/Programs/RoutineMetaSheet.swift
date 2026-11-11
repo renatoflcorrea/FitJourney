@@ -17,6 +17,23 @@ struct RoutineMetaSheet: View {
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
 
+    /// Dias já marcados em outras fichas do programa → nomes dessas fichas.
+    private var usedDays: [Weekday: [String]] {
+        var result: [Weekday: [String]] = [:]
+        for routine in program.sortedRoutines {
+            for day in routine.weekdays { result[day, default: []].append(routine.name) }
+        }
+        return result
+    }
+
+    /// Aviso "dia já usado por outra ficha" para os dias escolhidos que colidem.
+    private var conflictText: String? {
+        let clashes = weekdays.sorted().compactMap { day in usedDays[day].map { (day, $0) } }
+        guard !clashes.isEmpty else { return nil }
+        let list = clashes.map { "\($0.0.shortName) (\($0.1.joined(separator: ", ")))" }.joined(separator: "; ")
+        return String(localized: "Dia já usado por outra ficha: \(list). Os dois treinos aparecem no mesmo dia.")
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -30,23 +47,23 @@ struct RoutineMetaSheet: View {
                 Section("Cor") {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: FJSpacing.m) {
-                            ForEach(RoutineColor.allCases) { option in
+                            ForEach(RoutineColor.allCases, id: \.self) { option in
                                 Button { color = option } label: {
                                     Circle()
-                                        .fill(option.color)
+                                        .fill(option.fill)
                                         .frame(width: 32, height: 32)
                                         .overlay {
                                             if color == option {
                                                 Image(systemName: "checkmark")
                                                     .font(.caption.weight(.bold))
-                                                    .foregroundStyle(FJColor.onFill)
+                                                    .foregroundStyle(option.onFill)
                                             }
                                         }
                                         .frame(width: FJSize.minTap, height: FJSize.minTap)
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel(Text(option.localizedName))
+                                .accessibilityLabel(Text(verbatim: option.localizedName))
                                 .accessibilityAddTraits(color == option ? .isSelected : [])
                             }
                         }
@@ -55,11 +72,16 @@ struct RoutineMetaSheet: View {
 
                 if program.scheduleMode == .weekly {
                     Section {
-                        WeekdayPicker(selection: $weekdays)
+                        WeekdayPicker(selection: $weekdays, usedByOthers: Set(usedDays.keys))
                     } header: {
                         Text("Dias da semana")
                     } footer: {
-                        Text("A semana começa na segunda. Dois treinos podem cair no mesmo dia.")
+                        VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                            Text("A semana começa na segunda. Dois treinos podem cair no mesmo dia.")
+                            if let conflict = conflictText {
+                                Label(conflict, systemImage: "info.circle.fill")
+                            }
+                        }
                     }
                 }
             }
@@ -98,8 +120,10 @@ struct RoutineMetaSheet: View {
 }
 
 /// Sete botões de dia (semana começa na segunda), alvo mínimo de 44 pt.
+/// Dia já usado por outra ficha leva um ponto e é anunciado pelo VoiceOver; pode ser compartilhado.
 struct WeekdayPicker: View {
     @Binding var selection: Set<Weekday>
+    var usedByOthers: Set<Weekday> = []
 
     var body: some View {
         HStack(spacing: FJSpacing.xs) {
@@ -113,9 +137,18 @@ struct WeekdayPicker: View {
                         .foregroundStyle(on ? FJColor.onFill : FJColor.textPrimary)
                         .frame(maxWidth: .infinity, minHeight: FJSize.minTap)
                         .background(on ? FJColor.trainingFill : FJColor.fill, in: Circle())
+                        .overlay(alignment: .topTrailing) {
+                            if usedByOthers.contains(day) {
+                                Circle()
+                                    .fill(FJColor.attention)
+                                    .frame(width: 8, height: 8)
+                                    .accessibilityHidden(true)
+                            }
+                        }
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(Text(verbatim: day.fullName))
+                .accessibilityValue(usedByOthers.contains(day) ? Text("já usado por outra ficha") : Text(verbatim: ""))
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }

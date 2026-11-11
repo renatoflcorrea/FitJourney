@@ -2,16 +2,6 @@ import SwiftUI
 
 // Pontos de integração: telas de outros pacotes ainda não integradas.
 
-/// TODO(P1.3): trocar por `ExerciseLibraryView` (Biblioteca de exercícios).
-struct ExerciseLibraryPlaceholder: View {
-    var body: some View {
-        FJEmptyState("Biblioteca de exercícios", systemImage: "books.vertical",
-                     message: "Em breve: busca, filtros e mídia dos exercícios.")
-            .navigationTitle("Biblioteca")
-            .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
 /// TODO(P2.4): trocar por `HistoryView` (Histórico de treinos).
 struct HistoryPlaceholder: View {
     var body: some View {

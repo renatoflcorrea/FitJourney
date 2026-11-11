@@ -144,7 +144,7 @@ struct ProgramEditorSheet: View {
 
     private func trySave() {
         guard isNameValid else { showNameError = true; return }
-        if !isEditing, activate, otherActive != nil {
+        if activate, !(program?.isActive ?? false), otherActive != nil {
             confirmActivation = true
         } else {
             save(activating: activate)
@@ -153,6 +153,7 @@ struct ProgramEditorSheet: View {
 
     private func save(activating: Bool) {
         let store = ProgramStore(context: context)
+        var created: TrainingProgram?
         do {
             let target: TrainingProgram
             if let program {
@@ -160,7 +161,10 @@ struct ProgramEditorSheet: View {
             } else {
                 target = try store.createProgram(name: trimmedName, goal: goal, scheduleMode: mode,
                                                  startDate: startDate, origin: .manual)
+                created = target
             }
+            // Ativar primeiro: se houver treino em andamento de outro programa, falha antes de mexer nos campos.
+            if activating && !target.isActive { try store.activate(target) }
             target.name = trimmedName
             target.goal = goal
             target.goalText = goalText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -169,15 +173,16 @@ struct ProgramEditorSheet: View {
             target.endDate = hasEndDate ? max(endDate, startDate) : nil
             target.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
             target.updatedAt = .now
-            if activating && !target.isActive {
-                try store.activate(target)
-            } else {
-                try context.save()
-            }
+            try context.save()
             onSaved(target)
             dismiss()
         } catch {
-            saveError = error.localizedDescription
+            // Sem estado parcial: programa recém-criado que não pôde ser concluído é removido.
+            if let created {
+                context.delete(created)
+                try? context.save()
+            }
+            saveError = userMessage(for: error)
         }
     }
 }

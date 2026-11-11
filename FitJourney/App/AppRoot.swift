@@ -9,8 +9,12 @@ struct AppRoot: View {
 
     private static var initialTab: Tab {
         #if DEBUG
-        // QA/evidências: `-fj.startTab training`.
-        if UserDefaults.standard.string(forKey: "fj.startTab") == "training" { return .training }
+        // QA/evidências: `-fj.startTab training|nutrition`.
+        switch UserDefaults.standard.string(forKey: "fj.startTab") {
+        case "training": return .training
+        case "nutrition": return .nutrition
+        default: break
+        }
         #endif
         return .today
     }
@@ -24,8 +28,7 @@ struct AppRoot: View {
                 TrainingRootView()
             }
             SwiftUI.Tab("Dieta", systemImage: "fork.knife", value: Tab.nutrition) {
-                // PONTO DE INTEGRAÇÃO (P3.x): trocar por `NutritionRootView()`.
-                PlaceholderScreen(title: "Dieta")
+                NutritionRootView()
             }
             SwiftUI.Tab("Saúde", systemImage: "heart", value: Tab.health) {
                 PlaceholderScreen(title: "Saúde")

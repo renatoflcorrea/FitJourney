@@ -8,8 +8,12 @@ struct TrainingRootView: View {
     @Query(filter: #Predicate<TrainingProgram> { !$0.isActive && !$0.isArchived },
            sort: \TrainingProgram.startDate, order: .reverse) private var pastPrograms: [TrainingProgram]
     @Query(filter: #Predicate<TrainingProgram> { $0.isArchived }) private var archivedPrograms: [TrainingProgram]
-    @Query(filter: #Predicate<WorkoutSession> { $0.statusRaw == "completed" }) private var completedSessions: [WorkoutSession]
+    @Environment(\.scenePhase) private var scenePhase
 
+    /// "Agora" da tela: atualizado ao aparecer, ao voltar ao primeiro plano e na virada do dia.
+    @State private var now = Date.now
+    @State private var path = NavigationPath()
+    @State private var blockedBySession = false
     @State private var sheet: Sheet?
     @State private var routineToDelete: Routine?
     @State private var confirmArchive = false
@@ -34,8 +38,11 @@ struct TrainingRootView: View {
     private var hasAnyProgram: Bool { active != nil || !pastPrograms.isEmpty || !archivedPrograms.isEmpty }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             List {
+                if blockedBySession {
+                    Section { SessionBlockBanner().listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
+                }
                 if !hasAnyProgram {
                     firstUseSection
                 } else if let active {
@@ -50,16 +57,26 @@ struct TrainingRootView: View {
                 }
             }
             .navigationTitle("Treinos")
-            .navigationDestination(for: Routine.self) { RoutineEditorDestination(routine: $0) }
+            .navigationDestination(for: Routine.self) { RoutineEditorView(routine: $0) }
             .navigationDestination(for: TrainingProgram.self) { ProgramDetailView(program: $0) }
             .navigationDestination(for: Shortcut.self) { shortcut in
                 switch shortcut {
-                case .library: ExerciseLibraryPlaceholder() // TODO(P1.3)
+                case .library: ExerciseLibraryView()
                 case .history: HistoryPlaceholder() // TODO(P2.4)
                 case .programs: ProgramsListView()
                 }
             }
             .toolbar { toolbarContent }
+            .onAppear {
+                now = .now
+                #if DEBUG
+                // QA/evidências: `-fj.openFirstRoutine YES` abre o editor da primeira ficha.
+                if UserDefaults.standard.bool(forKey: "fj.openFirstRoutine"), path.isEmpty,
+                   let routine = active?.sortedRoutines.first { path.append(routine) }
+                #endif
+            }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { now = .now } }
+            .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in now = .now }
             .sheet(item: $sheet) { sheet in
                 switch sheet {
                 case .newProgram: ProgramEditorSheet(program: nil)
@@ -127,7 +144,7 @@ struct TrainingRootView: View {
                          actionTitle: "Criar programa") { sheet = .newProgram }
                 .listRowBackground(Color.clear)
             Button("Começar com um exemplo (ABC)") {
-                perform { try StarterProgram.make(in: context) }
+                perform { try SampleProgramFactory.makeStarterABC(in: context, activate: true) }
             }
             .frame(maxWidth: .infinity, minHeight: FJSize.minTap)
         }
@@ -167,18 +184,23 @@ struct TrainingRootView: View {
                     }
                     .accessibilityLabel(Text("Ações do programa"))
                 }
-                FlowRow {
+                FlowLayout(spacing: FJSpacing.s) {
                     FJTag(LocalizedStringKey(program.goal.localizedName), area: .training)
                     FJTag(LocalizedStringKey(program.scheduleMode.localizedName), systemImage: program.scheduleMode.systemImage)
-                    if let week = program.weekProgressText { FJTag(LocalizedStringKey(week)) }
+                    if let week = program.weekProgressText(on: now) { FJTag(LocalizedStringKey(week)) }
                 }
-                if let adherence = program.weeklyAdherence(sessions: completedSessions) {
+                if let adherence = try? ProgramStore(context: context).weeklyAdherence(for: program, now: now) {
                     Text("Esta semana: \(adherence.done) de \(adherence.planned) treinos")
                         .font(FJFont.label).foregroundStyle(FJColor.textSecondary)
                 }
-                if program.isExpired, let end = program.endDate {
-                    FJBanner("Este programa terminou em \(end.formatted(.dateTime.day().month(.twoDigits).year()))",
-                             tone: .attention, actionTitle: "Estender") { sheet = .editProgram(program) }
+                if program.isExpired(on: now), let end = program.endDate {
+                    VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                        FJBanner("Este programa terminou em \(end.formatted(.dateTime.day().month(.twoDigits).year()))",
+                                 tone: .attention, actionTitle: "Estender") { sheet = .editProgram(program) }
+                        Button("Criar novo") { sheet = .newProgram }
+                            .font(.subheadline.weight(.semibold))
+                            .frame(minHeight: FJSize.minTap)
+                    }
                 }
             }
             .padding(.vertical, FJSpacing.xs)
@@ -197,7 +219,7 @@ struct TrainingRootView: View {
             } else {
                 ForEach(program.sortedRoutines) { routine in
                     NavigationLink(value: routine) {
-                        RoutineRow(routine: routine, program: program, lastDone: last[routine.id])
+                        RoutineRow(routine: routine, program: program, lastDone: last[routine.id], now: now)
                     }
                     .contextMenu {
                         Button("Iniciar", systemImage: "play.fill") { showComingSoon = true } // TODO(P2.2)
@@ -247,15 +269,19 @@ struct TrainingRootView: View {
 
     enum Shortcut: Hashable { case library, history, programs }
 
+    /// "Duplicar" cria a cópia na hora e abre o editor dela; cancelar a edição mantém a cópia (inativa).
     private func duplicate(_ program: TrainingProgram) {
         do {
             let copy = try ProgramStore(context: context).duplicate(program)
             sheet = .editProgram(copy)
-        } catch { errorMessage = error.localizedDescription }
+        } catch { errorMessage = userMessage(for: error) }
     }
 
     private func perform(_ work: () throws -> some Any) {
-        do { _ = try work() } catch { errorMessage = error.localizedDescription }
+        blockedBySession = false
+        do { _ = try work() } catch ProgramStoreError.sessionInProgress {
+            blockedBySession = true
+        } catch { errorMessage = userMessage(for: error) }
     }
 }
 
@@ -264,6 +290,7 @@ private struct RoutineRow: View {
     let routine: Routine
     let program: TrainingProgram
     let lastDone: Date?
+    let now: Date
 
     var body: some View {
         HStack(alignment: .top, spacing: FJSpacing.m) {
@@ -273,9 +300,9 @@ private struct RoutineRow: View {
                 Text(verbatim: routine.summaryText)
                     .font(FJFont.label).foregroundStyle(FJColor.textSecondary)
                 if program.scheduleMode == .weekly {
-                    WeekdayDots(weekdays: routine.weekdays, tint: routine.routineColor.color)
+                    WeekdayDots(weekdays: routine.weekdays, color: routine.routineColor)
                 }
-                Text(verbatim: lastDoneText(lastDone))
+                Text(verbatim: lastDoneText(lastDone, now: now))
                     .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 if routine.exerciseCount == 0 {
                     FJTag("Sem exercícios", systemImage: "exclamationmark.triangle.fill", tone: .attention)
@@ -302,48 +329,6 @@ struct ProgramRow: View {
         }
         .padding(.vertical, FJSpacing.xs)
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// Linha que quebra para a seguinte quando falta espaço (etiquetas do programa).
-struct FlowRow<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        FlowLayout(spacing: FJSpacing.s) { content }
-    }
-}
-
-private struct FlowLayout: Layout {
-    var spacing: CGFloat
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        arrange(width: proposal.width ?? .infinity, subviews: subviews).size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = arrange(width: bounds.width, subviews: subviews)
-        for (index, origin) in result.origins.enumerated() {
-            subviews[index].place(at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y), proposal: .unspecified)
-        }
-    }
-
-    private func arrange(width: CGFloat, subviews: Subviews) -> (size: CGSize, origins: [CGPoint]) {
-        var origins: [CGPoint] = []
-        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, maxX: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > 0, x + size.width > width {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            origins.append(CGPoint(x: x, y: y))
-            x += size.width + spacing
-            maxX = max(maxX, x - spacing)
-            rowHeight = max(rowHeight, size.height)
-        }
-        return (CGSize(width: maxX, height: y + rowHeight), origins)
     }
 }
 

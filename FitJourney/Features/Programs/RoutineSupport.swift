@@ -3,39 +3,6 @@ import SwiftUI
 
 // Apresentação compartilhada de fichas e programas (Hoje e Treinos).
 
-/// Cores disponíveis para fichas (`Routine.colorName`), todas vindas de tokens do DesignSystem.
-enum RoutineColor: String, CaseIterable, Identifiable {
-    case orange, blue, green, teal, pink, magenta, gray
-
-    var id: String { rawValue }
-
-    init(name: String) { self = RoutineColor(rawValue: name) ?? .orange }
-
-    var color: Color {
-        switch self {
-        case .orange: FJColor.training
-        case .blue: FJColor.coach
-        case .green: FJColor.nutrition
-        case .teal: FJColor.aerobic
-        case .pink: FJColor.health
-        case .magenta: FJColor.zone5
-        case .gray: FJColor.zone1
-        }
-    }
-
-    var localizedName: LocalizedStringKey {
-        switch self {
-        case .orange: "Laranja"
-        case .blue: "Azul"
-        case .green: "Verde"
-        case .teal: "Turquesa"
-        case .pink: "Rosa"
-        case .magenta: "Magenta"
-        case .gray: "Cinza"
-        }
-    }
-}
-
 extension ScheduleMode {
     var systemImage: String {
         switch self {
@@ -55,17 +22,9 @@ extension ScheduleMode {
 }
 
 extension Weekday {
-    /// Inicial para os círculos de dia (S T Q Q S S D).
+    /// Inicial para os círculos de dia (S T Q Q S S D), vinda do calendário do idioma atual.
     var initial: String {
-        switch self {
-        case .monday: String(localized: "S", comment: "Inicial de segunda-feira")
-        case .tuesday: String(localized: "T", comment: "Inicial de terça-feira")
-        case .wednesday: String(localized: "Q", comment: "Inicial de quarta-feira")
-        case .thursday: String(localized: "Q", comment: "Inicial de quinta-feira")
-        case .friday: String(localized: "S", comment: "Inicial de sexta-feira")
-        case .saturday: String(localized: "S", comment: "Inicial de sábado")
-        case .sunday: String(localized: "D", comment: "Inicial de domingo")
-        }
+        Calendar.current.veryShortStandaloneWeekdaySymbols[calendarWeekday - 1]
     }
 
     var fullName: String {
@@ -83,13 +42,6 @@ extension Weekday {
 
 extension Routine {
     var routineColor: RoutineColor { RoutineColor(name: colorName) }
-
-    /// Letra do selo: `symbol`, senão a inicial do nome.
-    var badgeLetter: String {
-        let trimmed = symbol.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty { return String(trimmed.prefix(2)) }
-        return name.first.map { String($0).uppercased() } ?? "?"
-    }
 
     var exerciseCount: Int { (exercises ?? []).count }
 
@@ -144,13 +96,14 @@ extension RoutineExercise {
 }
 
 extension TrainingProgram {
-    var isExpired: Bool {
+    /// Fim no passado em relação a `date`.
+    func isExpired(on date: Date = .now, calendar: Calendar = .current) -> Bool {
         guard let endDate else { return false }
-        return Calendar.current.startOfDay(for: endDate) < Calendar.current.startOfDay(for: .now)
+        return calendar.startOfDay(for: endDate) < calendar.startOfDay(for: date)
     }
 
-    var weekProgressText: String? {
-        guard let progress = weekProgress() else { return nil }
+    func weekProgressText(on date: Date = .now) -> String? {
+        guard let progress = weekProgress(on: date) else { return nil }
         return String(localized: "semana \(progress.week) de \(progress.of)")
     }
 
@@ -171,41 +124,12 @@ extension TrainingProgram {
         case .duplicated: String(localized: "Duplicado")
         }
     }
-
-    /// Aderência da semana (modo semanal): treinos concluídos × treinos previstos, semana começando na segunda.
-    func weeklyAdherence(sessions: [WorkoutSession], now: Date = .now) -> (done: Int, planned: Int)? {
-        guard scheduleMode == .weekly else { return nil }
-        var calendar = Calendar.current
-        calendar.firstWeekday = 2
-        guard let week = calendar.dateInterval(of: .weekOfYear, for: now) else { return nil }
-        let planned = sortedRoutines.reduce(0) { $0 + $1.weekdays.count }
-        guard planned > 0 else { return nil }
-        let done = sessions.filter {
-            $0.programID == id && $0.status == .completed && week.contains($0.endedAt ?? $0.startedAt)
-        }.count
-        return (done, planned)
-    }
-}
-
-/// Selo quadrado com a letra da ficha, na cor dela.
-struct RoutineBadge: View {
-    let routine: Routine
-    var size: CGFloat = 48
-
-    var body: some View {
-        Text(verbatim: routine.badgeLetter)
-            .font(.system(size: size * 0.45, weight: .bold, design: .rounded))
-            .foregroundStyle(FJColor.onFill)
-            .frame(width: size, height: size)
-            .background(routine.routineColor.color.mix(with: .black, by: 0.12), in: FJRadius.shape(FJRadius.field))
-            .accessibilityHidden(true)
-    }
 }
 
 /// Sete círculos S T Q Q S S D; os dias ativos ficam preenchidos.
 struct WeekdayDots: View {
     let weekdays: Set<Weekday>
-    var tint: Color = FJColor.training
+    var color: RoutineColor = .orange
 
     var body: some View {
         HStack(spacing: FJSpacing.xs) {
@@ -213,9 +137,9 @@ struct WeekdayDots: View {
                 let on = weekdays.contains(day)
                 Text(verbatim: day.initial)
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(on ? FJColor.onFill : FJColor.textSecondary)
+                    .foregroundStyle(on ? color.onFill : FJColor.textSecondary)
                     .frame(width: 22, height: 22)
-                    .background(on ? tint.mix(with: .black, by: 0.12) : FJColor.fill, in: Circle())
+                    .background(on ? color.fill : FJColor.fill, in: Circle())
             }
         }
         .accessibilityElement(children: .ignore)
@@ -239,5 +163,24 @@ func lastDoneText(_ date: Date?, now: Date = .now) -> String {
     default:
         let day = date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated))
         return String(localized: "última vez: \(day)")
+    }
+}
+
+/// Texto para mostrar ao usuário quando uma operação do `ProgramStore` falha.
+func userMessage(for error: Error) -> String {
+    if case ProgramStoreError.sessionInProgress(let name) = error {
+        return String(localized: "Finalize ou descarte o treino em andamento (\(name)) antes de mudar de programa.")
+    }
+    return error.localizedDescription
+}
+
+/// Aviso do DESIGN §5.5: treino em andamento impede trocar/arquivar/excluir programa.
+struct SessionBlockBanner: View {
+    var body: some View {
+        FJBanner("Há um treino em andamento",
+                 message: "Finalize ou descarte o treino em andamento antes de trocar, arquivar ou excluir programas.",
+                 tone: .attention, actionTitle: "Ver treino") {
+            // TODO(P2.2): abrir a sessão em andamento.
+        }
     }
 }

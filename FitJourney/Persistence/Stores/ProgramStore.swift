@@ -1,6 +1,12 @@
 import Foundation
 import SwiftData
 
+/// Erros de regra do `ProgramStore`.
+enum ProgramStoreError: Error, Equatable {
+    /// Há um treino em andamento que impede a operação (DESIGN §5.5): finalize ou descarte antes.
+    case sessionInProgress(routineName: String)
+}
+
 /// Operações de programas/fichas que mantêm invariantes (ex.: um único programa ativo).
 /// Fino de propósito: as telas leem com `@Query` e chamam o store para mutações com regra.
 ///
@@ -69,6 +75,39 @@ struct ProgramStore {
         return result
     }
 
+
+    /// Lança `sessionInProgress` se o treino em andamento pertence a este programa.
+    func ensureNoSession(in program: TrainingProgram) throws {
+        if let session = try SessionStore(context: context).inProgressSession(), session.programID == program.id {
+            throw ProgramStoreError.sessionInProgress(routineName: session.routineName)
+        }
+    }
+
+    /// Aderência da semana (modo semanal): sessões concluídas **de ficha** (treino livre não conta),
+    /// limitadas ao previsto. `nil` fora do modo semanal ou sem dias marcados.
+    func weeklyAdherence(for program: TrainingProgram, now: Date = .now,
+                         calendar: Calendar = .current) throws -> (done: Int, planned: Int)? {
+        guard program.scheduleMode == .weekly else { return nil }
+        let planned = program.sortedRoutines.reduce(0) { $0 + $1.weekdays.count }
+        let completed = SessionStatus.completed.rawValue
+        let pid: UUID? = program.id
+        let sessions = try context.fetch(FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.programID == pid && $0.statusRaw == completed }))
+        let dates = sessions.filter { $0.routineID != nil }.map { $0.endedAt ?? $0.startedAt }
+        return ScheduleResolver.weeklyAdherence(plannedDays: planned, completedDates: dates, now: now, calendar: calendar)
+    }
+
+    /// Próximo treino do modo semanal a partir de amanhã.
+    func nextWeeklyWorkout(for program: TrainingProgram, after date: Date = .now,
+                           calendar: Calendar = .current) -> (weekday: Weekday, routine: Routine)? {
+        let infos = program.sortedRoutines.map {
+            ScheduleResolver.RoutineInfo(id: $0.id, sortIndex: $0.sortIndex, weekdays: $0.weekdays)
+        }
+        guard let next = ScheduleResolver.nextWorkout(after: date, routines: infos, calendar: calendar),
+              let routine = program.sortedRoutines.first(where: { $0.id == next.routineID }) else { return nil }
+        return (next.weekday, routine)
+    }
+
     // MARK: Mutações
 
     @discardableResult
@@ -82,6 +121,11 @@ struct ProgramStore {
 
     /// Ativa o programa e desativa qualquer outro (exatamente um ativo). Desarquiva se preciso.
     func activate(_ program: TrainingProgram) throws {
+        // Trocar de programa com treino em andamento de outro programa: bloqueado (DESIGN §5.5).
+        if let session = try SessionStore(context: context).inProgressSession(),
+           let owner = session.programID, owner != program.id {
+            throw ProgramStoreError.sessionInProgress(routineName: session.routineName)
+        }
         let now = Date.now
         for other in try context.fetch(FetchDescriptor<TrainingProgram>(predicate: #Predicate { $0.isActive }))
         where other.persistentModelID != program.persistentModelID {
@@ -95,12 +139,14 @@ struct ProgramStore {
     }
 
     func deactivate(_ program: TrainingProgram) throws {
+        try ensureNoSession(in: program)
         program.isActive = false
         program.updatedAt = .now
         try context.save()
     }
 
     func archive(_ program: TrainingProgram) throws {
+        try ensureNoSession(in: program)
         program.isActive = false
         program.isArchived = true
         program.updatedAt = .now
@@ -110,6 +156,7 @@ struct ProgramStore {
     /// Apaga o programa e, em cascata, fichas → exercícios da ficha → séries prescritas.
     /// Sessões ficam no histórico (com `routine = nil`); exercícios do catálogo ficam.
     func delete(_ program: TrainingProgram) throws {
+        try ensureNoSession(in: program)
         context.delete(program)
         try context.save()
     }
@@ -154,8 +201,18 @@ struct ProgramStore {
 
     /// Duplica um programa inteiro (fichas, exercícios, séries) como `origin = .duplicated`, inativo.
     /// A carga atual vira a carga inicial da cópia.
+    /// Se algo falhar no meio, descarta a cópia parcial (`rollback`) antes de relançar o erro.
     @discardableResult
     func duplicate(_ program: TrainingProgram, name: String? = nil) throws -> TrainingProgram {
+        do {
+            return try duplicateUnchecked(program, name: name)
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    private func duplicateUnchecked(_ program: TrainingProgram, name: String?) throws -> TrainingProgram {
         let copy = TrainingProgram(name: name ?? String(localized: "\(program.name) (cópia)"),
                                    goal: program.goal, scheduleMode: program.scheduleMode,
                                    startDate: .now, origin: .duplicated)

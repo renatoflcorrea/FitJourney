@@ -164,7 +164,7 @@ struct SessionStoreTests {
         #expect(try f.sessions.inProgressSession()?.id == s.id)
         try f.sessions.finish(s)
         let free = try f.sessions.start(routine: nil)
-        #expect(free.routineName == "Treino livre")
+        #expect(free.routineName == String(localized: "Treino livre"))
         #expect(free.exercises?.isEmpty == true)
     }
 

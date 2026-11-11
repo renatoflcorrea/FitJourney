@@ -245,7 +245,7 @@ struct RoutineEditorTests {
         f.context.delete(exercise)
         try f.context.save()
         #expect(items[0].exercise == nil)
-        #expect(items[0].displayName == "Exercício removido")
+        #expect(items[0].displayName == String(localized: "Exercício removido"))
         #expect(!items[0].prescriptionSummary.isEmpty)
         #expect(PrescriptionDraft(items[0]).measurement == .repsAndLoad)
     }

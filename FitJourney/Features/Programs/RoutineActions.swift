@@ -9,11 +9,20 @@ struct RoutineActions {
     /// Duplica a ficha (exercícios e séries) logo após a original; a carga atual vira a inicial da cópia.
     @discardableResult
     func duplicate(_ routine: Routine) throws -> Routine {
+        do {
+            return try duplicateUnchecked(routine)
+        } catch {
+            context.rollback() // sem cópia parcial
+            throw error
+        }
+    }
+
+    private func duplicateUnchecked(_ routine: Routine) throws -> Routine {
         guard let program = routine.program else { return routine }
         let ordered = program.sortedRoutines
         let insertAt = (ordered.firstIndex { $0 === routine } ?? ordered.count - 1) + 1
         let copy = Routine(name: String(localized: "\(routine.name) (cópia)"), symbol: routine.symbol,
-                           sortIndex: insertAt, weekdays: routine.weekdays)
+                           sortIndex: insertAt, weekdays: [])  // cópia nasce sem dias: evita dois treinos no mesmo dia
         copy.colorName = routine.colorName
         copy.notes = routine.notes
         context.insert(copy)

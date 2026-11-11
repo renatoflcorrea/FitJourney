@@ -7,64 +7,106 @@ struct TodayView: View {
     var onOpenTraining: () -> Void = {}
 
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @Query(filter: #Predicate<TrainingProgram> { $0.isActive }) private var activePrograms: [TrainingProgram]
-    @Query private var allPrograms: [TrainingProgram]
-    /// Só para reavaliar a sugestão quando uma sessão termina.
-    @Query(filter: #Predicate<WorkoutSession> { $0.statusRaw == "completed" }) private var completedSessions: [WorkoutSession]
+    /// Só para saber se existe algum programa (primeiro uso x "nenhum ativo"); busca no máximo um.
+    @Query(TodayView.anyProgramDescriptor) private var anyProgram: [TrainingProgram]
 
+    /// "Agora" da tela: atualizado ao voltar ao primeiro plano e na virada do dia (a sugestão depende da data).
+    @State private var now = Date.now
     @State private var showPicker = false
     @State private var showComingSoon = false
+    @State private var createFromScratch = false
     @State private var errorMessage: String?
 
-    private var active: TrainingProgram? { activePrograms.first }
+    private static var anyProgramDescriptor: FetchDescriptor<TrainingProgram> {
+        var descriptor = FetchDescriptor<TrainingProgram>()
+        descriptor.fetchLimit = 1
+        return descriptor
+    }
+
+    /// Tudo que o cartão precisa, lido uma vez por renderização.
+    private enum Content {
+        case firstUse
+        case noActive
+        case failed
+        case program(TrainingProgram, ScheduleSuggestion, [UUID: Date])
+    }
 
     var body: some View {
+        let content = loadContent()
         NavigationStack {
             ScrollView {
                 VStack(spacing: FJSpacing.cardGap) {
-                    workoutSection
+                    workoutSection(content)
                 }
                 .padding(.horizontal, FJSpacing.screenMargin)
                 .padding(.bottom, FJSpacing.xl)
             }
             .fjScreenBackground()
             .navigationTitle("Hoje")
-            .navigationSubtitle(Text(Date.now, format: .dateTime.weekday(.wide).day().month(.wide)))
+            .navigationSubtitle(Text(now, format: .dateTime.weekday(.wide).day().month(.wide)))
             .sheet(isPresented: $showPicker) {
-                if let active {
-                    RoutinePickerSheet(program: active, suggestedIDs: suggestion?.routineIDs ?? []) { routine in
+                if case .program(let program, let suggestion, _) = content {
+                    RoutinePickerSheet(program: program, suggestedIDs: suggestion.routineIDs) { routine in
                         showPicker = false
                         startWorkout(routine)
                     }
                 }
             }
+            .sheet(isPresented: $createFromScratch) { ProgramEditorSheet(program: nil) }
             .alert("Não foi possível concluir", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: { Text(errorMessage ?? "") }
             .comingSoonAlert(isPresented: $showComingSoon)
         }
+        .onAppear { now = .now }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { now = .now } }
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in now = .now }
+    }
+
+    // MARK: Dados
+
+    private func loadContent() -> Content {
+        guard let program = activePrograms.first else {
+            return anyProgram.isEmpty ? .firstUse : .noActive
+        }
+        let store = ProgramStore(context: context)
+        do {
+            let suggestion = try store.todaySuggestion(for: program, on: now)
+            let last = try store.lastCompletionByRoutine(programID: program.id)
+            return .program(program, suggestion, last)
+        } catch {
+            return .failed
+        }
     }
 
     // MARK: Treino do dia
 
-    private var suggestion: ScheduleSuggestion? {
-        guard let active else { return nil }
-        return try? ProgramStore(context: context).todaySuggestion(for: active)
-    }
-
     @ViewBuilder
-    private var workoutSection: some View {
-        if allPrograms.isEmpty {
+    private func workoutSection(_ content: Content) -> some View {
+        switch content {
+        case .firstUse:
             firstUseCard
-        } else if let active {
-            programCards(active)
-        } else {
+        case .noActive:
             FJCard {
                 FJEmptyState("Nenhum programa ativo", systemImage: "dumbbell",
                              message: "Ative um programa na aba Treinos para ver o treino do dia.",
                              actionTitle: "Ver programas", action: onOpenTraining)
             }
             freeWorkoutButton
+        case .failed:
+            FJBanner("Não foi possível ler seus treinos",
+                     message: "Seus dados continuam salvos. Tente de novo.",
+                     tone: .destructive, actionTitle: "Tentar de novo") { now = .now }
+            freeWorkoutButton
+        case .program(let program, let suggestion, let last):
+            if program.isExpired(on: now), let end = program.endDate {
+                FJBanner("Este programa terminou em \(end.formatted(.dateTime.day().month(.twoDigits).year()))",
+                         message: "Estenda a data de fim ou crie um novo programa em Treinos.",
+                         tone: .attention, actionTitle: "Abrir Treinos", action: onOpenTraining)
+            }
+            programCards(program, suggestion: suggestion, last: last)
         }
     }
 
@@ -77,8 +119,8 @@ struct TodayView: View {
                                  message: "Fichas A, B, C… com os exercícios de cada dia. O app sugere o treino de hoje.")
                     VStack(spacing: FJSpacing.s) {
                         FJPrimaryButton("Começar com um exemplo (ABC)", systemImage: "sparkles") {
-                            do { try StarterProgram.make(in: context) }
-                            catch { errorMessage = error.localizedDescription }
+                            do { try SampleProgramFactory.makeStarterABC(in: context, activate: true) }
+                            catch { errorMessage = userMessage(for: error) }
                         }
                         FJSecondaryButton("Criar do zero", systemImage: "plus") { createFromScratch = true }
                         FJSecondaryButton("Criar com IA — em breve", systemImage: "wand.and.stars") {}
@@ -89,34 +131,30 @@ struct TodayView: View {
             }
             freeWorkoutButton
         }
-        .sheet(isPresented: $createFromScratch) { ProgramEditorSheet(program: nil) }
     }
 
-    @State private var createFromScratch = false
-
     @ViewBuilder
-    private func programCards(_ program: TrainingProgram) -> some View {
+    private func programCards(_ program: TrainingProgram, suggestion: ScheduleSuggestion, last: [UUID: Date]) -> some View {
         let routines = program.sortedRoutines
-        let last = (try? ProgramStore(context: context).lastCompletionByRoutine(programID: program.id)) ?? [:]
         switch suggestion {
         case .routine(let id):
             if let routine = routines.first(where: { $0.id == id }) {
-                TodayWorkoutCard(program: program, routine: routine, lastDone: last[routine.id],
+                TodayWorkoutCard(program: program, routine: routine, lastDone: last[routine.id], now: now,
                                  badge: program.scheduleMode == .sequential ? "Próxima da sequência" : "Há mais tempo",
                                  isPrimary: true, onStart: startWorkout, onOther: { showPicker = true })
-                freeWorkoutButton
             }
+            freeWorkoutButton
         case .routines(let ids):
             let todays = ids.compactMap { id in routines.first { $0.id == id } }
             ForEach(Array(todays.enumerated()), id: \.element.id) { index, routine in
-                TodayWorkoutCard(program: program, routine: routine, lastDone: last[routine.id],
+                TodayWorkoutCard(program: program, routine: routine, lastDone: last[routine.id], now: now,
                                  badge: "Treino de hoje", isPrimary: index == 0,
                                  onStart: startWorkout, onOther: { showPicker = true })
             }
             freeWorkoutButton
         case .rest:
-            restCard(program, routines: routines)
-        case .noRoutines, nil:
+            restCard(program)
+        case .noRoutines:
             FJCard {
                 FJEmptyState("Adicione a primeira ficha", systemImage: "rectangle.stack.badge.plus",
                              message: "\(program.name) ainda não tem fichas.",
@@ -126,14 +164,14 @@ struct TodayView: View {
         }
     }
 
-    private func restCard(_ program: TrainingProgram, routines: [Routine]) -> some View {
+    private func restCard(_ program: TrainingProgram) -> some View {
         FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.m) {
-                Text(verbatim: program.name + (program.weekProgressText.map { " · \($0)" } ?? ""))
+                Text(verbatim: program.name + (program.weekProgressText(on: now).map { " · \($0)" } ?? ""))
                     .font(FJFont.overline).foregroundStyle(FJColor.textSecondary)
                 Label("Descanso", systemImage: "moon.zzz.fill").font(FJFont.cardTitle)
-                if let next = nextWeeklyWorkout(routines) {
-                    Text("Próximo treino: \(next.day.fullName) — \(next.routine.name)")
+                if let next = ProgramStore(context: context).nextWeeklyWorkout(for: program, after: now) {
+                    Text("Próximo treino: \(next.weekday.fullName) — \(next.routine.name)")
                         .font(FJFont.label).foregroundStyle(FJColor.textSecondary)
                 } else {
                     Text("Nenhuma ficha tem dia marcado. Defina os dias em Treinos.")
@@ -149,17 +187,8 @@ struct TodayView: View {
         FJSecondaryButton("Treino livre", systemImage: "plus") { startWorkout(nil) }
     }
 
-    private func nextWeeklyWorkout(_ routines: [Routine]) -> (day: Weekday, routine: Routine)? {
-        let today = Weekday(date: .now)
-        for offset in 1...7 {
-            let day = Weekday(calendarWeekday: today.calendarWeekday + offset)
-            if let routine = routines.first(where: { $0.weekdays.contains(day) }) { return (day, routine) }
-        }
-        return nil
-    }
-
-    /// TODO(P2.2): iniciar a sessão de verdade (`SessionStore.start`) e abrir a tela de treino.
-    /// `routine == nil` = treino livre.
+    /// TODO(P2.2): iniciar a sessão de verdade (`SessionEngine`, injetado no ambiente pelo `FitJourneyApp`)
+    /// e abrir a tela de treino. `routine == nil` = treino livre.
     private func startWorkout(_ routine: Routine?) {
         showComingSoon = true
     }
