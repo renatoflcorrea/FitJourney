@@ -522,7 +522,7 @@ struct SessionSetEditSheet: View {
                 VStack(spacing: FJSpacing.cardGap) {
                     FJCard {
                         VStack(alignment: .leading, spacing: FJSpacing.m) {
-                            Text(exercise.name).font(FJFont.cardTitle)
+                            Text(exercise.name.exerciseDisplayName).font(FJFont.cardTitle)
                             Text(SessionPresentation.spokenSet(index: index, of: exercise.sets.count, set: set))
                                 .font(FJFont.label)
                                 .foregroundStyle(FJColor.textSecondary)
@@ -649,7 +649,7 @@ struct SessionReorderSheet: View {
             List {
                 ForEach(exercises) { exercise in
                     VStack(alignment: .leading, spacing: FJSpacing.xxs) {
-                        Text(exercise.name)
+                        Text(exercise.name.exerciseDisplayName)
                         Text(SessionPresentation.exerciseSummary(exercise))
                             .font(FJFont.caption)
                             .foregroundStyle(FJColor.textSecondary)

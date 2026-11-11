@@ -4,6 +4,22 @@ import Foundation
 /// Persistence — mover para junto de `ExerciseCatalog`).
 enum ExerciseCatalogIndex {
     static let englishNames: [String: String] = Dictionary(uniqueKeysWithValues: ExerciseCatalog.all.map { ($0.key, $0.nameEN) })
+    /// Nome pt-BR embutido → nome en (exercício embutido que o usuário ainda não renomeou).
+    static let englishByPortugueseName: [String: String] = Dictionary(ExerciseCatalog.all.map { ($0.name, $0.nameEN) }, uniquingKeysWith: { first, _ in first })
+
+    /// `true` quando o app está em inglês (qualquer idioma que não seja pt).
+    static var prefersEnglish: Bool { !(Bundle.main.preferredLocalizations.first ?? "pt").hasPrefix("pt") }
+
+    /// Nome para exibir: em en, o nome en do catálogo se `stored` ainda é o nome embutido; senão o gravado.
+    /// Não altera o dado gravado.
+    static func displayName(_ stored: String, english: Bool = prefersEnglish) -> String {
+        english ? (englishByPortugueseName[stored] ?? stored) : stored
+    }
+}
+
+extension String {
+    /// Nome de exercício localizado para exibição (ver `ExerciseCatalogIndex.displayName`).
+    var exerciseDisplayName: String { ExerciseCatalogIndex.displayName(self) }
 }
 
 /// Busca e filtros da biblioteca (lógica pura, testável).

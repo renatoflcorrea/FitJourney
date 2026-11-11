@@ -13,6 +13,8 @@ struct SessionDock: View {
     let onStartPrep: (UUID) -> Void
     let onCancelPrep: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         VStack(spacing: FJSpacing.s) {
             switch mode {
@@ -23,12 +25,21 @@ struct SessionDock: View {
                 Button { coordinator.send(.resume) } label: { Label("Retomar treino", systemImage: "play.fill") }
                     .buttonStyle(.fjPrimary(.training))
             case .rest(let endsAt, let total, let nextUp):
-                FJRestTimerView(
-                    endsAt: endsAt, total: total, nextUp: nextUp,
-                    onAdjust: { coordinator.send(.adjustRest(seconds: Int($0))) },
-                    // `skipRest` também dispensa o descanso já vencido (limpa no motor).
-                    onSkip: { coordinator.send(.skipRest) }
-                )
+                if dynamicTypeSize.isAccessibilitySize {
+                    // Texto grande: doca compacta (Pular visível; ±15 s num menu) para não cobrir ~40 % da tela.
+                    SessionCompactRest(
+                        endsAt: endsAt, nextUp: nextUp,
+                        onAdjust: { coordinator.send(.adjustRest(seconds: Int($0))) },
+                        onSkip: { coordinator.send(.skipRest) }
+                    )
+                } else {
+                    FJRestTimerView(
+                        endsAt: endsAt, total: total, nextUp: nextUp,
+                        onAdjust: { coordinator.send(.adjustRest(seconds: Int($0))) },
+                        // `skipRest` também dispensa o descanso já vencido (limpa no motor).
+                        onSkip: { coordinator.send(.skipRest) }
+                    )
+                }
             case .holding(let setID, let startedAt, let target, let isCardio, let targetDistance):
                 SessionHoldPanel(
                     startedAt: startedAt, targetSeconds: target, targetDistanceMeters: targetDistance, isCardio: isCardio,
@@ -41,6 +52,7 @@ struct SessionDock: View {
                     .font(FJFont.label)
                     .foregroundStyle(FJColor.textSecondary)
                     .multilineTextAlignment(.center)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : nil)
                     .frame(maxWidth: .infinity)
                 switch measurement {
                 case .isometric:
@@ -76,6 +88,58 @@ struct SessionDock: View {
 
     private func completeCurrent(_ setID: UUID) {
         coordinator.send(.completeSet(setID: setID, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil))
+    }
+}
+
+// MARK: - Descanso compacto (texto grande)
+
+/// Descanso em tamanhos de acessibilidade: tempo menor (`ScaledMetric` limitado), "Pular"/"Continuar" sempre
+/// visível e −15 s / +15 s num menu. Mesmo cálculo por datas do `FJRestTimerView`.
+struct SessionCompactRest: View {
+    let endsAt: Date
+    let nextUp: String?
+    let onAdjust: (TimeInterval) -> Void
+    let onSkip: () -> Void
+
+    @ScaledMetric(relativeTo: .title) private var timerSize: CGFloat = 34
+
+    var body: some View {
+        TimelineView(.explicit(FJRestTimerView.ticks(until: endsAt, from: .now))) { context in
+            let remaining = max(0, Int(endsAt.timeIntervalSince(context.date).rounded(.up)))
+            let finished = remaining == 0
+            VStack(spacing: FJSpacing.s) {
+                Text(verbatim: FJFormat.clock(remaining))
+                    .font(FJFont.timer(size: min(timerSize, 48)))
+                    .foregroundStyle(finished ? FJColor.success : FJColor.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .accessibilityLabel(Text(finished ? "Descanso concluído" : "Descanso restante"))
+                    .accessibilityValue(Text(verbatim: FJFormat.spokenDuration(remaining)))
+                    .accessibilityAddTraits(.updatesFrequently)
+                Button(action: onSkip) {
+                    Text(finished ? "Continuar" : "Pular")
+                        .font(.headline)
+                        .foregroundStyle(FJColor.onFill)
+                        .frame(maxWidth: .infinity, minHeight: FJSize.primaryButton)
+                        .background(FJColor.trainingFill, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(finished ? "Continuar" : "Pular descanso"))
+                Menu {
+                    Button("−15 s") { onAdjust(-15) }.disabled(finished)
+                    Button("+15 s") { onAdjust(15) }
+                } label: {
+                    Label("Ajustar descanso", systemImage: "plusminus")
+                        .font(FJFont.label)
+                        .frame(maxWidth: .infinity, minHeight: FJSize.minTap)
+                }
+            }
+            .padding(FJSpacing.m)
+            .frame(maxWidth: .infinity)
+            .fjGlass(in: FJRadius.shape(FJRadius.panel))
+            .fjHaptic(.timerFinished, trigger: finished) { _, isFinished in isFinished }
+        }
     }
 }
 
@@ -133,6 +197,7 @@ struct SessionHoldPanel: View {
 
     @ScaledMetric(relativeTo: .largeTitle) private var timerSize: CGFloat = 60
     @ScaledMetric(relativeTo: .headline) private var stopHeight: CGFloat = FJSize.primaryButton
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         TimelineView(.periodic(from: startedAt, by: 1)) { context in
@@ -150,7 +215,7 @@ struct SessionHoldPanel: View {
                 .font(FJFont.overline)
                 .foregroundStyle(reached ? FJColor.success : FJColor.textSecondary)
                 Text(verbatim: (reached ? "+" : "") + FJFormat.clock(shown))
-                    .font(FJFont.timer(size: min(timerSize, 96)))
+                    .font(FJFont.timer(size: min(timerSize, dynamicTypeSize.isAccessibilitySize ? 48 : 96)))
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                     .fjNumericTransition(countsDown: !isCardio && !reached)

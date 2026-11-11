@@ -238,7 +238,7 @@ struct SessionPainSheet: View {
                 VStack(alignment: .leading, spacing: FJSpacing.cardGap) {
                     FJCard {
                         VStack(alignment: .leading, spacing: FJSpacing.m) {
-                            Text(exercise.name).font(FJFont.cardTitle)
+                            Text(exercise.name.exerciseDisplayName).font(FJFont.cardTitle)
                             FJSectionHeader("Intensidade", subtitle: "0 = nenhuma · 10 = a pior · toque de novo para desmarcar")
                             SessionNumberScale(value: $score, range: 0...10, title: "Dor ou desconforto de 0 a 10") {
                                 String(localized: "\($0) de 10")

@@ -24,6 +24,7 @@ struct SettingsRootView: View {
     @State private var systemLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var profile = CoachProfile()
     @State private var providerSettings = ProviderSettings.default
@@ -124,14 +125,23 @@ struct SettingsRootView: View {
 
     // MARK: Unidades
 
+    @ViewBuilder private var unitOptions: some View {
+        Text("kg").tag(WeightUnit.kg.rawValue)
+        Text("lb").tag(WeightUnit.lb.rawValue)
+    }
+
     private var unitsSection: some View {
         Section {
-            Picker("Carga", selection: $weightUnitRaw) {
-                Text("kg").tag(WeightUnit.kg.rawValue)
-                Text("lb").tag(WeightUnit.lb.rawValue)
+            // Segmentado não cresce com Dynamic Type: em tamanhos de acessibilidade vira menu (linha que cresce).
+            if dynamicTypeSize.isAccessibilitySize {
+                Picker("Carga", selection: $weightUnitRaw) { unitOptions }
+                    .pickerStyle(.menu)
+                    .accessibilityLabel(Text("Unidade de carga"))
+            } else {
+                Picker("Carga", selection: $weightUnitRaw) { unitOptions }
+                    .pickerStyle(.segmented)
+                    .accessibilityLabel(Text("Unidade de carga"))
             }
-            .pickerStyle(.segmented)
-            .accessibilityLabel(Text("Unidade de carga"))
 
             Picker("Passo de carga", selection: $loadStep) {
                 ForEach(LoadDisplay.stepOptions, id: \.self) { step in

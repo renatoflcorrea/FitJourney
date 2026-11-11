@@ -8,6 +8,7 @@ struct TodayView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
     @Query(filter: #Predicate<TrainingProgram> { $0.isActive }) private var activePrograms: [TrainingProgram]
     /// Só para saber se existe algum programa (primeiro uso x "nenhum ativo"); busca no máximo um.
@@ -54,7 +55,9 @@ struct TodayView: View {
             }
             .fjScreenBackground()
             .navigationTitle("Hoje")
-            .navigationSubtitle(Text(now, format: .dateTime.weekday(.wide).day().month(.wide)))
+            .navigationSubtitle(Text(now, format: dynamicTypeSize.isAccessibilitySize
+                ? .dateTime.weekday(.abbreviated).day().month(.abbreviated)
+                : .dateTime.weekday(.wide).day().month(.wide)))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showSettings = true } label: {

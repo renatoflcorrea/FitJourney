@@ -257,14 +257,16 @@ struct RestView: View {
 
     var body: some View {
         Group {
-            if typeSize >= .accessibility1 { ScrollView { column }.safeAreaInset(edge: .bottom) { skipButton } }
-            else { VStack(spacing: 4) { column; Spacer(minLength: 0); skipButton } }
+            // Texto grande: tudo rola numa coluna só, com "Pular" logo após o tempo e "+ reps"/"+15 s" abaixo,
+            // sem botão fixo cobrindo as secundárias.
+            if typeSize >= .accessibility1 { ScrollView { column(skipFirst: true) } }
+            else { VStack(spacing: 4) { column(skipFirst: false); Spacer(minLength: 0); skipButton } }
         }
         .loadCrown(setID: next?.set.id, load: next.flatMap { effectiveLoad(of: $0.set, in: $0.exercise) })
         .sheet(isPresented: $showingReps) { RepsSheet() }
     }
 
-    private var column: some View {
+    private func column(skipFirst: Bool) -> some View {
         VStack(spacing: 4) {
             Text(WatchFormat.clock(remaining.rounded(.up)))
                 .font(WF.number(WatchLayout.timerFontSize, weight: .semibold))
@@ -275,15 +277,21 @@ struct RestView: View {
                 Text("Próxima: \(WatchFormat.load(load))").font(.footnote).foregroundStyle(WF.textSecondary)
                     .accessibilityLabel("Próxima série, \(WatchFormat.spokenLoad(load)). Gire a Coroa para ajustar.")
             }
-            HStack(spacing: 5) {
-                Button { showingReps = true } label: { Text("+ reps").frame(maxWidth: .infinity, minHeight: 40) }
-                    .accessibilityLabel("Registrar repetições")
-                Button { model.extendRest() } label: { Text("+15 s").frame(maxWidth: .infinity, minHeight: 40) }
-                    .accessibilityLabel("Mais quinze segundos")
+            if skipFirst { skipButton }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 5) { secondaryButtons }
+                VStack(spacing: 5) { secondaryButtons }
             }
             .buttonStyle(.glass)
             .font(.footnote.weight(.semibold))
         }
+    }
+
+    @ViewBuilder private var secondaryButtons: some View {
+        Button { showingReps = true } label: { Text("+ reps").frame(maxWidth: .infinity, minHeight: 40) }
+            .accessibilityLabel("Registrar repetições")
+        Button { model.extendRest() } label: { Text("+15 s").frame(maxWidth: .infinity, minHeight: 40) }
+            .accessibilityLabel("Mais quinze segundos")
     }
 
     private var progressBar: some View {

@@ -167,14 +167,14 @@ struct WorkoutDetailView: View {
         FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.s) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(exercise.name).font(FJFont.cardTitle).accessibilityAddTraits(.isHeader)
+                    Text(exercise.name.exerciseDisplayName).font(FJFont.cardTitle).accessibilityAddTraits(.isHeader)
                     Spacer()
                     if let id = exercise.exerciseID {
                         Button { progressExerciseID = id } label: {
                             Image(systemName: "chart.line.uptrend.xyaxis")
                                 .frame(width: FJSize.minTap, height: FJSize.minTap)
                         }
-                        .accessibilityLabel(Text("Ver evolução de \(exercise.name)"))
+                        .accessibilityLabel(Text("Ver evolução de \(exercise.name.exerciseDisplayName)"))
                     }
                 }
                 if let from = exercise.substitutedFromName {
