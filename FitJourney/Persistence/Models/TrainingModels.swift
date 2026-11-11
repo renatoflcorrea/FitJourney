@@ -60,7 +60,8 @@ final class TrainingProgram {
                                            to: calendar.startOfDay(for: date)).day ?? 0
         let total = calendar.dateComponents([.day], from: calendar.startOfDay(for: startDate),
                                             to: calendar.startOfDay(for: endDate)).day ?? 0
-        let totalWeeks = max(1, total / 7 + 1)
+        // Programa de 8 semanas = 56 dias → "semana 1 de 8" no primeiro dia, nunca "de 9".
+        let totalWeeks = max(1, (total + 6) / 7)
         return (min(max(1, days / 7 + 1), totalWeeks), totalWeeks)
     }
 }

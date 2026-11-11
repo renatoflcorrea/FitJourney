@@ -18,14 +18,21 @@
 - P2.1 Motor da sessão integrado (`f313870`, 122 testes): idempotência com tombstones, ordem por série, save atômico, compatibilidade de protocolo, comandos add/substitute/reorder.
 - Infra: simulador próprio por worktree (AGENTS.md); `FJ-main` para o supervisor.
 
+- P1.2 Editor de ficha integrado (`6eb241b`) + correção de warning e duração com bi-set (`1febc94`).
+- P5.1+P5.2 Núcleo de IA integrado (`328b194`): OpenAI-compatível + Anthropic nativo (conferido com a skill claude-api), tools locais com consentimento por categoria (tudo desligado por padrão), drafts com JSON Schema em `contracts/`.
+- W3a App watchOS integrado (`a7a36b1`): UI completa, estado otimista com retenção até o 1º snapshot; release usa `UnavailableWatchTransport` até o W2.
+
 ## Em andamento
-- P1.1+P1.4 Programas/Hoje (Sonnet) — implementando.
-- P1.2 Editor de ficha (Sonnet) — correções da revisão (grupo ao arrastar, R-T2, unidade kg/lb, ProgramStore atômico).
-- P5.1+P5.2 Núcleo de IA (Opus).
-- P2.2–P2.5 Tela da sessão/encerramento/histórico/acessório (Sonnet).
-- P4.1 Apple Health no iPhone (Opus).
-- W3a App watchOS (UI + transporte simulado) (Sonnet).
+- P1.1+P1.4 Hoje/Treinos — correções + integração das telas (Dieta, editor, biblioteca, starter, SessionEngine no App).
+- P2.2–P2.5 Sessão/histórico — em revisão.
+- P4.1 Apple Health — correções (duplicação com espelho, ordem de gravação, matcher, gates).
+- P5.3+P5.4 UI do Coach + Ajustes de IA.
+- P3.3 Lembretes de refeição, favoritos, histórico da dieta.
+- P6.2 Exportar/importar/apagar tudo (contrato `fitjourney-export-v1`).
+- P6.1 Passe de design: ícone, paleta oficial de fichas, Live Activity, Saúde, Coach/Ajustes.
 
 ## Próximo
-- Integrar P1.1 + ligar abas (Dieta, sessão, `MediaMaintenance.runAtLaunch`, `restore`/`handleForeground`, StarterProgram → SampleProgramFactory) → P4.2/P4.3 (FC, aba Saúde) → W2/W3b (transporte real + HKWorkoutSession no relógio) → P5.3/P5.4 (UI do Coach) → P3.3 lembretes → Ciclo 6 → Cartographer.
-- Pedir ao design tokens oficiais de cor de ficha (RoutineColor) e promover `FlowLayout`.
+- P2.6 + W2 + W3b (Opus): lacunas do engine (anotação/dor/humor/nota, remover série, tipo da série, cardio com pausa, skipRest vencido), IDs determinísticos, appliedCommandIDs/restTotalSeconds/foco no snapshot, startCardio; WatchConnectivity + espelhamento + HKWorkoutSession no relógio.
+- P4.2/P4.3 FC na sessão e aba Saúde (Sonnet) após P4.1.
+- Ajustes gerais (unidades, Saúde, notificações, dados, IA) após P6.1/P6.2/P5.4.
+- Ciclo 6: Live Activity, localização en, QA, Cartographer.

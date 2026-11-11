@@ -1,0 +1,2646 @@
+{
+  "sourceLanguage": "pt-BR",
+  "strings": {
+    "": {},
+    " até o máximo de repetições": {},
+    " de %lld a %lld repetições": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": " de %1$lld a %2$lld repetições"
+          }
+        }
+      }
+    },
+    " de %lld repetições": {},
+    " de %lld segundos": {},
+    "%@ (cópia)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ (copy)"
+          }
+        }
+      }
+    },
+    "%@ ainda não tem fichas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ has no routines yet."
+          }
+        }
+      }
+    },
+    "%@ de %@ quilocalorias": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ de %2$@ quilocalorias"
+          }
+        }
+      }
+    },
+    "%@ de treino": {},
+    "%@ kcal": {},
+    "%@ marcada como feita": {},
+    "%@ não cobre este dia. Registros avulsos continuam funcionando.": {},
+    "%@ pulada": {},
+    "%@ quilocalorias consumidas": {},
+    "%@ registrada com ajustes": {},
+    "%@ vai para o histórico.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ will move to history."
+          }
+        }
+      }
+    },
+    "%@ voltou para pendente": {},
+    "%@ · %@": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · refeição removida": {},
+    "%lld": {},
+    "%lld batimentos por minuto": {},
+    "%lld batimentos por minuto, zona %lld": {},
+    "%lld exercícios": {
+      "localizations": {
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld exercício"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld exercícios"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld exercise"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld exercises"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld fichas": {
+      "localizations": {
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld ficha"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld fichas"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld routine"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld routines"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld itens": {},
+    "%lld itens sem calorias": {},
+    "%lld min": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld min"
+          }
+        }
+      }
+    },
+    "%lld mídias": {},
+    "%lld refeições": {},
+    "%lld s": {},
+    "%lld séries": {
+      "localizations": {
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld série"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld séries"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld set"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld sets"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld séries iguais": {},
+    "%lld, %@": {},
+    "(cópia)": {},
+    "+ reps": {},
+    "+%lld exercícios": {
+      "localizations": {
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld exercício"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld exercícios"
+                }
+              }
+            }
+          }
+        },
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld exercise"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld exercises"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "+15 s": {},
+    ", com %@ %@": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": ", com %1$@ %2$@"
+          }
+        }
+      }
+    },
+    ", peso corporal": {},
+    ", peso corporal com %@ %@ de assistência": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": ", peso corporal com %1$@ %2$@ de assistência"
+          }
+        }
+      }
+    },
+    ", peso corporal mais %@ %@": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": ", peso corporal mais %1$@ %2$@"
+          }
+        }
+      }
+    },
+    ". Descanso de %@": {},
+    "0": {},
+    "0 = só o peso do corpo": {},
+    "1 item": {},
+    "1 item sem calorias": {},
+    "1 refeição": {},
+    "1 série": {},
+    "3 itens sem calorias": {},
+    "A carga atual dessa série é diferente da inicial e será descartada junto com ela.": {},
+    "A cópia usa a carga atual como carga inicial.": {},
+    "A mídia salva deste exercício também será apagada. O histórico de treinos continua.": {},
+    "A ordem define a sequência.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The order sets the sequence."
+          }
+        }
+      }
+    },
+    "A prescrição deste exercício na ficha será apagada. O exercício continua no catálogo.": {},
+    "A semana começa na segunda. Dois treinos podem cair no mesmo dia.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The week starts on Monday. Two workouts can fall on the same day."
+          }
+        }
+      }
+    },
+    "A tela de treino chega no próximo pacote. Suas fichas já estão prontas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The workout screen is coming soon. Your routines are ready."
+          }
+        }
+      }
+    },
+    "A — Peito e tríceps": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A — Chest and triceps"
+          }
+        }
+      }
+    },
+    "A — Peito, ombros e tríceps": {},
+    "A → B → C → A… O app sugere a próxima da sequência.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A → B → C → A… The app suggests the next one in the sequence."
+          }
+        }
+      }
+    },
+    "ABC (exemplo)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ABC (example)"
+          }
+        }
+      }
+    },
+    "ABC — Exemplo": {},
+    "AMRAP": {},
+    "Abdutores": {},
+    "Abdômen": {},
+    "Abre a prescrição": {},
+    "Abre no Safari": {},
+    "Abre o calendário": {},
+    "Abrir Ajustes": {},
+    "Abrir Treinos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Workouts"
+          }
+        }
+      }
+    },
+    "Abrir no Safari": {},
+    "Abrir no Vimeo": {},
+    "Abrir no YouTube": {},
+    "Adiciona uma cópia das refeições escolhidas a esta variação.": {},
+    "Adicionar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
+          }
+        }
+      }
+    },
+    "Adicionar %@": {},
+    "Adicionar (%lld)": {},
+    "Adicionar copo": {},
+    "Adicionar exercício": {},
+    "Adicionar exercícios": {},
+    "Adicionar ficha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add routine"
+          }
+        }
+      }
+    },
+    "Adicionar foto ou vídeo": {},
+    "Adicionar item": {},
+    "Adicionar link": {},
+    "Adicionar refeição": {},
+    "Adicionar substituição": {},
+    "Adicionar série": {},
+    "Adicionar um copo, %lld mililitros": {},
+    "Adicionar variação": {},
+    "Adicione a primeira ficha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add the first routine"
+          }
+        }
+      }
+    },
+    "Adicione a primeira refeição": {},
+    "Adicione exercícios": {},
+    "Adicione exercícios em Treinos. Você pode iniciar um treino livre com o nome da ficha.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add exercises in Workouts. You can start a free workout named after the routine."
+          }
+        }
+      }
+    },
+    "Adicione fichas ao programa na aba Treinos.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add routines to the program in the Workouts tab."
+          }
+        }
+      }
+    },
+    "Adutores": {},
+    "Aeróbico": {},
+    "Agora": {},
+    "Agora não": {},
+    "Agrupar": {},
+    "Agrupar (%@)": {},
+    "Ajustada": {},
+    "Ajustada %@": {},
+    "Ajustar": {},
+    "Ajustar %@": {},
+    "Ajustar refeição": {},
+    "Algo deu errado": {},
+    "Alimento": {},
+    "Alternativas equivalentes, oferecidas em Ajustar.": {},
+    "Amanhã, %@": {},
+    "Amarelo": {},
+    "Antebraço": {},
+    "Anterior": {},
+    "Anteriores": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous"
+          }
+        }
+      }
+    },
+    "Anteriores e rascunhos": {},
+    "Apagar": {},
+    "Apagar esta variação?": {},
+    "Apagar este registro?": {},
+    "Apagar registro": {},
+    "Apagar variação": {},
+    "Aplicar a todas as séries": {},
+    "Aquecimento": {},
+    "Arquivado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archived"
+          }
+        }
+      }
+    },
+    "Arquivados": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archived"
+          }
+        }
+      }
+    },
+    "Arquivar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive"
+          }
+        }
+      }
+    },
+    "Arquivar %@?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive %@?"
+          }
+        }
+      }
+    },
+    "Arraste pela alça ou use o menu (…) para subir e descer. Selecione exercícios vizinhos para agrupar em bi-set, tri-set ou circuito.": {},
+    "As fichas e prescrições serão apagadas. Os treinos já feitos continuam no histórico.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routines and prescriptions will be deleted. Completed workouts stay in history."
+          }
+        }
+      }
+    },
+    "As outras variações e suas refeições serão apagadas.": {},
+    "As refeições dela serão apagadas.": {},
+    "As séries são diferentes": {},
+    "Atalhos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shortcuts"
+          }
+        }
+      }
+    },
+    "Ativar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate"
+          }
+        }
+      }
+    },
+    "Ativar %@": {},
+    "Ativar %@ agora?": {},
+    "Ativar %@ agora? %@ vai para o histórico.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate %@ now? %@ will move to history."
+          }
+        }
+      }
+    },
+    "Ativar %@? %@ vai para o histórico.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate %@? %@ will move to history."
+          }
+        }
+      }
+    },
+    "Ativar agora": {},
+    "Ativar agora?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate now?"
+          }
+        }
+      }
+    },
+    "Ativar este plano?": {},
+    "Ative a câmera em Ajustes para tirar fotos. Fotos da galeria e links continuam funcionando.": {},
+    "Ative um programa na aba Treinos para ver o treino do dia.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activate a program in the Workouts tab to see today's workout."
+          }
+        }
+      }
+    },
+    "Ativo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active"
+          }
+        }
+      }
+    },
+    "Até a falha": {},
+    "Autor": {},
+    "Azul": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Blue"
+          }
+        }
+      }
+    },
+    "Ação": {},
+    "Ações da mídia": {},
+    "Ações da série %lld": {},
+    "Ações de %@": {},
+    "Ações do programa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Program actions"
+          }
+        }
+      }
+    },
+    "B — Costas e bíceps": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "B — Back and biceps"
+          }
+        }
+      }
+    },
+    "Back-off": {},
+    "Barra": {},
+    "Bi-set": {},
+    "Biblioteca": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Library"
+          }
+        }
+      }
+    },
+    "Biblioteca de exercícios": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exercise library"
+          }
+        }
+      }
+    },
+    "Bilateral": {},
+    "Botões": {},
+    "Buscar exercício": {},
+    "Bíceps": {},
+    "C — Pernas e core": {},
+    "C — Pernas e ombros": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C — Legs and shoulders"
+          }
+        }
+      }
+    },
+    "Cada ficha tem seus dias da semana.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each routine has its own days of the week."
+          }
+        }
+      }
+    },
+    "Cada ficha é um treino do programa, como A, B e C.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Each routine is one workout of the program, like A, B and C."
+          }
+        }
+      }
+    },
+    "Cadastre sua dieta": {},
+    "Cadência": {},
+    "Cadência (opcional)": {},
+    "Café da manhã, almoço, lanche… com horário e itens.": {},
+    "Calorias": {},
+    "Calorias e macros (opcional)": {},
+    "Cancelar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "Carboidrato": {},
+    "Cardio": {},
+    "Carga": {},
+    "Carga e repetições": {},
+    "Carga por lado": {},
+    "Carregando": {},
+    "Carregando…": {},
+    "Catálogo": {},
+    "Chips e etiquetas": {},
+    "Cinza": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gray"
+          }
+        }
+      }
+    },
+    "Circuito": {},
+    "Coach": {},
+    "Cole o link do vídeo": {},
+    "Com lembrete": {},
+    "Começar com um exemplo (ABC)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start with an example (ABC)"
+          }
+        }
+      }
+    },
+    "Concluída": {},
+    "Condicionamento": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conditioning"
+          }
+        }
+      }
+    },
+    "Confira a ortografia ou crie o exercício.": {},
+    "Continuar": {},
+    "Continuar editando": {},
+    "Continuar série a série": {},
+    "Copiando vídeo…": {},
+    "Copiar": {},
+    "Copiar refeições de…": {},
+    "Cor": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color"
+          }
+        }
+      }
+    },
+    "Cores": {},
+    "Corpo inteiro": {},
+    "Costas": {},
+    "Criar com IA — em breve": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create with AI — coming soon"
+          }
+        }
+      }
+    },
+    "Criar dieta": {},
+    "Criar do zero": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create from scratch"
+          }
+        }
+      }
+    },
+    "Criar exercício \"%@\"": {},
+    "Criar novo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create new"
+          }
+        }
+      }
+    },
+    "Criar programa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create program"
+          }
+        }
+      }
+    },
+    "Crie seu primeiro programa com as fichas da semana.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create your first program with the week's routines."
+          }
+        }
+      }
+    },
+    "Crie sua dieta com metas e refeições. Os registros avulsos funcionam sem plano.": {},
+    "Crie um programa na aba Treinos.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a program in the Workouts tab."
+          }
+        }
+      }
+    },
+    "Câmera sem permissão": {},
+    "Datas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dates"
+          }
+        }
+      }
+    },
+    "Define o que a aba Hoje sugere. Você pode trocar depois.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sets what the Today tab suggests. You can change it later."
+          }
+        }
+      }
+    },
+    "Definir fim": {},
+    "Definir séries": {},
+    "Demais dias": {},
+    "Desagrupar": {},
+    "Descanso": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest"
+          }
+        }
+      }
+    },
+    "Descanso ao fim da rodada: %@": {},
+    "Descanso ao fim da rodada: %lld s": {},
+    "Descanso concluído": {},
+    "Descanso encerrado": {},
+    "Descanso padrão": {},
+    "Descanso restante": {},
+    "Descanso só ao fim da rodada: defina no último exercício do grupo.": {},
+    "Descanso, %@ restantes": {},
+    "Descartar": {},
+    "Descartar alterações?": {},
+    "Descer": {},
+    "Desfazer": {},
+    "DesignSystem": {},
+    "Desmarque o que você não comeu. Para não registrar nada, use Pular.": {},
+    "Detalhe do objetivo (opcional)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goal details (optional)"
+          }
+        }
+      }
+    },
+    "Dia": {},
+    "Dia anterior": {},
+    "Dia já usado por outra ficha: %@. Os dois treinos aparecem no mesmo dia.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Day already used by another routine: %@. Both workouts appear on the same day."
+          }
+        }
+      }
+    },
+    "Dias da semana": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Days of the week"
+          }
+        }
+      }
+    },
+    "Dicas de execução, regulagem da máquina…": {},
+    "Dieta": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diet"
+          }
+        }
+      }
+    },
+    "Dieta anterior": {},
+    "Difícil": {},
+    "Digitar valor": {},
+    "Disponível em uma próxima versão": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Available in a future version"
+          }
+        }
+      }
+    },
+    "Distância": {},
+    "Dom": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sun"
+          }
+        }
+      }
+    },
+    "Drop-set": {},
+    "Duplicado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicated"
+          }
+        }
+      }
+    },
+    "Duplicar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate"
+          }
+        }
+      }
+    },
+    "Duplicar e editar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicate and edit"
+          }
+        }
+      }
+    },
+    "Duplicar para editar": {},
+    "Duplicar série": {},
+    "Duração": {},
+    "Duração estimada": {},
+    "Dê um nome ao programa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Give the program a name"
+          }
+        }
+      }
+    },
+    "Editar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        }
+      }
+    },
+    "Editar aqui aplica a todas as séries.": {},
+    "Editar exercício": {},
+    "Editar programa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit program"
+          }
+        }
+      }
+    },
+    "Editar registro": {},
+    "Elástico": {},
+    "Em breve": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coming soon"
+          }
+        }
+      }
+    },
+    "Em breve: busca, filtros e mídia dos exercícios.": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coming soon: search, filters and exercise media."
+          }
+        }
+      }
+    },
+    "Em breve: seus treinos concluídos, com séries e recordes.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coming soon: your completed workouts, with sets and records."
+          }
+        }
+      }
+    },
+    "Em construção": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Under construction"
+          }
+        }
+      }
+    },
+    "Emagrecimento": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fat loss"
+          }
+        }
+      }
+    },
+    "Energia ativa": {},
+    "Equipamento": {},
+    "Escolher exercício": {},
+    "Escolher ficha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose routine"
+          }
+        }
+      }
+    },
+    "Escolho a ficha no dia. O app destaca a que está há mais tempo sem treinar.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I pick the routine each day. The app highlights the one you have not done for the longest."
+          }
+        }
+      }
+    },
+    "Esforço alvo": {},
+    "Esta ficha ainda não tem exercícios": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This routine has no exercises yet"
+          }
+        }
+      }
+    },
+    "Esta refeição ainda não tem itens. Use Ajustar para registrar o que você comeu.": {},
+    "Esta semana: %lld de %lld treinos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This week: %lld of %lld workouts"
+          }
+        }
+      }
+    },
+    "Estados": {},
+    "Este exercício está em fichas. Remova-o das fichas antes de excluir.": {},
+    "Este link abre no Safari.": {},
+    "Este programa não tem fichas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This program has no routines."
+          }
+        }
+      }
+    },
+    "Este programa não tem outras fichas.": {},
+    "Este programa terminou em %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This program ended on %@"
+          }
+        }
+      }
+    },
+    "Este é o plano ativo. Sem ele, o dia mostra só registros avulsos até você criar ou ativar outro. Refeições e itens serão apagados; os registros já feitos continuam no histórico.": {},
+    "Este é o programa ativo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is the active program."
+          }
+        }
+      }
+    },
+    "Este é o último do grupo: o descanso daqui vale ao fim de cada rodada.": {},
+    "Estenda a data de fim ou crie um novo programa em Treinos.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extend the end date or create a new program in Workouts."
+          }
+        }
+      }
+    },
+    "Estender": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extend"
+          }
+        }
+      }
+    },
+    "Estimado": {},
+    "Eu": {},
+    "Ex.: Supino reto com barra": {},
+    "Ex.: banco a 30°": {},
+    "Ex.: dia de treino x descanso. A variação sem dias marcados vale para os dias que nenhuma outra cobre (só pode haver uma).": {},
+    "Ex.: esteira, bicicleta — duração e distância": {},
+    "Ex.: flexão, barra fixa — peso corporal, lastro opcional": {},
+    "Ex.: prancha — segurar por tempo": {},
+    "Ex.: supino, agachamento — 10 × 60 kg": {},
+    "Excluir": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        }
+      }
+    },
+    "Excluir %@": {},
+    "Excluir %@?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete %@?"
+          }
+        }
+      }
+    },
+    "Excluir esta refeição?": {},
+    "Excluir este plano?": {},
+    "Excluir exercício?": {},
+    "Excluir ficha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete routine"
+          }
+        }
+      }
+    },
+    "Excluir o plano ativo": {},
+    "Excluir o plano ativo?": {},
+    "Excluir programa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete program"
+          }
+        }
+      }
+    },
+    "Exercício do catálogo": {},
+    "Exercício em uso": {},
+    "Exercício removido": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removed exercise"
+          }
+        }
+      }
+    },
+    "Exercícios": {},
+    "Expande para editar": {},
+    "Expandir": {},
+    "FC média": {},
+    "Faixa": {},
+    "Faixa inválida": {},
+    "Favorito": {},
+    "Favoritos e recentes": {},
+    "Fechar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
+          }
+        }
+      }
+    },
+    "Feita": {},
+    "Feita %@": {},
+    "Fibra": {},
+    "Ficha de destino": {},
+    "Fichas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routines"
+          }
+        }
+      }
+    },
+    "Fichas A, B, C… com os exercícios de cada dia. O app sugere o treino de hoje.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routines A, B, C… with each day's exercises. The app suggests today's workout."
+          }
+        }
+      }
+    },
+    "Fim": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End"
+          }
+        }
+      }
+    },
+    "Finalize ou descarte o treino em andamento (%@) antes de mudar de programa.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish or discard the workout in progress (%@) before switching programs."
+          }
+        }
+      }
+    },
+    "Finalize ou descarte o treino em andamento antes de trocar, arquivar ou excluir programas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish or discard the workout in progress before switching, archiving or deleting programs."
+          }
+        }
+      }
+    },
+    "Fixas": {},
+    "Fora da dieta": {},
+    "Fora da vigência do plano": {},
+    "Força": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strength"
+          }
+        }
+      }
+    },
+    "Foto": {},
+    "Foto %lld de %lld": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Foto %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Foto da galeria": {},
+    "Foto do exercício": {},
+    "Foto indisponível": {},
+    "Frequência cardíaca": {},
+    "Glúteos": {},
+    "Gordura": {},
+    "Grau de estimativa": {},
+    "Grupo muscular": {},
+    "Grupos musculares": {},
+    "Grupos primários": {},
+    "Grupos secundários": {},
+    "Halter": {},
+    "Hipertrofia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hypertrophy"
+          }
+        }
+      }
+    },
+    "Hipertrofia, 3 a 5 treinos por semana em rodízio A → B → C.": {},
+    "Histórico": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "History"
+          }
+        }
+      }
+    },
+    "Hoje": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
+          }
+        }
+      }
+    },
+    "Hoje, %@": {},
+    "Hora da próxima série.": {},
+    "Hora da próxima série: %@": {},
+    "Horário": {},
+    "Há carga atual diferente da inicial (veja em Carga).": {},
+    "Há mais tempo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Longest ago"
+          }
+        }
+      }
+    },
+    "Há um treino em andamento": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A workout is in progress"
+          }
+        }
+      }
+    },
+    "IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI"
+          }
+        }
+      }
+    },
+    "Igualar todas à série 1": {},
+    "Importado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imported"
+          }
+        }
+      }
+    },
+    "Inclinação": {},
+    "Indisponível": {},
+    "Indisponível: a refeição não tem itens. Use Ajustar para registrar o que comeu.": {},
+    "Informado": {},
+    "Iniciar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        }
+      }
+    },
+    "Iniciar treino": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start workout"
+          }
+        }
+      }
+    },
+    "Intensa": {},
+    "Intensidade percebida da sessão": {},
+    "Início": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        }
+      }
+    },
+    "Ir": {},
+    "Ir para o dia": {},
+    "Isométrico": {},
+    "Item": {},
+    "Item sem nome": {},
+    "Itens": {},
+    "Já existe uma variação para os demais dias": {},
+    "Já usado por %@": {},
+    "Kettlebell": {},
+    "Laranja": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orange"
+          }
+        }
+      }
+    },
+    "Lastro (+) ou assistência (−)": {},
+    "Lateralidade": {},
+    "Lembrete": {},
+    "Lembretes chegam em breve: a preferência fica salva, mas ainda não notifica.": {},
+    "Lendo dados do Saúde…": {},
+    "Letra do selo (opcional)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Badge letter (optional)"
+          }
+        }
+      }
+    },
+    "Letra ou símbolo": {},
+    "Letra ou símbolo da ficha": {},
+    "Leve": {},
+    "Limpar": {},
+    "Limpar filtros": {},
+    "Link de vídeo": {},
+    "Link de vídeo %lld de %lld": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Link de vídeo %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Link de vídeo (YouTube, Vimeo)": {},
+    "Link inválido": {},
+    "Livre": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free"
+          }
+        }
+      }
+    },
+    "Lombar": {},
+    "Magenta": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Magenta"
+          }
+        }
+      }
+    },
+    "Mais": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "More"
+          }
+        }
+      }
+    },
+    "Mais 15 segundos": {},
+    "Mais ações": {},
+    "Manter só a primeira variação": {},
+    "Manual": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manual"
+          }
+        }
+      }
+    },
+    "Marcar %@ como feita": {},
+    "Marcar como feita": {},
+    "Marque 2 ou mais exercícios vizinhos": {},
+    "Marque ao menos um dia aqui, ou esta variação não será usada.": {},
+    "Marque ao menos um exercício": {},
+    "Menos 15 segundos": {},
+    "Metas": {},
+    "Metas diárias": {},
+    "Meus exercícios": {},
+    "Minimizar treino": {},
+    "Moderada": {},
+    "Moderado": {},
+    "Modo": {},
+    "Modo de agenda": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schedule mode"
+          }
+        }
+      }
+    },
+    "Modo de prescrição": {},
+    "Monte a ficha com exercícios do catálogo. Cada um entra com uma prescrição padrão que você ajusta depois.": {},
+    "Monte refeições e metas para marcar como feitas com 1 toque. Você pode registrar comidas avulsas mesmo sem plano.": {},
+    "Monte seu primeiro programa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build your first program"
+          }
+        }
+      }
+    },
+    "Mover": {},
+    "Mover ou copiar para outra ficha": {},
+    "Mover ou copiar para…": {},
+    "Mover para baixo": {},
+    "Mover para cima": {},
+    "Muito difícil": {},
+    "Muito leve": {},
+    "Máquina": {},
+    "Máxima": {},
+    "Máximo": {},
+    "Máximo possível": {},
+    "Métricas": {},
+    "Mídia": {},
+    "Mínimo (piso)": {},
+    "Nenhum": {},
+    "Nenhum exercício com esses filtros": {},
+    "Nenhum plano ainda": {},
+    "Nenhum programa ainda": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No programs yet"
+          }
+        }
+      }
+    },
+    "Nenhum programa ativo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No active program"
+          }
+        }
+      }
+    },
+    "Nenhuma": {},
+    "Nenhuma ficha tem dia marcado. Defina os dias em Treinos.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No routine has a scheduled day. Set the days in Workouts."
+          }
+        }
+      }
+    },
+    "Nenhuma refeição planejada para este dia": {},
+    "Nenhuma refeição planejada para hoje": {},
+    "Nenhuma — fora da dieta": {},
+    "Nome": {},
+    "Nome (ex.: Dia de treino)": {},
+    "Nome da ficha": {},
+    "Nome da ficha (ex.: A — Peito e tríceps)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routine name (e.g. A — Chest and triceps)"
+          }
+        }
+      }
+    },
+    "Nome do programa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Program name"
+          }
+        }
+      }
+    },
+    "Nome e classificação não podem ser editados. Mídia, observações e descanso sim. Para mudar a classificação, use Duplicar para editar.": {},
+    "Notas (opcional)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes (optional)"
+          }
+        }
+      }
+    },
+    "Nova ficha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New routine"
+          }
+        }
+      }
+    },
+    "Nova ficha no programa ativo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New routine in the active program"
+          }
+        }
+      }
+    },
+    "Nova refeição": {},
+    "Nova variação": {},
+    "Novo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New"
+          }
+        }
+      }
+    },
+    "Novo exercício": {},
+    "Novo item": {},
+    "Novo plano": {},
+    "Novo programa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New program"
+          }
+        }
+      }
+    },
+    "Nutricionista": {},
+    "Não foi possível adicionar": {},
+    "Não foi possível concluir": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not complete"
+          }
+        }
+      }
+    },
+    "Não foi possível duplicar": {},
+    "Não foi possível ler essa imagem.": {},
+    "Não foi possível ler esse vídeo.": {},
+    "Não foi possível ler seus treinos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not read your workouts"
+          }
+        }
+      }
+    },
+    "Não foi possível salvar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not save"
+          }
+        }
+      }
+    },
+    "Não foi possível salvar. Tente de novo. Nada foi perdido.": {},
+    "Não foi possível tocar aqui": {},
+    "Não informado": {},
+    "Nível": {},
+    "O arquivo não foi encontrado neste aparelho.": {},
+    "O exercício sai desta ficha e entra no fim da outra.": {},
+    "O plano foi salvo, mas não foi ativado. Ative pela lista de planos.": {},
+    "O ponto indica dia que outra ficha também usa; pode ser compartilhado.": {},
+    "O programa atual": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The current program"
+          }
+        }
+      }
+    },
+    "O programa sai de Hoje e fica em Programas, em Arquivados.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The program leaves Today and stays in Programs, under Archived."
+          }
+        }
+      }
+    },
+    "O que você comeu?": {},
+    "O total do dia pode estar abaixo do real.": {},
+    "O vídeo pode estar sem rede ou bloquear a exibição dentro de outros apps.": {},
+    "OK": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        }
+      }
+    },
+    "Objetivo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goal"
+          }
+        }
+      }
+    },
+    "Oblíquos": {},
+    "Observação": {},
+    "Observações": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
+          }
+        }
+      }
+    },
+    "Observações da ficha": {},
+    "Observações do exercício": {},
+    "Ombros": {},
+    "Ontem, %@": {},
+    "Opcional": {},
+    "Opções": {},
+    "Ordenadas por horário. Para mudar a ordem, altere o horário.": {},
+    "Os exercícios e séries desta ficha serão apagados. Os treinos já feitos continuam no histórico.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This routine's exercises and sets will be deleted. Completed workouts stay in history."
+          }
+        }
+      }
+    },
+    "Os itens dela serão apagados.": {},
+    "Outra ficha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Another routine"
+          }
+        }
+      }
+    },
+    "Outro": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other"
+          }
+        }
+      }
+    },
+    "Outro site": {},
+    "Padrão": {},
+    "Padrão (%lld s)": {},
+    "Panturrilha": {},
+    "Pausado em %@": {},
+    "Peito": {},
+    "Pendente": {},
+    "Percepção de esforço (RPE)": {},
+    "Peso corporal": {},
+    "Planejada": {},
+    "Plano": {},
+    "Plano ativo": {},
+    "Plano do dia, somente leitura": {},
+    "Plano sem nome": {},
+    "Player de vídeo": {},
+    "Player de vídeo do Vimeo": {},
+    "Player de vídeo do YouTube": {},
+    "Polia": {},
+    "Por dia da semana": {},
+    "Posteriores": {},
+    "Preparatória": {},
+    "Programa de exemplo: ajuste exercícios, séries e cargas à vontade.": {},
+    "Programas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programs"
+          }
+        }
+      }
+    },
+    "Programas anteriores": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous programs"
+          }
+        }
+      }
+    },
+    "Proteína": {},
+    "Próxima": {},
+    "Próxima da sequência": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next in sequence"
+          }
+        }
+      }
+    },
+    "Próximo dia": {},
+    "Próximo treino: %@ — %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next workout: %@ — %@"
+          }
+        }
+      }
+    },
+    "Pulada": {},
+    "Pular": {},
+    "Pular descanso": {},
+    "Qua": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wed"
+          }
+        }
+      }
+    },
+    "Quadríceps": {},
+    "Quantidade": {},
+    "Quase máximo": {},
+    "Qui": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thu"
+          }
+        }
+      }
+    },
+    "RIR": {},
+    "RPE": {},
+    "Rascunho": {},
+    "Reabilitação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rehabilitation"
+          }
+        }
+      }
+    },
+    "Reativar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reactivate"
+          }
+        }
+      }
+    },
+    "Reative um programa anterior ou crie um novo para ver a sugestão do dia.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reactivate a previous program or create a new one to see today's suggestion."
+          }
+        }
+      }
+    },
+    "Recentes e favoritos": {},
+    "Recolhe os campos": {},
+    "Recolher": {},
+    "Recorde": {},
+    "Recordes": {},
+    "Refeição": {},
+    "Refeição removida": {},
+    "Refeição sem nome": {},
+    "Refeições": {},
+    "Refeições e itens do plano serão apagados. Os registros já feitos continuam no histórico.": {},
+    "Registrado nesta refeição": {},
+    "Registrar": {},
+    "Registrar comida": {},
+    "Remova um filtro para ver mais exercícios.": {},
+    "Remover": {},
+    "Remover %@": {},
+    "Remover da ficha?": {},
+    "Remover série": {},
+    "Remover série com carga atual?": {},
+    "Remover um copo": {},
+    "Remover último copo": {},
+    "Removido do catálogo": {},
+    "Repetições": {},
+    "Repetições e carga": {},
+    "Repetições em reserva (RIR)": {},
+    "Repetições realizadas": {},
+    "Resistência": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Endurance"
+          }
+        }
+      }
+    },
+    "Rest-pause": {},
+    "Rosa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pink"
+          }
+        }
+      }
+    },
+    "Roxo": {},
+    "Rótulo secundário": {},
+    "Salvando foto…": {},
+    "Salvar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
+          }
+        }
+      }
+    },
+    "Salvar ajuste": {},
+    "Saúde": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Health"
+          }
+        }
+      }
+    },
+    "Saúde não conectado": {},
+    "Seg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mon"
+          }
+        }
+      }
+    },
+    "Selecionar": {},
+    "Sem acesso ao app Saúde, a frequência cardíaca fica indisponível. Seus treinos continuam sendo registrados.": {},
+    "Sem carga": {},
+    "Sem dias marcados = vale para os dias que nenhuma outra variação cobre.": {},
+    "Sem exercícios": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No exercises"
+          }
+        }
+      }
+    },
+    "Sem fichas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No routines"
+          }
+        }
+      }
+    },
+    "Sem itens": {},
+    "Sem itens, a refeição não pode ser marcada como feita com 1 toque.": {},
+    "Sem meta": {},
+    "Sem metas definidas": {},
+    "Sem nome": {},
+    "Sem registro": {},
+    "Sem resultados para \"%@\"": {},
+    "Sem séries": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No sets"
+          }
+        }
+      }
+    },
+    "Sem séries definidas": {},
+    "Semanal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weekly"
+          }
+        }
+      }
+    },
+    "Sequencial": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sequential"
+          }
+        }
+      }
+    },
+    "Sessão": {},
+    "Seus dados continuam salvos. Tente de novo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your data is still saved. Try again."
+          }
+        }
+      }
+    },
+    "Sex": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fri"
+          }
+        }
+      }
+    },
+    "Somente leitura. Reative ou duplique para editar.": {},
+    "Subir": {},
+    "Substituição": {},
+    "Substituição sem nome": {},
+    "Substituições": {},
+    "Sugerida": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested"
+          }
+        }
+      }
+    },
+    "Sugestões de nome": {},
+    "Sustentação": {},
+    "Sáb": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sat"
+          }
+        }
+      }
+    },
+    "Série %lld, %@": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Série %1$lld, %2$@"
+          }
+        }
+      }
+    },
+    "Série a série": {},
+    "Séries": {},
+    "Séries iguais": {},
+    "Séries iguais exige que todas tenham a mesma prescrição. As demais séries copiarão os valores da série 1.": {},
+    "Só repetições": {},
+    "Só salvar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Just save"
+          }
+        }
+      }
+    },
+    "Tem data de fim": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Has an end date"
+          }
+        }
+      }
+    },
+    "Tem substituições": {},
+    "Tempo de sustentação": {},
+    "Tempo ou distância": {},
+    "Tentar de novo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        }
+      }
+    },
+    "Tente de novo. Nada foi perdido.": {},
+    "Ter": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tue"
+          }
+        }
+      }
+    },
+    "Tipo de medida": {},
+    "Tipo de série": {},
+    "Tipografia": {},
+    "Tirar foto": {},
+    "Toca dentro do app": {},
+    "Todas opcionais. Vazio ou 0 = sem meta.": {},
+    "Todos os dias": {},
+    "Toque duas vezes para ampliar": {},
+    "Toque duas vezes para reproduzir": {},
+    "Toque duas vezes para ver em tela cheia": {},
+    "Toque numa série para editar. Deslize para remover.": {},
+    "Toque para alterar": {},
+    "Toque para avaliar": {},
+    "Toque para desmarcar": {},
+    "Toque para marcar": {},
+    "Tornar o programa ativo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Make this program active"
+          }
+        }
+      }
+    },
+    "Total desta refeição": {},
+    "Trapézio": {},
+    "Treinar mesmo assim": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Train anyway"
+          }
+        }
+      }
+    },
+    "Treino de hoje": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's workout"
+          }
+        }
+      }
+    },
+    "Treino em andamento: %@": {},
+    "Treino livre": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free workout"
+          }
+        }
+      }
+    },
+    "Treinos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workouts"
+          }
+        }
+      }
+    },
+    "Tri-set": {},
+    "Trocar por…": {},
+    "Tríceps": {},
+    "Turquesa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teal"
+          }
+        }
+      }
+    },
+    "Título de cartão": {},
+    "Título de seção": {},
+    "Um pouco difícil": {},
+    "Unidade": {},
+    "Unilateral (por lado)": {},
+    "Usar a atual como inicial": {},
+    "Usar o mesmo plano em todos os dias?": {},
+    "Valor inválido. Máximo %@.": {},
+    "Valores para a quantidade acima.": {},
+    "Variação": {},
+    "Variações": {},
+    "Velocidade": {},
+    "Ver exercício": {},
+    "Ver plano": {},
+    "Ver programas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View programs"
+          }
+        }
+      }
+    },
+    "Ver treino": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View workout"
+          }
+        }
+      }
+    },
+    "Verde": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Green"
+          }
+        }
+      }
+    },
+    "Vincular a uma refeição": {},
+    "Volume": {},
+    "Válida": {},
+    "Vídeo": {},
+    "Vídeo %lld de %lld": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Vídeo %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Vídeo da galeria": {},
+    "Vídeo do Vimeo": {},
+    "Vídeo do Vimeo %lld de %lld": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Vídeo do Vimeo %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Vídeo do YouTube": {},
+    "Vídeo do YouTube %lld de %lld": {
+      "localizations": {
+        "pt-BR": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Vídeo do YouTube %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Vídeo do exercício": {},
+    "Vídeo externo": {},
+    "Vídeo indisponível": {},
+    "Vídeo maior que o limite (%lld MB). Corte ou comprima no Fotos e tente de novo.": {},
+    "Vídeo maior que o limite (%lld s). Corte no Fotos e tente de novo.": {},
+    "Vídeos da galeria: até 60 s e 200 MB.": {},
+    "Z%lld": {},
+    "Zona %lld": {},
+    "Zona de FC alvo": {},
+    "ainda não feita": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not done yet"
+          }
+        }
+      }
+    },
+    "alvo 8–12": {},
+    "atual: %@": {},
+    "colher": {},
+    "comi": {},
+    "de %@ kcal": {},
+    "descanso": {},
+    "desde %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "since %@"
+          }
+        }
+      }
+    },
+    "domingo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sunday"
+          }
+        }
+      }
+    },
+    "estimado": {},
+    "ex.: 3-1-1-0": {},
+    "fatia": {},
+    "feita": {},
+    "feita com alteração": {},
+    "feita com alteração às %@": {},
+    "feita às %@": {},
+    "fora da dieta": {},
+    "inclui %lld estimados": {},
+    "inclui 1 estimado": {},
+    "já usado por outra ficha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "already used by another routine"
+          }
+        }
+      }
+    },
+    "kcal": {},
+    "kg": {},
+    "lb": {},
+    "libras": {},
+    "nenhum": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "none"
+          }
+        }
+      }
+    },
+    "não comi": {},
+    "pausado": {},
+    "pendente": {},
+    "pendente, atrasada": {},
+    "peso corporal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "bodyweight"
+          }
+        }
+      }
+    },
+    "planejada": {},
+    "porção": {},
+    "próxima refeição": {},
+    "pulada": {},
+    "quarta": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wednesday"
+          }
+        }
+      }
+    },
+    "quilos": {},
+    "quinta": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Thursday"
+          }
+        }
+      }
+    },
+    "refeição removida": {},
+    "segunda": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monday"
+          }
+        }
+      }
+    },
+    "sem registro": {},
+    "semana %lld de %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "week %lld of %lld"
+          }
+        }
+      }
+    },
+    "sexta": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Friday"
+          }
+        }
+      }
+    },
+    "sábado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saturday"
+          }
+        }
+      }
+    },
+    "também em %@": {},
+    "terça": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tuesday"
+          }
+        }
+      }
+    },
+    "un": {},
+    "xícara": {},
+    "~%lld min": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "~%lld min"
+          }
+        }
+      }
+    },
+    "Água": {},
+    "última vez: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "last time: %@"
+          }
+        }
+      }
+    },
+    "última vez: hoje": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "last time: today"
+          }
+        }
+      }
+    },
+    "última vez: há %lld dias": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "last time: %lld days ago"
+          }
+        }
+      }
+    },
+    "última vez: ontem": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "last time: yesterday"
+          }
+        }
+      }
+    },
+    "—": {},
+    "−15 s": {}
+  },
+  "version": "1.0"
+}
