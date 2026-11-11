@@ -104,6 +104,8 @@ schemes:
         FitJourneyWatchTests: [test]
     test:
       targets: [FitJourneyWatchTests]
+      language: pt-BR
+      region: BR
   FitJourney:
     build:
       targets:
@@ -111,3 +113,6 @@ schemes:
         FitJourneyTests: [test]
     test:
       targets: [FitJourneyTests]
+      # Testes rodam na língua de desenvolvimento (pt-BR), independente do idioma do simulador.
+      language: pt-BR
+      region: BR
