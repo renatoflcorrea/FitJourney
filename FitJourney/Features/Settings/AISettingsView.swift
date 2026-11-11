@@ -79,7 +79,12 @@ struct AISettingsView: View {
         }
         .navigationTitle("Ajustes de IA")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear(perform: reloadKeyState)
+        .onAppear {
+            reloadKeyState()
+            let store = CoachProfileStore(defaults: defaults)
+            hasConsented = store.hasConsented
+            sharing = store.load().sharing
+        }
         .onChange(of: settings) { ProviderSettingsStore(defaults: defaults).save(settings) }
         .onChange(of: sharing) {
             let store = CoachProfileStore(defaults: defaults)
@@ -92,6 +97,7 @@ struct AISettingsView: View {
                 CoachProfileStore(defaults: defaults).revokeConsent()
                 sharing = .none
                 hasConsented = false
+                NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
             }
         } message: {
             Text("O Coach para de compartilhar seus dados e volta a pedir consentimento na próxima abertura. Conversas já enviadas ao provedor não podem ser recolhidas por aqui.")
@@ -107,7 +113,7 @@ struct AISettingsView: View {
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
             if let errorMessage {
-                FJBanner("Não foi possível concluir", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                FJBanner("Não foi possível concluir", message: CoachMarkdown.literal(errorMessage), tone: .destructive,
                          actionTitle: "Fechar") { self.errorMessage = nil }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -201,8 +207,7 @@ struct AISettingsView: View {
             SecureField(hasKey ? "Substituir chave" : "Chave de API", text: $keyInput)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .textContentType(.password)
-            Button("Salvar chave", action: saveKey)
+                            Button("Salvar chave", action: saveKey)
                 .disabled(keyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .frame(minHeight: FJSize.minTap, alignment: .leading)
             if let url = descriptor.keyHelpURL {
@@ -219,10 +224,13 @@ struct AISettingsView: View {
     private var sharingSection: some View {
         Section {
             SharingToggles(sharing: $sharing)
+                .disabled(!hasConsented)
         } header: {
             Text("O que o Coach pode ler")
         } footer: {
-            Text("O que você ligar pode ser enviado ao provedor quando o Coach consultar seu histórico. Desligado, o Coach nem enxerga.")
+            Text(hasConsented
+                 ? "O que você ligar pode ser enviado ao provedor quando o Coach consultar seu histórico. Desligado, o Coach nem enxerga."
+                 : "Sem consentimento, nada é compartilhado. Aceite na aba Coach para escolher o que compartilhar.")
         }
     }
 

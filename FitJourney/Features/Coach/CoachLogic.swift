@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // Lógica de apresentação do Coach, sem SwiftUI: testável e sem rede.
 
@@ -52,12 +53,16 @@ enum CoachMessageDisplay: Equatable {
     case failed(reason: String)
     case proposal
 
+    /// - Parameter isActive: há uma resposta em andamento nesta conversa. Uma mensagem `.streaming` sem tarefa
+    ///   ativa (app morto no meio e reparo do launch não rodou) é tratada como parada.
     static func resolve(role: LLMRole, state: ChatMessageState, content: String, failureReason: String?,
-                        hasProposal: Bool) -> CoachMessageDisplay {
+                        hasProposal: Bool, isActive: Bool = true) -> CoachMessageDisplay {
         if hasProposal { return .proposal }
         if role == .user { return .user }
         switch state {
-        case .streaming: return content.isEmpty ? .thinking : .streaming
+        case .streaming:
+            if !isActive { return .stopped }
+            return content.isEmpty ? .thinking : .streaming
         case .complete: return .complete
         case .stopped: return .stopped
         case .failed:
@@ -115,12 +120,30 @@ enum ConversationPreview {
     }
 }
 
-/// Texto da resposta com Markdown básico; cai para texto puro se o parcial do streaming não fechar.
+/// Texto da resposta com Markdown básico. **Links são removidos** (texto do modelo não deve abrir URLs);
+/// cai para texto puro se o parcial do streaming não fechar.
 enum CoachMarkdown {
     static func attributed(_ text: String) -> AttributedString {
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+        guard var result = try? AttributedString(markdown: text, options: options) else { return AttributedString(text) }
+        for run in result.runs where run.link != nil {
+            result[run.range].link = nil
+        }
+        return result
     }
+
+    /// Escapa sintaxe Markdown para exibir texto externo (erros do provedor) literalmente num `LocalizedStringKey`.
+    static func escape(_ text: String) -> String {
+        var out = ""
+        for ch in text {
+            if "\\`*_{}[]()<>#+-!|~".contains(ch) { out.append("\\") }
+            out.append(ch)
+        }
+        return out
+    }
+
+    /// Chave de texto que não interpreta Markdown nem links.
+    static func literal(_ text: String) -> LocalizedStringKey { LocalizedStringKey(escape(text)) }
 }
 
 /// Linha do cartão de proposta (ficha ou dia).
@@ -213,6 +236,8 @@ struct ProposalCardModel: Equatable {
 }
 
 /// Lembra, por proposta, o que o usuário fez (descartou ou salvou), já que `ChatMessage` não tem campo para isso.
+/// A chave combina o id da mensagem com o id da chamada de ferramenta: `call.id` sozinho pode repetir entre
+/// conversas ou provedores.
 struct ProposalStateStore {
     enum State: Equatable {
         case pending
@@ -225,21 +250,42 @@ struct ProposalStateStore {
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
-    func state(for proposalID: String) -> State {
-        guard let value = all()[proposalID] else { return .pending }
+    static func key(messageID: UUID, proposalID: String) -> String { "\(messageID.uuidString)|\(proposalID)" }
+
+    func state(for key: String) -> State {
+        guard let value = all()[key] else { return .pending }
         if value == "discarded" { return .discarded }
         if value.hasPrefix("saved:"), let id = UUID(uuidString: String(value.dropFirst(6))) { return .saved(id) }
         return .pending
     }
 
-    func markDiscarded(_ proposalID: String) { set(proposalID, "discarded") }
-    func markSaved(_ proposalID: String, id: UUID) { set(proposalID, "saved:\(id.uuidString)") }
+    func markDiscarded(_ key: String) { set(key, "discarded") }
+    func markSaved(_ key: String, id: UUID) { set(key, "saved:\(id.uuidString)") }
+
+    /// Esquece uma proposta (item salvo que foi apagado).
+    func clear(_ key: String) {
+        var current = all()
+        current[key] = nil
+        defaults.set(current, forKey: Self.key)
+    }
+
+    /// Esquece tudo que pertence às mensagens dadas (conversa apagada).
+    func clear(messageIDs: [UUID]) {
+        let prefixes = messageIDs.map { $0.uuidString + "|" }
+        let current = all().filter { entry in !prefixes.contains { entry.key.hasPrefix($0) } }
+        defaults.set(current, forKey: Self.key)
+    }
 
     private func all() -> [String: String] { defaults.dictionary(forKey: Self.key) as? [String: String] ?? [:] }
 
-    private func set(_ id: String, _ value: String) {
+    private func set(_ key: String, _ value: String) {
         var current = all()
-        current[id] = value
+        current[key] = value
         defaults.set(current, forKey: Self.key)
     }
+}
+
+extension Notification.Name {
+    /// Consentimento concedido ou revogado (Ajustes de IA ↔ aba Coach): a aba revalida o gate e para respostas.
+    static let coachConsentChanged = Notification.Name("coach.consentChanged")
 }

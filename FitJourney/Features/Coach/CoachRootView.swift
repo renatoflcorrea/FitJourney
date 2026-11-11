@@ -2,9 +2,14 @@ import SwiftData
 import SwiftUI
 
 /// Aba Coach (SPEC §7): primeira abertura (consentimento + provedor) → lista de conversas → chat.
-/// Tem `NavigationStack` próprio. A chave vem do Keychain; nada vai a servidor do FitJourney.
+/// Pronta para a aba: `CoachRootView()` tem `NavigationStack` próprio e precisa de `modelContainer` no ambiente.
+/// A chave vem do Keychain; nada vai a servidor do FitJourney.
+///
+/// **O App deve chamar `CoachConversationService.repairInterruptedMessages(in:)` no launch**; se não chamar,
+/// a UI ainda mostra respostas `.streaming` sem tarefa ativa como paradas.
 struct CoachRootView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
 
     private let secrets: any SecretStore
     private let defaults: UserDefaults
@@ -21,6 +26,8 @@ struct CoachRootView: View {
     init(secrets: any SecretStore, defaults: UserDefaults) {
         self.secrets = secrets
         self.defaults = defaults
+        // Gate calculado já no init: sem piscar a tela errada na primeira renderização.
+        _gate = State(initialValue: Self.currentGate(secrets: secrets, defaults: defaults))
     }
 
     var body: some View {
@@ -31,7 +38,7 @@ struct CoachRootView: View {
                     if let service {
                         ConversationListView(service: service, secrets: secrets, defaults: defaults, path: $path)
                     } else {
-                        FJLoadingState()
+                        Color.clear.fjScreenBackground()
                     }
                 case .needsConsent, .needsProvider:
                     CoachWelcomeView(gate: gate, secrets: secrets, defaults: defaults, onChange: refresh)
@@ -46,15 +53,26 @@ struct CoachRootView: View {
         .tint(FJColor.coach)
         .onAppear(perform: refresh)
         .onChange(of: path) { refresh() }
+        .onChange(of: scenePhase) { if scenePhase == .active { refresh() } }
+        .onReceive(NotificationCenter.default.publisher(for: .coachConsentChanged)) { _ in
+            // Revogação (ou nova concessão) em Ajustes: para qualquer resposta e revalida o gate.
+            if !CoachProfileStore(defaults: defaults).hasConsented { service?.stop() }
+            refresh()
+        }
+    }
+
+    private static func currentGate(secrets: any SecretStore, defaults: UserDefaults) -> CoachGate {
+        let settings = ProviderSettingsStore(defaults: defaults).load()
+        let key = (try? secrets.string(for: ProviderCatalog.descriptor(for: settings.provider).secretKey)) ?? nil
+        let hasKey = !(key ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return CoachGate.evaluate(hasConsented: CoachProfileStore(defaults: defaults).hasConsented,
+                                  readiness: ProviderReadiness.evaluate(settings, hasAPIKey: hasKey))
     }
 
     private func refresh() {
-        let hasKey = (try? secrets.string(for: ProviderCatalog.descriptor(
-            for: ProviderSettingsStore(defaults: defaults).load().provider).secretKey))
-            .map { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? false
-        let readiness = ProviderReadiness.evaluate(ProviderSettingsStore(defaults: defaults).load(), hasAPIKey: hasKey)
-        let next = CoachGate.evaluate(hasConsented: CoachProfileStore(defaults: defaults).hasConsented, readiness: readiness)
+        let next = Self.currentGate(secrets: secrets, defaults: defaults)
         if next != gate { gate = next }
+        if next != .ready, !path.isEmpty { path = [] }
         if service == nil {
             let secrets = secrets
             let defaults = defaults
@@ -81,11 +99,12 @@ struct ConversationListView: View {
     @Binding var path: [ChatConversation]
 
     @State private var errorMessage: String?
+    @State private var conversationToDelete: ChatConversation?
 
     var body: some View {
         List {
             if let errorMessage {
-                FJBanner("Não foi possível concluir", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                FJBanner("Não foi possível concluir", message: CoachMarkdown.literal(errorMessage), tone: .destructive,
                          actionTitle: "Fechar") { self.errorMessage = nil }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -94,11 +113,11 @@ struct ConversationListView: View {
                 NavigationLink(value: conversation) {
                     ConversationRow(conversation: conversation, isRunning: service.runningConversationID == conversation.id)
                 }
-                .swipeActions {
-                    Button("Apagar", systemImage: "trash", role: .destructive) { delete(conversation) }
+                .swipeActions(allowsFullSwipe: false) {
+                    Button("Apagar", systemImage: "trash", role: .destructive) { conversationToDelete = conversation }
                 }
                 .contextMenu {
-                    Button("Apagar", systemImage: "trash", role: .destructive) { delete(conversation) }
+                    Button("Apagar", systemImage: "trash", role: .destructive) { conversationToDelete = conversation }
                 }
             }
         }
@@ -130,6 +149,16 @@ struct ConversationListView: View {
             }
         }
         .fjScreenBackground()
+        .confirmationDialog("Apagar esta conversa?", isPresented: Binding(
+            get: { conversationToDelete != nil }, set: { if !$0 { conversationToDelete = nil } }
+        ), titleVisibility: .visible, presenting: conversationToDelete) { conversation in
+            Button("Apagar", role: .destructive) { delete(conversation) }
+        } message: { conversation in
+            Text(service.runningConversationID == conversation.id
+                 ? "O Coach está respondendo: a resposta será interrompida e a conversa apagada."
+                 : "As mensagens desta conversa serão apagadas. Programas e planos já salvos não são afetados.")
+        }
+        .onAppear { if !service.isRunning { service.clearError() } }
     }
 
     private func newConversation() {
@@ -137,7 +166,15 @@ struct ConversationListView: View {
     }
 
     private func delete(_ conversation: ChatConversation) {
-        do { try service.delete(conversation) } catch { errorMessage = error.localizedDescription }
+        let messageIDs = (conversation.messages ?? []).map(\.id)
+        Task {
+            do {
+                try await service.delete(conversation)
+                ProposalStateStore(defaults: defaults).clear(messageIDs: messageIDs)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 }
 

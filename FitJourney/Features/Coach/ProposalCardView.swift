@@ -5,6 +5,8 @@ import SwiftUI
 /// o resultado é inativo (`origin = .ai`) e abre no editor normal, com "Ativar" depois.
 struct ProposalCardView: View {
     let proposal: CoachProposal
+    /// Id da mensagem do chat: compõe a chave de estado (o id da chamada pode repetir).
+    let messageID: UUID
     let defaults: UserDefaults
     let onOpenProgram: (TrainingProgram) -> Void
     let onOpenPlan: (NutritionPlan) -> Void
@@ -16,14 +18,16 @@ struct ProposalCardView: View {
     @State private var expanded = false
 
     private var store: ProposalStateStore { ProposalStateStore(defaults: defaults) }
+    private var stateKey: String { ProposalStateStore.key(messageID: messageID, proposalID: proposal.id) }
+    private var isSaved: Bool { if case .saved = state { true } else { false } }
     private var model: ProposalCardModel { ProposalCardModel(proposal, matches: matches) }
 
     var body: some View {
         Group {
             if state != .discarded { card }
         }
-        .onAppear { state = store.state(for: proposal.id) }
-        .task(id: proposal.id) { computeMatches() }
+        .onAppear { state = store.state(for: stateKey) }
+        .task(id: stateKey) { computeMatches() }
     }
 
     private var card: some View {
@@ -53,14 +57,14 @@ struct ProposalCardView: View {
                 Text(model.kind == .program ? "Ver fichas e exercícios" : "Ver refeições")
                     .font(FJFont.label.weight(.semibold))
             }
-            if model.newExerciseCount > 0 {
+            if model.newExerciseCount > 0, !isSaved {
                 Label("\(model.newExerciseCount) exercícios novos serão criados na sua biblioteca.",
                       systemImage: "plus.circle")
                     .font(FJFont.caption)
                     .foregroundStyle(FJColor.textSecondary)
             }
             if let errorMessage {
-                FJBanner("Não foi possível salvar", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                FJBanner("Não foi possível salvar", message: CoachMarkdown.literal(errorMessage), tone: .destructive,
                          actionTitle: "Fechar") { self.errorMessage = nil }
             }
             actions
@@ -98,7 +102,7 @@ struct ProposalCardView: View {
             VStack(spacing: FJSpacing.s) {
                 FJPrimaryButton("Revisar e salvar", systemImage: "square.and.pencil", area: .coach, action: reviewAndSave)
                 Button("Descartar") {
-                    store.markDiscarded(proposal.id)
+                    store.markDiscarded(stateKey)
                     state = .discarded
                 }
                 .buttonStyle(.fjSecondary())
@@ -106,10 +110,14 @@ struct ProposalCardView: View {
         }
     }
 
+    /// Calcula uma vez por proposta (o cartão é recriado ao rolar a lista).
     private func computeMatches() {
         guard case let .program(draft) = proposal.content else { return }
+        if let cached = ProposalMatchCache.values[stateKey] { matches = cached; return }
         guard let found = try? DraftApplier(context: context).exerciseMatches(for: draft) else { return }
-        matches = found.map { $0.map { $0 != nil } }
+        let value = found.map { $0.map { $0 != nil } }
+        ProposalMatchCache.values[stateKey] = value
+        matches = value
     }
 
     private func reviewAndSave() {
@@ -118,12 +126,13 @@ struct ProposalCardView: View {
             switch proposal.content {
             case let .program(draft):
                 let program = try applier.makeProgram(from: draft)
-                store.markSaved(proposal.id, id: program.id)
+                store.markSaved(stateKey, id: program.id)
                 state = .saved(program.id)
+                ProposalMatchCache.values[stateKey] = nil
                 onOpenProgram(program)
             case let .nutritionPlan(draft):
                 let plan = try applier.makeNutritionPlan(from: draft)
-                store.markSaved(proposal.id, id: plan.id)
+                store.markSaved(stateKey, id: plan.id)
                 state = .saved(plan.id)
                 onOpenPlan(plan)
             }
@@ -147,9 +156,16 @@ struct ProposalCardView: View {
 
     /// O item salvo foi apagado: volta a oferecer "Revisar e salvar".
     private func resetMissing() {
+        store.clear(stateKey)
+        ProposalMatchCache.values[stateKey] = nil
         state = .pending
         errorMessage = String(localized: "O item salvo não existe mais. Você pode salvar de novo.")
     }
+}
+
+@MainActor
+private enum ProposalMatchCache {
+    static var values: [String: [[Bool]]] = [:]
 }
 
 // MARK: - Revisão
@@ -172,7 +188,7 @@ struct ProgramReviewView: View {
             }
             if let errorMessage {
                 Section {
-                    FJBanner("Não foi possível ativar", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                    FJBanner("Não foi possível ativar", message: CoachMarkdown.literal(errorMessage), tone: .destructive,
                              actionTitle: "Fechar") { self.errorMessage = nil }
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
@@ -192,7 +208,7 @@ struct ProgramReviewView: View {
                 }
             }
         }
-        .fjHaptic(.celebration, trigger: program.isActive)
+        .fjHaptic(.celebration, trigger: program.isActive) { old, new in !old && new }
         .navigationTitle(program.name)
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -226,11 +242,11 @@ struct PlanReviewView: View {
 
     var body: some View {
         PlanEditorView(plan: plan)
-            .fjHaptic(.celebration, trigger: plan.isActive)
+            .fjHaptic(.celebration, trigger: plan.isActive) { old, new in !old && new }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 VStack(spacing: FJSpacing.s) {
                     if let errorMessage {
-                        FJBanner("Não foi possível ativar", message: LocalizedStringKey(errorMessage), tone: .destructive,
+                        FJBanner("Não foi possível ativar", message: CoachMarkdown.literal(errorMessage), tone: .destructive,
                                  actionTitle: "Fechar") { self.errorMessage = nil }
                     }
                     if plan.isActive {

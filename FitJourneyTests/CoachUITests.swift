@@ -147,4 +147,40 @@ struct CoachUITests {
         #expect(CoachSuggestions.prompts.count == 3)
         #expect(CoachSuggestions.prompts[0].contains("ABC"))
     }
+
+    // MARK: Revisão
+
+    @Test func streamingWithoutActiveTaskIsStopped() {
+        let display = CoachMessageDisplay.resolve(role: .assistant, state: .streaming, content: "parcial",
+                                                  failureReason: nil, hasProposal: false, isActive: false)
+        #expect(display == .stopped)
+        #expect(display.canRetry)
+    }
+
+    @Test func markdownDropsLinks() {
+        let result = CoachMarkdown.attributed("veja [aqui](https://evil.example) e https://x.example **ok**")
+        #expect(result.runs.allSatisfy { $0.link == nil })
+        #expect(String(result.characters).contains("aqui"))
+    }
+
+    @Test func escapeKeepsProviderErrorsLiteral() {
+        let escaped = CoachMarkdown.escape("erro [clique](https://x) *forte*")
+        #expect(escaped == #"erro \[clique\]\(https://x\) \*forte\*"#)
+    }
+
+    @Test func proposalStateKeyDoesNotCollideAcrossMessages() {
+        let defaults = UserDefaults(suiteName: "coach.test.\(UUID().uuidString)")!
+        let store = ProposalStateStore(defaults: defaults)
+        let m1 = UUID(), m2 = UUID()
+        let k1 = ProposalStateStore.key(messageID: m1, proposalID: "call_1")
+        let k2 = ProposalStateStore.key(messageID: m2, proposalID: "call_1")
+        store.markDiscarded(k1)
+        #expect(store.state(for: k1) == .discarded)
+        #expect(store.state(for: k2) == .pending)
+        store.markSaved(k2, id: UUID())
+        store.clear(k2)
+        #expect(store.state(for: k2) == .pending)
+        store.clear(messageIDs: [m1])
+        #expect(store.state(for: k1) == .pending)
+    }
 }
