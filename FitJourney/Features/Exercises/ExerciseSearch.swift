@@ -1,5 +1,11 @@
 import Foundation
 
+/// Nomes em inglês do catálogo embutido por chave (índice estático; hoje vive aqui para não tocar em
+/// Persistence — mover para junto de `ExerciseCatalog`).
+enum ExerciseCatalogIndex {
+    static let englishNames: [String: String] = Dictionary(uniqueKeysWithValues: ExerciseCatalog.all.map { ($0.key, $0.nameEN) })
+}
+
 /// Busca e filtros da biblioteca (lógica pura, testável).
 struct ExerciseFilter: Equatable, Sendable {
     var query: String = ""
@@ -14,22 +20,49 @@ struct ExerciseFilter: Equatable, Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Cada palavra da busca precisa aparecer no nome (ou no nome em inglês do catálogo embutido).
-    func matches(name: String, englishName: String? = nil, primary: [MuscleGroup], secondary: [MuscleGroup], equipment eq: Equipment) -> Bool {
-        let words = Self.normalize(query).split(separator: " ").map(String.init)
-        if !words.isEmpty {
-            let haystack = Self.normalize(name + " " + (englishName ?? ""))
-            guard words.allSatisfy(haystack.contains) else { return false }
-        }
-        if !muscles.isEmpty, muscles.isDisjoint(with: primary + secondary) { return false }
-        if !equipment.isEmpty, !equipment.contains(eq) { return false }
-        return true
+    /// Nome normalizado em cache (a lista re-filtra a cada tecla; normalizar 60+ nomes toda vez é desperdício).
+    nonisolated(unsafe) private static let normalizedNames: NSCache<NSString, NSString> = {
+        let cache = NSCache<NSString, NSString>()
+        cache.countLimit = 2000
+        return cache
+    }()
+
+    static func normalizedCached(_ text: String) -> String {
+        if let hit = normalizedNames.object(forKey: text as NSString) { return hit as String }
+        let value = normalize(text)
+        normalizedNames.setObject(value as NSString, forKey: text as NSString)
+        return value
     }
 
-    func matches(_ exercise: Exercise) -> Bool {
-        let english = exercise.catalogKey.flatMap { ExerciseCatalog.entry(forKey: $0)?.nameEN }
-        return matches(name: exercise.name, englishName: english, primary: exercise.primaryMuscles,
-                       secondary: exercise.secondaryMuscles, equipment: exercise.equipment)
+    /// Consulta já preparada: palavras normalizadas uma vez por busca, não por exercício.
+    struct Prepared: Sendable {
+        fileprivate let words: [String]
+        fileprivate let muscles: Set<MuscleGroup>
+        fileprivate let equipment: Set<Equipment>
+
+        /// Cada palavra da busca precisa aparecer no nome (ou no nome em inglês do catálogo embutido).
+        func matches(name: String, englishName: String? = nil, primary: [MuscleGroup], secondary: [MuscleGroup], equipment eq: Equipment) -> Bool {
+            if !words.isEmpty {
+                let haystack = ExerciseFilter.normalizedCached(name) + " " + (englishName.map(ExerciseFilter.normalizedCached) ?? "")
+                guard words.allSatisfy(haystack.contains) else { return false }
+            }
+            if !muscles.isEmpty, muscles.isDisjoint(with: primary + secondary) { return false }
+            if !equipment.isEmpty, !equipment.contains(eq) { return false }
+            return true
+        }
+
+        func matches(_ exercise: Exercise) -> Bool {
+            matches(name: exercise.name, englishName: exercise.catalogKey.flatMap { ExerciseCatalogIndex.englishNames[$0] },
+                    primary: exercise.primaryMuscles, secondary: exercise.secondaryMuscles, equipment: exercise.equipment)
+        }
+    }
+
+    func prepared() -> Prepared {
+        Prepared(words: Self.normalize(query).split(separator: " ").map(String.init), muscles: muscles, equipment: equipment)
+    }
+
+    func matches(name: String, englishName: String? = nil, primary: [MuscleGroup], secondary: [MuscleGroup], equipment eq: Equipment) -> Bool {
+        prepared().matches(name: name, englishName: englishName, primary: primary, secondary: secondary, equipment: eq)
     }
 }
 

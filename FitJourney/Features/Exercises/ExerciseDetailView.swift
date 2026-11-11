@@ -1,13 +1,20 @@
 import SwiftData
 import SwiftUI
 
+/// Mídia aberta em tela cheia (wrapper local; `MediaRef` não é `Identifiable` globalmente).
+private struct MediaSelection: Identifiable {
+    let media: MediaRef
+    var id: MediaRef { media }
+}
+
 /// Detalhe do exercício: mídia, classificação, observações e descanso padrão.
 /// Empurre dentro de uma `NavigationStack`.
 struct ExerciseDetailView: View {
     let exercise: Exercise
 
     @Environment(\.modelContext) private var context
-    @State private var viewing: MediaRef?
+    @State private var viewing: MediaSelection?
+    @State private var duplicating = false
     @State private var editing = false
     @State private var duplicated: Exercise?
     @State private var duplicateError: String?
@@ -37,11 +44,12 @@ struct ExerciseDetailView: View {
                     Button("Editar", systemImage: "pencil") { editing = true }
                     if exercise.isBuiltIn {
                         Button("Duplicar para editar", systemImage: "plus.square.on.square") { duplicate() }
+                            .disabled(duplicating)
                     }
                 }
             }
         }
-        .fullScreenCover(item: $viewing) { media in ExerciseMediaViewer(media: media) }
+        .fullScreenCover(item: $viewing) { ExerciseMediaViewer(media: $0.media) }
         .sheet(isPresented: $editing) { ExerciseEditorView(exercise: exercise) }
         .sheet(item: $duplicated) { ExerciseEditorView(exercise: $0) }
         .alert("Não foi possível duplicar", isPresented: Binding(get: { duplicateError != nil }, set: { if !$0 { duplicateError = nil } })) {
@@ -72,9 +80,9 @@ struct ExerciseDetailView: View {
             .accessibilityLabel("Adicionar foto ou vídeo")
         } else {
             TabView {
-                ForEach(Array(media.enumerated()), id: \.offset) { index, item in
-                    Button { viewing = item } label: {
-                        MediaThumbnailView(media: item, maxPixel: 1200)
+                ForEach(Array(media.enumerated()), id: \.element) { index, item in
+                    Button { viewing = MediaSelection(media: item) } label: {
+                        MediaThumbnailView(media: item, maxPixel: 1200, allowsRemoteThumbnail: true)
                             .frame(maxWidth: .infinity)
                             .aspectRatio(16 / 9, contentMode: .fit)
                             .clipShape(FJRadius.shape(FJRadius.card))
@@ -125,6 +133,8 @@ struct ExerciseDetailView: View {
     // MARK: Duplicar
 
     private func duplicate() {
+        guard !duplicating else { return }
+        duplicating = true
         let copy = Exercise(name: exercise.name + " " + String(localized: "(cópia)"),
                             primaryMuscles: exercise.primaryMuscles, secondaryMuscles: exercise.secondaryMuscles,
                             equipment: exercise.equipment, laterality: exercise.laterality,
@@ -132,23 +142,22 @@ struct ExerciseDetailView: View {
         copy.notes = exercise.notes
         let source = exercise.media
         Task {
+            defer { duplicating = false }
+            var copied: [MediaRef] = []
             do {
-                var media: [MediaRef] = []
-                for item in source { media.append(try await MediaStore.shared.duplicate(item)) }
-                copy.media = media
+                // `duplicate` apaga o que já copiou se falhar no meio.
+                copied = try await MediaStore.shared.duplicate(source)
+                copy.media = copied
                 context.insert(copy)
                 try context.save()
                 duplicated = copy
             } catch {
-                MediaStore.shared.delete(copy.media)
+                if copy.modelContext != nil { context.delete(copy); context.rollback() }
+                MediaStore.shared.delete(copied)
                 duplicateError = error.localizedDescription
             }
         }
     }
-}
-
-extension MediaRef: Identifiable {
-    var id: Self { self }
 }
 
 /// Etiquetas dos grupos (primários em destaque, secundários neutros), quebrando linha.
@@ -161,36 +170,6 @@ private struct FlowTags: View {
             ForEach(primary, id: \.self) { FJTag(LocalizedStringKey($0.localizedName), area: .training) }
             ForEach(secondary, id: \.self) { FJTag(LocalizedStringKey($0.localizedName), tone: .neutral) }
         }
-    }
-}
-
-/// Layout simples que quebra linha.
-struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        arrange(width: proposal.width ?? .infinity, subviews: subviews).size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = arrange(width: bounds.width, subviews: subviews)
-        for (index, origin) in result.origins.enumerated() {
-            subviews[index].place(at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y), proposal: .unspecified)
-        }
-    }
-
-    private func arrange(width: CGFloat, subviews: Subviews) -> (size: CGSize, origins: [CGPoint]) {
-        var origins: [CGPoint] = []
-        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, maxX: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > 0, x + size.width > width { x = 0; y += rowHeight + spacing; rowHeight = 0 }
-            origins.append(CGPoint(x: x, y: y))
-            x += size.width + spacing
-            maxX = max(maxX, x - spacing)
-            rowHeight = max(rowHeight, size.height)
-        }
-        return (CGSize(width: maxX, height: y + rowHeight), origins)
     }
 }
 

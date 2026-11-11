@@ -27,7 +27,7 @@ struct ExerciseEditorView: View {
         _kind = State(initialValue: exercise?.measurementKind ?? .repsAndLoad)
         _notes = State(initialValue: exercise?.notes ?? "")
         _rest = State(initialValue: Double(exercise?.defaultRestSeconds ?? 90))
-        _media = State(initialValue: exercise?.media ?? [])
+        _items = State(initialValue: (exercise?.media ?? []).map(MediaItem.init))
     }
 
     @Environment(\.dismiss) private var dismiss
@@ -42,7 +42,8 @@ struct ExerciseEditorView: View {
     @State private var kind: MeasurementKind
     @State private var notes: String
     @State private var rest: Double
-    @State private var media: [MediaRef]
+    /// Mídias com identidade estável (reordenar/remover não reaproveita a linha errada).
+    @State private var items: [MediaItem]
 
     /// Mídias criadas nesta edição (apagadas do disco se o usuário cancelar).
     @State private var added: [MediaRef] = []
@@ -58,6 +59,7 @@ struct ExerciseEditorView: View {
     @State private var confirmDiscard = false
     @State private var saveError: String?
 
+    private var media: [MediaRef] { items.map(\.ref) }
     private var isBuiltIn: Bool { exercise?.isBuiltIn ?? false }
     private var isNew: Bool { exercise == nil }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -95,6 +97,7 @@ struct ExerciseEditorView: View {
                 }
             }
             .interactiveDismissDisabled(hasChanges || importing != nil)
+            .onDisappear { importTask?.cancel() }
             .confirmationDialog("Descartar alterações?", isPresented: $confirmDiscard, titleVisibility: .visible) {
                 Button("Descartar", role: .destructive, action: cancel)
                 Button("Continuar editando", role: .cancel) {}
@@ -115,28 +118,20 @@ struct ExerciseEditorView: View {
             .onChange(of: photoItem) { _, item in
                 guard let item else { return }
                 photoItem = nil
-                importTask = Task {
-                    importing = "Salvando foto…"
-                    defer { importing = nil }
-                    do {
-                        guard let data = try await item.loadTransferable(type: Data.self) else { throw MediaStoreError.unreadableImage }
-                        append(.image(fileName: try await MediaStore.shared.saveImage(data: data)))
-                    } catch is CancellationError {
-                    } catch { errorMessage = error.localizedDescription }
+                startImport("Salvando foto…") {
+                    guard let data = try await item.loadTransferable(type: Data.self) else { throw MediaStoreError.unreadableImage }
+                    try Task.checkCancellation()
+                    return .image(fileName: try await MediaStore.shared.saveImage(data: data))
                 }
             }
             .onChange(of: videoItem) { _, item in
                 guard let item else { return }
                 videoItem = nil
-                importTask = Task {
-                    importing = "Copiando vídeo…"
-                    defer { importing = nil }
-                    do {
-                        guard let movie = try await item.loadTransferable(type: PickedMovie.self) else { throw MediaStoreError.unreadableVideo }
-                        defer { try? FileManager.default.removeItem(at: movie.url) }
-                        append(try await MediaStore.shared.saveVideo(from: movie.url).mediaRef)
-                    } catch is CancellationError {
-                    } catch { errorMessage = error.localizedDescription }
+                startImport("Copiando vídeo…") {
+                    guard let movie = try await item.loadTransferable(type: PickedMovie.self) else { throw MediaStoreError.unreadableVideo }
+                    defer { try? FileManager.default.removeItem(at: movie.url) }
+                    try Task.checkCancellation()
+                    return try await MediaStore.shared.saveVideo(from: movie.url).mediaRef
                 }
             }
         }
@@ -216,20 +211,23 @@ struct ExerciseEditorView: View {
 
     private var mediaSection: some View {
         Section {
-            ForEach(Array(media.enumerated()), id: \.offset) { index, item in
-                MediaEditorRow(media: item, index: index, count: media.count,
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                MediaEditorRow(media: item.ref, index: index, count: items.count,
                                move: { move(index, by: $0) }, remove: { remove(at: index) })
             }
 
             PhotosPicker(selection: $photoItem, matching: .images) {
                 Label("Foto da galeria", systemImage: "photo")
             }
+            .disabled(importing != nil)
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 Button { openCamera() } label: { Label("Tirar foto", systemImage: "camera") }
+                    .disabled(importing != nil)
             }
             PhotosPicker(selection: $videoItem, matching: .videos) {
                 Label("Vídeo da galeria", systemImage: "video")
             }
+            .disabled(importing != nil)
             Button { withAnimation(FJMotion.value) { showLinkField.toggle() } } label: {
                 Label("Link de vídeo (YouTube, Vimeo)", systemImage: "link")
             }
@@ -273,7 +271,7 @@ struct ExerciseEditorView: View {
             if let parsed {
                 HStack(spacing: FJSpacing.m) {
                     MediaThumbnailView(media: .externalVideo(url: parsed.url, provider: parsed.provider, videoID: parsed.videoID),
-                                       maxPixel: 200, showsPlayBadge: false)
+                                       maxPixel: 200, showsPlayBadge: false, allowsRemoteThumbnail: true)
                         .frame(width: 80, height: 45)
                         .clipShape(FJRadius.shape(FJRadius.chip))
                     VStack(alignment: .leading) {
@@ -309,21 +307,22 @@ struct ExerciseEditorView: View {
     // MARK: Ações de mídia
 
     private func append(_ item: MediaRef) {
+        guard !media.contains(item) else { return }
         withAnimation(FJMotion.structure) {
-            media.append(item)
+            items.append(MediaItem(item))
             added.append(item)
         }
     }
 
     private func move(_ index: Int, by delta: Int) {
         let target = index + delta
-        guard media.indices.contains(target) else { return }
-        withAnimation(FJMotion.structure) { media.swapAt(index, target) }
+        guard items.indices.contains(target) else { return }
+        withAnimation(FJMotion.structure) { items.swapAt(index, target) }
     }
 
     private func remove(at index: Int) {
-        guard media.indices.contains(index) else { return }
-        let item = media.remove(at: index)
+        guard items.indices.contains(index) else { return }
+        let item = items.remove(at: index).ref
         // Criada nesta edição: o arquivo some já. Antiga: só sai do disco ao salvar.
         if let addedIndex = added.firstIndex(of: item) {
             added.remove(at: addedIndex)
@@ -332,6 +331,7 @@ struct ExerciseEditorView: View {
     }
 
     private func openCamera() {
+        guard importing == nil else { return }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .denied, .restricted: cameraDenied = true
         default: cameraDenied = false; showCamera = true
@@ -339,10 +339,23 @@ struct ExerciseEditorView: View {
     }
 
     private func importImage(_ data: Data) {
+        startImport("Salvando foto…") { .image(fileName: try await MediaStore.shared.saveImage(data: data)) }
+    }
+
+    /// Uma importação por vez. Se for cancelada (ou a tela sumir) depois de gravar, o arquivo é apagado.
+    private func startImport(_ label: LocalizedStringKey, _ work: @escaping @Sendable () async throws -> MediaRef) {
+        guard importing == nil else { return }
+        importing = label
         importTask = Task {
-            importing = "Salvando foto…"
-            defer { importing = nil }
-            do { append(.image(fileName: try await MediaStore.shared.saveImage(data: data))) } catch { errorMessage = error.localizedDescription }
+            defer { importing = nil; importTask = nil }
+            do {
+                let result = try await work()
+                guard !Task.isCancelled else { MediaStore.shared.delete(result); return }
+                append(result)
+            } catch is CancellationError {
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -377,13 +390,19 @@ struct ExerciseEditorView: View {
             saveError = error.localizedDescription
             return
         }
-        MediaStore.shared.delete(original.filter { !media.contains($0) })
+        MediaStore.shared.deleteUnreferenced(original.filter { !media.contains($0) }, in: context)
         onSave?(target)
         dismiss()
     }
 }
 
 // MARK: - Subviews
+
+private struct MediaItem: Identifiable {
+    let id = UUID()
+    let ref: MediaRef
+    init(_ ref: MediaRef) { self.ref = ref }
+}
 
 private struct MuscleChips: View {
     @Binding var selection: [MuscleGroup]
@@ -457,7 +476,9 @@ struct PickedMovie: Transferable {
             SentTransferredFile(movie.url)
         } importing: { received in
             let ext = received.file.pathExtension.isEmpty ? "mov" : received.file.pathExtension
-            let copy = URL.temporaryDirectory.appending(path: "\(UUID().uuidString).\(ext)")
+            let directory = MediaMaintenance.pickedMoviesDirectory
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let copy = directory.appending(path: "\(UUID().uuidString).\(ext)")
             try FileManager.default.copyItem(at: received.file, to: copy)
             return PickedMovie(url: copy)
         }

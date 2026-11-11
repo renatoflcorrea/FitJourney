@@ -7,8 +7,9 @@ struct ExerciseRow: View {
     let exercise: Exercise
 
     var body: some View {
+        let media = exercise.media
         HStack(spacing: FJSpacing.m) {
-            thumbnail
+            thumbnail(first: media.first)
                 .frame(width: 56, height: 56)
                 .clipShape(FJRadius.shape(FJRadius.chip))
             VStack(alignment: .leading, spacing: FJSpacing.xxs) {
@@ -22,12 +23,12 @@ struct ExerciseRow: View {
             Spacer(minLength: 0)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilityText)
+        .accessibilityLabel(accessibilityText(mediaCount: media.count))
     }
 
     @ViewBuilder
-    private var thumbnail: some View {
-        if let first = exercise.media.first {
+    private func thumbnail(first: MediaRef?) -> some View {
+        if let first {
             MediaThumbnailView(media: first, maxPixel: 200, showsPlayBadge: false)
         } else {
             ZStack {
@@ -39,8 +40,7 @@ struct ExerciseRow: View {
         }
     }
 
-    private var accessibilityText: String {
-        let count = exercise.media.count
+    private func accessibilityText(mediaCount count: Int) -> String {
         let media = count > 0 ? ", " + String(localized: "\(count) mídias") : ""
         return "\(exercise.name), \(exercise.summaryLine)\(media)"
     }
@@ -61,7 +61,7 @@ struct ExerciseBrowser: View {
     var onSingleTap: ((Exercise) -> Void)?
 
     @Environment(\.modelContext) private var context
-    @Query(sort: \Exercise.name) private var allExercises: [Exercise]
+    @Query private var allExercises: [Exercise]
 
     @State private var filter = ExerciseFilter()
     @State private var creating: CreationRequest?
@@ -74,8 +74,9 @@ struct ExerciseBrowser: View {
     }
 
     private var results: [Exercise] {
-        allExercises
-            .filter(filter.matches)
+        let matcher = filter.prepared()
+        return allExercises
+            .filter(matcher.matches)
             .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
@@ -201,7 +202,7 @@ struct ExerciseBrowser: View {
         context.delete(exercise)
         do {
             try context.save()
-            MediaStore.shared.delete(media)
+            MediaStore.shared.deleteUnreferenced(media, in: context)
         } catch {
             context.rollback()
         }
@@ -281,6 +282,7 @@ struct ExercisePicker: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @State private var selection: [PersistentIdentifier] = []
+    @State private var didFinish = false
 
     var body: some View {
         NavigationStack {
@@ -313,7 +315,8 @@ struct ExercisePicker: View {
     }
 
     private func finish(_ exercises: [Exercise]) {
-        guard !exercises.isEmpty else { return }
+        guard !exercises.isEmpty, !didFinish else { return }
+        didFinish = true
         onPick(exercises)
         dismiss()
     }
