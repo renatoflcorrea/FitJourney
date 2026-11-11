@@ -33,6 +33,24 @@ struct SessionSnapshot: Codable, Sendable, Hashable {
     /// Propostas de atualização de carga (R-T2) se a sessão terminasse agora — para confirmar no `finish`.
     var loadProposals: [LoadProposal]
 
+    // v2
+    /// Exercício escolhido explicitamente (`focusExercise`); `nil` = regra automática.
+    var focusedExerciseID: UUID? = nil
+    /// Duração total do descanso em curso (com os ajustes ±15 s), para a barra de progresso. `nil` sem descanso.
+    var restTotalSeconds: Double? = nil
+    /// `commandID`s aplicados mais recentes (até `SessionSnapshot.appliedCommandWindow`, mais antigos
+    /// primeiro): o relógio poda da fila o que o snapshot já contém, mesmo sem a resposta.
+    var appliedCommandIDs: [UUID] = []
+    /// Rodada do bi-set/tri-set/circuito do exercício atual (`nil` fora de grupo).
+    var currentGroup: GroupRound? = nil
+    /// Anotação da sessão (`nil`/vazio = sem).
+    var notes: String? = nil
+    /// Tipo do treino para o Saúde (`HealthWorkoutType.rawValue`, derivado da ficha no iPhone).
+    var workoutType: String? = nil
+
+    /// Tamanho da janela de `appliedCommandIDs`.
+    static let appliedCommandWindow = 64
+
     struct Exercise: Codable, Sendable, Hashable, Identifiable {
         /// `SessionExercise.id`.
         var id: UUID
@@ -45,6 +63,11 @@ struct SessionSnapshot: Codable, Sendable, Hashable {
         var groupID: UUID?
         var restSeconds: Int?
         var sets: [ExerciseSet]
+        // v2
+        var notes: String? = nil
+        var painLocation: String? = nil
+        /// Dor 0–10.
+        var painScore: Int? = nil
     }
 
     struct ExerciseSet: Codable, Sendable, Hashable, Identifiable {
@@ -66,6 +89,25 @@ struct SessionSnapshot: Codable, Sendable, Hashable {
         var restSeconds: Int?
         var isCompleted: Bool
         var completedAt: Date?
+        // v2 (cardio)
+        /// Duração alvo (cardio), para o cronômetro.
+        var targetDurationSeconds: Int? = nil
+        var targetDistanceMeters: Double? = nil
+        /// Nível/velocidade/inclinação realizados.
+        var level: Int? = nil
+        var speedKmh: Double? = nil
+        var inclinePercent: Double? = nil
+    }
+
+    /// Posição do exercício atual na rodada do grupo.
+    struct GroupRound: Codable, Sendable, Hashable {
+        var groupID: UUID
+        /// Rodada atual (1-based) e total (maior número de séries entre os exercícios do grupo).
+        var round: Int
+        var totalRounds: Int
+        /// Concluir a série atual fecha a rodada (e começa o descanso); `false` = alterna para `nextExerciseID` sem descanso.
+        var completesRound: Bool
+        var nextExerciseID: UUID?
     }
 
     struct Metrics: Codable, Sendable, Hashable {
@@ -103,7 +145,36 @@ struct SessionSnapshot: Codable, Sendable, Hashable {
         return remaining > 0 ? remaining : nil
     }
 
+    /// Tempo ativo da sustentação/cronômetro de cardio em curso (as pausas não contam: o início é
+    /// deslocado na retomada e, pausado, o tempo fica congelado na pausa).
+    func holdElapsed(at now: Date) -> TimeInterval? {
+        guard let holdStartedAt else { return nil }
+        let reference = [endedAt, pausedAt].compactMap { $0 }.min() ?? now
+        return max(0, reference.timeIntervalSince(holdStartedAt))
+    }
+
     var currentExercise: Exercise? { exercises.first { $0.id == currentExerciseID } }
+
+    /// Rodada do grupo do exercício `currentID` (mesma regra de `SessionFlow.isEndOfRound`).
+    static func groupRound(exercises: [Exercise], currentID: UUID?) -> GroupRound? {
+        guard let current = exercises.first(where: { $0.id == currentID }), let group = current.groupID else { return nil }
+        let members = exercises.filter { $0.groupID == group && $0.status != .skipped }
+        func done(_ e: Exercise) -> Int { e.sets.filter(\.isCompleted).count }
+        func isOpen(_ e: Exercise) -> Bool {
+            (e.status == .pending || e.status == .inProgress) && (e.sets.isEmpty || e.sets.contains { !$0.isCompleted })
+        }
+        let total = members.map(\.sets.count).max() ?? 0
+        let after = done(current) + 1
+        let others = members.filter { $0.id != current.id && isOpen($0) }
+        let completes = others.allSatisfy { done($0) >= after }
+        var next: UUID?
+        if !completes, let index = members.firstIndex(where: { $0.id == current.id }) {
+            let ordered = Array(members[(index + 1)...]) + Array(members[..<index])
+            next = ordered.first { $0.id != current.id && isOpen($0) && done($0) < after }?.id
+        }
+        return GroupRound(groupID: group, round: min(max(1, after), max(1, total)), totalRounds: max(1, total),
+                          completesRound: completes, nextExerciseID: next)
+    }
 
     /// "Série 2 de 4" do exercício atual: (posição 1-based, total).
     var currentSetPosition: (index: Int, of: Int)? {

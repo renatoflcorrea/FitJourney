@@ -4,6 +4,9 @@ import Foundation
 /// É uma aproximação das regras do `SessionEngine` do iPhone, que continua sendo a fonte de verdade:
 /// o snapshot que chegar depois substitui o resultado daqui. Função pura; o tempo vem de `issuedAt`.
 /// O `MockWatchTransport` reutiliza o mesmo redutor para simular o iPhone.
+///
+/// IDs (protocolo v2): o `start` e o `addSet` usam `WatchLinkIDs`, os mesmos que o iPhone grava — o
+/// snapshot otimista e o do iPhone citam as mesmas séries.
 enum SessionReducer {
     /// Descanso padrão quando a série/exercício não prescreve (o iPhone usa a regra do app).
     static let fallbackRestSeconds = 0
@@ -37,9 +40,20 @@ enum SessionReducer {
             s.holdStartedAt = nil
             let set = s.exercises[location.e].sets[location.s]
             let rest = set.restSeconds ?? s.exercises[location.e].restSeconds ?? fallbackRestSeconds
+            // No grupo, a escolha manual cede à alternância por rodada (mesma regra do iPhone).
+            if let group = s.exercises[location.e].groupID, let focused = s.focusedExerciseID,
+               s.exercises.contains(where: { $0.id == focused && $0.groupID == group }) {
+                s.focusedExerciseID = nil
+            }
             advance(&s, after: location.e)
             // Bi-set/circuito: o descanso só começa no fim da rodada (`SessionFlow.isEndOfRound`).
-            if rest > 0, isEndOfRound(s, after: location.e) { s.restEndsAt = at.addingTimeInterval(Double(rest)) }
+            if isEndOfRound(s, after: location.e) {
+                s.restEndsAt = rest > 0 ? at.addingTimeInterval(Double(rest)) : nil
+                s.restTotalSeconds = rest > 0 ? Double(rest) : nil
+            } else {
+                s.restEndsAt = nil
+                s.restTotalSeconds = nil
+            }
         case .uncompleteSet(let setID):
             guard let location = locate(setID, in: s) else { return s }
             mutate(&s, location) { $0.isCompleted = false; $0.completedAt = nil }
@@ -62,42 +76,100 @@ enum SessionReducer {
             }
         case .startRest(let seconds):
             let rest = seconds ?? s.currentExercise?.restSeconds ?? fallbackRestSeconds
-            s.restEndsAt = rest > 0 ? at.addingTimeInterval(Double(rest)) : nil
+            s.restEndsAt = rest > 0 ? (s.pausedAt ?? at).addingTimeInterval(Double(rest)) : nil
+            s.restTotalSeconds = rest > 0 ? Double(rest) : nil
         case .adjustRest(let seconds):
-            if let end = s.restEndsAt { s.restEndsAt = max(at, end.addingTimeInterval(Double(seconds))) }
+            if let end = s.restEndsAt {
+                let adjusted = end.addingTimeInterval(Double(seconds))
+                let reference = s.pausedAt ?? at
+                if adjusted > reference {
+                    s.restEndsAt = adjusted
+                    let remaining = adjusted.timeIntervalSince(reference)
+                    s.restTotalSeconds = max(remaining, (s.restTotalSeconds ?? remaining - Double(seconds)) + Double(seconds))
+                } else {
+                    s.restEndsAt = nil
+                    s.restTotalSeconds = nil
+                }
+            }
         case .skipRest:
             s.restEndsAt = nil
+            s.restTotalSeconds = nil
         case .startHold(let setID):
             resumeIfNeeded(&s, at: at)
-            guard locate(setID, in: s) != nil else { return s }
+            guard let location = locate(setID, in: s), !s.exercises[location.e].sets[location.s].isCompleted else { return s }
             s.holdSetID = setID
             s.holdStartedAt = at
             s.restEndsAt = nil
+            s.restTotalSeconds = nil
         case .endHold(let setID):
             guard s.holdSetID == setID, let started = s.holdStartedAt else { return s }
+            // Pausada: conta até o início da pausa (o início já foi deslocado pelas retomadas).
+            let end = s.pausedAt.map { min($0, at) } ?? at
             var completion = command
             completion.kind = .completeSet(setID: setID, reps: nil, load: nil,
-                                           durationSeconds: max(0, at.timeIntervalSince(started)), distanceMeters: nil)
+                                           durationSeconds: max(0, end.timeIntervalSince(started)), distanceMeters: nil)
             return apply(completion, to: s)
+        case .updateHoldTarget(let setID, let seconds):
+            guard seconds > 0, let location = locate(setID, in: s) else { return s }
+            let isCardio = s.exercises[location.e].measurementKind == .timeOrDistance
+            mutate(&s, location) {
+                if isCardio { $0.targetDurationSeconds = seconds } else { $0.targetHoldSeconds = seconds }
+                $0.targetText = isCardio ? WatchFormat.cardioTargetText(seconds: seconds) : "\(seconds) s"
+            }
+        case .updateCardio(let setID, let level, let speed, let incline):
+            guard let location = locate(setID, in: s) else { return s }
+            mutate(&s, location) {
+                $0.level = level
+                $0.speedKmh = speed
+                $0.inclinePercent = incline
+            }
+        case .removeSet(let setID):
+            guard let location = locate(setID, in: s) else { return s }
+            s.exercises[location.e].sets.remove(at: location.s)
+            if s.holdSetID == setID {
+                s.holdSetID = nil
+                s.holdStartedAt = nil
+            }
+            refreshStatus(&s, exerciseAt: location.e)
+            selectCurrent(&s)
+        case .changeSetKind(let setID, let kind):
+            guard kind != .unknown, let location = locate(setID, in: s) else { return s }
+            mutate(&s, location) { $0.kind = kind }
+        case .setExerciseNote(let exerciseID, let text):
+            guard let index = s.exercises.firstIndex(where: { $0.id == exerciseID }) else { return s }
+            s.exercises[index].notes = text.isEmpty ? nil : text
+        case .setPain(let exerciseID, let location, let score):
+            guard let index = s.exercises.firstIndex(where: { $0.id == exerciseID }) else { return s }
+            s.exercises[index].painLocation = location
+            s.exercises[index].painScore = score
+        case .setSessionNote(let text):
+            s.notes = text.isEmpty ? nil : text
         case .skipExercise(let exerciseID, _):
             guard let index = s.exercises.firstIndex(where: { $0.id == exerciseID }) else { return s }
             s.exercises[index].status = .skipped
+            if s.focusedExerciseID == exerciseID { s.focusedExerciseID = nil }
             if s.currentExerciseID == exerciseID { selectCurrent(&s) }
         case .completeExercise(let exerciseID):
             guard let index = s.exercises.firstIndex(where: { $0.id == exerciseID }) else { return s }
             let allDone = s.exercises[index].sets.allSatisfy(\.isCompleted)
             s.exercises[index].status = allDone ? .completed : .partial
+            if s.focusedExerciseID == exerciseID { s.focusedExerciseID = nil }
             if s.currentExerciseID == exerciseID { selectCurrent(&s) }
         case .focusExercise(let exerciseID):
             guard s.exercises.contains(where: { $0.id == exerciseID }) else { return s }
             if let index = s.exercises.firstIndex(where: { $0.id == exerciseID }), s.exercises[index].status == .skipped {
                 s.exercises[index].status = .inProgress // escolher um pulado o retoma
             }
+            s.focusedExerciseID = exerciseID
             s.currentExerciseID = exerciseID
             s.currentSetID = s.exercises.first { $0.id == exerciseID }?.sets.first { !$0.isCompleted }?.id
         case .addSet(let exerciseID, let kind):
             guard let index = s.exercises.firstIndex(where: { $0.id == exerciseID }), var copy = s.exercises[index].sets.last else { return s }
-            copy.id = UUID()
+            copy.id = WatchLinkIDs.extraSetID(sessionID: s.sessionID, commandID: command.commandID)
+            copy.plannedLoad = copy.load ?? copy.plannedLoad
+            copy.level = nil
+            copy.speedKmh = nil
+            copy.inclinePercent = nil
             copy.isCompleted = false
             copy.completedAt = nil
             copy.reps = nil
@@ -105,6 +177,8 @@ enum SessionReducer {
             copy.distanceMeters = nil
             if let kind { copy.kind = kind }
             s.exercises[index].sets.append(copy)
+            refreshStatus(&s, exerciseAt: index)
+            if s.currentExerciseID == exerciseID || s.currentExerciseID == nil { selectCurrent(&s) }
         case .addExercise, .substituteExercise:
             break // exigem o catálogo: só o iPhone aplica; o relógio espera o snapshot.
         case .reorderExercise(let exerciseID, let toIndex):
@@ -117,19 +191,23 @@ enum SessionReducer {
             s.pausedAt = at
         case .resume:
             resume(&s, at: at)
-        case .finish:
+        case .finish(_, _, _, let notes):
             resumeIfNeeded(&s, at: at)
             s.status = .finished
             s.endedAt = at
             s.restEndsAt = nil
+            s.restTotalSeconds = nil
             s.holdSetID = nil
             s.holdStartedAt = nil
+            if let notes { s.notes = notes.isEmpty ? nil : notes }
         case .discard:
             s.status = .discarded
             s.endedAt = at
             s.restEndsAt = nil
+            s.restTotalSeconds = nil
         }
         s.metrics = metrics(of: s)
+        s.currentGroup = SessionSnapshot.groupRound(exercises: s.exercises, currentID: s.currentExerciseID)
         return s
     }
 
@@ -137,16 +215,20 @@ enum SessionReducer {
 
     private static func started(_ command: SessionCommand, routineID: UUID?, digest: ProgramDigest?) -> SessionSnapshot? {
         guard let routineID, let routine = digest?.routines.first(where: { $0.id == routineID }) else { return nil }
+        let sessionID = command.sessionID
         let exercises = routine.exercises.map { exercise in
             SessionSnapshot.Exercise(
-                id: exercise.id, exerciseID: exercise.exerciseID, name: exercise.name,
+                id: WatchLinkIDs.sessionExerciseID(sessionID: sessionID, routineExerciseID: exercise.id),
+                exerciseID: exercise.exerciseID, name: exercise.name,
                 measurementKind: exercise.measurementKind, status: .pending, groupID: exercise.groupID,
                 restSeconds: exercise.restSeconds,
                 sets: exercise.sets.map { set in
                     SessionSnapshot.ExerciseSet(
-                        id: set.id, kind: set.kind, targetText: set.targetText, repTarget: set.repTarget, effort: set.effort,
+                        id: WatchLinkIDs.setLogID(sessionID: sessionID, prescriptionID: set.id),
+                        kind: set.kind, targetText: set.targetText, repTarget: set.repTarget, effort: set.effort,
                         plannedLoad: set.load, load: set.load, reps: nil, targetHoldSeconds: set.holdSeconds,
-                        durationSeconds: nil, distanceMeters: nil, restSeconds: set.restSeconds, isCompleted: false, completedAt: nil)
+                        durationSeconds: nil, distanceMeters: nil, restSeconds: set.restSeconds, isCompleted: false, completedAt: nil,
+                        targetDurationSeconds: set.targetDurationSeconds, targetDistanceMeters: set.targetDistanceMeters)
                 })
         }
         var snapshot = SessionSnapshot(
@@ -154,9 +236,10 @@ enum SessionReducer {
             startedAt: command.issuedAt, endedAt: nil, pausedAt: nil, accumulatedPauseSeconds: 0, restEndsAt: nil,
             holdSetID: nil, holdStartedAt: nil, currentExerciseID: nil, currentSetID: nil, exercises: exercises,
             metrics: .init(completedSets: 0, totalSets: 0, exercisesDone: 0, exercisesTotal: 0, volumeKg: 0, hasEstimatedVolume: false),
-            loadProposals: [])
+            loadProposals: [], workoutType: routine.workoutType)
         selectCurrent(&snapshot)
         snapshot.metrics = metrics(of: snapshot)
+        snapshot.currentGroup = SessionSnapshot.groupRound(exercises: snapshot.exercises, currentID: snapshot.currentExerciseID)
         return snapshot
     }
 
@@ -183,9 +266,23 @@ enum SessionReducer {
         guard s.status == .paused, let pausedAt = s.pausedAt else { return }
         let gap = max(0, at.timeIntervalSince(pausedAt))
         s.accumulatedPauseSeconds += gap
-        if let end = s.restEndsAt { s.restEndsAt = end.addingTimeInterval(gap) }
+        if let end = s.restEndsAt, end > pausedAt { s.restEndsAt = end.addingTimeInterval(gap) }
+        // A pausa não conta na sustentação/cronômetro de cardio (mesma regra do iPhone).
+        if let started = s.holdStartedAt { s.holdStartedAt = started.addingTimeInterval(gap) }
         s.status = .active
         s.pausedAt = nil
+    }
+
+    /// Status automático depois de mudar as séries (sem mexer em pulado/parcial).
+    private static func refreshStatus(_ s: inout SessionSnapshot, exerciseAt index: Int) {
+        let exercise = s.exercises[index]
+        guard exercise.status == .pending || exercise.status == .inProgress || exercise.status == .completed else { return }
+        let done = exercise.sets.filter(\.isCompleted).count
+        if !exercise.sets.isEmpty, done == exercise.sets.count {
+            s.exercises[index].status = .completed
+        } else {
+            s.exercises[index].status = done > 0 ? .inProgress : (exercise.status == .completed ? .inProgress : exercise.status)
+        }
     }
 
     /// Ainda há o que fazer (`SessionFlow.ExerciseState.isOpen`).

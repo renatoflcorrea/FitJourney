@@ -24,7 +24,7 @@ struct SessionCommand: Codable, Sendable, Hashable, Identifiable {
     /// `setID` = `SetLog.id`; `exerciseID` = `SessionExercise.id` (o exercício dentro da sessão).
     /// Cargas e deltas na unidade da carga da série.
     enum Kind: Codable, Sendable, Hashable {
-        /// Inicia sessão da ficha (`nil` = treino livre).
+        /// Inicia sessão da ficha (`nil` = treino livre). IDs de exercício/série: `WatchLinkIDs`.
         case start(routineID: UUID?)
         /// Conclui com os valores informados; ausentes mantêm o já registrado/planejado. Reps opcionais (D2).
         case completeSet(setID: UUID, reps: Int?, load: WatchLoad?, durationSeconds: Double?, distanceMeters: Double?)
@@ -38,27 +38,46 @@ struct SessionCommand: Codable, Sendable, Hashable, Identifiable {
         /// +15 s / −15 s.
         case adjustRest(seconds: Int)
         case skipRest
-        /// Isométrico: começa a sustentação (contagem do tempo alvo no emissor).
+        /// Isométrico: começa a sustentação (contagem do tempo alvo no emissor). Cardio (`timeOrDistance`):
+        /// inicia o cronômetro da série (alvo em `targetDurationSeconds` do snapshot).
         case startHold(setID: UUID)
-        /// Fim da sustentação: conclui a série com o tempo real (`issuedAt − início`).
+        /// Fim da sustentação/cronômetro: conclui a série com o tempo ativo (`issuedAt − início`, **sem** as
+        /// pausas da sessão — o início é deslocado a cada retomada; encerrada durante a pausa conta até a pausa).
         case endHold(setID: UUID)
+        /// Troca o alvo da sustentação (isométrico) ou a duração alvo (cardio), em segundos (1…3600).
+        case updateHoldTarget(setID: UUID, seconds: Int)
+        /// Cardio: nível/velocidade (km/h)/inclinação (%) realizados. Substitui (ausente = limpa).
+        case updateCardio(setID: UUID, level: Int?, speedKmh: Double?, inclinePercent: Double?)
+        /// Remove a série (prescrita ou extra), concluída ou não.
+        case removeSet(setID: UUID)
+        /// Muda o tipo da série (aquecimento, válida, drop-set…).
+        case changeSetKind(setID: UUID, kind: WatchSetKind)
         case skipExercise(exerciseID: UUID, reason: WatchSkipReason?)
         /// Conclusão manual (com séries pendentes = "concluído parcialmente").
         case completeExercise(exerciseID: UUID)
         /// Escolhe o exercício atual (sobrescreve a regra automática enquanto ele estiver aberto).
         case focusExercise(exerciseID: UUID)
-        /// Série extra no exercício (copia alvo/carga da última).
+        /// Série extra no exercício (copia alvo/carga da última). ID da série nova:
+        /// `WatchLinkIDs.extraSetID(sessionID:commandID:)`.
         case addSet(exerciseID: UUID, kind: WatchSetKind?)
         /// Adiciona um exercício do catálogo (`Exercise.id`) no fim ou logo depois de `afterExerciseID`.
+        /// IDs: `WatchLinkIDs.addedExerciseID`/`addedSetID` com o `commandID`.
         case addExercise(catalogExerciseID: UUID, afterExerciseID: UUID?)
+        /// Anotação do exercício (texto vazio = sem anotação).
+        case setExerciseNote(exerciseID: UUID, text: String)
+        /// Dor/desconforto no exercício: local livre e nota 0–10 (ambos `nil` = limpa). Sem interpretação.
+        case setPain(exerciseID: UUID, location: String?, score: Int?)
+        /// Anotação da sessão (texto vazio = sem anotação).
+        case setSessionNote(text: String)
         /// Troca o exercício na hora por outro do catálogo (substituição registrada).
         case substituteExercise(exerciseID: UUID, withCatalogExerciseID: UUID)
         /// Move o exercício para a posição `toIndex` (0-based, limitada) na ordem da sessão.
         case reorderExercise(exerciseID: UUID, toIndex: Int)
         case pause
         case resume
-        /// Finaliza com RPE de sessão (1–10) e as propostas de carga confirmadas (`prescriptionID`s).
-        case finish(rpe: Int?, applyLoadProposalIDs: [UUID])
+        /// Finaliza com RPE de sessão (1–10), as propostas de carga confirmadas (`prescriptionID`s),
+        /// humor/energia (1–5) e nota da sessão (`nil` = mantém a já anotada).
+        case finish(rpe: Int?, applyLoadProposalIDs: [UUID], mood: Int? = nil, notes: String? = nil)
         /// Descarta a sessão (nada fica no histórico).
         case discard
     }

@@ -2,7 +2,8 @@ import Foundation
 
 #if DEBUG
 /// iPhone simulado: guarda o programa e a sessão "de verdade", aplica comandos com o mesmo
-/// `SessionReducer`, devolve resposta + snapshot (revisão +1) e enfileira o que chega fora de alcance.
+/// `SessionReducer` (IDs determinísticos de `WatchLinkIDs`, como o `SessionStore` real), devolve resposta +
+/// snapshot (revisão +1, com `appliedCommandIDs`) e enfileira o que chega fora de alcance.
 /// Usado em previews, testes e no harness de screenshots. Sem latência artificial por padrão.
 @MainActor
 final class MockWatchTransport: WatchTransport {
@@ -32,8 +33,9 @@ final class MockWatchTransport: WatchTransport {
     var rejectNext: SessionCommandRejection?
     /// Se `false`, o mock não responde sozinho (testes controlam respostas à mão com `emit`).
     var autoRespond = true
-    /// O "iPhone" cria IDs novos de série/exercício ao iniciar sessão (como o `SessionStore` real) — não mascara o bug de IDs (A1).
-    var generatesFreshIDs = true
+    /// Não devolve a resposta do comando (simula resposta perdida; o snapshot ainda sai).
+    var dropsReplies = false
+    private var appliedOrder: [UUID] = []
 
     init(digest: ProgramDigest? = nil, snapshot: SessionSnapshot? = nil, reachable: Bool = true) {
         self.digest = digest
@@ -80,21 +82,6 @@ final class MockWatchTransport: WatchTransport {
 
     func finish() { continuations.values.forEach { $0.finish() } }
 
-    static func withFreshIDs(_ snapshot: SessionSnapshot) -> SessionSnapshot {
-        var s = snapshot
-        for e in s.exercises.indices {
-            let old = s.exercises[e].id
-            s.exercises[e].id = UUID()
-            if s.currentExerciseID == old { s.currentExerciseID = s.exercises[e].id }
-            for i in s.exercises[e].sets.indices {
-                let oldSet = s.exercises[e].sets[i].id
-                s.exercises[e].sets[i].id = UUID()
-                if s.currentSetID == oldSet { s.currentSetID = s.exercises[e].sets[i].id }
-            }
-        }
-        return s
-    }
-
     private func handle(_ command: SessionCommand, replyTo: Bool = true) {
         let outcome: SessionCommandReply.Outcome
         if appliedCommandIDs.contains(command.commandID) {
@@ -105,8 +92,11 @@ final class MockWatchTransport: WatchTransport {
         } else {
             let updated = SessionReducer.apply(command, to: phoneSnapshot, digest: digest)
             if var updated {
-                if case .start = command.kind, generatesFreshIDs { updated = Self.withFreshIDs(updated) }
-                updated.revision = (phoneSnapshot?.sessionID == updated.sessionID ? phoneSnapshot?.revision ?? 0 : 0) + 1
+                let sameSession = phoneSnapshot?.sessionID == updated.sessionID
+                updated.revision = (sameSession ? phoneSnapshot?.revision ?? 0 : 0) + 1
+                if !sameSession { appliedOrder = [] }
+                appliedOrder.append(command.commandID)
+                updated.appliedCommandIDs = Array(appliedOrder.suffix(SessionSnapshot.appliedCommandWindow))
                 phoneSnapshot = updated
                 appliedCommandIDs.insert(command.commandID)
                 outcome = .applied
@@ -114,7 +104,7 @@ final class MockWatchTransport: WatchTransport {
                 outcome = .rejected(.unknownRoutine)
             }
         }
-        if replyTo {
+        if replyTo, !dropsReplies {
             yield(.message(.commandReply(.init(commandID: command.commandID, sessionID: command.sessionID,
                                                             outcome: outcome, revision: phoneSnapshot?.revision ?? 0))))
         }

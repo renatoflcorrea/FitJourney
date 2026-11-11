@@ -79,6 +79,14 @@ enum StaleSessionResolution: Sendable, Hashable {
 ///   novo antes de qualquer coisa; o reenvio recebe então o resultado original (`.applied`).
 /// - Cada comando aplicado incrementa `revision` (persistida) e publica um `SessionSnapshot`.
 /// - Tempos sempre derivados de datas persistidas; `issuedAt` é o horário do fato (relógio offline).
+/// - IDs determinísticos (protocolo v2, `WatchLinkIDs`): `start` cria exercícios/séries com IDs derivados
+///   do `sessionID` + prescrição; `addSet`/`addExercise` derivam do `commandID`. O relógio calcula os mesmos.
+/// - Sustentação (isométrico) e cronômetro de cardio usam `startHold`/`endHold`: a pausa da sessão não
+///   conta (o início é deslocado na retomada; `endHold` durante a pausa conta até o início da pausa).
+/// - `skipRest` também dispensa um descanso já vencido (limpa `restEndsAt`); o evento `restSkipped` só
+///   sai se o descanso ainda corria.
+/// - Anotações (exercício/sessão), dor (local + 0–10), humor (1–5) e nota no `finish`, remover série,
+///   tipo da série, alvo da sustentação/duração do cardio e nível/velocidade/inclinação do cardio.
 ///
 /// **Ciclo de vida na UI:** chamar `restore()` ao abrir o app e `handleForeground()` sempre que a
 /// cena voltar ao primeiro plano (`scenePhase == .active`) — reavalia descanso vencido e treino
@@ -95,6 +103,10 @@ final class SessionEngine {
     static let maxRestSeconds = 3_600
     /// Limite de um ajuste de carga num comando.
     static let maxLoadDelta = 500.0
+    /// Limite do alvo de sustentação/duração do cardio, em segundos.
+    static let maxHoldSeconds = 3_600
+    /// Limite de caracteres de uma anotação.
+    static let maxTextLength = 2_000
 
     /// Estado atual da sessão em andamento (`nil` = nenhuma).
     private(set) var snapshot: SessionSnapshot?
@@ -330,8 +342,8 @@ final class SessionEngine {
         let current = now()
         let at = min(max(command.issuedAt, session.startedAt), current)
         switch command.kind {
-        case .finish(let rpe, let ids):
-            return applyFinish(command, session: session, at: at, rpe: rpe, proposalIDs: ids)
+        case let .finish(rpe, ids, mood, notes):
+            return applyFinish(command, session: session, at: at, rpe: rpe, proposalIDs: ids, mood: mood, notes: notes)
         case .discard:
             return applyDiscard(command, session: session)
         default:
@@ -340,7 +352,7 @@ final class SessionEngine {
 
         var events: [SessionEvent] = []
         do {
-            try perform(command.kind, on: session, at: at, now: current, events: &events)
+            try perform(command, on: session, at: at, now: current, events: &events)
             try record(command, in: session, at: at)
         } catch {
             return reject(error)
@@ -404,11 +416,13 @@ final class SessionEngine {
     /// Tudo que pode falhar (validação, propostas, resumo) vem antes da mutação; o snapshot terminal
     /// é montado em memória antes do único `save`. Um comando aplicado nunca é respondido como recusado.
     private func applyFinish(_ command: SessionCommand, session: WorkoutSession, at: Date, rpe: Int?,
-                             proposalIDs: [UUID]) -> SessionApplyResult {
+                             proposalIDs: [UUID], mood: Int?, notes: String?) -> SessionApplyResult {
         let summary: SessionSummary
         let terminal: SessionSnapshot
         do {
             if let rpe, !(1...10).contains(rpe) { throw SessionCommandRejection.invalidValue }
+            if let mood, !(1...5).contains(mood) { throw SessionCommandRejection.invalidValue }
+            if let notes { try validate(text: notes) }
             let store = store
             let ids = Set(proposalIDs)
             let proposals = try store.loadProposals(for: session).filter { ids.contains($0.prescriptionID) }
@@ -416,7 +430,8 @@ final class SessionEngine {
             summary = try store.summary(for: session, at: at)
             session.holdSetID = nil
             session.holdStartedAt = nil
-            try store.finish(session, at: at, sessionRPE: rpe, applying: proposals)
+            session.restTotalSeconds = nil
+            try store.finish(session, at: at, sessionRPE: rpe, mood: mood, notes: notes, applying: proposals)
             try record(command, in: session, at: at)
             terminal = SessionSnapshotBuilder.make(session: session, store: store)
         } catch {
@@ -464,10 +479,10 @@ final class SessionEngine {
 
     // MARK: Comandos durante a sessão
 
-    private func perform(_ kind: SessionCommand.Kind, on session: WorkoutSession, at: Date, now current: Date,
+    private func perform(_ command: SessionCommand, on session: WorkoutSession, at: Date, now current: Date,
                          events: inout [SessionEvent]) throws {
         let store = store
-        switch kind {
+        switch command.kind {
         case .start, .finish, .discard:
             throw SessionCommandRejection.invalidState
 
@@ -500,20 +515,31 @@ final class SessionEngine {
             guard !isSuperseded(at, in: session) else { return }
             let before = session.restEndsAt
             try store.startRest(session, seconds: seconds ?? defaultRestSeconds(for: session), at: at)
+            session.restTotalSeconds = session.restEndsAt.map { $0.timeIntervalSince(session.pausedAt ?? at) }
             restStartedEvent(session, before: before, now: current, into: &events)
 
         case .adjustRest(let seconds):
             guard abs(seconds) <= Self.maxRestSeconds else { throw SessionCommandRejection.invalidValue }
             // Ajuste emitido antes da última série concluída se referia a um descanso já substituído.
             guard !isSuperseded(at, in: session) else { return }
+            let previousTotal = session.restTotalSeconds
             try store.adjustRest(session, by: seconds, at: current)
+            if let end = session.restEndsAt {
+                let remaining = end.timeIntervalSince(session.pausedAt ?? current)
+                session.restTotalSeconds = max(remaining, (previousTotal ?? remaining - Double(seconds)) + Double(seconds))
+            } else {
+                session.restTotalSeconds = nil
+            }
             events.append(.restAdjusted(endsAt: session.restEndsAt))
 
         case .skipRest:
             guard !isSuperseded(at, in: session) else { return }
             if session.restEndsAt != nil {
+                // Também dispensa o descanso já vencido (a UI não precisa de "dispensar local").
+                let wasResting = session.clock.isResting(at: current)
                 try store.skipRest(session)
-                events.append(.restSkipped)
+                session.restTotalSeconds = nil
+                if wasResting { events.append(.restSkipped) }
             }
 
         case .startHold(let setID):
@@ -525,6 +551,7 @@ final class SessionEngine {
             var clock = session.clock
             clock.skipRest()
             session.clock = clock
+            session.restTotalSeconds = nil
             session.holdSetID = log.id
             session.holdStartedAt = at
             events.append(.holdStarted(setID: log.id, at: at))
@@ -535,9 +562,55 @@ final class SessionEngine {
                 throw SessionCommandRejection.invalidState
             }
             guard touch(log, at: at) else { return }
-            let duration = max(0, at.timeIntervalSince(started))
+            // Pausada: conta só até o início da pausa (o início já foi deslocado pelas pausas anteriores).
+            let end = session.pausedAt.map { min($0, at) } ?? at
+            let duration = max(0, end.timeIntervalSince(started))
             try complete(log, in: session, reps: nil, load: nil, duration: duration, distance: nil,
                          at: at, now: current, events: &events)
+
+        case let .updateHoldTarget(setID, seconds):
+            guard (1...Self.maxHoldSeconds).contains(seconds) else { throw SessionCommandRejection.invalidValue }
+            let log = try setLog(setID, in: session)
+            guard touch(log, at: at) else { return }
+            try store.updateHoldTarget(log, seconds: seconds, at: at)
+
+        case let .updateCardio(setID, level, speed, incline):
+            if let level, !(0...1_000).contains(level) { throw SessionCommandRejection.invalidValue }
+            if let speed, !(speed.isFinite && (0...1_000).contains(speed)) { throw SessionCommandRejection.invalidValue }
+            if let incline, !(incline.isFinite && abs(incline) <= 100) { throw SessionCommandRejection.invalidValue }
+            let log = try setLog(setID, in: session)
+            guard touch(log, at: at) else { return }
+            try store.updateCardio(log, level: level, speedKmh: speed, inclinePercent: incline, at: at)
+
+        case .removeSet(let setID):
+            let log = try setLog(setID, in: session)
+            if session.holdSetID == setID {
+                session.holdSetID = nil
+                session.holdStartedAt = nil
+            }
+            try store.removeSet(log, at: at)
+
+        case let .changeSetKind(setID, kind):
+            guard kind != .unknown else { throw SessionCommandRejection.invalidValue }
+            let log = try setLog(setID, in: session)
+            guard touch(log, at: at) else { return }
+            try store.changeKind(log, to: kind.setKind, at: at)
+
+        case let .setExerciseNote(exerciseID, text):
+            try validate(text: text)
+            try store.setNote(try sessionExercise(exerciseID, in: session), text: text, at: at)
+
+        case let .setPain(exerciseID, location, score):
+            if let score, !(0...10).contains(score) { throw SessionCommandRejection.invalidValue }
+            if let location { try validate(text: location) }
+            let trimmed = location?.trimmingCharacters(in: .whitespacesAndNewlines)
+            try store.setPain(try sessionExercise(exerciseID, in: session),
+                              location: trimmed?.isEmpty == false ? trimmed : nil, level: score, at: at)
+
+        case .setSessionNote(let text):
+            try validate(text: text)
+            session.notes = text
+            session.updatedAt = at
 
         case let .skipExercise(exerciseID, reason):
             let exercise = try sessionExercise(exerciseID, in: session)
@@ -557,12 +630,13 @@ final class SessionEngine {
 
         case let .addSet(exerciseID, kind):
             let exercise = try sessionExercise(exerciseID, in: session)
-            try store.addSet(to: exercise, kind: kind?.setKind ?? .working, at: at)
+            try store.addSet(to: exercise, kind: kind?.setKind ?? .working, at: at,
+                             id: WatchLinkIDs.extraSetID(sessionID: session.id, commandID: command.commandID))
 
         case let .addExercise(catalogID, afterID):
             let catalog = try catalogExercise(catalogID)
             let after = try afterID.map { try sessionExercise($0, in: session) }
-            try store.addExercise(catalog, to: session, after: after)
+            try store.addExercise(catalog, to: session, after: after, commandID: command.commandID)
 
         case let .substituteExercise(exerciseID, catalogID):
             let exercise = try sessionExercise(exerciseID, in: session)
@@ -607,6 +681,9 @@ final class SessionEngine {
         let before = session.restEndsAt
         try store.completeSet(log, reps: reps, load: load, durationSeconds: duration, distanceMeters: distance,
                               at: at, startRest: isLatest)
+        if session.restEndsAt != before {
+            session.restTotalSeconds = session.restEndsAt.map { $0.timeIntervalSince(at) }
+        }
         // No grupo, a escolha manual cede à alternância por rodada.
         if let exercise = log.sessionExercise, let groupID = exercise.groupID,
            let focused = session.focusedExerciseID,
@@ -620,9 +697,12 @@ final class SessionEngine {
     }
 
     /// Retoma só se o comando é posterior ao início da pausa; anterior → registra sem retomar.
+    /// A sustentação/cronômetro em curso é deslocada pela duração da pausa (a pausa não conta).
     private func resumeIfPaused(_ session: WorkoutSession, at: Date, events: inout [SessionEvent]) throws {
         guard let pausedAt = session.pausedAt, at > pausedAt else { return }
+        let gap = at.timeIntervalSince(pausedAt)
         try store.resume(session, at: at)
+        if let started = session.holdStartedAt { session.holdStartedAt = started.addingTimeInterval(gap) }
         events.append(.sessionResumed(at: at))
     }
 
@@ -728,6 +808,10 @@ final class SessionEngine {
             throw SessionCommandRejection.unknownCatalogExercise
         }
         return exercise
+    }
+
+    private func validate(text: String) throws {
+        if text.count > Self.maxTextLength { throw SessionCommandRejection.invalidValue }
     }
 
     private func validate(reps: Int?, load: WatchLoad?, duration: Double?, distance: Double?) throws {

@@ -44,6 +44,8 @@ final class WorkoutSession {
     /// Sustentação isométrica em curso: série e início (relógio por datas).
     var holdSetID: UUID?
     var holdStartedAt: Date?
+    /// Duração total do descanso em curso (com ajustes ±15 s), para a barra de progresso (P2.6).
+    var restTotalSeconds: Double?
 
     @Relationship(deleteRule: .cascade, inverse: \SessionExercise.session)
     var exercises: [SessionExercise]? = []
@@ -189,6 +191,10 @@ final class SetLog {
     var loadData: Data?
     var durationSeconds: Double?
     var distanceMeters: Double?
+    /// Cardio realizado (P2.6): nível do aparelho, velocidade (km/h) e inclinação (%).
+    var level: Int?
+    var speedKmh: Double?
+    var inclinePercent: Double?
     var isCompleted: Bool = false
     var completedAt: Date?
     /// Corrigida depois de a sessão terminar (SPEC §4.4).
