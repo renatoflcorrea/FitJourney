@@ -8,6 +8,7 @@ struct MealsSection: View {
     @State private var newMeal: Meal?
     @State private var mealToDelete: Meal?
     @State private var errorMessage: String?
+    @Environment(\.mealReminderScheduler) private var scheduler
 
     var body: some View {
         Section {
@@ -65,6 +66,7 @@ struct MealsSection: View {
 
     private func commit() {
         do { try context.commitEdits() } catch { errorMessage = String(localized: "Tente de novo. Nada foi perdido.") }
+        if context.autosaveEnabled { Task { await scheduler?.reschedule(for: context) } }
     }
 
     private func discard(_ meal: Meal) {
@@ -121,6 +123,20 @@ struct MealEditorView: View {
     @Bindable var meal: Meal
     @State private var newItem: MealItem?
     @State private var errorMessage: String?
+    @Environment(\.mealReminderScheduler) private var scheduler
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var authorization: RestNotificationAuthorization = .authorized
+    @State private var showReminderExplanation = false
+
+    /// Ligar o primeiro lembrete explica e só então pede a permissão (contextual).
+    private var reminderBinding: Binding<Bool> {
+        Binding(
+            get: { meal.reminderEnabled },
+            set: { on in
+                if on && authorization == .notDetermined { showReminderExplanation = true } else { meal.reminderEnabled = on }
+            }
+        )
+    }
 
     private var time: Binding<Date> {
         Binding(
@@ -151,11 +167,11 @@ struct MealEditorView: View {
                     }
                 }
                 DatePicker("Horário", selection: time, displayedComponents: .hourAndMinute)
-                // TODO(P3.3): ao ligar, pedir permissão de notificações no contexto e agendar o lembrete.
-                Toggle("Lembrete", isOn: $meal.reminderEnabled)
+                Toggle("Lembrete", isOn: reminderBinding)
                     .tint(FJColor.nutritionFill)
+                if meal.reminderEnabled && authorization == .denied { NotificationsDisabledBanner() }
             } footer: {
-                Text("Lembretes chegam em breve: a preferência fica salva, mas ainda não notifica.")
+                Text("Avisa no horário da refeição, com a ação \"Marcar como feita\" na própria notificação.")
             }
             Section {
                 let items = meal.sortedItems
@@ -182,6 +198,24 @@ struct MealEditorView: View {
         .navigationTitle(meal.name.isEmpty ? String(localized: "Refeição") : meal.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .primaryAction) { EditButton() } }
+        .task { authorization = await scheduler?.authorization() ?? .authorized }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { authorization = await scheduler?.authorization() ?? .authorized } }
+        }
+        .alert("Receber lembrete desta refeição?", isPresented: $showReminderExplanation) {
+            Button("Permitir notificações") {
+                meal.reminderEnabled = true
+                Task {
+                    _ = await scheduler?.requestAuthorization()
+                    if context.autosaveEnabled { await scheduler?.reschedule(for: context) }
+                    authorization = await scheduler?.authorization() ?? .authorized
+                }
+            }
+            Button("Agora não", role: .cancel) {}
+        } message: {
+            Text("O FitJourney avisa no horário da refeição. O iOS vai pedir sua permissão agora; você pode mudar depois em Ajustes.")
+        }
+        .onDisappear { if context.autosaveEnabled { Task { await scheduler?.reschedule(for: context) } } }
         .sheet(item: $newItem) { item in
             EditorSheet(title: "Novo item", confirmTitle: "Adicionar",
                         canConfirm: !item.name.trimmingCharacters(in: .whitespaces).isEmpty && item.quantity > 0,

@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UserNotifications
 
 @main
 struct FitJourneyApp: App {
@@ -12,6 +13,12 @@ struct FitJourneyApp: App {
     /// Apple Health: autorização contextual e gravação do treino acoplada ao motor (SPEC §6).
     @State private var healthAuthorization: HealthAuthorization
     @State private var healthController: HealthWorkoutController
+    /// Lembretes de refeição (agendamento) e tratamento das notificações locais. O delegate do
+    /// `UNUserNotificationCenter` é fraco: o App o retém.
+    private let mealReminders: MealReminderScheduler
+    private let notificationDelegate: AppNotificationDelegate
+    private let categoryRegistry: NotificationCategoryRegistry
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         let container = PersistenceController.makeAppContainer()
@@ -25,6 +32,18 @@ struct FitJourneyApp: App {
         }
         #endif
         modelContainer = container
+        // Coach: respostas que ficaram `.streaming` quando o app morreu viram `.stopped`.
+        _ = try? CoachConversationService.repairInterruptedMessages(in: container.mainContext)
+
+        // Notificações: delegate e categorias antes de qualquer view (ação "Marcar como feita" no cold start).
+        let reminders = MealReminderScheduler()
+        let delegate = AppNotificationDelegate(context: container.mainContext, reminders: reminders)
+        UNUserNotificationCenter.current().delegate = delegate
+        let registry = NotificationCategoryRegistry()
+        registry.register(MealReminderResponder.category)
+        mealReminders = reminders
+        notificationDelegate = delegate
+        categoryRegistry = registry
 
         let engine = SessionEngine(context: container.mainContext, notifications: UserNotificationRestScheduler())
         let authorization = HealthAuthorization(store: HealthKitStore.shared)
@@ -42,6 +61,14 @@ struct FitJourneyApp: App {
                 .environment(sessionCoordinator)
                 .environment(healthAuthorization)
                 .environment(healthController)
+                .environment(\.mealReminderScheduler, mealReminders)
+                .task {
+                    await categoryRegistry.apply()
+                    await mealReminders.reschedule(for: modelContainer.mainContext)
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { Task { await mealReminders.reschedule(for: modelContainer.mainContext) } }
+                }
                 .task {
                     // Recuperar sessões espelhadas do relógio e acoplar o Saúde aos eventos do motor
                     // (retoma a gravação de uma sessão em andamento e reconcilia treinos pendentes).

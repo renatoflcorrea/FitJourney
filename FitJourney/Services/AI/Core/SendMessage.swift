@@ -33,8 +33,10 @@ final class CoachConversationService {
 
     /// Conversa com resposta em andamento (`nil` = ocioso).
     private(set) var runningConversationID: UUID?
-    /// Último erro de envio (não inclui cancelamento). A UI mostra e limpa.
+    /// Último erro de envio (não inclui cancelamento). A UI mostra e limpa (`clearError()`).
     var lastError: AIError?
+    /// Conversa em que `lastError` aconteceu: a UI só mostra o erro nela.
+    private(set) var lastErrorConversationID: UUID?
 
     var isRunning: Bool { runningConversationID != nil }
 
@@ -65,10 +67,23 @@ final class CoachConversationService {
         return conversation
     }
 
-    func delete(_ conversation: ChatConversation) throws {
-        if runningConversationID == conversation.id { stop() }
+    /// Apaga a conversa. Se ela estiver respondendo, para e **espera a tarefa terminar** (que ainda grava o
+    /// parcial como `.stopped`) antes de remover — nunca apaga por baixo de uma escrita em andamento.
+    func delete(_ conversation: ChatConversation) async throws {
+        if runningConversationID == conversation.id {
+            stop()
+            _ = await currentTask?.value
+            // O `send` que aguarda a tarefa ainda precisa limpar o estado de execução.
+            while runningConversationID == conversation.id { await Task.yield() }
+        }
+        if lastErrorConversationID == conversation.id { clearError() }
         context.delete(conversation)
         try context.save()
+    }
+
+    func clearError() {
+        lastError = nil
+        lastErrorConversationID = nil
     }
 
     /// Envia e aguarda o fim da resposta (incluindo as voltas de ferramenta).
@@ -77,15 +92,38 @@ final class CoachConversationService {
     func send(_ text: String, in conversation: ChatConversation) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, currentTask == nil else { return false }
-        lastError = nil
+        return await execute(in: conversation) {
+            try await self.run(String(trimmed.prefix(Self.maxUserTextCharacters)), in: conversation, reusing: nil)
+        }
+    }
+
+    /// "Tentar de novo": apaga a resposta que parou ou falhou (e o que o turno gerou depois da mensagem do
+    /// usuário) e reexecuta o turno com a **mesma** mensagem do usuário, sem inserir outra.
+    /// Só vale para a última mensagem da conversa, em estado `.stopped` ou `.failed`.
+    /// Devolve `false` se a mensagem não é elegível ou se já havia resposta em andamento.
+    @discardableResult
+    func regenerate(after failedMessage: ChatMessage, in conversation: ChatConversation) async -> Bool {
+        guard currentTask == nil, failedMessage.role == .assistant,
+              failedMessage.state == .stopped || failedMessage.state == .failed,
+              let last = conversation.sortedMessages.last, last.id == failedMessage.id,
+              let user = conversation.sortedMessages.last(where: { $0.role == .user && $0.sortIndex < failedMessage.sortIndex })
+        else { return false }
+        return await execute(in: conversation) {
+            try await self.run(user.content, in: conversation, reusing: user)
+        }
+    }
+
+    private func execute(in conversation: ChatConversation, _ body: @escaping @MainActor () async throws -> Void) async -> Bool {
+        clearError()
         runningConversationID = conversation.id
         let task = Task { @MainActor () -> Bool in
             do {
-                try await self.run(String(trimmed.prefix(Self.maxUserTextCharacters)), in: conversation)
+                try await body()
                 return true
             } catch {
                 if !Self.isCancellation(error) {
                     self.lastError = (error as? AIError) ?? .decoding(context: "coach", message: Redactor.redact("\(error)"))
+                    self.lastErrorConversationID = conversation.id
                 }
                 return false
             }
@@ -102,7 +140,9 @@ final class CoachConversationService {
         currentTask?.cancel()
     }
 
-    /// Chamar no launch: respostas que ficaram `.streaming` (app morto no meio) viram `.stopped`.
+    /// **O App chama isto no launch** (`FitJourneyApp`, antes de mostrar a aba Coach): respostas que ficaram
+    /// `.streaming` (app morto no meio) viram `.stopped`. A UI do Coach também trata `.streaming` sem tarefa
+    /// ativa como parada, caso o reparo não tenha rodado.
     @discardableResult
     static func repairInterruptedMessages(in context: ModelContext) throws -> Int {
         let streaming = ChatMessageState.streaming.rawValue
@@ -117,15 +157,25 @@ final class CoachConversationService {
 
     // MARK: - Laço
 
-    private func run(_ text: String, in conversation: ChatConversation) async throws {
+    /// - Parameter existingUser: ao refazer um turno, a mensagem do usuário que já existe (nada é inserido);
+    ///   tudo que veio depois dela é apagado, só depois de o provedor ter sido resolvido com sucesso.
+    private func run(_ text: String, in conversation: ChatConversation, reusing existingUser: ChatMessage?) async throws {
         let chat = try resolveChat()
 
-        compactOldToolResults(in: conversation)
-        let user = ChatMessage(role: .user, content: text, sortIndex: conversation.nextSortIndex)
-        context.insert(user)
-        user.conversation = conversation
-        if conversation.title.isEmpty, !conversation.titleIsUserEdited {
-            conversation.title = String(text.prefix(60))
+        let user: ChatMessage
+        if let existingUser {
+            for message in conversation.sortedMessages where message.sortIndex > existingUser.sortIndex {
+                context.delete(message)
+            }
+            user = existingUser
+        } else {
+            compactOldToolResults(in: conversation)
+            user = ChatMessage(role: .user, content: text, sortIndex: conversation.nextSortIndex)
+            context.insert(user)
+            user.conversation = conversation
+            if conversation.title.isEmpty, !conversation.titleIsUserEdited {
+                conversation.title = String(text.prefix(60))
+            }
         }
         conversation.updatedAt = .now
         try context.save()
