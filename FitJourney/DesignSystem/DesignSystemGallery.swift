@@ -68,6 +68,7 @@ struct DesignSystemGallery: View {
                         swatch("dieta", FJColor.nutrition)
                         swatch("saúde", FJColor.health)
                         swatch("coach", FJColor.coach)
+                        swatch("aeróbico", FJColor.aerobic)
                     }
                     HStack {
                         ForEach(FJHeartRateZone.allCases, id: \.self) { zone in
