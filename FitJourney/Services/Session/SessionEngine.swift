@@ -117,6 +117,8 @@ final class SessionEngine {
 
     @ObservationIgnored let context: ModelContext
     @ObservationIgnored private let notifications: any RestNotificationScheduling
+    /// Preferências de Ajustes (descanso padrão).
+    @ObservationIgnored private let preferences: UserDefaults
     @ObservationIgnored private let tombstones: SessionTombstones
     /// Relógio injetável (testes).
     @ObservationIgnored var now: () -> Date
@@ -146,7 +148,11 @@ final class SessionEngine {
     }
 
     /// Store sem `save` interno: o motor grava uma vez por comando.
-    private var store: SessionStore { SessionStore(context: context, autosave: false) }
+    private var store: SessionStore {
+        var store = SessionStore(context: context, autosave: false)
+        store.fallbackRestSeconds = RestPreference.defaultSeconds(preferences)
+        return store
+    }
 
     /// - Parameters:
     ///   - tombstoneDefaults: onde guardar as sessões descartadas (`nil` = só memória).
@@ -154,8 +160,9 @@ final class SessionEngine {
     ///     `restFinished` (o estado continua vindo das datas). Testes passam `false` e chamam `refresh()`.
     init(context: ModelContext, notifications: any RestNotificationScheduling = NoopRestNotificationScheduler(),
          tombstoneDefaults: UserDefaults? = .standard, autoRestTimer: Bool = true,
-         now: @escaping () -> Date = { Date() }) {
+         now: @escaping () -> Date = { Date() }, preferences: UserDefaults = .standard) {
         self.context = context
+        self.preferences = preferences
         self.notifications = notifications
         self.tombstones = SessionTombstones(defaults: tombstoneDefaults)
         self.autoRestTimer = autoRestTimer
@@ -837,7 +844,7 @@ final class SessionEngine {
         if let distance, !(distance.isFinite && distance >= 0) { throw SessionCommandRejection.invalidValue }
     }
 
-    /// Descanso padrão: o da última série concluída, senão o do exercício atual.
+    /// Descanso padrão: o da última série concluída, senão o do exercício atual, senão o de Ajustes.
     private func defaultRestSeconds(for session: WorkoutSession) -> Int {
         let sets = (session.exercises ?? []).flatMap { $0.sets ?? [] }
         if let last = sets.filter({ $0.completedAt != nil }).max(by: { $0.completedAt! < $1.completedAt! }),
@@ -845,7 +852,9 @@ final class SessionEngine {
             return rest
         }
         let current = currentExercise(of: session)
-        return current?.sortedSets.first { !$0.isCompleted }?.restSeconds ?? current?.restSeconds ?? 0
+        return RestPolicy.effective(set: current?.sortedSets.first { !$0.isCompleted }?.restSeconds,
+                                    routineExercise: current?.restSeconds, exercise: nil,
+                                    fallback: RestPreference.defaultSeconds(preferences))
     }
 
     private func currentExercise(of session: WorkoutSession) -> SessionExercise? {

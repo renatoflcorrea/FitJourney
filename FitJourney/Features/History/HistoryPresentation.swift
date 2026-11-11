@@ -49,7 +49,7 @@ enum HistoryPresentation {
     }
 
     /// Semanas do mês (cada uma com 7 posições; `nil` = fora do mês), respeitando o primeiro dia da semana.
-    static func calendarWeeks(month: Date, calendar: Calendar = .current) -> [[Date?]] {
+    static func calendarWeeks(month: Date, calendar: Calendar = AppCalendar.current) -> [[Date?]] {
         guard let interval = calendar.dateInterval(of: .month, for: month),
               let dayCount = calendar.range(of: .day, in: .month, for: month)?.count else { return [] }
         let first = interval.start

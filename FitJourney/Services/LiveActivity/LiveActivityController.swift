@@ -218,7 +218,9 @@ final class LiveActivityController: LiveActivityRestActionHandling {
         current.state = done
         self.current = current
         let shouldAlert = now().timeIntervalSince(at) < Self.alertWindow && !isAppActive()
-        let alert = shouldAlert
+        // Sem som: sem alerta (o ActivityKit não tem alerta silencioso). Sem alerta a notificação local
+        // não é suprimida e chega silenciosa, como o aviso do fim do descanso.
+        let alert = shouldAlert && RestPreference.soundEnabled(defaults)
             ? LiveActivityAlert(title: String(localized: "Descanso concluído"),
                                 body: LiveActivityStateMapper.restDoneAlertBody(done))
             : nil

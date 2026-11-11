@@ -95,13 +95,12 @@ enum ScheduleResolver {
     }
 
     /// Aderência semanal: treinos previstos (soma dos dias marcados) e feitos (limitado ao previsto,
-    /// para o contador nunca passar de "4 de 4"). Semana de segunda a domingo (SPEC §11 Q2).
+    /// para o contador nunca passar de "4 de 4"). A semana começa como em `calendar` (padrão: o do app,
+    /// segunda ou domingo conforme Ajustes; SPEC §11 Q2).
     static func weeklyAdherence(plannedDays: Int, completedDates: [Date], now: Date,
-                                calendar: Calendar = .current) -> (done: Int, planned: Int)? {
+                                calendar: Calendar = AppCalendar.current) -> (done: Int, planned: Int)? {
         guard plannedDays > 0 else { return nil }
-        var cal = calendar
-        cal.firstWeekday = 2
-        guard let week = cal.dateInterval(of: .weekOfYear, for: now) else { return nil }
+        guard let week = calendar.dateInterval(of: .weekOfYear, for: now) else { return nil }
         let done = completedDates.filter { week.contains($0) }.count
         return (min(done, plannedDays), plannedDays)
     }

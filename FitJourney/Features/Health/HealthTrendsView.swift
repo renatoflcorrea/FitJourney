@@ -50,7 +50,7 @@ final class HealthTrendsModel {
     private(set) var phase: Phase = .loading
     var period: HealthTrendPeriod = .weeks4
 
-    func load(reader: any HealthDataReading, context: ModelContext, calendar: Calendar = .current, now: Date = Date()) async {
+    func load(reader: any HealthDataReading, context: ModelContext, calendar: Calendar = AppCalendar.current, now: Date = Date()) async {
         if case .loaded = phase {} else { phase = .loading }
         let today = calendar.startOfDay(for: now)
         let end = calendar.date(byAdding: .day, value: 1, to: today) ?? now
@@ -102,6 +102,7 @@ struct HealthTrendsView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.healthReader) private var injectedReader
     @Environment(\.openURL) private var openURL
+    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @Environment(HealthAuthorization.self) private var authorization: HealthAuthorization?
 
     private var isConnected: Bool { authorization == nil || HealthConnectionState(authorization).isConnected }
@@ -128,7 +129,8 @@ struct HealthTrendsView: View {
                 restingCard(data)
             }
         }
-        .task(id: LoadKey(period: model.period, connected: authorization?.isConnectionEnabled, access: authorization?.access)) {
+        .task(id: LoadKey(period: model.period, connected: authorization?.isConnectionEnabled, access: authorization?.access,
+                          weekStart: weekStartRaw)) {
             await load()
         }
     }
@@ -137,6 +139,7 @@ struct HealthTrendsView: View {
         var period: HealthTrendPeriod
         var connected: Bool?
         var access: HealthAuthorization.Access?
+        var weekStart: String
     }
 
     private func load() async {

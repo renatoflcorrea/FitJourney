@@ -33,6 +33,7 @@ struct NutritionDayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.mealReminderScheduler) private var scheduler
     @State private var model = NutritionDayModel()
+    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @State private var sheet: DaySheet?
     @State private var showPlans = false
     @State private var showHistory = false
@@ -102,6 +103,7 @@ struct NutritionDayView: View {
             model.onMealResolved = { meal, day in Task { await scheduler?.clearNotifications(mealID: meal.id, day: day) } }
         }
         .onAppear { model.reload() }
+        .onChange(of: weekStartRaw) { _, _ in model.reload() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.reload() } }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in model.dayChanged() }
     }

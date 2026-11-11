@@ -108,7 +108,9 @@ final class Routine {
     /// Duração estimada (SPEC §3.2), em segundos.
     /// Em bi-set/circuito o descanso só vale ao fim da rodada (último membro do grupo); os demais
     /// membros contam apenas a transição (`groupTransitionSeconds`).
-    var estimatedDurationSeconds: Int {
+    var estimatedDurationSeconds: Int { estimatedDurationSeconds(fallbackRest: RestPreference.defaultSeconds()) }
+
+    func estimatedDurationSeconds(fallbackRest: Int) -> Int {
         let ordered = sortedExercises
         let rests = ordered.enumerated().flatMap { index, re in
             let next = index + 1 < ordered.count ? ordered[index + 1] : nil
@@ -116,7 +118,8 @@ final class Routine {
             return re.sortedSets.map { set in
                 restsOnlyAtRoundEnd
                     ? RoutineEstimate.groupTransitionSeconds
-                    : (set.restSeconds ?? re.restSeconds ?? re.exercise?.defaultRestSeconds ?? 90)
+                    : RestPolicy.effective(set: set.restSeconds, routineExercise: re.restSeconds,
+                                          exercise: re.exercise?.defaultRestSeconds, fallback: fallbackRest)
             }
         }
         return RoutineEstimate.durationSeconds(restSeconds: rests)
@@ -141,14 +144,15 @@ final class Exercise {
     /// Chave estável do catálogo embutido (ex.: "bench-press"); `nil` para exercícios do usuário.
     var catalogKey: String?
     var notes: String = ""
-    var defaultRestSeconds: Int = 90
+    /// `nil` = usar o descanso padrão de Ajustes (`RestPolicy`).
+    var defaultRestSeconds: Int?
 
     @Relationship(deleteRule: .nullify, inverse: \RoutineExercise.exercise)
     var routineExercises: [RoutineExercise]? = []
 
     init(name: String, primaryMuscles: [MuscleGroup] = [], secondaryMuscles: [MuscleGroup] = [],
          equipment: Equipment = .other, laterality: Laterality = .bilateral,
-         measurementKind: MeasurementKind = .repsAndLoad, defaultRestSeconds: Int = 90,
+         measurementKind: MeasurementKind = .repsAndLoad, defaultRestSeconds: Int? = nil,
          isBuiltIn: Bool = false, catalogKey: String? = nil) {
         self.name = name
         self.primaryMusclesRaw = StorageCoding.encodeList(primaryMuscles)

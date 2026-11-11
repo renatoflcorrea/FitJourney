@@ -130,14 +130,15 @@ extension TrainingProgram {
     }
 }
 
-/// Sete círculos S T Q Q S S D; os dias ativos ficam preenchidos.
+/// Sete círculos de dia (ordem da semana de Ajustes); os dias ativos ficam preenchidos.
 struct WeekdayDots: View {
+    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     let weekdays: Set<Weekday>
     var color: FJRoutineColor = .orange
 
     var body: some View {
         HStack(spacing: FJSpacing.xs) {
-            ForEach(Weekday.allCases, id: \.self) { day in
+            ForEach(Weekday.ordered(startingOn: WeekStart(rawValue: weekStartRaw) ?? .monday), id: \.self) { day in
                 let on = weekdays.contains(day)
                 Text(verbatim: day.initial)
                     .font(.caption2.weight(.bold))

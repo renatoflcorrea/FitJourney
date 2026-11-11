@@ -201,7 +201,8 @@ enum SessionSnapshotBuilder {
 @MainActor
 enum ProgramDigestBuilder {
     /// Resumo do programa ativo (`nil` sem programa ativo) para o relógio fora de sessão.
-    static func make(context: ModelContext, now: Date = .now, calendar: Calendar = .current) throws -> ProgramDigest? {
+    static func make(context: ModelContext, now: Date = .now, calendar: Calendar = .current,
+                     fallbackRest: Int = RestPreference.defaultSeconds()) throws -> ProgramDigest? {
         let programs = ProgramStore(context: context)
         guard let program = try programs.activeProgram() else { return nil }
         let suggestion = try programs.todaySuggestion(for: program, on: now, calendar: calendar)
@@ -218,10 +219,11 @@ enum ProgramDigestBuilder {
                     name: routine.name,
                     symbol: routine.symbol,
                     lastCompletedAt: lastCompleted[routine.id],
-                    estimatedDurationSeconds: routine.estimatedDurationSeconds,
+                    estimatedDurationSeconds: routine.estimatedDurationSeconds(fallbackRest: fallbackRest),
                     exercises: routine.sortedExercises.map { item in
                         let kind = item.exercise?.measurementKind ?? .repsAndLoad
-                        let rest = item.restSeconds ?? item.exercise?.defaultRestSeconds
+                        let rest = RestPolicy.effective(set: nil, routineExercise: item.restSeconds,
+                                                  exercise: item.exercise?.defaultRestSeconds, fallback: fallbackRest)
                         return ProgramDigest.Exercise(
                             id: item.id,
                             exerciseID: item.exercise?.id,

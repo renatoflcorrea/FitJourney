@@ -6,6 +6,7 @@ import Testing
 private var calendar: Calendar {
     var cal = Calendar(identifier: .gregorian)
     cal.timeZone = TimeZone(identifier: "America/Sao_Paulo")!
+    cal.firstWeekday = 2
     return cal
 }
 

@@ -30,6 +30,8 @@ struct SessionSummary: Sendable, Hashable {
 struct SessionStore {
     let context: ModelContext
     var autosave: Bool
+    /// Último nível de `RestPolicy` (o motor passa o padrão de Ajustes, lido a cada comando).
+    var fallbackRestSeconds = RestPreference.fallbackSeconds
 
     init(context: ModelContext, autosave: Bool = true) {
         self.context = context
@@ -145,7 +147,8 @@ struct SessionStore {
                 var clock = session.clock
                 // Em bi-set/circuito, descanso só ao fim da rodada (SessionFlow.isEndOfRound).
                 if SessionFlow.isEndOfRound(after: exercise.id, in: session.flowStates) {
-                    clock.startRest(seconds: log.restSeconds ?? exercise.restSeconds ?? 0, at: date)
+                    clock.startRest(seconds: RestPolicy.effective(set: log.restSeconds, routineExercise: exercise.restSeconds,
+                                                              exercise: nil, fallback: fallbackRestSeconds), at: date)
                 } else {
                     clock.skipRest()
                 }

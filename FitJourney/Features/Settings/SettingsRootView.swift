@@ -14,6 +14,9 @@ struct SettingsRootView: View {
 
     @AppStorage(AppPreferenceKeys.weightUnit) private var weightUnitRaw = WeightUnit.kg.rawValue
     @AppStorage(AppPreferenceKeys.loadStep) private var loadStep = 0.0
+    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
+    @AppStorage(AppPreferenceKeys.defaultRestSeconds) private var defaultRest = RestPreference.fallbackSeconds
+    @AppStorage(AppPreferenceKeys.restSound) private var restSound = true
     @AppStorage(AppPreferenceKeys.maxHeartRate) private var maxHeartRate = 0.0
     /// Atividade ao Vivo (padrão ligado; consumidor: `LiveActivityController`).
     @AppStorage(AppPreferenceKeys.liveActivity) private var liveActivity = true
@@ -144,10 +147,15 @@ struct SettingsRootView: View {
                 loadStep = unit == .kg ? 0.5 : 1
             }
 
+            Picker("Início da semana", selection: $weekStartRaw) {
+                Text("Segunda").tag(WeekStart.monday.rawValue)
+                Text("Domingo").tag(WeekStart.sunday.rawValue)
+            }
+            .pickerStyle(.menu)
         } header: {
             Text("Unidades")
         } footer: {
-            Text("Mudar a unidade muda só a exibição. O histórico não é alterado.")
+            Text("Mudar a unidade muda só a exibição. O histórico não é alterado. O início da semana vale para a Dieta, a aderência semanal, Saúde e o calendário; os dias das fichas não mudam.")
         }
     }
 
@@ -155,16 +163,27 @@ struct SettingsRootView: View {
 
     private var trainingSection: some View {
         Section {
+            Picker("Descanso padrão", selection: $defaultRest) {
+                ForEach(restOptions, id: \.self) { seconds in
+                    Text(verbatim: FJFormat.clock(seconds)).tag(seconds)
+                }
+            }
+            Toggle("Som ao fim do descanso", isOn: $restSound)
             heartRateRows
             liveActivityRows
         } header: {
             Text("Treino")
         } footer: {
-            Text("A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island.")
+            Text("O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island.")
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { systemLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled }
         }
+    }
+
+    /// Opções de descanso padrão; um valor antigo fora da lista continua selecionável.
+    private var restOptions: [Int] {
+        Array(Set(AppPreferenceKeys.defaultRestOptions + [defaultRest])).sorted()
     }
 
     /// Atividade ao Vivo (§4.14): desligada nos Ajustes do iPhone → aviso + Abrir Ajustes; senão, o toggle.

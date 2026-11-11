@@ -112,7 +112,12 @@ struct ExerciseDetailView: View {
                 infoRow("Equipamento", exercise.equipment.localizedName)
                 infoRow("Tipo de medida", exercise.measurementKind.displayName)
                 infoRow("Lateralidade", exercise.laterality.displayName)
-                infoRow("Descanso padrão", FJFormat.clock(exercise.defaultRestSeconds), spoken: FJFormat.spokenDuration(exercise.defaultRestSeconds))
+                if let rest = exercise.defaultRestSeconds {
+                    infoRow("Descanso padrão", FJFormat.clock(rest), spoken: FJFormat.spokenDuration(rest))
+                } else {
+                    let rest = PrescriptionDefaults.restSeconds()
+                    infoRow("Descanso padrão", String(localized: "Padrão (\(FJFormat.clock(rest)))"), spoken: FJFormat.spokenDuration(rest))
+                }
                 if exercise.isBuiltIn {
                     FJTag("Catálogo", systemImage: "books.vertical", tone: .neutral)
                 }
