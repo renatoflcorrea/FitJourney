@@ -481,6 +481,10 @@ struct SessionSetEditSheet: View {
     @State private var distanceKm: Double
     @State private var holdTarget: Double
     @State private var confirmsRemove = false
+    @State private var kind: WatchSetKind
+    @State private var level: Int?
+    @State private var speed: Double?
+    @State private var incline: Double?
 
     init(coordinator: SessionCoordinator, exercise: SessionSnapshot.Exercise, set: SessionSnapshot.ExerciseSet) {
         self.coordinator = coordinator
@@ -491,17 +495,18 @@ struct SessionSetEditSheet: View {
         _seconds = State(initialValue: set.durationSeconds ?? 0)
         _distanceKm = State(initialValue: (set.distanceMeters ?? 0) / 1_000)
         _holdTarget = State(initialValue: Double(set.targetHoldSeconds ?? set.targetDurationSeconds ?? 0))
+        _kind = State(initialValue: set.kind == .unknown ? .working : set.kind)
+        _level = State(initialValue: set.level)
+        _speed = State(initialValue: set.speedKmh)
+        _incline = State(initialValue: set.inclinePercent)
     }
 
-    /// A série como está agora (o motor pode ter mudado por outro lado: relógio).
-    private var live: SessionSnapshot.ExerciseSet {
-        coordinator.engine.snapshot?.exercises.flatMap(\.sets).first { $0.id == set.id } ?? set
+    private var holdRange: ClosedRange<Double> {
+        0...Double(max(SessionEngine.maxHoldSeconds, set.targetHoldSeconds ?? set.targetDurationSeconds ?? 0))
     }
 
-    private var kindBinding: Binding<WatchSetKind> {
-        Binding(get: { live.kind == .unknown ? .working : live.kind },
-                set: { if $0 != live.kind { coordinator.send(.changeSetKind(setID: set.id, kind: $0)) } })
-    }
+    /// A última série do exercício não pode ser removida (o exercício ficaria sem séries).
+    private var canRemove: Bool { exercise.sets.count > 1 }
 
     private var unitText: String { (SessionPresentation.displayLoad(set)?.unit ?? .kg) == .kg ? "kg" : "lb" }
 
@@ -528,11 +533,11 @@ struct SessionSetEditSheet: View {
                                 FJOptionalNumberField("Repetições realizadas", prompt: "+ reps", value: $reps, unit: "reps")
                             case .isometric:
                                 NumberStepperField("Sustentação", value: $seconds, unit: "s", step: 1, range: 0...3_600)
-                                NumberStepperField("Alvo da sustentação", value: $holdTarget, unit: "s", step: 5, range: 0...Double(SessionEngine.maxHoldSeconds))
+                                NumberStepperField("Alvo da sustentação", value: $holdTarget, unit: "s", step: 5, range: holdRange)
                             case .timeOrDistance:
                                 NumberStepperField("Duração", value: $seconds, unit: "s", step: 10, range: 0...36_000)
                                 NumberStepperField("Distância", value: $distanceKm, unit: "km", step: 0.1, range: 0...500, fractionDigits: 2)
-                                NumberStepperField("Duração alvo", value: $holdTarget, unit: "s", step: 60, range: 0...Double(SessionEngine.maxHoldSeconds))
+                                NumberStepperField("Duração alvo", value: $holdTarget, unit: "s", step: 60, range: holdRange)
                             case .unknown:
                                 EmptyView()
                             }
@@ -542,7 +547,7 @@ struct SessionSetEditSheet: View {
                         FJCard {
                             VStack(alignment: .leading, spacing: FJSpacing.m) {
                                 FJSectionHeader("Aparelho", subtitle: "Opcional")
-                                SessionCardioFields(coordinator: coordinator, set: live)
+                                SessionCardioFields(level: $level, speed: $speed, incline: $incline)
                             }
                         }
                     }
@@ -550,7 +555,7 @@ struct SessionSetEditSheet: View {
                         HStack {
                             Text("Tipo da série").font(FJFont.label)
                             Spacer(minLength: FJSpacing.s)
-                            Picker("Tipo da série", selection: kindBinding) {
+                            Picker("Tipo da série", selection: $kind) {
                                 ForEach(SessionPresentation.selectableKinds, id: \.self) { Text(SessionPresentation.kindName($0)).tag($0) }
                             }
                             .pickerStyle(.menu)
@@ -564,10 +569,16 @@ struct SessionSetEditSheet: View {
                         }
                         .buttonStyle(.fjSecondary())
                     }
-                    Button("Remover série", role: .destructive) {
-                        if set.isCompleted { confirmsRemove = true } else { remove() }
+                    if canRemove {
+                        Button("Remover série", role: .destructive) {
+                            if set.isCompleted { confirmsRemove = true } else { remove() }
+                        }
+                        .frame(minHeight: FJSize.minTap)
+                    } else {
+                        Text("Um exercício precisa de ao menos uma série. Para tirá-lo do treino, pule ou troque o exercício.")
+                            .font(FJFont.caption)
+                            .foregroundStyle(FJColor.textSecondary)
                     }
-                    .frame(minHeight: FJSize.minTap)
                 }
                 .padding(FJSpacing.screenMargin)
             }
@@ -600,6 +611,12 @@ struct SessionSetEditSheet: View {
         }
         let distance: Double? = exercise.measurementKind == .timeOrDistance && distanceKm > 0 ? distanceKm * 1_000 : set.distanceMeters
         coordinator.send(.updateSet(setID: set.id, reps: reps, load: newLoad, durationSeconds: duration, distanceMeters: distance))
+        if kind != (set.kind == .unknown ? .working : set.kind) {
+            coordinator.send(.changeSetKind(setID: set.id, kind: kind))
+        }
+        if exercise.measurementKind == .timeOrDistance, (level, speed, incline) != (set.level, set.speedKmh, set.inclinePercent) {
+            coordinator.send(.updateCardio(setID: set.id, level: level, speedKmh: speed, inclinePercent: incline))
+        }
         let originalTarget = set.targetHoldSeconds ?? set.targetDurationSeconds ?? 0
         if [.isometric, .timeOrDistance].contains(exercise.measurementKind), Int(holdTarget) != originalTarget, holdTarget >= 1 {
             coordinator.send(.updateHoldTarget(setID: set.id, seconds: Int(holdTarget)))

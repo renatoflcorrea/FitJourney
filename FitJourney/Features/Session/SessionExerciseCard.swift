@@ -276,6 +276,10 @@ struct SessionSetRow: View {
 
     @State private var confirmsRemove = false
 
+    private var setActions: SetActions {
+        SetActions(coordinator: coordinator, entry: entry, canRemove: total > 1, confirmsRemove: $confirmsRemove)
+    }
+
     private var spoken: String { SessionPresentation.spokenSet(index: index, of: total, set: entry) }
 
     var body: some View {
@@ -304,6 +308,7 @@ struct SessionSetRow: View {
                 .buttonStyle(.plain)
                 .accessibilityHidden(true)
                 FJCheckButton(state: checkState, accessibilityLabel: spoken) { coordinator.toggleSet(entry) }
+                    .modifier(SetA11yModifier(actions: setActions, onEdit: onEdit))
             }
             if showsRepsAfterCompletion, entry.isCompleted, hasReps {
                 repsField
@@ -317,14 +322,14 @@ struct SessionSetRow: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .modifier(SetActions(coordinator: coordinator, entry: entry, onEdit: onEdit, confirmsRemove: $confirmsRemove))
+        .modifier(SetMenuModifier(actions: setActions, onEdit: onEdit))
     }
 
     /// Distância e campos opcionais do aparelho, logo depois de concluir o cardio.
     private var cardioFields: some View {
         VStack(spacing: FJSpacing.s) {
             NumberStepperField("Distância", value: distanceBinding, unit: "km", step: 0.1, range: 0...500, fractionDigits: 2)
-            SessionCardioFields(coordinator: coordinator, set: entry)
+            SessionCardioFields.live(coordinator: coordinator, set: entry)
         }
     }
 
@@ -371,6 +376,7 @@ struct SessionSetRow: View {
                 }
                 Spacer(minLength: FJSpacing.s)
                 FJCheckButton(state: checkState, accessibilityLabel: spoken) { coordinator.toggleSet(entry) }
+                    .modifier(SetA11yModifier(actions: setActions, onEdit: onEdit))
             }
             switch exercise.measurementKind {
             case .repsAndLoad:
@@ -390,7 +396,7 @@ struct SessionSetRow: View {
         .padding(FJSpacing.m)
         .background(FJColor.fill.opacity(0.6), in: FJRadius.shape(FJRadius.field))
         .accessibilityElement(children: .contain)
-        .modifier(SetActions(coordinator: coordinator, entry: entry, onEdit: onEdit, confirmsRemove: $confirmsRemove))
+        .modifier(SetMenuModifier(actions: setActions, onEdit: onEdit))
     }
 
     /// "alvo 8–12" — sempre como prescrito (D2).
@@ -457,13 +463,26 @@ struct SessionSetRow: View {
     }
 }
 
-/// Ações por série: menu de contexto (editar, tipo, remover) e as mesmas ações no VoiceOver.
-/// Remover uma série concluída pede confirmação.
-private struct SetActions: ViewModifier {
+/// Ações por série. Remover uma série concluída pede confirmação; a última série do exercício não sai.
+@MainActor
+private struct SetActions {
     let coordinator: SessionCoordinator
     let entry: SessionSnapshot.ExerciseSet
-    let onEdit: () -> Void
+    let canRemove: Bool
     @Binding var confirmsRemove: Bool
+
+    func requestRemove() {
+        guard canRemove else { return }
+        if entry.isCompleted { confirmsRemove = true } else { coordinator.send(.removeSet(setID: entry.id)) }
+    }
+
+    func setKind(_ kind: WatchSetKind) { coordinator.send(.changeSetKind(setID: entry.id, kind: kind)) }
+}
+
+/// Menu de contexto e confirmação, no contêiner da linha.
+private struct SetMenuModifier: ViewModifier {
+    let actions: SetActions
+    let onEdit: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -471,8 +490,8 @@ private struct SetActions: ViewModifier {
                 Button(action: onEdit) { Label("Editar série", systemImage: "pencil") }
                 Menu {
                     ForEach(SessionPresentation.selectableKinds, id: \.self) { kind in
-                        Button { coordinator.send(.changeSetKind(setID: entry.id, kind: kind)) } label: {
-                            if kind == entry.kind || (kind == .working && entry.kind == .unknown) {
+                        Button { actions.setKind(kind) } label: {
+                            if kind == actions.entry.kind || (kind == .working && actions.entry.kind == .unknown) {
                                 Label(SessionPresentation.kindName(kind), systemImage: "checkmark")
                             } else {
                                 Text(SessionPresentation.kindName(kind))
@@ -480,19 +499,34 @@ private struct SetActions: ViewModifier {
                         }
                     }
                 } label: { Label("Tipo da série", systemImage: "tag") }
-                Button(role: .destructive, action: requestRemove) { Label("Remover série", systemImage: "trash") }
+                if actions.canRemove {
+                    Button(role: .destructive, action: actions.requestRemove) { Label("Remover série", systemImage: "trash") }
+                }
             }
-            .accessibilityAction(named: Text("Editar série"), onEdit)
-            .accessibilityAction(named: Text("Remover série"), requestRemove)
-            .confirmationDialog("Remover esta série?", isPresented: $confirmsRemove, titleVisibility: .visible) {
-                Button("Remover série", role: .destructive) { coordinator.send(.removeSet(setID: entry.id)) }
+            .confirmationDialog("Remover esta série?", isPresented: actions.$confirmsRemove, titleVisibility: .visible) {
+                Button("Remover série", role: .destructive) { actions.coordinator.send(.removeSet(setID: actions.entry.id)) }
                 Button("Cancelar", role: .cancel) {}
             } message: {
                 Text("A série já está concluída. Ela sai do treino e do volume.")
             }
     }
+}
 
-    private func requestRemove() {
-        if entry.isCompleted { confirmsRemove = true } else { coordinator.send(.removeSet(setID: entry.id)) }
+/// Ações do VoiceOver, anexadas ao elemento focável da linha (o check), não ao contêiner.
+private struct SetA11yModifier: ViewModifier {
+    let actions: SetActions
+    let onEdit: () -> Void
+
+    func body(content: Content) -> some View {
+        let base = content
+            .accessibilityAction(named: Text("Editar série"), onEdit)
+        let kinds = SessionPresentation.selectableKinds.reduce(AnyView(base)) { view, kind in
+            AnyView(view.accessibilityAction(named: Text("Tipo da série: \(SessionPresentation.kindName(kind))")) { actions.setKind(kind) })
+        }
+        if actions.canRemove {
+            kinds.accessibilityAction(named: Text("Remover série"), actions.requestRemove)
+        } else {
+            kinds
+        }
     }
 }

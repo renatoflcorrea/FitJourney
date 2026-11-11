@@ -4434,6 +4434,56 @@
           }
         }
       }
+    },
+    "Inverter o sinal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toggle sign"
+          }
+        }
+      }
+    },
+    "Tipo da série: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set type: %@"
+          }
+        }
+      }
+    },
+    "Limite de %lld caracteres atingido.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limit of %lld characters reached."
+          }
+        }
+      }
+    },
+    "Pedindo ao relógio…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Asking the Watch…"
+          }
+        }
+      }
+    },
+    "Um exercício precisa de ao menos uma série. Para tirá-lo do treino, pule ou troque o exercício.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An exercise needs at least one set. To take it out of the workout, skip or swap the exercise."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

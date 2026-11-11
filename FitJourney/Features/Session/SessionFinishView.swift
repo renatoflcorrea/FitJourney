@@ -11,6 +11,8 @@ struct SessionFinishView: View {
     @State private var mood: Int?
     @State private var notes = ""
     @State private var notesLoaded = false
+    /// Nota da sessão quando a tela carregou (mesmo vazia): só se envia o que o usuário mudou em relação a ela.
+    @State private var initialNotes = ""
     @State private var applied: Set<UUID> = []
     @State private var knownProposals: Set<UUID> = []
     @State private var isSaving = false
@@ -246,8 +248,9 @@ struct SessionFinishView: View {
             summary = loaded
             loadFailed = false
             // A nota da sessão (anotada durante o treino) entra preenchida; edições do usuário não são sobrescritas.
-            if !notesLoaded, let current = engine.snapshot?.notes {
-                notes = current
+            if !notesLoaded {
+                initialNotes = engine.snapshot?.notes ?? ""
+                notes = initialNotes
                 notesLoaded = true
             }
         } catch {
@@ -261,8 +264,7 @@ struct SessionFinishView: View {
         let ids = (summary?.loadProposals ?? []).map(\.id).filter(applied.contains)
         // `notes: nil` mantém a nota da sessão; só envia se o usuário a mudou aqui.
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        let sessionNote = engine.snapshot?.notes ?? ""
-        let finishNotes: String? = trimmed == sessionNote ? nil : trimmed
+        let finishNotes: String? = trimmed == initialNotes.trimmingCharacters(in: .whitespacesAndNewlines) ? nil : trimmed
         if !coordinator.send(.finish(rpe: rpe, applyLoadProposalIDs: ids, mood: mood, notes: finishNotes)) { isSaving = false }
     }
 }

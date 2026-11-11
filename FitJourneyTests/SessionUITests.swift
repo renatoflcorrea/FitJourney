@@ -153,6 +153,15 @@ struct SessionPresentationTests {
         #expect(snapshot.holdElapsed(at: f.t0.addingTimeInterval(500)) == 10)
     }
 
+    @Test func decimalFieldNormalizesTheStoredValue() {
+        #expect(SessionOptionalDecimalField.normalized(nil, allowsNegative: true) == nil)
+        #expect(SessionOptionalDecimalField.normalized(9.54, allowsNegative: false) == 9.5)
+        #expect(SessionOptionalDecimalField.normalized(5_000, allowsNegative: false) == 1_000)
+        #expect(SessionOptionalDecimalField.normalized(-3, allowsNegative: false) == 0)
+        #expect(SessionOptionalDecimalField.normalized(-2.6, allowsNegative: true) == -2.6)
+        #expect(SessionOptionalDecimalField.normalized(.infinity, allowsNegative: true) == nil)
+    }
+
     @Test func kindNamesCoverSelectableKinds() {
         #expect(SessionPresentation.selectableKinds.count == 7)
         #expect(SessionPresentation.kindName(.working) == "Normal")

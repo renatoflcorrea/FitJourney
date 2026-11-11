@@ -336,7 +336,7 @@ extension SessionPresentation {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    /// Alvo do cardio: "20 min · 3 km" a partir de `targetDurationSeconds`/`targetDistanceMeters`.
+    /// Alvo do cardio: "20:00 · 3 km" (duração em relógio, distância em km ou m) a partir de `targetDurationSeconds`/`targetDistanceMeters`.
     static func cardioTargetText(durationSeconds: Int?, distanceMeters: Double?) -> String? {
         var parts: [String] = []
         if let durationSeconds, durationSeconds > 0 { parts.append(FJFormat.clock(durationSeconds)) }
