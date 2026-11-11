@@ -1,0 +1,353 @@
+{
+  "format": "fitjourney-export",
+  "schemaVersion": 1,
+  "exportedAt": "2026-11-11T09:30:00.000-03:00",
+  "app": {
+    "name": "FitJourney",
+    "version": "0.1.0",
+    "build": "1",
+    "platform": "iOS",
+    "timeZone": "America/Sao_Paulo",
+    "locale": "pt_BR"
+  },
+  "options": {
+    "includesMedia": false,
+    "includesCoachConversations": true
+  },
+  "exercises": [
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000001",
+      "createdAt": "2026-10-01T08:00:00.000-03:00",
+      "updatedAt": "2026-10-01T08:00:00.000-03:00",
+      "name": "Supino reto com barra",
+      "primaryMuscles": ["chest"],
+      "secondaryMuscles": ["triceps", "shoulders"],
+      "equipment": "barbell",
+      "laterality": "bilateral",
+      "measurementKind": "repsAndLoad",
+      "media": [],
+      "isBuiltIn": true,
+      "catalogKey": "bench-press",
+      "notes": "",
+      "defaultRestSeconds": 120
+    },
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000002",
+      "createdAt": "2026-10-02T08:00:00.000-03:00",
+      "updatedAt": "2026-10-05T18:12:30.250-03:00",
+      "name": "Remada no banco inclinado",
+      "primaryMuscles": ["back"],
+      "secondaryMuscles": [],
+      "equipment": "dumbbell",
+      "laterality": "unilateral",
+      "measurementKind": "repsAndLoad",
+      "media": [
+        {
+          "kind": "externalVideo",
+          "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+          "provider": "youtube",
+          "videoID": "dQw4w9WgXcQ"
+        }
+      ],
+      "isBuiltIn": false,
+      "catalogKey": null,
+      "notes": "Apoiar o peito no banco.",
+      "defaultRestSeconds": 90
+    }
+  ],
+  "programs": [
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000010",
+      "createdAt": "2026-10-01T08:00:00.000-03:00",
+      "updatedAt": "2026-10-20T07:00:00.000-03:00",
+      "name": "AB Força",
+      "goal": "strength",
+      "goalText": "Subir o supino",
+      "scheduleMode": "sequential",
+      "startDate": "2026-10-01T00:00:00.000-03:00",
+      "endDate": "2026-12-24T00:00:00.000-03:00",
+      "notes": "",
+      "isActive": true,
+      "isArchived": false,
+      "origin": "manual",
+      "routines": [
+        {
+          "id": "6F1C2B4A-1D2E-4F30-9A11-000000000011",
+          "createdAt": "2026-10-01T08:00:00.000-03:00",
+          "updatedAt": "2026-10-01T08:00:00.000-03:00",
+          "name": "A — Empurrar",
+          "symbol": "A",
+          "colorName": "blue",
+          "weekdays": [],
+          "sortIndex": 0,
+          "notes": "",
+          "exercises": [
+            {
+              "id": "6F1C2B4A-1D2E-4F30-9A11-000000000012",
+              "createdAt": "2026-10-01T08:00:00.000-03:00",
+              "updatedAt": "2026-10-01T08:00:00.000-03:00",
+              "exerciseID": "6F1C2B4A-1D2E-4F30-9A11-000000000001",
+              "sortIndex": 0,
+              "groupID": null,
+              "notes": "",
+              "restSeconds": 120,
+              "sets": [
+                {
+                  "id": "6F1C2B4A-1D2E-4F30-9A11-000000000013",
+                  "createdAt": "2026-10-01T08:00:00.000-03:00",
+                  "updatedAt": "2026-10-20T07:00:00.000-03:00",
+                  "sortIndex": 0,
+                  "kind": "working",
+                  "repTarget": { "kind": "range", "reps": null, "min": 6, "max": 8 },
+                  "holdSeconds": null,
+                  "initialLoad": { "kind": "weight", "value": 60, "unit": "kg" },
+                  "currentLoad": { "kind": "weight", "value": 62.5, "unit": "kg" },
+                  "restSeconds": null,
+                  "tempo": "3-1-1-0",
+                  "effort": { "kind": "rir", "value": 2 },
+                  "cardio": null,
+                  "notes": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000020",
+      "createdAt": "2026-10-19T18:00:00.000-03:00",
+      "updatedAt": "2026-10-19T18:55:00.000-03:00",
+      "routineID": "6F1C2B4A-1D2E-4F30-9A11-000000000011",
+      "programID": "6F1C2B4A-1D2E-4F30-9A11-000000000010",
+      "routineName": "A — Empurrar",
+      "startedAt": "2026-10-19T18:00:00.000-03:00",
+      "endedAt": "2026-10-19T18:55:00.000-03:00",
+      "status": "completed",
+      "sessionRPE": 8,
+      "mood": 4,
+      "notes": "",
+      "healthKitWorkoutID": null,
+      "pausedAt": null,
+      "accumulatedPauseSeconds": 120,
+      "restEndsAt": null,
+      "lastActivityAt": "2026-10-19T18:50:00.000-03:00",
+      "exercises": [
+        {
+          "id": "6F1C2B4A-1D2E-4F30-9A11-000000000021",
+          "createdAt": "2026-10-19T18:00:00.000-03:00",
+          "updatedAt": "2026-10-19T18:20:00.000-03:00",
+          "exerciseID": "6F1C2B4A-1D2E-4F30-9A11-000000000001",
+          "routineExerciseID": "6F1C2B4A-1D2E-4F30-9A11-000000000012",
+          "name": "Supino reto com barra",
+          "measurementKind": "repsAndLoad",
+          "laterality": "bilateral",
+          "sortIndex": 0,
+          "groupID": null,
+          "restSeconds": 120,
+          "status": "completed",
+          "skipReason": null,
+          "skipReasonText": null,
+          "substitutedFromExerciseID": null,
+          "substitutedFromName": null,
+          "notes": "",
+          "painLocation": null,
+          "painLevel": null,
+          "sets": [
+            {
+              "id": "6F1C2B4A-1D2E-4F30-9A11-000000000022",
+              "createdAt": "2026-10-19T18:00:00.000-03:00",
+              "updatedAt": "2026-10-19T18:20:00.000-03:00",
+              "sortIndex": 0,
+              "prescriptionID": "6F1C2B4A-1D2E-4F30-9A11-000000000013",
+              "kind": "working",
+              "repTarget": { "kind": "range", "min": 6, "max": 8 },
+              "plannedLoad": { "kind": "weight", "value": 60, "unit": "kg" },
+              "reps": 8,
+              "load": { "kind": "weight", "value": 62.5, "unit": "kg" },
+              "isCompleted": true,
+              "completedAt": "2026-10-19T18:20:00.000-03:00",
+              "edited": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "nutritionPlans": [
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000030",
+      "createdAt": "2026-10-01T08:00:00.000-03:00",
+      "updatedAt": "2026-10-01T08:00:00.000-03:00",
+      "name": "Dieta de manutenção",
+      "goal": "Manter peso",
+      "startDate": "2026-10-01T00:00:00.000-03:00",
+      "endDate": null,
+      "author": "nutritionist",
+      "isActive": true,
+      "isArchived": false,
+      "notes": "",
+      "targets": { "kcal": 2400, "protein": 160, "carbs": null, "fat": null, "fiber": 30, "waterMilliliters": 3000 },
+      "days": [
+        {
+          "id": "6F1C2B4A-1D2E-4F30-9A11-000000000031",
+          "createdAt": "2026-10-01T08:00:00.000-03:00",
+          "updatedAt": "2026-10-01T08:00:00.000-03:00",
+          "name": "Todos os dias",
+          "weekdays": [],
+          "sortIndex": 0,
+          "meals": [
+            {
+              "id": "6F1C2B4A-1D2E-4F30-9A11-000000000032",
+              "createdAt": "2026-10-01T08:00:00.000-03:00",
+              "updatedAt": "2026-10-01T08:00:00.000-03:00",
+              "name": "Café da manhã",
+              "minutesFromMidnight": 450,
+              "reminderEnabled": false,
+              "sortIndex": 0,
+              "notes": "",
+              "items": [
+                {
+                  "id": "6F1C2B4A-1D2E-4F30-9A11-000000000033",
+                  "createdAt": "2026-10-01T08:00:00.000-03:00",
+                  "updatedAt": "2026-10-01T08:00:00.000-03:00",
+                  "name": "Ovos mexidos",
+                  "quantity": 3,
+                  "unit": "unit",
+                  "nutrients": { "kcal": 210, "protein": 18, "carbs": 1.5, "fat": 15 },
+                  "notes": "",
+                  "sortIndex": 0,
+                  "substitutions": [
+                    {
+                      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000034",
+                      "name": "Iogurte grego",
+                      "quantity": 170,
+                      "unit": "grams",
+                      "nutrients": { "kcal": 160, "protein": 17 },
+                      "notes": ""
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "foodEntries": [
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000040",
+      "createdAt": "2026-10-19T07:35:00.000-03:00",
+      "updatedAt": "2026-10-19T07:35:00.000-03:00",
+      "date": "2026-10-19T07:30:00.000-03:00",
+      "mealID": "6F1C2B4A-1D2E-4F30-9A11-000000000032",
+      "mealName": "Café da manhã",
+      "name": "Ovos mexidos",
+      "quantity": 3,
+      "unit": "unit",
+      "nutrients": { "kcal": 210, "protein": 18, "carbs": 1.5, "fat": 15 },
+      "estimation": "informed",
+      "mealStatus": "done",
+      "notes": "",
+      "plannedItemID": "6F1C2B4A-1D2E-4F30-9A11-000000000033"
+    },
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000041",
+      "createdAt": "2026-10-19T16:00:00Z",
+      "updatedAt": "2026-10-19T16:00:00Z",
+      "date": "2026-10-19T16:00:00Z",
+      "mealName": null,
+      "name": "Pão de queijo",
+      "quantity": 2,
+      "unit": "unit",
+      "nutrients": { "kcal": null },
+      "estimation": "estimated",
+      "notes": ""
+    }
+  ],
+  "waterLogs": [
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000050",
+      "createdAt": "2026-10-19T10:00:00.000-03:00",
+      "updatedAt": "2026-10-19T10:00:00.000-03:00",
+      "date": "2026-10-19T10:00:00.000-03:00",
+      "milliliters": 500
+    }
+  ],
+  "foods": [
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000060",
+      "createdAt": "2026-10-10T10:00:00.000-03:00",
+      "updatedAt": "2026-10-19T16:00:00.000-03:00",
+      "name": "Pão de queijo",
+      "servingQuantity": 1,
+      "unit": "unit",
+      "nutrients": { "kcal": 85, "protein": 2, "carbs": 9, "fat": 4.5 },
+      "isFavorite": true,
+      "lastUsedAt": "2026-10-19T16:00:00.000-03:00",
+      "useCount": 4,
+      "estimation": "estimated"
+    }
+  ],
+  "coachConversations": [
+    {
+      "id": "6F1C2B4A-1D2E-4F30-9A11-000000000070",
+      "createdAt": "2026-10-18T20:00:00.000-03:00",
+      "updatedAt": "2026-10-18T20:01:00.000-03:00",
+      "title": "Ajustar volume",
+      "titleIsUserEdited": false,
+      "provider": "openAI",
+      "modelID": "gpt-5.1",
+      "isArchived": false,
+      "messages": [
+        {
+          "id": "6F1C2B4A-1D2E-4F30-9A11-000000000071",
+          "createdAt": "2026-10-18T20:00:00.000-03:00",
+          "updatedAt": "2026-10-18T20:00:00.000-03:00",
+          "role": "user",
+          "content": "Posso subir o volume de peito?",
+          "state": "complete",
+          "sortIndex": 0,
+          "toolResultIsError": false
+        },
+        {
+          "id": "6F1C2B4A-1D2E-4F30-9A11-000000000072",
+          "createdAt": "2026-10-18T20:00:30.000-03:00",
+          "updatedAt": "2026-10-18T20:01:00.000-03:00",
+          "role": "assistant",
+          "content": "Sim, com uma série a mais por semana.",
+          "state": "complete",
+          "sortIndex": 1,
+          "modelID": "gpt-5.1",
+          "promptTokens": 1200,
+          "completionTokens": 80,
+          "toolResultIsError": false
+        }
+      ]
+    }
+  ],
+  "coachProfile": {
+    "age": 34,
+    "sex": null,
+    "heightCm": 178,
+    "weightKg": 80.5,
+    "level": "intermediate",
+    "goal": "Hipertrofia",
+    "daysPerWeek": 4,
+    "sharing": { "profile": true, "workouts": true, "nutrition": false, "health": false },
+    "consentedAt": "2026-10-01T08:00:00.000-03:00"
+  },
+  "preferences": {
+    "weightUnit": "kg",
+    "coachProvider": {
+      "provider": "openAI",
+      "models": { "openAI": "gpt-5.1" },
+      "customBaseURL": null,
+      "customContextTokens": null
+    }
+  },
+  "media": []
+}
