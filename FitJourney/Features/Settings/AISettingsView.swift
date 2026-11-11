@@ -294,13 +294,18 @@ struct AISettingsView: View {
             .frame(minHeight: FJSize.minTap)
             Button("Cancelar") { chatGPTLogin.cancel() }
                 .frame(minHeight: FJSize.minTap, alignment: .leading)
-        case let .manual(url):
-            Text("A porta 1455 está ocupada. Entre na página pelo navegador e cole aqui o endereço em que ele parar.")
+        case let .manual(url, problem):
+            Text("Não deu para receber o login aqui (porta 1455 ocupada). Entre na página pelo navegador e cole aqui o endereço inteiro em que ele parar.")
                 .font(FJFont.caption)
                 .foregroundStyle(FJColor.textSecondary)
+            if let problem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill")
+                    .font(FJFont.caption)
+                    .foregroundStyle(FJTone.attention.color)
+            }
             Button("Abrir a página de login") { openURL(url) }
                 .frame(minHeight: FJSize.minTap, alignment: .leading)
-            TextField("Cole o endereço ou o código", text: $pastedCallback)
+            TextField("Cole o endereço (http://localhost:1455/auth/callback?…)", text: $pastedCallback)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
             Button("Concluir") {
@@ -358,7 +363,7 @@ struct AISettingsView: View {
     // MARK: Ações
 
     private func reloadKeyState() {
-        hasKey = secrets.contains(descriptor.secretKey)
+        hasKey = descriptor.hasCredential(in: secrets)
         chatGPTPlan = descriptor.usesChatGPTLogin
             ? SecretChatGPTStore(secrets: secrets).loadIgnoringErrors()?.planLabel : nil
     }

@@ -62,20 +62,21 @@ struct ChatGPTOAuthClient: Sendable {
                                    verifier: pkce.verifier)
     }
 
-    /// Extrai `code` e `state` de uma URL de callback colada, ou aceita só o código.
-    static func parseCallback(_ text: String) -> (code: String, state: String?)? {
+    /// Extrai o callback de uma URL colada. Exige a URL completa (com `state`): um código solto não pode
+    /// ser ligado a esta tentativa.
+    static func parseCallback(_ text: String) -> ChatGPTLoopbackListener.Callback? {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        if trimmed.contains("://") || trimmed.contains("?") {
-            guard let items = URLComponents(string: trimmed)?.queryItems,
-                  let code = items.first(where: { $0.name == "code" })?.value, !code.isEmpty else { return nil }
-            return (code, items.first { $0.name == "state" }?.value)
-        }
-        return trimmed.contains(where: \.isWhitespace) ? nil : (trimmed, nil)
+        guard let components = URLComponents(string: trimmed), components.scheme != nil,
+              components.path == ChatGPTLoopbackListener.path, let items = components.queryItems,
+              let state = items.first(where: { $0.name == "state" })?.value, !state.isEmpty else { return nil }
+        let code = items.first { $0.name == "code" }?.value
+        let error = items.first { $0.name == "error" }?.value
+        guard code?.isEmpty == false || error != nil else { return nil }
+        return ChatGPTLoopbackListener.Callback(code: code, state: state, error: error)
     }
 
     func exchange(code: String, attempt: ChatGPTLoginAttempt) async throws -> ChatGPTCredentials {
-        let response = try await tokenRequest([
+        let response = try await tokenRequest(refreshing: false, [
             ("grant_type", "authorization_code"),
             ("client_id", configuration.clientID),
             ("code", code),
@@ -85,34 +86,44 @@ struct ChatGPTOAuthClient: Sendable {
         return try credentials(from: response, previous: nil)
     }
 
-    /// Recusa permanente (refresh token revogado, reutilizado ou expirado: 400 `invalid_grant`, 401, 403)
-    /// vira `AIError.signInRequired`; falhas de rede ou 5xx mantêm os tokens guardados.
+    /// Só recusa **permanente** (400 `invalid_grant`/`refresh_token_*` ou 401) vira `AIError.signInRequired`;
+    /// 403 (ex.: bloqueio do Cloudflare), outros 4xx, 5xx e rede são transitórios e mantêm os tokens guardados.
     func refresh(_ current: ChatGPTCredentials) async throws -> ChatGPTCredentials {
-        let response: TokenResponse
-        do {
-            response = try await tokenRequest([
-                ("grant_type", "refresh_token"),
-                ("refresh_token", current.refreshToken),
-                ("client_id", configuration.clientID),
-            ])
-        } catch AIError.unauthorized {
-            throw AIError.signInRequired
-        } catch AIError.badRequest(status: 400, _) {
-            throw AIError.signInRequired
-        }
+        let response = try await tokenRequest(refreshing: true, [
+            ("grant_type", "refresh_token"),
+            ("refresh_token", current.refreshToken),
+            ("client_id", configuration.clientID),
+        ])
         return try credentials(from: response, previous: current)
     }
 
+    static let permanentRefreshErrors: Set<String> = [
+        "invalid_grant", "refresh_token_expired", "refresh_token_reused", "refresh_token_invalidated",
+    ]
+
     // MARK: - Privado
 
-    private func tokenRequest(_ fields: [(String, String)]) async throws -> TokenResponse {
+    private func tokenRequest(refreshing: Bool, _ fields: [(String, String)]) async throws -> TokenResponse {
         var request = URLRequest(url: configuration.issuer.appending(path: "oauth/token"))
         request.httpMethod = "POST"
         request.timeoutInterval = 30
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.httpBody = Data(Self.formEncode(fields).utf8)
-        let (data, _) = try await client.data(for: request)
+        let (data, response) = try await client.dataAllowingErrorStatus(for: request)
+        let status = response.statusCode
+        guard (200 ..< 300).contains(status) else {
+            let code = Self.errorCode(in: data)
+            let permanent = status == 401 || (status == 400 && code.map(Self.permanentRefreshErrors.contains) == true)
+            if refreshing, permanent { throw AIError.signInRequired }
+            // O corpo nunca vai cru para a mensagem: só o código de erro OAuth.
+            let message = Redactor.redact(code ?? "HTTP \(status)")
+            switch status {
+            case 429: throw AIError.rateLimited(retryAfter: nil)
+            case 400 ..< 500: throw AIError.badRequest(status: status, message: message)
+            default: throw AIError.server(status: status, message: message)
+            }
+        }
         do {
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -120,6 +131,13 @@ struct ChatGPTOAuthClient: Sendable {
         } catch {
             throw AIError.decoding(context: "ChatGPT token", message: "ilegível")
         }
+    }
+
+    /// `{"error":"invalid_grant"}` ou `{"error":{"code":"refresh_token_expired"}}`.
+    static func errorCode(in data: Data) -> String? {
+        guard let object = try? JSONValue.parse(String(decoding: data, as: UTF8.self)) else { return nil }
+        if let code = object["error"]?.stringValue { return code }
+        return object["error"]?["code"]?.stringValue ?? object["code"]?.stringValue
     }
 
     static func formEncode(_ fields: [(String, String)]) -> String {
@@ -159,19 +177,38 @@ private struct TokenResponse: Decodable {
 
 /// Serializa renovações no processo inteiro: um segundo refresh simultâneo gastaria um refresh token
 /// rotativo e invalidaria o primeiro. A chave é o hash do refresh token (o valor não fica como chave).
+/// Também guarda em memória uma renovação que não pôde ser gravada no Keychain, até conseguir gravar.
 actor ChatGPTRefreshCoordinator {
     static let shared = ChatGPTRefreshCoordinator()
 
     private var inFlight: [String: Task<ChatGPTCredentials, any Error>] = [:]
+    /// Renovações não gravadas, pela chave do refresh token que substituíram.
+    private var unsaved: [String: ChatGPTCredentials] = [:]
+
+    static func key(_ refreshToken: String) -> String {
+        SHA256.hash(data: Data(refreshToken.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
 
     func run(refreshToken: String,
              _ operation: @escaping @Sendable () async throws -> ChatGPTCredentials) async throws -> ChatGPTCredentials {
-        let key = SHA256.hash(data: Data(refreshToken.utf8)).map { String(format: "%02x", $0) }.joined()
+        let key = Self.key(refreshToken)
         if let running = inFlight[key] { return try await running.value }
         let task = Task { try await operation() }
         inFlight[key] = task
         defer { inFlight[key] = nil }
         return try await task.value
+    }
+
+    func rememberUnsaved(_ renewed: ChatGPTCredentials, replacing refreshToken: String) {
+        unsaved[Self.key(refreshToken)] = renewed
+    }
+
+    func unsaved(replacing refreshToken: String) -> ChatGPTCredentials? {
+        unsaved[Self.key(refreshToken)]
+    }
+
+    func forgetUnsaved(replacing refreshToken: String) {
+        unsaved[Self.key(refreshToken)] = nil
     }
 }
 
@@ -194,39 +231,77 @@ struct ChatGPTAuthSession: Sendable {
 
     /// Token válido, renovando antes se estiver para expirar. Sem login: `AIError.signInRequired`.
     func credentials() async throws -> ChatGPTCredentials {
-        guard let current = try load() else { throw AIError.signInRequired }
+        guard let current = try await load() else { throw AIError.signInRequired }
         guard current.needsRefresh(now: now()) else { return current }
-        return try await refresh(current)
+        return try await refresh(current, force: false)
     }
 
     /// Depois de um 401/403 com um token que parecia válido: renova, a não ser que alguém já tenha renovado.
     func credentialsAfterRejection(of rejectedAccessToken: String) async throws -> ChatGPTCredentials {
-        guard let current = try load() else { throw AIError.signInRequired }
+        guard let current = try await load() else { throw AIError.signInRequired }
         if current.accessToken != rejectedAccessToken { return current }
-        return try await refresh(current)
+        return try await refresh(current, force: true)
     }
 
-    private func load() throws -> ChatGPTCredentials? {
+    /// Recusa repetida mesmo com token renovado: o login guardado não serve mais. Apaga só se ainda for o mesmo,
+    /// para a UI voltar ao estado "Entrar com ChatGPT".
+    func invalidate(accessToken: String) async {
+        guard let stored = (try? store.load()) ?? nil else { return }
+        let current = await coordinator.unsaved(replacing: stored.refreshToken) ?? stored
+        guard current.accessToken == accessToken else { return }
+        await coordinator.forgetUnsaved(replacing: stored.refreshToken)
+        try? store.clear()
+    }
+
+    /// O blob do Keychain, ou a renovação ainda não gravada que o substitui (e tenta gravá-la de novo).
+    private func load() async throws -> ChatGPTCredentials? {
+        let stored: ChatGPTCredentials?
         do {
-            return try store.load()
+            stored = try store.load()
         } catch {
             throw AIError.notConfigured(reason: String(localized: "não foi possível ler o login do ChatGPT no Keychain"))
         }
+        guard let stored else { return nil }
+        guard let pending = await coordinator.unsaved(replacing: stored.refreshToken) else { return stored }
+        if (try? store.save(pending)) != nil { await coordinator.forgetUnsaved(replacing: stored.refreshToken) }
+        return pending
     }
 
-    private func refresh(_ current: ChatGPTCredentials) async throws -> ChatGPTCredentials {
+    private func refresh(_ stale: ChatGPTCredentials, force: Bool) async throws -> ChatGPTCredentials {
         let oauth = oauth
         let store = store
-        return try await coordinator.run(refreshToken: current.refreshToken) {
+        let now = now
+        let coordinator = coordinator
+        /// Visão atual: o blob gravado, ou a renovação em memória que o substitui. `storedToken` é a chave do blob.
+        @Sendable func effective() async -> (storedToken: String, credentials: ChatGPTCredentials)? {
+            guard let stored = (try? store.load()) ?? nil else { return nil }
+            let pending = await coordinator.unsaved(replacing: stored.refreshToken)
+            return (stored.refreshToken, pending ?? stored)
+        }
+        return try await coordinator.run(refreshToken: stale.refreshToken) {
+            // Relê dentro da operação: outra chamada pode ter renovado (ou saído) entre a leitura e aqui.
+            guard let latest = await effective() else { throw AIError.signInRequired }
+            if latest.credentials.refreshToken != stale.refreshToken { return latest.credentials }
+            if !force, !latest.credentials.needsRefresh(now: now()) { return latest.credentials }
+            let renewed: ChatGPTCredentials
             do {
-                let renewed = try await oauth.refresh(current)
-                try store.save(renewed)
-                return renewed
+                renewed = try await oauth.refresh(stale)
             } catch AIError.signInRequired {
-                // Recusa permanente: o login guardado não serve mais. Apaga para a UI pedir "Entre de novo".
-                try? store.clear()
+                // Recusa permanente: apaga só se o login atual ainda tiver o refresh token que falhou.
+                if let current = await effective(), current.credentials.refreshToken == stale.refreshToken {
+                    await coordinator.forgetUnsaved(replacing: current.storedToken)
+                    try? store.clear()
+                }
                 throw AIError.signInRequired
             }
+            do {
+                try store.save(renewed)
+                await coordinator.forgetUnsaved(replacing: latest.storedToken)
+            } catch {
+                // O token novo vale (o antigo pode já estar gasto): fica em memória e grava depois.
+                await coordinator.rememberUnsaved(renewed, replacing: latest.storedToken)
+            }
+            return renewed
         }
     }
 }

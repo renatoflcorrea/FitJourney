@@ -36,7 +36,7 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
          reasoningSummary: Bool = true) {
         self.baseURL = baseURL
         self.session = session
-        self.client = client.addingSensitiveHeaders(Self.sensitiveHeaders)
+        self.client = client.addingSensitiveHeaders(Self.sensitiveHeaders).keepingForbiddenStatus()
         self.originator = originator
         userAgent = "FitJourney/\(version)"
         self.sessionID = sessionID
@@ -106,7 +106,10 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
 
     // MARK: - Pedido
 
-    /// 401/403 antes do stream: renova uma vez e repete. 400 citando um parâmetro opcional: repete sem os opcionais.
+    /// 401/403 antes do stream: renova uma vez e repete. Recusa repetida: 401 apaga o login e pede novo
+    /// (`signInRequired`, a UI volta a "Entrar com ChatGPT"); 403 com token novo é bloqueio do endpoint
+    /// (Cloudflare, `originator`), que um novo login não resolve. 400 que cite pelo nome um parâmetro opcional:
+    /// repete sem ele.
     private func open(_ request: ChatRequest) async throws -> URLSession.AsyncBytes {
         var credentials = try await session.credentials()
         var options = BodyOptions(strictTools: strictTools, reasoningSummary: reasoningSummary)
@@ -115,15 +118,23 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
             do {
                 return try await client.bytes(for: makeRequest(request, credentials: credentials, options: options)).0
             } catch AIError.unauthorized {
-                guard !refreshed else { throw AIError.signInRequired }
+                guard !refreshed else {
+                    await session.invalidate(accessToken: credentials.accessToken)
+                    throw AIError.signInRequired
+                }
+                refreshed = true
+                credentials = try await session.credentialsAfterRejection(of: credentials.accessToken)
+            } catch AIError.badRequest(status: 403, _) {
+                guard !refreshed else {
+                    throw AIError.server(status: 403, message: String(localized: "O ChatGPT recusou o acesso mesmo com o login renovado. O endpoint não oficial pode ter mudado ou bloqueado o app."))
+                }
                 refreshed = true
                 credentials = try await session.credentialsAfterRejection(of: credentials.accessToken)
             } catch AIError.badRequest(status: 400, let message) {
-                let lower = message.lowercased()
-                let citesOptional = ["reasoning", "strict", "parallel_tool_calls", "unsupported parameter",
-                                     "unknown parameter"].contains { lower.contains($0) }
-                guard citesOptional, options != .minimal else { throw AIError.badRequest(status: 400, message: message) }
-                options = .minimal
+                guard let relaxed = options.dropping(citedIn: message) else {
+                    throw AIError.badRequest(status: 400, message: message)
+                }
+                options = relaxed
             }
         }
     }
@@ -133,7 +144,15 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
         var reasoningSummary: Bool
         var parallelToolCalls: Bool = true
 
-        static let minimal = BodyOptions(strictTools: false, reasoningSummary: false, parallelToolCalls: false)
+        /// Sem o(s) parâmetro(s) opcional(is) citado(s) **pelo nome** no erro; `nil` = nada a tirar.
+        func dropping(citedIn message: String) -> BodyOptions? {
+            let lower = message.lowercased()
+            var copy = self
+            if lower.contains("reasoning") { copy.reasoningSummary = false }
+            if lower.contains("parallel_tool_calls") { copy.parallelToolCalls = false }
+            if lower.contains("strict") { copy.strictTools = false }
+            return copy == self ? nil : copy
+        }
     }
 
     func makeRequest(_ request: ChatRequest, credentials: ChatGPTCredentials,
@@ -291,13 +310,15 @@ struct ResponsesStreamDecoder: Sendable {
                 upsertCall(item, outputIndex: event["output_index"]?.intValue, final: type == "response.output_item.done")
             }
         case "response.function_call_arguments.delta":
-            if let key = event["item_id"]?.stringValue, let delta = event["delta"]?.stringValue {
+            if let itemID = event["item_id"]?.stringValue, let delta = event["delta"]?.stringValue {
+                let key = callKey(for: itemID)
                 var call = calls[key] ?? newCall(order: event["output_index"]?.intValue)
                 call.arguments += delta
                 calls[key] = call
             }
         case "response.function_call_arguments.done":
-            if let key = event["item_id"]?.stringValue, let arguments = event["arguments"]?.stringValue {
+            if let itemID = event["item_id"]?.stringValue, let arguments = event["arguments"]?.stringValue {
+                let key = callKey(for: itemID)
                 var call = calls[key] ?? newCall(order: event["output_index"]?.intValue)
                 call.arguments = arguments
                 calls[key] = call
@@ -347,6 +368,12 @@ struct ResponsesStreamDecoder: Sendable {
         guard let usage = response?["usage"], usage.objectValue != nil else { return }
         out.append(.usage(TokenUsage(promptTokens: usage["input_tokens"]?.intValue ?? 0,
                                      completionTokens: usage["output_tokens"]?.intValue ?? 0)))
+    }
+
+    /// `item_id` costuma ser o `id` (fc_…) do item; alguns servidores mandam o `call_id` — aceita os dois.
+    private func callKey(for itemID: String) -> String {
+        if calls[itemID] != nil { return itemID }
+        return calls.first { $0.value.callID == itemID }?.key ?? itemID
     }
 
     private mutating func newCall(order: Int?) -> PartialCall {

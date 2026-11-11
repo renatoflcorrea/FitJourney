@@ -112,3 +112,10 @@ extension SecretChatGPTStore {
     /// Para a UI: blob ilegível ou erro de Keychain = deslogado.
     func loadIgnoringErrors() -> ChatGPTCredentials? { (try? load()) ?? nil }
 }
+
+extension ProviderDescriptor {
+    /// Há credencial utilizável: a chave de API, ou (ChatGPT) um blob de login **legível**.
+    func hasCredential(in secrets: any SecretStore) -> Bool {
+        usesChatGPTLogin ? SecretChatGPTStore(secrets: secrets).loadIgnoringErrors() != nil : secrets.contains(secretKey)
+    }
+}

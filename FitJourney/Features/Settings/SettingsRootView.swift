@@ -246,7 +246,7 @@ struct SettingsRootView: View {
     private func reload() async {
         profile = CoachProfileStore(defaults: defaults).load()
         providerSettings = ProviderSettingsStore(defaults: defaults).load()
-        hasKey = secrets.contains(.apiKey(providerSettings.provider))
+        hasKey = ProviderCatalog.descriptor(for: providerSettings.provider).hasCredential(in: secrets)
         manualHeartRate = maxHeartRate > 0
         await healthAuthorization?.refresh()
         notification = .init(await scheduler?.authorization())

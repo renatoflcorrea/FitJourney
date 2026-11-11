@@ -6049,32 +6049,12 @@
         }
       }
     },
-    "A porta 1455 está ocupada. Entre na página pelo navegador e cole aqui o endereço em que ele parar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Port 1455 is busy. Sign in on the page in the browser and paste here the address where it stops."
-          }
-        }
-      }
-    },
     "Abrir a página de login" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Open the sign-in page"
-          }
-        }
-      }
-    },
-    "Cole o endereço ou o código" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paste the address or code"
           }
         }
       }
@@ -6095,16 +6075,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sign in with ChatGPT"
-          }
-        }
-      }
-    },
-    "Isso não parece um endereço de login. Cole a URL inteira em que o navegador parou." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "That does not look like a sign-in address. Paste the full URL where the browser stopped."
           }
         }
       }
@@ -6135,6 +6105,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Could not finish the ChatGPT sign-in. Try again."
+          }
+        }
+      }
+    },
+    "O ChatGPT recusou o acesso mesmo com o login renovado. O endpoint não oficial pode ter mudado ou bloqueado o app." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ChatGPT refused access even with a renewed sign-in. The unofficial endpoint may have changed or blocked the app."
+          }
+        }
+      }
+    },
+    "Isso não parece o endereço de retorno do login. Cole a URL inteira em que o navegador parou (começa com http://localhost:1455/auth/callback)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That does not look like the sign-in return address. Paste the full URL where the browser stopped (it starts with http://localhost:1455/auth/callback)."
+          }
+        }
+      }
+    },
+    "Não deu para receber o login aqui (porta 1455 ocupada). Entre na página pelo navegador e cole aqui o endereço inteiro em que ele parar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The sign-in could not be received here (port 1455 is busy). Sign in on the page in the browser and paste here the full address where it stops."
+          }
+        }
+      }
+    },
+    "Cole o endereço (http://localhost:1455/auth/callback?…)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste the address (http://localhost:1455/auth/callback?…)"
           }
         }
       }

@@ -1,4 +1,5 @@
 import Foundation
+import Network
 import SwiftData
 import Testing
 @testable import FitJourney
@@ -14,6 +15,43 @@ private final class MemoryChatGPTStore: ChatGPTCredentialStore, @unchecked Senda
 
     func load() throws -> ChatGPTCredentials? { lock.withLock { value } }
     func save(_ credentials: ChatGPTCredentials) throws { lock.withLock { value = credentials } }
+    func clear() throws { lock.withLock { value = nil } }
+}
+
+/// Devolve as leituras em sequência (a última se repete): simula outra tela mudando o Keychain no meio.
+private final class ScriptedStore: ChatGPTCredentialStore, @unchecked Sendable {
+    private let lock = NSLock()
+    private var reads: [ChatGPTCredentials?]
+    private var clearCount = 0
+    var clears: Int { lock.withLock { clearCount } }
+
+    init(reads: [ChatGPTCredentials?]) { self.reads = reads }
+
+    func load() throws -> ChatGPTCredentials? {
+        lock.withLock { reads.count > 1 ? reads.removeFirst() : (reads.first ?? nil) }
+    }
+    func save(_ credentials: ChatGPTCredentials) throws { lock.withLock { reads = [credentials] } }
+    func clear() throws { lock.withLock { clearCount += 1; reads = [nil] } }
+}
+
+private final class FlakyStore: ChatGPTCredentialStore, @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: ChatGPTCredentials?
+    private var failing = false
+    var failSaves: Bool {
+        get { lock.withLock { failing } }
+        set { lock.withLock { failing = newValue } }
+    }
+
+    init(_ value: ChatGPTCredentials?) { self.value = value }
+
+    func load() throws -> ChatGPTCredentials? { lock.withLock { value } }
+    func save(_ credentials: ChatGPTCredentials) throws {
+        try lock.withLock {
+            if failing { throw SecretStoreError.keychain(status: -25308) }
+            value = credentials
+        }
+    }
     func clear() throws { lock.withLock { value = nil } }
 }
 
@@ -109,14 +147,15 @@ struct ChatGPTOAuthTests {
         #expect(attempt.state == "st")
     }
 
-    @Test("callback colado: URL completa ou só o código")
+    @Test("callback colado: só a URL completa com state")
     func callbackParsing() {
-        let full = ChatGPTOAuthClient.parseCallback("http://localhost:1455/auth/callback?code=abc&state=xyz")
-        #expect(full?.code == "abc")
-        #expect(full?.state == "xyz")
-        #expect(ChatGPTOAuthClient.parseCallback("  abc123  ")?.code == "abc123")
-        #expect(ChatGPTOAuthClient.parseCallback("  abc123  ")?.state == nil)
-        #expect(ChatGPTOAuthClient.parseCallback("http://localhost:1455/auth/callback?error=access_denied") == nil)
+        let full = ChatGPTOAuthClient.parseCallback(" http://localhost:1455/auth/callback?code=abc&state=xyz ")
+        #expect(full == .init(code: "abc", state: "xyz", error: nil))
+        #expect(ChatGPTOAuthClient.parseCallback("abc123") == nil) // código solto não serve
+        #expect(ChatGPTOAuthClient.parseCallback("http://localhost:1455/auth/callback?code=abc") == nil)
+        #expect(ChatGPTOAuthClient.parseCallback("http://localhost:1455/outro?code=abc&state=x") == nil)
+        #expect(ChatGPTOAuthClient.parseCallback("http://localhost:1455/auth/callback?error=access_denied&state=x")?.error
+            == "access_denied")
         #expect(ChatGPTOAuthClient.parseCallback("") == nil)
         #expect(ChatGPTOAuthClient.parseCallback("dois tokens") == nil)
     }
@@ -199,6 +238,69 @@ struct ChatGPTOAuthTests {
         #expect(try store.load()?.refreshToken == "refresh-new")
     }
 
+    @Test("leitura velha: se outro já renovou, devolve o login atual sem rede")
+    func staleReadSkipsNetwork() async throws {
+        let host = StubURLProtocol.uniqueHost()
+        StubURLProtocol.enqueue([], host: host)
+        let old = ChatGPTCredentials(accessToken: "old", refreshToken: "r-old-\(UUID())", expiresAt: Date().addingTimeInterval(-5),
+                                     accountID: "x")
+        let renewed = ChatGPTCredentials(accessToken: "new", refreshToken: "r-new-\(UUID())",
+                                         expiresAt: Date().addingTimeInterval(3600), accountID: "x")
+        let store = ScriptedStore(reads: [old, renewed])
+        let session = ChatGPTAuthSession(store: store, oauth: try oauth(host: host))
+        #expect(try await session.credentials().accessToken == "new")
+        #expect(StubURLProtocol.requests(host: host).isEmpty)
+        #expect(store.clears == 0)
+    }
+
+    @Test("recusa permanente só apaga se o blob ainda tiver o refresh token que falhou")
+    func clearOnlyIfSameToken() async throws {
+        let host = StubURLProtocol.uniqueHost()
+        StubURLProtocol.enqueue([.json(#"{"error":"invalid_grant"}"#, status: 400)], host: host)
+        let old = ChatGPTCredentials(accessToken: "old", refreshToken: "r-old-\(UUID())", expiresAt: Date().addingTimeInterval(-5),
+                                     accountID: "x")
+        let other = ChatGPTCredentials(accessToken: "novo-login", refreshToken: "r-other-\(UUID())",
+                                       expiresAt: Date().addingTimeInterval(3600), accountID: "x")
+        // A sessão lê o velho, a operação relê o velho, e na hora de apagar já há um login novo.
+        let store = ScriptedStore(reads: [old, old, other])
+        let session = ChatGPTAuthSession(store: store, oauth: try oauth(host: host))
+        await #expect(throws: AIError.signInRequired) { try await session.credentials() }
+        #expect(store.clears == 0)
+    }
+
+    @Test("403 e 5xx no endpoint de token são transitórios: login mantido")
+    func transientRefreshFailure() async throws {
+        for status in [403, 500] {
+            let host = StubURLProtocol.uniqueHost()
+            StubURLProtocol.enqueue([.json(#"{"error":"blocked"}"#, status: status)], host: host)
+            let store = signedIn(expiresIn: -10)
+            let session = ChatGPTAuthSession(store: store, oauth: try oauth(host: host))
+            var caught: (any Error)?
+            do { _ = try await session.credentials() } catch { caught = error }
+            #expect(caught != nil)
+            #expect((caught as? AIError) != .signInRequired, "status \(status)")
+            #expect(try store.load() != nil, "status \(status)")
+        }
+    }
+
+    @Test("falha ao gravar a renovação: devolve o token novo, guarda em memória e grava depois")
+    func saveFailureKeepsRenewed() async throws {
+        let host = StubURLProtocol.uniqueHost()
+        StubURLProtocol.enqueue([.json(tokenJSON(access: "access-new", refresh: "refresh-new-\(UUID())"))], host: host)
+        let stale = ChatGPTCredentials(accessToken: "old", refreshToken: "r-\(UUID())", expiresAt: Date().addingTimeInterval(-5),
+                                       accountID: "x")
+        let store = FlakyStore(stale)
+        store.failSaves = true
+        let session = ChatGPTAuthSession(store: store, oauth: try oauth(host: host))
+        #expect(try await session.credentials().accessToken == "access-new")
+        #expect(try store.load()?.accessToken == "old") // o Keychain falhou
+        // A próxima leitura usa a renovação em memória (sem rede) e tenta gravar de novo.
+        store.failSaves = false
+        #expect(try await session.credentials().accessToken == "access-new")
+        #expect(try store.load()?.accessToken == "access-new")
+        #expect(StubURLProtocol.requests(host: host).count == 1)
+    }
+
     @Test("sem login: signInRequired")
     func signedOut() async {
         let session = ChatGPTAuthSession(store: MemoryChatGPTStore(nil))
@@ -253,52 +355,103 @@ struct ChatGPTListenerTests {
         #expect(ChatGPTLoopbackListener.parse(requestLine: "POST /auth/callback?code=c HTTP/1.1\r\n") == nil)
     }
 
-    private func roundTrip(query: String) async throws -> ChatGPTLoopbackListener.Callback {
-        let listener = ChatGPTLoopbackListener(port: 0)
+    @Test("comparação de state em tempo constante e só loopback (127/8, ::1, ::ffff:127.x)")
+    func pureHelpers() throws {
+        #expect(ChatGPTLoopbackListener.constantTimeEquals("abc", "abc"))
+        #expect(!ChatGPTLoopbackListener.constantTimeEquals("abc", "abd"))
+        #expect(!ChatGPTLoopbackListener.constantTimeEquals("abc", "abcd"))
+        #expect(!ChatGPTLoopbackListener.constantTimeEquals("", "a"))
+        func endpoint(_ host: String) -> NWEndpoint { .hostPort(host: NWEndpoint.Host(host), port: 1455) }
+        #expect(ChatGPTLoopbackListener.isLoopback(endpoint("127.0.0.1")))
+        #expect(ChatGPTLoopbackListener.isLoopback(endpoint("127.8.9.10")))
+        #expect(ChatGPTLoopbackListener.isLoopback(endpoint("::1")))
+        #expect(ChatGPTLoopbackListener.isLoopback(endpoint("::ffff:127.0.0.1")))
+        #expect(!ChatGPTLoopbackListener.isLoopback(endpoint("192.168.0.10")))
+        #expect(!ChatGPTLoopbackListener.isLoopback(endpoint("fe80::1")))
+        #expect(!ChatGPTLoopbackListener.isLoopback(endpoint("localhost"))) // nome, não endereço
+    }
+
+    private func get(_ port: UInt16, _ query: String) async throws -> (Int, String) {
+        let url = try #require(URL(string: "http://127.0.0.1:\(port)/auth/callback?\(query)"))
+        let (data, response) = try await URLSession(configuration: .ephemeral).data(from: url)
+        return ((response as? HTTPURLResponse)?.statusCode ?? 0, String(decoding: data, as: UTF8.self))
+    }
+
+    @Test("state certo entrega o código e consome o uso único")
+    func rightState() async throws {
+        let attempt = ChatGPTOAuthClient().beginLogin(pkce: ChatGPTPKCE(verifier: "v"), state: "estado-1")
+        let listener = ChatGPTLoopbackListener(expectedState: "estado-1", port: 0)
         try await listener.start()
         defer { listener.stop() }
         let port = try #require(listener.boundPort)
         async let callback = listener.callback()
-        let url = try #require(URL(string: "http://127.0.0.1:\(port)/auth/callback?\(query)"))
-        let (data, response) = try await URLSession(configuration: .ephemeral).data(from: url)
-        #expect((response as? HTTPURLResponse)?.statusCode == 200)
-        #expect(String(decoding: data, as: UTF8.self).contains("FitJourney"))
-        return try await callback
+        let (status, body) = try await get(port, "code=codigo-1&state=estado-1")
+        #expect(status == 200)
+        #expect(body.contains("FitJourney"))
+        let received = try await callback
+        #expect(received == .init(code: "codigo-1", state: "estado-1", error: nil))
+        #expect(try ChatGPTLoginValidation.code(from: received, attempt: attempt) == "codigo-1")
+        // Uso único: a porta foi liberada.
+        #expect(listener.boundPort == nil)
     }
 
-    @Test("callback com state certo entrega o código")
-    func rightState() async throws {
-        let attempt = ChatGPTOAuthClient().beginLogin(pkce: ChatGPTPKCE(verifier: "v"), state: "estado-1")
-        let callback = try await roundTrip(query: "code=codigo-1&state=estado-1")
-        #expect(callback == .init(code: "codigo-1", state: "estado-1", error: nil))
-        #expect(try ChatGPTLoginValidation.code(from: callback, attempt: attempt, requireState: true) == "codigo-1")
+    @Test("state errado ou ausente recebe 404 e a espera continua até o state certo")
+    func wrongStateKeepsWaiting() async throws {
+        let listener = ChatGPTLoopbackListener(expectedState: "estado-1", port: 0)
+        try await listener.start()
+        defer { listener.stop() }
+        let port = try #require(listener.boundPort)
+        async let callback = listener.callback()
+        #expect(try await get(port, "code=forjado&state=outro").0 == 404)
+        #expect(try await get(port, "code=sem-state").0 == 404)
+        #expect(listener.boundPort == port) // ainda escutando
+        #expect(try await get(port, "code=bom&state=estado-1").0 == 200)
+        #expect(try await callback.code == "bom")
     }
 
-    @Test("callback com state errado (ou ausente no listener) é recusado; negado também")
-    func wrongState() async throws {
+    @Test("validação: state ausente ou diferente é recusado; negado também")
+    func validation() {
         let attempt = ChatGPTOAuthClient().beginLogin(pkce: ChatGPTPKCE(verifier: "v"), state: "estado-1")
-        let callback = try await roundTrip(query: "code=codigo-1&state=outro")
         #expect(throws: ChatGPTLoginValidation.Failure.stateMismatch) {
-            try ChatGPTLoginValidation.code(from: callback, attempt: attempt, requireState: true)
+            try ChatGPTLoginValidation.code(from: .init(code: "c", state: "outro", error: nil), attempt: attempt)
         }
         #expect(throws: ChatGPTLoginValidation.Failure.stateMismatch) {
-            try ChatGPTLoginValidation.code(from: .init(code: "c", state: nil, error: nil), attempt: attempt, requireState: true)
+            try ChatGPTLoginValidation.code(from: .init(code: "c", state: nil, error: nil), attempt: attempt)
         }
         #expect(throws: ChatGPTLoginValidation.Failure.denied) {
-            try ChatGPTLoginValidation.code(from: .init(code: nil, state: "estado-1", error: "access_denied"),
-                                            attempt: attempt, requireState: true)
+            try ChatGPTLoginValidation.code(from: .init(code: nil, state: "estado-1", error: "access_denied"), attempt: attempt)
         }
-        // Código colado sozinho (fallback): sem state, aceito.
-        #expect(try ChatGPTLoginValidation.code(from: .init(code: "c", state: nil, error: nil), attempt: attempt,
-                                                requireState: false) == "c")
     }
 
-    @Test("stop encerra a espera com cancelamento")
-    func stopEndsWait() async throws {
-        let listener = ChatGPTLoopbackListener(port: 0)
+    @Test("stop encerra a espera, cancela conexões pendentes e libera a porta")
+    func stopEndsWaitAndConnections() async throws {
+        let listener = ChatGPTLoopbackListener(expectedState: "s", port: 0, connectionTimeout: 30)
         try await listener.start()
+        let port = try #require(listener.boundPort)
+        // Conexão que não manda nada: fica pendente.
+        let idle = NWConnection(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!, using: .tcp)
+        idle.start(queue: .global())
+        defer { idle.cancel() }
+        for _ in 0 ..< 100 where listener.openConnectionCount == 0 { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(listener.openConnectionCount == 1)
         listener.stop()
+        #expect(listener.openConnectionCount == 0)
+        #expect(listener.boundPort == nil)
         await #expect(throws: AIError.cancelled) { try await listener.callback() }
+        // A porta está livre de novo.
+        let again = ChatGPTLoopbackListener(expectedState: "s", port: port)
+        try await again.start()
+        again.stop()
+    }
+
+    @Test("timeout da espera encerra com erro e libera a porta")
+    func timeout() async throws {
+        let listener = ChatGPTLoopbackListener(expectedState: "s", port: 0, timeout: 0.2)
+        try await listener.start()
+        await #expect(throws: AIError.network(code: URLError.timedOut.rawValue, retryable: false)) {
+            try await listener.callback()
+        }
+        #expect(listener.boundPort == nil)
     }
 }
 
@@ -474,14 +627,53 @@ struct ChatGPTGatewayTests {
         #expect(requests[1].value(forHTTPHeaderField: "Authorization") == "Bearer access-2")
         #expect(try store.load()?.accessToken == "access-2")
 
+        // 401 de novo com o token renovado: apaga o login (a UI volta a "Entrar com ChatGPT").
         let host2 = StubURLProtocol.uniqueHost()
         let authHost2 = StubURLProtocol.uniqueHost()
-        StubURLProtocol.enqueue([.json("{}", status: 403), .json("{}", status: 403)], host: host2)
+        StubURLProtocol.enqueue([.json("{}", status: 401), .json("{}", status: 401)], host: host2)
         StubURLProtocol.enqueue([.json(tokenJSON(access: "access-3", refresh: "refresh-3"))], host: authHost2)
-        let chat2 = try chatGPTGateway(host: host2, store: signedIn(), oauthHost: authHost2)
+        let store2 = signedIn()
+        let chat2 = try chatGPTGateway(host: host2, store: store2, oauthHost: authHost2)
         await #expect(throws: AIError.signInRequired) {
             _ = try await chat2.complete(ChatRequest(model: "m", messages: [.user("oi")]))
         }
+        #expect(try store2.load() == nil)
+    }
+
+    @Test("403 repetido com token renovado é bloqueio do endpoint: erro do provedor, login mantido")
+    func repeatedForbidden() async throws {
+        let host = StubURLProtocol.uniqueHost()
+        let authHost = StubURLProtocol.uniqueHost()
+        StubURLProtocol.enqueue([.json("{}", status: 403), .json("{}", status: 403)], host: host)
+        StubURLProtocol.enqueue([.json(tokenJSON(access: "access-3", refresh: "refresh-3"))], host: authHost)
+        let store = signedIn()
+        let chat = try chatGPTGateway(host: host, store: store, oauthHost: authHost)
+        var caught: AIError?
+        do {
+            _ = try await chat.complete(ChatRequest(model: "m", messages: [.user("oi")]))
+        } catch let error as AIError {
+            caught = error
+        }
+        guard case .server(403, _)? = caught else { Issue.record("veio \(String(describing: caught))"); return }
+        #expect(try store.load()?.accessToken == "access-3")
+    }
+
+    @Test("item_id igual ao call_id também acumula os argumentos")
+    func itemIDAlias() throws {
+        var decoder = ResponsesStreamDecoder(requestedModel: "m")
+        _ = try decoder.consume(#"{"type":"response.output_item.added","output_index":0,"item":{"type":"function_call","id":"fc_1","call_id":"call_1","name":"list_programs","arguments":""}}"#)
+        _ = try decoder.consume(#"{"type":"response.function_call_arguments.delta","item_id":"call_1","delta":"{\"include_archived\":true}"}"#)
+        let events = try decoder.consume(#"{"type":"response.completed","response":{}}"#)
+        #expect(events.contains(.toolCall(id: "call_1", name: "list_programs", argumentsJSON: #"{"include_archived":true}"#)))
+    }
+
+    @Test("400 sem citar um parâmetro opcional pelo nome não repete")
+    func noBlindFallback() async throws {
+        let host = StubURLProtocol.uniqueHost()
+        StubURLProtocol.enqueue([.json(#"{"detail":"Unsupported parameter: foo"}"#, status: 400), .sse(textStream)], host: host)
+        let chat = try chatGPTGateway(host: host, store: signedIn())
+        await #expect(throws: AIError.self) { _ = try await chat.complete(ChatRequest(model: "m", messages: [.user("oi")])) }
+        #expect(StubURLProtocol.requests(host: host).count == 1)
     }
 
     @Test("400 citando parâmetro opcional repete sem reasoning/parallel_tool_calls")
@@ -495,7 +687,7 @@ struct ChatGPTGatewayTests {
         #expect(bodies.count == 2)
         #expect(bodies[0]["reasoning"] != nil)
         #expect(bodies[1]["reasoning"] == nil)
-        #expect(bodies[1]["parallel_tool_calls"] == nil)
+        #expect(bodies[1]["parallel_tool_calls"] == .bool(true)) // só o citado sai
     }
 
     @Test("lista de modelos: visibility list, ordem por priority, sem duplicados; sem login = lista estática")
@@ -563,6 +755,16 @@ struct ChatGPTCatalogTests {
         // A API key de outro provedor não conta como login.
         let other = InMemorySecretStore([SecretKey.apiKey(.chatGPT): "sk-qualquer-coisa-000000"])
         #expect(throws: AIError.signInRequired) { try ProviderFactory.makeChat(settings: settings, secrets: other) }
+    }
+
+    @Test("credencial do ChatGPT só conta com blob legível")
+    func hasCredential() throws {
+        let descriptor = ProviderCatalog.descriptor(for: .chatGPT)
+        #expect(!descriptor.hasCredential(in: InMemorySecretStore([.chatGPTAuth: "corrompido"])))
+        #expect(!descriptor.hasCredential(in: InMemorySecretStore()))
+        let blob = try ChatGPTCredentials(accessToken: "a", refreshToken: "r", expiresAt: Date(), accountID: "x").encoded()
+        #expect(descriptor.hasCredential(in: InMemorySecretStore([.chatGPTAuth: blob])))
+        #expect(ProviderCatalog.descriptor(for: .openAI).hasCredential(in: InMemorySecretStore([.apiKey(.openAI): "sk-x"])))
     }
 
     @Test("erro de login no Coach oferece 'Entrar de novo'")
