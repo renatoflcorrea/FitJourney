@@ -12,6 +12,13 @@ struct PrescriptionEditorView: View {
     @State private var mode: PrescriptionMode
     @State private var expandedSetID: UUID?
     @State private var confirmingUniform = false
+    @State private var pendingRemoval: PendingRemoval?
+    @State private var errorMessage: String?
+
+    private enum PendingRemoval: Equatable {
+        case set(Int)
+        case resize(Int)
+    }
 
     init(item: RoutineExercise) {
         self.item = item
@@ -19,6 +26,10 @@ struct PrescriptionEditorView: View {
         _draft = State(initialValue: initial)
         _mode = State(initialValue: initial.initialMode)
     }
+
+    /// Em grupo, só o último exercício define o descanso (ao fim da rodada).
+    private var isInnerGroupMember: Bool { RoutineEditorOps.isInnerGroupMember(item) }
+    private var isGrouped: Bool { item.groupID != nil }
 
     private var catalogRest: Int? { item.exercise?.defaultRestSeconds }
     private var isUnilateral: Bool { item.exercise?.laterality == .unilateral }
@@ -64,7 +75,31 @@ struct PrescriptionEditorView: View {
         }
         .navigationTitle(item.displayName)
         .navigationBarTitleDisplayMode(.inline)
-        .onChange(of: draft) { _, new in new.apply(to: item, context: context) }
+        .onChange(of: draft) { _, new in
+            do { try new.apply(to: item, context: context) } catch { errorMessage = error.localizedDescription }
+        }
+        .alert("Não foi possível salvar", isPresented: Binding(
+            get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
+        .confirmationDialog("Remover série com carga atual?", isPresented: Binding(
+            get: { pendingRemoval != nil }, set: { if !$0 { pendingRemoval = nil } }
+        ), titleVisibility: .visible) {
+            Button("Remover", role: .destructive) {
+                switch pendingRemoval {
+                case .set(let i): performRemoveSet(at: i)
+                case .resize(let n): draft.resize(to: n)
+                case .none: break
+                }
+                pendingRemoval = nil
+            }
+            Button("Cancelar", role: .cancel) { pendingRemoval = nil }
+        } message: {
+            Text("A carga atual dessa série é diferente da inicial e será descartada junto com ela.")
+        }
         .confirmationDialog("As séries são diferentes", isPresented: $confirmingUniform, titleVisibility: .visible) {
             Button("Igualar todas à série 1", role: .destructive) {
                 draft.makeUniform()
@@ -114,13 +149,14 @@ struct PrescriptionEditorView: View {
         Section {
             NumberStepperField(
                 "Séries",
-                value: Binding(get: { Double(draft.sets.count) }, set: { draft.resize(to: Int($0)) }),
+                value: Binding(get: { Double(draft.sets.count) }, set: { requestResize(Int($0)) }),
                 range: 1...20
             )
             SetFields(
                 set: $draft.template,
                 measurement: draft.measurement,
                 isUnilateral: isUnilateral,
+                showsRest: !isInnerGroupMember,
                 defaultRest: catalogRest,
                 rest: Binding(
                     get: { draft.template.restSeconds ?? draft.exerciseRest ?? catalogRest },
@@ -137,7 +173,14 @@ struct PrescriptionEditorView: View {
         } header: {
             Text("\(draft.sets.count) séries iguais")
         } footer: {
-            Text("Editar aqui aplica a todas as séries.")
+            VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                Text("Editar aqui aplica a todas as séries.")
+                if isInnerGroupMember {
+                    Text("Descanso só ao fim da rodada: defina no último exercício do grupo.")
+                } else if isGrouped {
+                    Text("Este é o último do grupo: o descanso daqui vale ao fim de cada rodada.")
+                }
+            }
         }
     }
 
@@ -148,10 +191,6 @@ struct PrescriptionEditorView: View {
         Section {
             ForEach(Array(draft.sets.enumerated()), id: \.element.id) { index, set in
                 setRow(index: index, set: set)
-            }
-            .onDelete { offsets in
-                guard draft.sets.count > offsets.count else { return }
-                draft.sets.remove(atOffsets: offsets)
             }
 
             Button {
@@ -170,7 +209,14 @@ struct PrescriptionEditorView: View {
         } header: {
             Text("Séries")
         } footer: {
-            Text("Toque numa série para editar. Deslize para remover.")
+            VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                Text("Toque numa série para editar. Deslize para remover.")
+                if isInnerGroupMember {
+                    Text("Descanso só ao fim da rodada: defina no último exercício do grupo.")
+                } else if isGrouped {
+                    Text("Este é o último do grupo: o descanso daqui vale ao fim de cada rodada.")
+                }
+            }
         }
     }
 
@@ -234,6 +280,7 @@ struct PrescriptionEditorView: View {
                     set: binding,
                     measurement: draft.measurement,
                     isUnilateral: isUnilateral,
+                    showsRest: !isInnerGroupMember,
                     defaultRest: draft.exerciseRest ?? catalogRest,
                     showsDefaultRestChip: true,
                     rest: Binding(
@@ -278,8 +325,26 @@ struct PrescriptionEditorView: View {
     }
 
     private func removeSet(at index: Int) {
-        guard draft.sets.count > 1 else { return }
+        guard draft.sets.count > 1, draft.sets.indices.contains(index) else { return }
+        if draft.sets[index].divergentCurrent != nil {
+            pendingRemoval = .set(index)
+        } else {
+            performRemoveSet(at: index)
+        }
+    }
+
+    private func performRemoveSet(at index: Int) {
+        guard draft.sets.count > 1, draft.sets.indices.contains(index) else { return }
         draft.sets.remove(at: index)
+    }
+
+    private func requestResize(_ count: Int) {
+        let target = max(1, count)
+        if target < draft.sets.count, draft.sets[target...].contains(where: { $0.divergentCurrent != nil }) {
+            pendingRemoval = .resize(target)
+        } else {
+            draft.resize(to: target)
+        }
     }
 }
 

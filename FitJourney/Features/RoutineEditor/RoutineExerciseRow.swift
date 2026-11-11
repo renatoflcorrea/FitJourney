@@ -17,6 +17,7 @@ struct RowActions {
     var showExercise: () -> Void
     var delete: () -> Void
     var ungroup: () -> Void
+    var setGroupRest: (Int) -> Void
     var canMoveUp: Bool
     var canMoveDown: Bool
 }
@@ -109,10 +110,22 @@ struct RoutineExerciseRow: View {
             }
 
             if position == .last {
-                Label("Descanso ao fim da rodada: \(groupRest) s", systemImage: "timer")
-                    .font(FJFont.caption)
-                    .foregroundStyle(FJColor.textSecondary)
-                    .accessibilityLabel(Text("Descanso ao fim da rodada: \(FJFormat.spokenDuration(groupRest))"))
+                Menu {
+                    ForEach(Array(Set([30, 45, 60, 90, 120, 180, groupRest])).sorted(), id: \.self) { n in
+                        Button {
+                            actions.setGroupRest(n)
+                        } label: {
+                            if n == groupRest { Label("\(n) s", systemImage: "checkmark") } else { Text("\(n) s") }
+                        }
+                    }
+                } label: {
+                    Label("Descanso ao fim da rodada: \(groupRest) s", systemImage: "timer")
+                        .font(FJFont.label)
+                        .foregroundStyle(FJColor.textPrimary)
+                        .frame(minHeight: FJSize.minTap, alignment: .leading)
+                }
+                .accessibilityLabel(Text("Descanso ao fim da rodada: \(FJFormat.spokenDuration(groupRest))"))
+                .accessibilityHint(Text("Toque para alterar"))
             }
         }
         .padding(.leading, position.isGrouped ? FJSpacing.m : 0)

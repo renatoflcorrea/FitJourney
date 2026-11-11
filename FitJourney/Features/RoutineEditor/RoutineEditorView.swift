@@ -16,6 +16,14 @@ struct RoutineEditorView: View {
     @State private var viewingExercise: Exercise?
     @State private var transferring: RoutineExercise?
     @State private var deleting: RoutineExercise?
+    @State private var errorMessage: String?
+
+    private var store: ProgramStore { ProgramStore(context: context) }
+
+    /// Executa uma operação do store e mostra o erro (sem engolir).
+    private func run(_ operation: () throws -> Void) {
+        do { try operation() } catch { errorMessage = error.localizedDescription }
+    }
 
     init(routine: Routine) {
         self.routine = routine
@@ -49,11 +57,11 @@ struct RoutineEditorView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
         .sheet(isPresented: $showingPicker) {
             ExercisePicker(allowsMultiple: true) { picked in
-                RoutineEditorOps.add(picked, to: routine, context: context)
+                run { try RoutineEditorOps.add(picked, to: routine, store: store) }
             }
         }
         .sheet(item: $transferring) { item in
-            MoveCopySheet(item: item, routine: routine)
+            MoveCopySheet(item: item, routine: routine, onError: { errorMessage = $0 })
         }
         .navigationDestination(item: $prescribing) { PrescriptionEditorView(item: $0) }
         .navigationDestination(item: $viewingExercise) { ExerciseDetailView(exercise: $0) }
@@ -61,10 +69,17 @@ struct RoutineEditorView: View {
             get: { deleting != nil }, set: { if !$0 { deleting = nil } }
         ), titleVisibility: .visible, presenting: deleting) { item in
             Button("Remover \(item.displayName)", role: .destructive) {
-                RoutineEditorOps.delete(item, context: context)
+                run { try store.deleteExercise(item) }
             }
         } message: { _ in
             Text("A prescrição deste exercício na ficha será apagada. O exercício continua no catálogo.")
+        }
+        .alert("Não foi possível salvar", isPresented: Binding(
+            get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
         }
         .tint(FJColor.training)
     }
@@ -125,10 +140,10 @@ struct RoutineEditorView: View {
                             routine.colorName = option.rawValue
                         } label: {
                             Circle()
-                                .fill(option.color)
+                                .fill(option.fill)
                                 .frame(width: 32, height: 32)
                                 .overlay {
-                                    if isOn { Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(FJColor.onFill) }
+                                    if isOn { Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(option.onFill) }
                                 }
                                 .frame(width: FJSize.minTap, height: FJSize.minTap)
                                 .contentShape(Rectangle())
@@ -210,16 +225,9 @@ struct RoutineEditorView: View {
                 )
                 .listRowBackground(GroupRailBackground(position: position))
                 .listRowSeparator(position == .first || position == .middle ? .hidden : .automatic)
-                .swipeActions(edge: .trailing) {
-                    Button("Remover", systemImage: "trash", role: .destructive) { deleting = item }
-                    Button("Duplicar", systemImage: "plus.square.on.square") {
-                        RoutineEditorOps.duplicate(item, context: context)
-                    }
-                    .tint(FJColor.coachFill)
-                }
             }
             .onMove { source, destination in
-                RoutineEditorOps.move(in: routine, from: source, to: destination, context: context)
+                run { try store.moveExercises(in: routine, from: source, to: destination) }
             }
         } header: {
             if !list.isEmpty { Text("Exercícios") }
@@ -251,14 +259,17 @@ struct RoutineEditorView: View {
                     prescribing = item
                 }
             },
-            moveUp: { RoutineEditorOps.move(item, by: -1, context: context) },
-            moveDown: { RoutineEditorOps.move(item, by: 1, context: context) },
-            duplicate: { RoutineEditorOps.duplicate(item, context: context) },
+            moveUp: { run { try store.moveExercise(item, by: -1) } },
+            moveDown: { run { try store.moveExercise(item, by: 1) } },
+            duplicate: { run { try store.duplicateExercise(item) } },
             transfer: { transferring = item },
             showExercise: { viewingExercise = item.exercise },
             delete: { deleting = item },
             ungroup: {
-                if let gid = item.groupID { RoutineEditorOps.ungroup(gid, in: routine, context: context) }
+                if let gid = item.groupID { run { try store.ungroup(gid, in: routine) } }
+            },
+            setGroupRest: { seconds in
+                if let gid = item.groupID { run { try store.setGroupRest(seconds, groupID: gid, in: routine) } }
             },
             canMoveUp: RoutineEditorOps.canMove(item, by: -1),
             canMoveDown: RoutineEditorOps.canMove(item, by: 1)
@@ -274,7 +285,7 @@ struct RoutineEditorView: View {
                 let canGroup = RoutineEditorOps.canGroup(selected: selection, in: routine)
                 let hasGrouped = items.contains { selection.contains($0.id) && $0.groupID != nil }
                 Button(selection.count >= 2 ? "Agrupar (\(GroupLabel.name(forCount: selection.count)))" : "Agrupar") {
-                    RoutineEditorOps.group(selected: selection, in: routine, context: context)
+                    run { try store.groupExercises(selection, in: routine) }
                     isSelecting = false
                     selection = []
                 }
@@ -285,7 +296,7 @@ struct RoutineEditorView: View {
                 if hasGrouped {
                     FJSecondaryButton("Desagrupar", systemImage: "link.badge.minus") {
                         for gid in Set(items.filter { selection.contains($0.id) }.compactMap(\.groupID)) {
-                            RoutineEditorOps.ungroup(gid, in: routine, context: context)
+                            run { try store.ungroup(gid, in: routine) }
                         }
                         isSelecting = false
                         selection = []
@@ -301,25 +312,11 @@ struct RoutineEditorView: View {
     }
 }
 
-/// Selo quadrado da ficha: letra/símbolo sobre a cor escolhida.
-struct RoutineBadge: View {
-    let routine: Routine
-
-    var body: some View {
-        let text = routine.symbol.isEmpty ? String(routine.name.prefix(1)).uppercased() : routine.symbol
-        Text(text.isEmpty ? "?" : text)
-            .font(.system(.title3, design: .rounded, weight: .bold))
-            .foregroundStyle(FJColor.onFill)
-            .frame(width: 44, height: 44)
-            .background(RoutineColor(name: routine.colorName).color, in: FJRadius.shape(FJRadius.chip))
-            .accessibilityHidden(true)
-    }
-}
-
 /// Mover ou copiar um exercício para outra ficha do mesmo programa.
 struct MoveCopySheet: View {
     let item: RoutineExercise
     let routine: Routine
+    let onError: (String) -> Void
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -348,7 +345,11 @@ struct MoveCopySheet: View {
                     }
                     ForEach(targets) { target in
                         Button {
-                            RoutineEditorOps.transfer(item, to: target, copy: copies, context: context)
+                            do {
+                                try ProgramStore(context: context).transferExercise(item, to: target, copy: copies)
+                            } catch {
+                                onError(error.localizedDescription)
+                            }
                             dismiss()
                         } label: {
                             HStack(spacing: FJSpacing.m) {

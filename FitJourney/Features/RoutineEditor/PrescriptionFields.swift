@@ -4,10 +4,6 @@ import SwiftUI
 
 // MARK: - Bindings auxiliares
 
-private func doubleBinding(_ int: Binding<Int>) -> Binding<Double> {
-    Binding(get: { Double(int.wrappedValue) }, set: { int.wrappedValue = Int($0.rounded()) })
-}
-
 private func optionalSecondsBinding(_ seconds: Binding<Int?>) -> Binding<Double> {
     Binding(get: { Double(seconds.wrappedValue ?? 0) }, set: { seconds.wrappedValue = Int($0.rounded()) })
 }
@@ -32,7 +28,7 @@ struct RepTargetField: View {
             get: { mode },
             set: { new in
                 guard new != mode else { return }
-                let base = target?.defaultReps ?? 10
+                let base = max(RepRangeEditing.minimumReps, target?.defaultReps ?? 10)
                 switch new {
                 case .fixed: target = .fixed(reps: base)
                 case .range: target = .range(min: base, max: base + 4)
@@ -44,22 +40,22 @@ struct RepTargetField: View {
 
     private var low: Binding<Double> {
         Binding(
-            get: { if case .range(let lo, _) = target { Double(lo) } else { 0 } },
-            set: { if case .range(_, let hi) = target { target = .range(min: Int($0), max: hi) } }
+            get: { if case .range(let lo, _) = target { Double(lo) } else { 1 } },
+            set: { if let t = target { target = RepRangeEditing.setLow(Int($0), of: t) } }
         )
     }
 
     private var high: Binding<Double> {
         Binding(
-            get: { if case .range(_, let hi) = target { Double(hi) } else { 0 } },
-            set: { if case .range(let lo, _) = target { target = .range(min: lo, max: Int($0)) } }
+            get: { if case .range(_, let hi) = target { Double(hi) } else { 1 } },
+            set: { if let t = target { target = RepRangeEditing.setHigh(Int($0), of: t) } }
         )
     }
 
     private var fixed: Binding<Double> {
         Binding(
-            get: { if case .fixed(let n) = target { Double(n) } else { 0 } },
-            set: { target = .fixed(reps: Int($0)) }
+            get: { if case .fixed(let n) = target { Double(n) } else { 1 } },
+            set: { target = RepRangeEditing.setFixed(Int($0)) }
         )
     }
 
@@ -73,18 +69,12 @@ struct RepTargetField: View {
 
         switch mode {
         case .fixed:
-            NumberStepperField("Repetições", value: fixed, unit: "reps", range: 0...999)
+            NumberStepperField("Repetições", value: fixed, unit: "reps", range: 1...999)
         case .range:
+            // Mexer no mínimo empurra o máximo (e vice-versa): a faixa nunca fica inválida.
             FJAdaptiveStack(spacing: FJSpacing.l, verticalAlignment: .top) {
-                NumberStepperField("Mínimo (piso)", value: low, unit: "reps", range: 0...999)
-                NumberStepperField("Máximo", value: high, unit: "reps", range: 0...999)
-            }
-            if !RepTargetValidation.isValid(target) {
-                Label("O mínimo deve ser menor ou igual ao máximo. Enquanto estiver assim, o valor anterior é mantido.",
-                      systemImage: FJTone.attention.systemImage)
-                    .font(FJFont.caption)
-                    .foregroundStyle(FJColor.textPrimary)
-                    .symbolRenderingMode(.multicolor)
+                NumberStepperField("Mínimo (piso)", value: low, unit: "reps", range: 1...999)
+                NumberStepperField("Máximo", value: high, unit: "reps", range: 1...999)
             }
         case .amrap:
             Text("Máximo possível")
@@ -104,6 +94,10 @@ struct LoadField: View {
     var perSide = false
     let useCurrent: () -> Void
 
+    @AppStorage(WeightUnitPreference.key) private var preferredUnitRaw = WeightUnit.kg.rawValue
+    /// Último valor de cada modo, para não perder o número ao alternar (kg ↔ peso corporal ↔ sem carga).
+    @State private var remembered: [Mode: Load] = [:]
+
     private enum Mode: Hashable { case none, weight, bodyweight }
 
     private var mode: Mode {
@@ -114,18 +108,39 @@ struct LoadField: View {
         }
     }
 
-    private var unit: WeightUnit { load?.unit ?? .kg }
+    private var preferredUnit: WeightUnit { WeightUnit(rawValue: preferredUnitRaw) ?? .kg }
+    private var unit: WeightUnit { load?.unit ?? preferredUnit }
 
     private var modeBinding: Binding<Mode> {
         Binding(
             get: { mode },
             set: { new in
                 guard new != mode else { return }
+                if let load { remembered[mode] = load }
                 switch new {
                 case .none: load = nil
-                case .weight: load = .weight(value: 0, unit: unit)
-                case .bodyweight: load = .bodyweight(delta: 0, unit: unit)
+                case .weight: load = remembered[.weight] ?? .weight(value: 0, unit: unit)
+                case .bodyweight: load = remembered[.bodyweight] ?? .bodyweight(delta: 0, unit: unit)
                 }
+            }
+        )
+    }
+
+    /// Troca kg/lb convertendo o valor (arredondado a 0,1).
+    private var unitBinding: Binding<WeightUnit> {
+        Binding(
+            get: { unit },
+            set: { new in
+                guard new != unit else { return }
+                func convert(_ v: Double) -> Double {
+                    ((new.fromKilograms(unit.toKilograms(v))) * 10).rounded() / 10
+                }
+                switch load {
+                case .some(.weight(let v, _)): load = .weight(value: convert(v), unit: new)
+                case .some(.bodyweight(let d, _)): load = .bodyweight(delta: convert(d), unit: new)
+                case .none: break
+                }
+                remembered = [:]
             }
         )
     }
@@ -156,16 +171,25 @@ struct LoadField: View {
         case .none:
             EmptyView()
         case .weight:
-            // Passo de 0,5 kg (D3); a digitação aceita qualquer valor.
+            // Passo de 0,5 kg (D3; 1 lb); a digitação aceita qualquer valor.
             NumberStepperField(perSide ? "Carga por lado" : "Carga", value: weightValue,
-                               unit: PrescriptionFormat.unitText(unit), step: 0.5, range: 0...999, fractionDigits: 1)
+                               unit: PrescriptionFormat.unitText(unit), step: unit == .kg ? 0.5 : 1,
+                               range: 0...999, fractionDigits: 1)
         case .bodyweight:
             NumberStepperField("Lastro (+) ou assistência (−)", value: delta,
-                               unit: PrescriptionFormat.unitText(unit), step: 0.5, range: -300...300,
-                               fractionDigits: 1, showsSign: true)
+                               unit: PrescriptionFormat.unitText(unit), step: unit == .kg ? 0.5 : 1,
+                               range: -300...300, fractionDigits: 1, showsSign: true)
             Text("0 = só o peso do corpo")
                 .font(FJFont.caption)
                 .foregroundStyle(FJColor.textSecondary)
+        }
+
+        if mode != .none {
+            Picker("Unidade", selection: unitBinding) {
+                Text("kg").tag(WeightUnit.kg)
+                Text("lb").tag(WeightUnit.lb)
+            }
+            .pickerStyle(.segmented)
         }
 
         if let current = divergentCurrent {
@@ -424,8 +448,11 @@ struct SetFields: View {
         case .repsAndLoad, .repsOnly:
             RepTargetField(target: $set.repTarget)
         case .isometric:
-            NumberStepperField("Tempo de sustentação", value: optionalSecondsBinding($set.holdSeconds),
-                               unit: "s", step: 5, range: 0...600)
+            NumberStepperField("Tempo de sustentação",
+                               value: Binding(get: { Double(set.holdSeconds ?? HoldLimits.defaultSeconds) },
+                                              set: { set.holdSeconds = Int($0.rounded()) }),
+                               unit: "s", step: 5,
+                               range: Double(HoldLimits.minimumSeconds)...600)
         case .timeOrDistance:
             CardioFields(cardio: $set.cardio)
         }

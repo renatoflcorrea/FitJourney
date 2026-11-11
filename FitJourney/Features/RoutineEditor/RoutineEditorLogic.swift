@@ -89,12 +89,12 @@ struct SetDraft: Identifiable, Hashable, Sendable {
         setInitialLoad(other.initialLoad)
     }
 
-    /// R-T2: editar a carga define a inicial; a atual acompanha, a menos que seja diferente da inicial anterior.
+    /// R-T2: editar a carga define a inicial. A atual acompanha só quando era igual à inicial anterior;
+    /// atual diferente da inicial (inclusive sem inicial anterior) é divergente e é preservada.
     mutating func setInitialLoad(_ new: Load?) {
         let old = initialLoad
         initialLoad = new
-        guard let current = currentLoad else { return }
-        if let old, !current.isEquivalent(to: old) { return } // atual divergente: preserva
+        guard let current = currentLoad, let old, current.isEquivalent(to: old) else { return }
         currentLoad = new
     }
 
@@ -109,10 +109,34 @@ enum RepTargetValidation {
     static func isValid(_ target: RepTarget?) -> Bool {
         switch target {
         case .none, .some(.amrap): true
-        case .some(.fixed(let reps)): reps >= 0
-        case .some(.range(let lo, let hi)): lo >= 0 && lo <= hi
+        case .some(.fixed(let reps)): reps >= 1
+        case .some(.range(let lo, let hi)): lo >= 1 && lo <= hi
         }
     }
+}
+
+/// Edição de faixa sem estado inválido: mexer no mínimo empurra o máximo e vice-versa.
+enum RepRangeEditing {
+    static let minimumReps = 1
+
+    static func setLow(_ low: Int, of target: RepTarget) -> RepTarget {
+        guard case .range(_, let hi) = target else { return target }
+        let lo = max(minimumReps, low)
+        return .range(min: lo, max: max(hi, lo))
+    }
+
+    static func setHigh(_ high: Int, of target: RepTarget) -> RepTarget {
+        guard case .range(let lo, _) = target else { return target }
+        let hi = max(minimumReps, high)
+        return .range(min: min(lo, hi), max: hi)
+    }
+
+    static func setFixed(_ reps: Int) -> RepTarget { .fixed(reps: max(minimumReps, reps)) }
+}
+
+enum HoldLimits {
+    static let minimumSeconds = 5
+    static let defaultSeconds = 30
 }
 
 // MARK: - Rascunho do exercício da ficha
@@ -135,6 +159,31 @@ struct PrescriptionDraft: Equatable, Sendable {
             SetDraft(id: s.id, kind: s.kind, repTarget: s.repTarget, holdSeconds: s.holdSeconds,
                      initialLoad: s.initialLoad, currentLoad: s.currentLoad, restSeconds: s.restSeconds,
                      tempo: s.tempo, effort: s.effort, cardio: s.cardio, notes: s.notes)
+        }
+        normalizeForMeasurement()
+    }
+
+    /// Ajusta os alvos ao tipo de medida (sem mostrar 0): isometria e cardio não têm reps;
+    /// reps sem alvo ou inválidas viram 8–12; sustentação mínima 5 s; cardio sem alvo = 20 min.
+    mutating func normalizeForMeasurement() {
+        for i in sets.indices {
+            switch measurement {
+            case .repsAndLoad, .repsOnly:
+                switch sets[i].repTarget {
+                case .none: sets[i].repTarget = .range(min: 8, max: 12)
+                case .some(.fixed(let n)): sets[i].repTarget = RepRangeEditing.setFixed(n)
+                case .some(.range(let lo, let hi)):
+                    let low = max(RepRangeEditing.minimumReps, lo)
+                    sets[i].repTarget = .range(min: low, max: max(low, hi))
+                case .some(.amrap): break
+                }
+            case .isometric:
+                sets[i].repTarget = nil
+                sets[i].holdSeconds = max(HoldLimits.minimumSeconds, sets[i].holdSeconds ?? HoldLimits.defaultSeconds)
+            case .timeOrDistance:
+                sets[i].repTarget = nil
+                if sets[i].cardio == nil { sets[i].cardio = CardioTarget(durationSeconds: 20 * 60) }
+            }
         }
     }
 
@@ -188,7 +237,7 @@ struct PrescriptionDraft: Equatable, Sendable {
 
     /// Grava no modelo. Séries com alvo inválido mantêm o valor anterior (DESIGN §4.3 "Faixa inválida").
     @MainActor
-    func apply(to item: RoutineExercise, context: ModelContext) {
+    func apply(to item: RoutineExercise, context: ModelContext) throws {
         let existing = Dictionary(uniqueKeysWithValues: (item.sets ?? []).map { ($0.id, $0) })
         var keep = Set<UUID>()
         for (index, draft) in sets.enumerated() {
@@ -220,7 +269,7 @@ struct PrescriptionDraft: Equatable, Sendable {
         item.notes = notes
         item.updatedAt = .now
         item.routine?.updatedAt = .now
-        try? context.save()
+        try context.save()
     }
 }
 
@@ -228,14 +277,15 @@ struct PrescriptionDraft: Equatable, Sendable {
 
 enum PrescriptionDefaults {
     /// Série padrão por tipo de medida (SPEC §3.4): reps 8–12; isométrico 30 s; cardio 20 min.
-    static func set(for kind: MeasurementKind) -> SetDraft {
+    /// Peso corporal usa a unidade preferida do usuário.
+    static func set(for kind: MeasurementKind, unit: WeightUnit = WeightUnitPreference.current) -> SetDraft {
         switch kind {
         case .repsAndLoad:
             SetDraft(repTarget: .range(min: 8, max: 12))
         case .repsOnly:
-            SetDraft(repTarget: .range(min: 8, max: 12), initialLoad: .bodyweight(delta: 0, unit: .kg))
+            SetDraft(repTarget: .range(min: 8, max: 12), initialLoad: .bodyweight(delta: 0, unit: unit))
         case .isometric:
-            SetDraft(repTarget: nil, holdSeconds: 30)
+            SetDraft(repTarget: nil, holdSeconds: HoldLimits.defaultSeconds)
         case .timeOrDistance:
             SetDraft(repTarget: nil, cardio: CardioTarget(durationSeconds: 20 * 60))
         }
@@ -347,40 +397,6 @@ enum PrescriptionSummary {
     }
 }
 
-// MARK: - Cor da ficha
-
-/// Paleta de cores da ficha (`Routine.colorName`), sempre acompanhada da letra/símbolo.
-/// A mover para o DesignSystem se outras telas (Treinos, Hoje) precisarem da mesma resolução.
-enum RoutineColor: String, CaseIterable, Sendable {
-    case orange, green, pink, blue, teal, yellow, gray
-
-    init(name: String) { self = RoutineColor(rawValue: name) ?? .orange }
-
-    var color: Color {
-        switch self {
-        case .orange: FJColor.trainingFill
-        case .green: FJColor.nutritionFill
-        case .pink: FJColor.healthFill
-        case .blue: FJColor.coachFill
-        case .teal: FJColor.aerobic
-        case .yellow: FJColor.record
-        case .gray: FJColor.zone1
-        }
-    }
-
-    var localizedName: String {
-        switch self {
-        case .orange: String(localized: "Laranja")
-        case .green: String(localized: "Verde")
-        case .pink: String(localized: "Rosa")
-        case .blue: String(localized: "Azul")
-        case .teal: String(localized: "Turquesa")
-        case .yellow: String(localized: "Amarelo")
-        case .gray: String(localized: "Cinza")
-        }
-    }
-}
-
 // MARK: - Agrupamento
 
 enum GroupLabel {
@@ -394,122 +410,15 @@ enum GroupLabel {
     }
 }
 
-// MARK: - Operações na ficha
+// MARK: - Apoio de UI para as operações (as mutações ficam em `ProgramStore`)
 
 @MainActor
 enum RoutineEditorOps {
-    static func reindex(_ routine: Routine) {
-        for (i, e) in routine.sortedExercises.enumerated() where e.sortIndex != i { e.sortIndex = i }
-    }
-
-    /// Desfaz grupos não contíguos ou com menos de 2 itens. `movedID` (item arrastado) sai do grupo
-    /// primeiro quando a nova posição o separa dos vizinhos.
-    static func normalizeGroups(in routine: Routine, movedID: UUID? = nil) {
-        let items = routine.sortedExercises
-        if let movedID, let i = items.firstIndex(where: { $0.id == movedID }), let gid = items[i].groupID {
-            let before = i > 0 ? items[i - 1].groupID : nil
-            let after = i + 1 < items.count ? items[i + 1].groupID : nil
-            if before != gid && after != gid { items[i].groupID = nil }
-        }
-        var positions: [UUID: [Int]] = [:]
-        for (i, e) in items.enumerated() { if let g = e.groupID { positions[g, default: []].append(i) } }
-        for (gid, idx) in positions {
-            let contiguous = idx.count >= 2 && idx.last! - idx.first! == idx.count - 1
-            if !contiguous { for e in items where e.groupID == gid { e.groupID = nil } }
-        }
-    }
-
-    static func move(in routine: Routine, from source: IndexSet, to destination: Int, context: ModelContext) {
-        var items = routine.sortedExercises
-        let movedIDs = source.map { items[$0].id }
-        items.move(fromOffsets: source, toOffset: destination)
-        for (i, e) in items.enumerated() { e.sortIndex = i }
-        for id in movedIDs { normalizeGroups(in: routine, movedID: id) }
-        touch(routine, context)
-    }
-
-    /// Alternativa acessível ao arrastar: sobe/desce uma posição.
-    static func move(_ item: RoutineExercise, by offset: Int, context: ModelContext) {
-        guard let routine = item.routine else { return }
-        let items = routine.sortedExercises
-        guard let i = items.firstIndex(where: { $0.id == item.id }) else { return }
-        let j = i + offset
-        guard items.indices.contains(j) else { return }
-        move(in: routine, from: IndexSet(integer: i), to: offset > 0 ? j + 1 : j, context: context)
-    }
-
     static func canMove(_ item: RoutineExercise, by offset: Int) -> Bool {
         guard let routine = item.routine else { return false }
         let items = routine.sortedExercises
         guard let i = items.firstIndex(where: { $0.id == item.id }) else { return false }
         return items.indices.contains(i + offset)
-    }
-
-    static func delete(_ item: RoutineExercise, context: ModelContext) {
-        let routine = item.routine
-        context.delete(item)
-        try? context.save()
-        if let routine {
-            reindex(routine)
-            normalizeGroups(in: routine)
-            touch(routine, context)
-        }
-    }
-
-    @discardableResult
-    static func clone(_ item: RoutineExercise, into routine: Routine, sortIndex: Int,
-                      keepCurrentLoad: Bool, context: ModelContext) -> RoutineExercise {
-        let copy = RoutineExercise(sortIndex: sortIndex, groupID: nil, restSeconds: item.restSeconds, notes: item.notes)
-        context.insert(copy)
-        copy.routine = routine
-        copy.exercise = item.exercise
-        for set in item.sortedSets {
-            let s = SetPrescription(sortIndex: set.sortIndex, kind: set.kind, repTarget: set.repTarget,
-                                    initialLoad: keepCurrentLoad ? set.initialLoad : set.effectiveLoad,
-                                    restSeconds: set.restSeconds)
-            s.currentLoad = keepCurrentLoad ? set.currentLoad : nil
-            s.holdSeconds = set.holdSeconds
-            s.tempo = set.tempo
-            s.effort = set.effort
-            s.cardio = set.cardio
-            s.notes = set.notes
-            context.insert(s)
-            s.routineExercise = copy
-        }
-        return copy
-    }
-
-    /// Duplica logo abaixo do original (fora de grupo).
-    @discardableResult
-    static func duplicate(_ item: RoutineExercise, context: ModelContext) -> RoutineExercise? {
-        guard let routine = item.routine else { return nil }
-        let items = routine.sortedExercises
-        guard let i = items.firstIndex(where: { $0.id == item.id }) else { return nil }
-        for later in items[(i + 1)...] { later.sortIndex += 1 }
-        let copy = clone(item, into: routine, sortIndex: i + 1, keepCurrentLoad: true, context: context)
-        normalizeGroups(in: routine)
-        touch(routine, context)
-        return copy
-    }
-
-    /// Move ou copia para outra ficha (cópia: a carga atual vira a inicial, como em `ProgramStore.duplicate`).
-    static func transfer(_ item: RoutineExercise, to target: Routine, copy: Bool, context: ModelContext) {
-        let source = item.routine
-        let end = (target.exercises ?? []).map(\.sortIndex).max().map { $0 + 1 } ?? 0
-        if copy {
-            clone(item, into: target, sortIndex: end, keepCurrentLoad: false, context: context)
-        } else {
-            item.groupID = nil
-            item.routine = target
-            item.sortIndex = end
-            try? context.save()
-            if let source {
-                reindex(source)
-                normalizeGroups(in: source)
-                touch(source, context)
-            }
-        }
-        touch(target, context)
     }
 
     /// 2+ itens vizinhos selecionados.
@@ -519,45 +428,21 @@ enum RoutineEditorOps {
         return last - first == idx.count - 1
     }
 
-    static func group(selected: Set<UUID>, in routine: Routine, context: ModelContext) {
-        guard canGroup(selected: selected, in: routine) else { return }
-        let gid = UUID()
-        for e in routine.sortedExercises where selected.contains(e.id) { e.groupID = gid }
-        normalizeGroups(in: routine)
-        touch(routine, context)
-    }
-
-    static func ungroup(_ groupID: UUID, in routine: Routine, context: ModelContext) {
-        for e in routine.sortedExercises where e.groupID == groupID { e.groupID = nil }
-        touch(routine, context)
-    }
-
-    /// Insere exercícios com prescrição padrão por tipo de medida (descanso: o do catálogo).
+    /// Insere exercícios com prescrição padrão por tipo de medida (descanso: o do catálogo), com um único save.
     @discardableResult
-    static func add(_ exercises: [Exercise], to routine: Routine, context: ModelContext) -> [RoutineExercise] {
-        let store = ProgramStore(context: context)
+    static func add(_ exercises: [Exercise], to routine: Routine, store: ProgramStore) throws -> [RoutineExercise] {
         var added: [RoutineExercise] = []
         for exercise in exercises {
             let kind = exercise.measurementKind
-            let template = PrescriptionDefaults.set(for: kind)
-            guard let item = try? store.addExercise(
+            let t = PrescriptionDefaults.set(for: kind)
+            added.append(try store.addExercise(
                 exercise, to: routine, setCount: PrescriptionDefaults.setCount(for: kind),
-                repTarget: template.repTarget ?? .fixed(reps: 1), load: template.initialLoad
-            ) else { continue }
-            for set in item.sets ?? [] {
-                set.repTarget = template.repTarget
-                set.holdSeconds = template.holdSeconds
-                set.cardio = template.cardio
-            }
-            added.append(item)
+                repTarget: t.repTarget, load: t.initialLoad, holdSeconds: t.holdSeconds, cardio: t.cardio,
+                save: false))
         }
-        touch(routine, context)
-        return added
-    }
-
-    static func touch(_ routine: Routine, _ context: ModelContext) {
         routine.updatedAt = .now
-        try? context.save()
+        try store.context.save()
+        return added
     }
 
     /// Descanso efetivo de uma série (série → exercício na ficha → catálogo → 90 s).
@@ -565,9 +450,15 @@ enum RoutineEditorOps {
         set.restSeconds ?? exerciseRest ?? catalogRest ?? 90
     }
 
-    /// Descanso do exercício (usado como "fim da rodada" do grupo).
+    /// Descanso do exercício (no último membro de um grupo = descanso ao fim da rodada).
     static func effectiveRest(of item: RoutineExercise) -> Int {
         item.sortedSets.last?.restSeconds ?? item.restSeconds ?? item.exercise?.defaultRestSeconds ?? 90
+    }
+
+    /// `true` se o item é membro de grupo e não o último (o descanso só vale ao fim da rodada).
+    static func isInnerGroupMember(_ item: RoutineExercise) -> Bool {
+        guard let gid = item.groupID, let routine = item.routine else { return false }
+        return routine.sortedExercises.last(where: { $0.groupID == gid })?.id != item.id
     }
 }
 
