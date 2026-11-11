@@ -10,12 +10,12 @@
 - Protótipo v1 publicado: https://claude.ai/artifact/KVLeypFG56VoBAsVn2dqqh
 - Decisões do usuário 11/11 (SPEC §11 D1–D5): laranja; reps opcionais com alvo sempre visível; passo 0,5 kg; propostas aprovadas (treino esquecido, exemplo ABC, notificação de descanso, "Sem registro"), "tela ligada" recusada; **app do Apple Watch com controle da sessão** (SPEC §6.4, ciclo 4b).
 
+- P0.1/P0.4 + W0 integrados (`d88201a`): DESIGN_DIRECTION (iPhone + §9 watchOS), DesignSystem revisado (teclado do stepper, Reduzir Movimento, VoiceOver), AccentColor laranja. Protótipo v2 (com relógio) no mesmo link.
+- Padrões assumidos para as perguntas abertas do design (podem mudar): doca espera toque após o descanso; laranja queimado `#D4450C` com texto branco; atenção/recorde amarelos diferenciados por símbolo; relógio com páginas horizontais; Coroa ajusta a próxima carga no descanso; cargas atualizadas pela regra padrão ao finalizar no relógio; treino livre fora do relógio por ora.
+
 ## Em andamento
-- P0.1/P0.4 revisão 2 (ios-design, Fable): decisões D1–D5, design do Watch (W0), correções da revisão (teclado do stepper, Reduzir Movimento, VoiceOver).
-- P2.1 Motor da sessão (core-engineer, Opus): comandos idempotentes + snapshot (`Shared/WatchLink`), `SessionEngine`, treino esquecido, notificação de descanso, exemplo ABC.
+- P2.1 Motor da sessão (Opus) entregue (`c8d8963`, 107 testes) — em revisão (review-code).
+- P1.1+P1.4 Programas e Hoje (Sonnet) ∥ P1.3 Biblioteca + mídia (Sonnet) ∥ P3.1+P3.2 Dieta (Sonnet).
 
 ## Próximo
-- Integrar P0.4 → Ciclo 1 (P1.1–P1.4 telas de treino, Sonnet) ∥ P3.1 editor de dieta.
-
-## Padrões assumidos (SPEC §11)
-- "Piso" = piso da faixa de repetições. kg padrão. Semana começa na segunda. Swift puro (KMP só quando o Android começar). IA BYOK na fase 2.
+- Integrar P2.1 e Ciclo 1 → P1.2 editor de ficha (usa `ExercisePicker`) ∥ P2.2–P2.5 tela da sessão → Cartographer.
