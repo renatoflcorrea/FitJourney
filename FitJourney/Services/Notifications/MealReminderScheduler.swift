@@ -1,6 +1,9 @@
 import Foundation
+import OSLog
 import SwiftData
 import UserNotifications
+
+private let reminderLog = Logger(subsystem: "br.com.renatocorrea.fitjourney", category: "meal-reminders")
 
 /// Uma notificação de refeição já resolvida (o que seria agendado).
 struct MealReminderRequest: Equatable, Sendable {
@@ -39,16 +42,15 @@ enum MealReminderPlanner {
         let calendar = store.calendar
         let today = calendar.startOfDay(for: now)
         var result: [MealReminderRequest] = []
-        for offset in 0..<max(0, horizonDays) {
-            guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
-            for state in try store.plannedMeals(on: day) where state.meal.reminderEnabled && state.status == .pending {
+        for resolved in try store.resolvedDays(from: today, count: max(0, horizonDays)) {
+            for state in resolved.planned where state.meal.reminderEnabled && state.status == .pending {
                 guard state.scheduledAt > now.addingTimeInterval(1) else { continue }
                 let meal = state.meal
                 let name = meal.name.trimmingCharacters(in: .whitespaces)
                 let shownName = name.isEmpty ? String(localized: "Refeição") : name
                 result.append(MealReminderRequest(
-                    identifier: identifier(mealID: meal.id, day: day, calendar: calendar),
-                    mealID: meal.id, day: day, fireDate: state.scheduledAt,
+                    identifier: identifier(mealID: meal.id, day: resolved.date, calendar: calendar),
+                    mealID: meal.id, day: resolved.date, fireDate: state.scheduledAt,
                     title: "\(shownName) · \(NutritionFormat.clock(minutes: meal.minutesFromMidnight))",
                     body: body(for: meal)))
             }
@@ -72,10 +74,11 @@ enum MealReminderPlanner {
 protocol MealReminderNotificationCenter: AnyObject {
     func authorization() async -> RestNotificationAuthorization
     func requestAuthorization() async -> Bool
-    func pendingIdentifiers() async -> [String]
-    func add(_ request: MealReminderRequest, calendar: Calendar) async
+    /// Só os lembretes de refeição pendentes (identificador com o prefixo do planejador).
+    func pendingRequests() async -> [MealReminderRequest]
+    func add(_ request: MealReminderRequest, calendar: Calendar) async throws
     func remove(identifiers: [String])
-    func registerCategory()
+    func removeDelivered(identifiers: [String])
 }
 
 @MainActor
@@ -83,8 +86,11 @@ protocol MealReminderScheduling: AnyObject {
     func authorization() async -> RestNotificationAuthorization
     /// Pede permissão (chamar de um gesto/contexto da UI). Devolve se ficou autorizado.
     func requestAuthorization() async -> Bool
-    /// Leva as notificações pendentes ao estado desejado pelo plano vigente. Idempotente; nunca pergunta permissão.
+    /// Leva as notificações pendentes ao estado desejado pelo plano vigente. Idempotente; só adiciona e
+    /// remove o que mudou; nunca pergunta permissão.
     func reschedule(for context: ModelContext, now: Date) async
+    /// Refeição resolvida (feita/pulada): remove a notificação pendente e a já entregue daquele dia.
+    func clearNotifications(mealID: UUID, day: Date) async
     func cancelAll() async
 }
 
@@ -102,63 +108,86 @@ final class MealReminderScheduler: MealReminderScheduling {
          calendar: Calendar = .autoupdatingCurrent) {
         self.center = center
         self.calendar = calendar
-        center.registerCategory()
     }
 
     func authorization() async -> RestNotificationAuthorization { await center.authorization() }
     func requestAuthorization() async -> Bool { await center.requestAuthorization() }
 
     func reschedule(for context: ModelContext, now: Date) async {
-        // Serializado: uma chamada mais nova nunca é sobrescrita por outra mais velha ainda em voo.
-        let previous = tail
-        let task = Task { [self] in
-            await previous?.value
-            await perform(context: context, now: now)
-        }
-        tail = task
-        await task.value
+        await enqueue { await $0.perform(context: context, now: now) }
     }
 
     func cancelAll() async {
+        await enqueue { await $0.removeOwned(except: []) }
+    }
+
+    func clearNotifications(mealID: UUID, day: Date) async {
+        let id = MealReminderPlanner.identifier(mealID: mealID, day: day, calendar: calendar)
+        await enqueue {
+            $0.center.remove(identifiers: [id])
+            $0.center.removeDelivered(identifiers: [id])
+        }
+    }
+
+    /// Serializado: uma chamada mais nova nunca é sobrescrita por outra mais velha ainda em voo.
+    private func enqueue(_ operation: @escaping @MainActor (MealReminderScheduler) async -> Void) async {
         let previous = tail
         let task = Task { [self] in
             await previous?.value
-            await removeOwned(except: [])
+            await operation(self)
         }
         tail = task
         await task.value
     }
 
     private func perform(context: ModelContext, now: Date) async {
-        guard await center.authorization() == .authorized else {
+        switch await center.authorization() {
+        case .authorized: break
+        case .notDetermined, .denied:
             await removeOwned(except: [])
             return
         }
         let store = NutritionStore(context: context, calendar: calendar)
-        guard let desired = try? MealReminderPlanner.requests(store: store, now: now) else { return }
-        await removeOwned(except: Set(desired.map(\.identifier)))
-        for request in desired { await center.add(request, calendar: calendar) }
+        let desired: [MealReminderRequest]
+        do { desired = try MealReminderPlanner.requests(store: store, now: now) } catch {
+            reminderLog.error("Falha ao calcular lembretes: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        let pending = Dictionary(await center.pendingRequests().map { ($0.identifier, $0) }, uniquingKeysWith: { _, last in last })
+        let keep = Set(desired.map(\.identifier))
+        let stale = pending.keys.filter { !keep.contains($0) }
+        if !stale.isEmpty { center.remove(identifiers: Array(stale)) }
+        for request in desired where !Self.isUpToDate(pending[request.identifier], request) {
+            do { try await center.add(request, calendar: calendar) } catch {
+                reminderLog.error("Falha ao agendar \(request.identifier, privacy: .public): \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    private static func isUpToDate(_ existing: MealReminderRequest?, _ desired: MealReminderRequest) -> Bool {
+        guard let existing else { return false }
+        return existing.title == desired.title && existing.body == desired.body
+            && abs(existing.fireDate.timeIntervalSince(desired.fireDate)) < 1
     }
 
     private func removeOwned(except keep: Set<String>) async {
-        let stale = await center.pendingIdentifiers().filter {
-            $0.hasPrefix(MealReminderPlanner.identifierPrefix) && !keep.contains($0)
-        }
+        let stale = await center.pendingRequests().map(\.identifier).filter { !keep.contains($0) }
         if !stale.isEmpty { center.remove(identifiers: stale) }
     }
 }
 
-/// Implementação nula (previews).
+/// Implementação nula (previews, testes de UI).
 @MainActor
 final class NoopMealReminderScheduler: MealReminderScheduling {
     init() {}
     func authorization() async -> RestNotificationAuthorization { .denied }
     func requestAuthorization() async -> Bool { false }
     func reschedule(for context: ModelContext, now: Date) async {}
+    func clearNotifications(mealID: UUID, day: Date) async {}
     func cancelAll() async {}
 }
 
-/// Resposta às ações da notificação. O `UNUserNotificationCenterDelegate` do App chama `handle`.
+/// Resposta às ações da notificação. O `AppNotificationDelegate` chama `handle`.
 enum MealReminderResponder {
     static let categoryIdentifier = "br.com.renatocorrea.fitjourney.meal-reminder"
     static let markDoneActionIdentifier = "br.com.renatocorrea.fitjourney.meal-reminder.done"
@@ -169,20 +198,28 @@ enum MealReminderResponder {
         [mealIDKey: mealID.uuidString, dayKey: day.timeIntervalSince1970]
     }
 
-    /// Trata "Marcar como feita". Devolve `true` se registrou. O toque no corpo da notificação não é
-    /// tratado aqui (só abre o app).
+    /// Categoria com a ação "Marcar como feita" (registrada pelo `NotificationCategoryRegistry`).
+    static var category: UNNotificationCategory {
+        let done = UNNotificationAction(identifier: markDoneActionIdentifier,
+                                        title: String(localized: "Marcar como feita"), options: [])
+        return UNNotificationCategory(identifier: categoryIdentifier, actions: [done], intentIdentifiers: [], options: [])
+    }
+
+    /// Trata "Marcar como feita". Devolve `true` só se registrou. Não faz nada se a refeição não está mais
+    /// no plano do dia ou se ela não está mais pendente (já feita, ajustada ou pulada). Tocada no dia do
+    /// lembrete grava a hora atual; em outro dia, o horário planejado.
     @MainActor @discardableResult
     static func handle(actionIdentifier: String, userInfo: [AnyHashable: Any], context: ModelContext,
-                       calendar: Calendar = .autoupdatingCurrent) -> Bool {
+                       calendar: Calendar = .autoupdatingCurrent, now: Date = .now) -> Bool {
         guard actionIdentifier == markDoneActionIdentifier,
               let raw = userInfo[mealIDKey] as? String, let mealID = UUID(uuidString: raw),
-              let stamp = userInfo[dayKey] as? TimeInterval else { return false }
-        let target = mealID
-        var descriptor = FetchDescriptor<Meal>(predicate: #Predicate { $0.id == target })
-        descriptor.fetchLimit = 1
-        guard let meal = try? context.fetch(descriptor).first, !meal.sortedItems.isEmpty else { return false }
+              let stamp = (userInfo[dayKey] as? NSNumber)?.doubleValue else { return false }
+        let day = Date(timeIntervalSince1970: stamp)
         let store = NutritionStore(context: context, calendar: calendar)
-        return (try? store.markMealDone(meal, on: Date(timeIntervalSince1970: stamp), at: .now)) != nil
+        guard let state = try? store.plannedMeals(on: day).first(where: { $0.meal.id == mealID }),
+              state.status == .pending, !state.meal.sortedItems.isEmpty else { return false }
+        let time: Date? = calendar.isDate(day, inSameDayAs: now) ? now : nil
+        return (try? store.markMealDone(state.meal, on: day, at: time)) != nil
     }
 }
 
@@ -197,7 +234,8 @@ final class UserNotificationMealReminderCenter: MealReminderNotificationCenter {
         switch await center.notificationSettings().authorizationStatus {
         case .notDetermined: .notDetermined
         case .denied: .denied
-        default: .authorized
+        case .authorized, .provisional, .ephemeral: .authorized
+        @unknown default: .denied
         }
     }
 
@@ -205,11 +243,20 @@ final class UserNotificationMealReminderCenter: MealReminderNotificationCenter {
         (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
     }
 
-    func pendingIdentifiers() async -> [String] {
-        await center.pendingNotificationRequests().map(\.identifier)
+    func pendingRequests() async -> [MealReminderRequest] {
+        await center.pendingNotificationRequests().compactMap { request in
+            guard request.identifier.hasPrefix(MealReminderPlanner.identifierPrefix) else { return nil }
+            let info = request.content.userInfo
+            let mealID = (info[MealReminderResponder.mealIDKey] as? String).flatMap(UUID.init(uuidString:)) ?? UUID()
+            let stamp = (info[MealReminderResponder.dayKey] as? NSNumber)?.doubleValue ?? 0
+            let fire = (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() ?? .distantPast
+            return MealReminderRequest(identifier: request.identifier, mealID: mealID,
+                                       day: Date(timeIntervalSince1970: stamp), fireDate: fire,
+                                       title: request.content.title, body: request.content.body)
+        }
     }
 
-    func add(_ request: MealReminderRequest, calendar: Calendar) async {
+    func add(_ request: MealReminderRequest, calendar: Calendar) async throws {
         let content = UNMutableNotificationContent()
         content.title = request.title
         content.body = request.body
@@ -221,24 +268,14 @@ final class UserNotificationMealReminderCenter: MealReminderNotificationCenter {
         parts.calendar = calendar
         parts.timeZone = calendar.timeZone
         let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)
-        try? await center.add(UNNotificationRequest(identifier: request.identifier, content: content, trigger: trigger))
+        try await center.add(UNNotificationRequest(identifier: request.identifier, content: content, trigger: trigger))
     }
 
     func remove(identifiers: [String]) {
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
     }
 
-    func registerCategory() {
-        let done = UNNotificationAction(identifier: MealReminderResponder.markDoneActionIdentifier,
-                                        title: String(localized: "Marcar como feita"), options: [])
-        let category = UNNotificationCategory(identifier: MealReminderResponder.categoryIdentifier, actions: [done],
-                                              intentIdentifiers: [], options: [])
-        let center = center
-        Task {
-            // As categorias são do app inteiro: preserva as de outros recursos.
-            var all = await center.notificationCategories().filter { $0.identifier != category.identifier }
-            all.insert(category)
-            center.setNotificationCategories(all)
-        }
+    func removeDelivered(identifiers: [String]) {
+        center.removeDeliveredNotifications(withIdentifiers: identifiers)
     }
 }

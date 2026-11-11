@@ -1,40 +1,15 @@
 import SwiftData
 import SwiftUI
 
-extension MealReminderScheduler {
-    /// Instância única do app: a UI usa pelo `Environment`; o App usa a mesma no launch/foreground.
-    static let shared = MealReminderScheduler()
-}
-
+/// O App injeta o agendador (`FitJourneyApp`); sem ele (previews, testes) a UI simplesmente não agenda.
 private struct MealReminderSchedulerKey: EnvironmentKey {
-    static var defaultValue: any MealReminderScheduling {
-        MainActor.assumeIsolated { MealReminderScheduler.shared }
-    }
+    static var defaultValue: (any MealReminderScheduling)? { nil }
 }
 
 extension EnvironmentValues {
-    var mealReminderScheduler: any MealReminderScheduling {
+    var mealReminderScheduler: (any MealReminderScheduling)? {
         get { self[MealReminderSchedulerKey.self] }
         set { self[MealReminderSchedulerKey.self] = newValue }
-    }
-}
-
-extension View {
-    /// Refaz os lembretes ao aparecer e ao voltar para o primeiro plano.
-    func refreshesMealReminders() -> some View { modifier(MealReminderRefresh()) }
-}
-
-private struct MealReminderRefresh: ViewModifier {
-    @Environment(\.modelContext) private var context
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.mealReminderScheduler) private var scheduler
-
-    func body(content: Content) -> some View {
-        content
-            .task { await scheduler.reschedule(for: context) }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .active { Task { await scheduler.reschedule(for: context) } }
-            }
     }
 }
 

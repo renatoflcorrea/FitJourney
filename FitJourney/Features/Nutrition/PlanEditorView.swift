@@ -176,7 +176,7 @@ private struct PlanEditorForm: View {
 
     /// Só com o contexto principal (o rascunho de "Novo plano" não está salvo).
     private func reschedule() {
-        if context.autosaveEnabled { Task { await scheduler.reschedule(for: context) } }
+        if context.autosaveEnabled { Task { await scheduler?.reschedule(for: context) } }
     }
 
     private func setupIfNeeded() {

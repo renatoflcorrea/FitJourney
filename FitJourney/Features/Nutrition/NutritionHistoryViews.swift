@@ -4,9 +4,11 @@ import SwiftUI
 // MARK: Faixa da semana
 
 /// Faixa da semana com um símbolo por dia (aderência): forma + texto, não só cor (DESIGN §4.9).
+/// Cada dia é um botão com rótulo completo (dia, hoje, aderência) e dica "Abre o dia".
 struct WeekStrip: View {
     let cells: [WeekCell]
     let onSelect: (Date) -> Void
+    @ScaledMetric(relativeTo: .body) private var dayCircle: CGFloat = 32
 
     var body: some View {
         HStack(spacing: 0) {
@@ -19,7 +21,7 @@ struct WeekStrip: View {
                         Text(cell.date.formatted(.dateTime.day()))
                             .font(FJFont.numberBody)
                             .foregroundStyle(cell.isSelected ? FJColor.onFill : FJColor.textPrimary)
-                            .frame(width: 32, height: 32)
+                            .frame(minWidth: dayCircle, minHeight: dayCircle)
                             .background(Circle().fill(cell.isSelected ? FJColor.nutritionFill : .clear))
                             .overlay(Circle().strokeBorder(cell.isToday && !cell.isSelected ? FJColor.nutrition : .clear, lineWidth: 1.5))
                         AdherenceMark(level: cell.adherence.level)
@@ -30,22 +32,30 @@ struct WeekStrip: View {
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(label(for: cell))
-                .accessibilityAddTraits(cell.isSelected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityHint("Abre o dia")
+                .accessibilityAddTraits(cell.isSelected ? .isSelected : [])
             }
         }
     }
 
     private func label(for cell: WeekCell) -> String {
-        let day = cell.date.formatted(.dateTime.weekday(.wide).day().month(.wide))
-        switch cell.adherence.level {
-        case .noPlan: return day
-        case .upcoming: return "\(day), \(cell.adherence.planned == 1 ? String(localized: "1 refeição planejada") : String(localized: "\(cell.adherence.planned) refeições planejadas"))"
-        default: return "\(day), \(cell.adherence.summary)"
+        var parts = [cell.date.formatted(.dateTime.weekday(.wide).day().month(.wide))]
+        if cell.isToday { parts.append(String(localized: "hoje")) }
+        let adherence = cell.adherence
+        switch adherence.level {
+        case .noPlan: break
+        case .upcoming:
+            parts.append(adherence.planned == 1 ? String(localized: "1 refeição planejada")
+                         : String(localized: "\(adherence.planned) refeições planejadas"))
+            if adherence.done > 0 { parts.append(adherence.summary) }
+        case .allSkipped: parts.append(String(localized: "todas as refeições puladas"))
+        default: parts.append(adherence.summary)
         }
+        return parts.joined(separator: ", ")
     }
 }
 
-/// Símbolo de aderência do dia.
+/// Símbolo de aderência do dia (cores com contraste de pelo menos 3:1 sobre o fundo).
 struct AdherenceMark: View {
     let level: DayAdherence.Level
 
@@ -62,6 +72,7 @@ struct AdherenceMark: View {
         case .complete: "checkmark.circle.fill"
         case .partial: "circle.lefthalf.filled"
         case .none: "circle"
+        case .allSkipped: "chevron.forward.2"
         case .upcoming: "circle.dotted"
         case .noPlan: "minus"
         }
@@ -70,7 +81,7 @@ struct AdherenceMark: View {
     private var color: Color {
         switch level {
         case .complete, .partial: FJColor.nutrition
-        case .none, .upcoming, .noPlan: FJColor.textTertiary
+        case .none, .allSkipped, .upcoming, .noPlan: FJColor.textSecondary
         }
     }
 }
@@ -138,7 +149,7 @@ private struct HistoryRow: View {
             if day.adherence.planned > 0 {
                 VStack(alignment: .trailing, spacing: FJSpacing.xxs) {
                     AdherenceMark(level: day.adherence.level)
-                    Text(day.adherence.summary)
+                    Text(day.adherence.level == .allSkipped ? String(localized: "Todas puladas") : day.adherence.summary)
                         .font(FJFont.caption)
                         .foregroundStyle(FJColor.textSecondary)
                 }
@@ -245,11 +256,12 @@ struct NutritionFavoritesView: View {
 
     /// Registro rápido: a porção salva, agora (no dia exibido; dia passado usa meio-dia).
     private func log(_ food: FoodItem) {
-        let calendar = Calendar.autoupdatingCurrent
+        let store = NutritionStore(context: context)
+        let calendar = store.calendar
         let when = calendar.isDate(day, inSameDayAs: .now) ? Date.now
             : (calendar.date(bySettingHour: 12, minute: 0, second: 0, of: day) ?? day)
         do {
-            try NutritionStore(context: context).logFood(name: food.name, quantity: food.servingQuantity, unit: food.unit,
+            try store.logFood(name: food.name, quantity: food.servingQuantity, unit: food.unit,
                                                          values: food.values, estimation: food.estimation, at: when)
             let text = String(localized: "\(food.name) registrado")
             message = text

@@ -1,26 +1,9 @@
 import Foundation
 import SwiftData
 import Testing
+import UserNotifications
 @testable import FitJourney
 
-@MainActor
-final class FakeMealReminderCenter: MealReminderNotificationCenter {
-    var status: RestNotificationAuthorization = .authorized
-    private(set) var pending: [String: MealReminderRequest] = [:]
-    private(set) var addCount = 0
-    private(set) var categoryRegistered = false
-
-    func authorization() async -> RestNotificationAuthorization { status }
-    func requestAuthorization() async -> Bool { status = .authorized; return true }
-    func pendingIdentifiers() async -> [String] { Array(pending.keys) }
-    func add(_ request: MealReminderRequest, calendar: Calendar) async { pending[request.identifier] = request; addCount += 1 }
-    func remove(identifiers: [String]) { identifiers.forEach { pending[$0] = nil } }
-    func registerCategory() { categoryRegistered = true }
-    /// Pendente de outro recurso (ex.: descanso): nunca deve ser tocado.
-    func seedForeign(_ id: String) {
-        pending[id] = MealReminderRequest(identifier: id, mealID: UUID(), day: .now, fireDate: .now, title: "", body: "")
-    }
-}
 
 @MainActor
 struct MealReminderTests {
@@ -152,16 +135,23 @@ struct MealReminderTests {
         let center = FakeMealReminderCenter()
         center.seedForeign("br.com.renatocorrea.fitjourney.rest-end")
         let scheduler = MealReminderScheduler(center: center, calendar: calendar)
-        #expect(center.categoryRegistered)
         await scheduler.reschedule(for: f.context, now: at(11, 6))
         let once = Set(center.pending.keys)
-        #expect(once.count == 15) // 14 dias + o aviso de descanso de outro recurso
+        #expect(once.count == 14)
+        let addsAfterFirst = center.addCount
         await scheduler.reschedule(for: f.context, now: at(11, 6))
         #expect(Set(center.pending.keys) == once)
+        #expect(center.addCount == addsAfterFirst) // nada mudou: nada reagendado
+        // Renomear a refeição reagenda só o conteúdo alterado (mesmos identificadores).
+        meal.name = "Almoço 2"
+        await scheduler.reschedule(for: f.context, now: at(11, 6))
+        #expect(Set(center.pending.keys) == once && center.addCount == addsAfterFirst + 14)
+        #expect(center.pending.values.allSatisfy { $0.title.hasPrefix("Almoço 2") })
         // Desligar o lembrete remove só os nossos.
         meal.reminderEnabled = false
         await scheduler.reschedule(for: f.context, now: at(11, 6))
-        #expect(Set(center.pending.keys) == ["br.com.renatocorrea.fitjourney.rest-end"])
+        #expect(center.pending.isEmpty)
+        #expect(center.foreign == ["br.com.renatocorrea.fitjourney.rest-end"])
     }
 
     @Test func deniedPermissionSchedulesNothingAndNeverAsks() async throws {
@@ -219,7 +209,7 @@ struct MealReminderTests {
         _ = try f.store.logAdjustedMeal(b, on: at(10, 0), items: [(name: "X", quantity: 1, unit: .unit, values: NutrientValues(kcal: 100))])
         try f.store.skipMeal(c, on: at(10, 0))
         let adherence = try f.store.adherence(on: at(10, 12), now: at(11, 9))
-        #expect(adherence == DayAdherence(planned: 4, done: 2))
+        #expect(adherence == DayAdherence(planned: 4, done: 2, skipped: 1, phase: .past))
         #expect(adherence.level == .partial)
         #expect(adherence.ratio == 0.5)
         #expect(try f.store.adherence(on: at(9, 12), now: at(11, 9)).level == .none)
@@ -239,5 +229,111 @@ struct MealReminderTests {
         let history = try f.store.history(days: 5, now: at(11, 9))
         #expect(history.map(\.date) == [calendar.startOfDay(for: at(10, 0))])
         #expect(history[0].adherence.level == .complete)
+    }
+
+    // MARK: Revisão
+
+    @Test func handleIsNoOpWhenNotPendingOrNotPlanned() throws {
+        let f = try makeFixture()
+        let meal = addMeal(f, "Almoço", minutes: 750)
+        try f.context.save()
+        let info = MealReminderResponder.userInfo(mealID: meal.id, day: at(11, 0))
+        let action = MealReminderResponder.markDoneActionIdentifier
+        try f.store.skipMeal(meal, on: at(11, 0)) // pulada: a notificação velha não pode "desfazer"
+        #expect(!MealReminderResponder.handle(actionIdentifier: action, userInfo: info, context: f.context, calendar: calendar, now: at(11, 13)))
+        #expect(try f.store.plannedMeals(on: at(11, 0)).first?.status == .skipped)
+        try f.store.resetMeal(meal, on: at(11, 0))
+        #expect(MealReminderResponder.handle(actionIdentifier: action, userInfo: info, context: f.context, calendar: calendar, now: at(11, 13)))
+        // Já feita: segunda ação não duplica entradas.
+        let count = try f.store.entries(on: at(11, 0)).count
+        #expect(!MealReminderResponder.handle(actionIdentifier: action, userInfo: info, context: f.context, calendar: calendar, now: at(11, 14)))
+        #expect(try f.store.entries(on: at(11, 0)).count == count)
+        // Refeição que saiu do plano.
+        let gone = MealReminderResponder.userInfo(mealID: UUID(), day: at(11, 0))
+        #expect(!MealReminderResponder.handle(actionIdentifier: action, userInfo: gone, context: f.context, calendar: calendar))
+    }
+
+    @Test func actionTappedOnAnotherDayUsesPlannedTimeAndAcceptsNSNumber() throws {
+        let f = try makeFixture()
+        let meal = addMeal(f, "Almoço", minutes: 750)
+        try f.context.save()
+        let info: [AnyHashable: Any] = [MealReminderResponder.mealIDKey: meal.id.uuidString,
+                                        MealReminderResponder.dayKey: NSNumber(value: at(10, 0).timeIntervalSince1970)]
+        #expect(MealReminderResponder.handle(actionIdentifier: MealReminderResponder.markDoneActionIdentifier, userInfo: info,
+                                             context: f.context, calendar: calendar, now: at(11, 9, 17)))
+        let entries = try f.store.entries(on: at(10, 0))
+        #expect(entries.count == 1 && entries[0].date == at(10, 12, 30))
+    }
+
+    @Test func clearNotificationsRemovesPendingAndDelivered() async throws {
+        let f = try makeFixture()
+        let meal = addMeal(f, "Almoço", minutes: 750)
+        let center = FakeMealReminderCenter()
+        let scheduler = MealReminderScheduler(center: center, calendar: calendar)
+        await scheduler.reschedule(for: f.context, now: at(11, 6))
+        let id = MealReminderPlanner.identifier(mealID: meal.id, day: at(11, 0), calendar: calendar)
+        #expect(center.pending[id] != nil)
+        await scheduler.clearNotifications(mealID: meal.id, day: at(11, 0))
+        #expect(center.pending[id] == nil && center.removedDelivered == [id])
+    }
+
+    @Test func daylightSavingKeepsLocalClockTime() throws {
+        var ny = Calendar(identifier: .gregorian)
+        ny.timeZone = TimeZone(identifier: "America/New_York")!
+        let container = try PersistenceController.makeContainer(inMemory: true)
+        Self.containers.append(container)
+        let context = container.mainContext
+        let store = NutritionStore(context: context, calendar: ny)
+        let plan = NutritionPlan(name: "P", startDate: ny.date(from: DateComponents(year: 2026, month: 10, day: 1))!)
+        context.insert(plan)
+        let day = NutritionDay(name: "Todos")
+        context.insert(day)
+        day.plan = plan
+        let meal = Meal(name: "Café", minutesFromMidnight: 480, reminderEnabled: true)
+        context.insert(meal)
+        meal.day = day
+        try store.activate(plan)
+        let now = ny.date(from: DateComponents(year: 2026, month: 10, day: 30, hour: 6))!
+        let result = try MealReminderPlanner.requests(store: store, now: now, horizonDays: 4, limit: 60) // 30, 31, 1/nov (fim do DST), 2
+        #expect(result.count == 4)
+        #expect(result.allSatisfy { ny.component(.hour, from: $0.fireDate) == 8 && ny.component(.minute, from: $0.fireDate) == 0 })
+        #expect(Set(result.map(\.identifier)).count == 4)
+        #expect(result[2].fireDate.timeIntervalSince(result[1].fireDate) == 25 * 3_600)
+    }
+
+    @Test func categoryRegistryMergesAndKeepsThirdParty() async {
+        let thirdParty = UNNotificationCategory(identifier: "terceiro", actions: [], intentIdentifiers: [], options: [])
+        let stale = UNNotificationCategory(identifier: MealReminderResponder.categoryIdentifier, actions: [], intentIdentifiers: [], options: [])
+        let store = FakeCategoryStore([thirdParty, stale])
+        let registry = NotificationCategoryRegistry(store: store)
+        registry.register(MealReminderResponder.category)
+        await registry.apply()
+        await registry.apply() // idempotente
+        #expect(store.stored.count == 2)
+        #expect(store.stored.contains { $0.identifier == "terceiro" })
+        let meal = store.stored.first { $0.identifier == MealReminderResponder.categoryIdentifier }
+        #expect(meal?.actions.first?.identifier == MealReminderResponder.markDoneActionIdentifier)
+    }
+
+    @Test func foregroundPresentationOnlyForMealReminders() {
+        #expect(AppNotificationDelegate.presentationOptions(forCategory: MealReminderResponder.categoryIdentifier).contains(.banner))
+        #expect(AppNotificationDelegate.presentationOptions(forCategory: "").isEmpty)
+    }
+
+    // MARK: Aderência (regras puras)
+
+    @Test func adherenceRules() {
+        func level(_ s: [MealStatus], _ phase: NutritionDayPhase) -> DayAdherence.Level { DayAdherence.make(statuses: s, phase: phase).level }
+        #expect(level([], .past) == .noPlan)
+        #expect(level([.pending, .pending], .future) == .upcoming)
+        #expect(level([.done, .adjusted], .past) == .complete)
+        #expect(level([.done, .adjusted], .today) == .complete)
+        #expect(level([.skipped, .skipped], .past) == .allSkipped) // 100% pulado ≠ nada feito
+        #expect(level([.skipped, .skipped], .today) == .allSkipped)
+        #expect(level([.pending, .pending], .past) == .none)
+        #expect(level([.pending, .skipped], .past) == .none)
+        #expect(level([.pending, .pending], .today) == .upcoming) // dia aberto, nada feito
+        #expect(level([.done, .pending], .today) == .partial)
+        #expect(level([.done, .skipped], .past) == .partial)
     }
 }

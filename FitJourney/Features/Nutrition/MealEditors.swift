@@ -66,7 +66,7 @@ struct MealsSection: View {
 
     private func commit() {
         do { try context.commitEdits() } catch { errorMessage = String(localized: "Tente de novo. Nada foi perdido.") }
-        if context.autosaveEnabled { Task { await scheduler.reschedule(for: context) } }
+        if context.autosaveEnabled { Task { await scheduler?.reschedule(for: context) } }
     }
 
     private func discard(_ meal: Meal) {
@@ -198,23 +198,24 @@ struct MealEditorView: View {
         .navigationTitle(meal.name.isEmpty ? String(localized: "Refeição") : meal.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .primaryAction) { EditButton() } }
-        .task { authorization = await scheduler.authorization() }
+        .task { authorization = await scheduler?.authorization() ?? .authorized }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { authorization = await scheduler.authorization() } }
+            if phase == .active { Task { authorization = await scheduler?.authorization() ?? .authorized } }
         }
         .alert("Receber lembrete desta refeição?", isPresented: $showReminderExplanation) {
             Button("Permitir notificações") {
                 meal.reminderEnabled = true
                 Task {
-                    _ = await scheduler.requestAuthorization()
-                    authorization = await scheduler.authorization()
+                    _ = await scheduler?.requestAuthorization()
+                    if context.autosaveEnabled { await scheduler?.reschedule(for: context) }
+                    authorization = await scheduler?.authorization() ?? .authorized
                 }
             }
             Button("Agora não", role: .cancel) {}
         } message: {
             Text("O FitJourney avisa no horário da refeição. O iOS vai pedir sua permissão agora; você pode mudar depois em Ajustes.")
         }
-        .onDisappear { if context.autosaveEnabled { Task { await scheduler.reschedule(for: context) } } }
+        .onDisappear { if context.autosaveEnabled { Task { await scheduler?.reschedule(for: context) } } }
         .sheet(item: $newItem) { item in
             EditorSheet(title: "Novo item", confirmTitle: "Adicionar",
                         canConfirm: !item.name.trimmingCharacters(in: .whitespaces).isEmpty && item.quantity > 0,

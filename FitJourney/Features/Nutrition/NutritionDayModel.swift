@@ -28,6 +28,10 @@ final class NutritionDayModel {
     private(set) var estimatedCount = 0
     private(set) var weekStrip: [WeekCell] = []
     var errorMessage: String?
+    /// Chamado depois de cada ação que muda o registro (a tela refaz os lembretes: refeição feita não toca).
+    var afterChange: (() -> Void)?
+    /// Refeição marcada como feita/pulada/ajustada: a tela limpa a notificação pendente e a entregue daquele dia.
+    var onMealResolved: ((Meal, Date) -> Void)?
 
     private var store: NutritionStore?
     private let calendar: Calendar = .autoupdatingCurrent
@@ -91,12 +95,14 @@ final class NutritionDayModel {
     func markDone(_ meal: Meal) {
         if perform({ store, time in try store.markMealDone(meal, on: date, at: time) }) {
             announce(String(localized: "\(meal.name) marcada como feita"))
+            onMealResolved?(meal, date)
         }
     }
 
     func skip(_ meal: Meal) {
         if perform({ store, time in try store.skipMeal(meal, on: date, at: time) }) {
             announce(String(localized: "\(meal.name) pulada"))
+            onMealResolved?(meal, date)
         }
     }
 
@@ -125,6 +131,7 @@ final class NutritionDayModel {
         let existing = row?.loggedAt
         if perform({ store, time in try store.logAdjustedMeal(meal, on: date, adjusted: items, at: existing ?? time) }) {
             announce(String(localized: "\(meal.name) registrada com ajustes"))
+            onMealResolved?(meal, date)
         }
     }
 
@@ -149,6 +156,7 @@ final class NutritionDayModel {
         var ok = true
         do { _ = try work(store, logTime) } catch { fail(); ok = false }
         reload()
+        afterChange?()
         return ok
     }
 
