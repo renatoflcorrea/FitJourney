@@ -8,6 +8,11 @@ struct SessionFinishView: View {
     @State private var summary: SessionSummary?
     @State private var loadFailed = false
     @State private var rpe: Int?
+    @State private var mood: Int?
+    @State private var notes = ""
+    @State private var notesLoaded = false
+    /// Nota da sessão quando a tela carregou (mesmo vazia): só se envia o que o usuário mudou em relação a ela.
+    @State private var initialNotes = ""
     @State private var applied: Set<UUID> = []
     @State private var knownProposals: Set<UUID> = []
     @State private var isSaving = false
@@ -26,6 +31,8 @@ struct SessionFinishView: View {
                         recordsCard(summary)
                         skippedCard(summary)
                         rpeCard
+                        moodCard
+                        notesCard
                         proposalsCard(summary)
                     }
                 } else if loadFailed {
@@ -159,6 +166,32 @@ struct SessionFinishView: View {
         }
     }
 
+    private var moodCard: some View {
+        FJCard {
+            VStack(alignment: .leading, spacing: FJSpacing.m) {
+                FJSectionHeader("Humor e energia", subtitle: "Opcional · 1 = muito baixo · 5 = ótimo")
+                SessionNumberScale(value: $mood, range: 1...5, title: "Humor e energia de 1 a 5") {
+                    SessionPresentation.moodLabel($0)
+                }
+            }
+        }
+    }
+
+    private var notesCard: some View {
+        FJCard {
+            VStack(alignment: .leading, spacing: FJSpacing.s) {
+                FJSectionHeader("Nota do treino", subtitle: "Opcional")
+                TextField("Como foi o treino?", text: $notes, axis: .vertical)
+                    .lineLimit(2...6)
+                    .padding(FJSpacing.m)
+                    .background(FJColor.fill, in: FJRadius.shape(FJRadius.field))
+                    .onChange(of: notes) { _, new in
+                        if new.count > SessionEngine.maxTextLength { notes = String(new.prefix(SessionEngine.maxTextLength)) }
+                    }
+            }
+        }
+    }
+
     @ViewBuilder
     private func proposalsCard(_ summary: SessionSummary) -> some View {
         if !summary.loadProposals.isEmpty {
@@ -214,6 +247,12 @@ struct SessionFinishView: View {
             knownProposals = ids
             summary = loaded
             loadFailed = false
+            // A nota da sessão (anotada durante o treino) entra preenchida; edições do usuário não são sobrescritas.
+            if !notesLoaded {
+                initialNotes = engine.snapshot?.notes ?? ""
+                notes = initialNotes
+                notesLoaded = true
+            }
         } catch {
             loadFailed = true
         }
@@ -223,6 +262,9 @@ struct SessionFinishView: View {
         isSaving = true
         // Preserva a ordem do resumo para um comando determinístico.
         let ids = (summary?.loadProposals ?? []).map(\.id).filter(applied.contains)
-        if !coordinator.send(.finish(rpe: rpe, applyLoadProposalIDs: ids)) { isSaving = false }
+        // `notes: nil` mantém a nota da sessão; só envia se o usuário a mudou aqui.
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let finishNotes: String? = trimmed == initialNotes.trimmingCharacters(in: .whitespacesAndNewlines) ? nil : trimmed
+        if !coordinator.send(.finish(rpe: rpe, applyLoadProposalIDs: ids, mood: mood, notes: finishNotes)) { isSaving = false }
     }
 }

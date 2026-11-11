@@ -13,6 +13,8 @@ struct SessionExerciseCard: View {
     let onSubstitute: () -> Void
     let onSkip: () -> Void
     let onProgress: () -> Void
+    let onNote: () -> Void
+    let onPain: () -> Void
     let onEditSet: (SessionSnapshot.ExerciseSet) -> Void
 
     var body: some View {
@@ -31,6 +33,7 @@ struct SessionExerciseCard: View {
                             total: exercise.sets.count,
                             isCurrent: isCurrent && set.id == snapshot.currentSetID,
                             showsRepsAfterCompletion: set.id == latestCompletedSetID,
+                            showsCardioAfterCompletion: set.id == latestCompletedCardioSetID,
                             onEdit: { onEditSet(set) }
                         )
                     }
@@ -55,6 +58,13 @@ struct SessionExerciseCard: View {
         return exercise.sets.contains { $0.id == overall?.id } ? overall?.id : nil
     }
 
+    /// Série de cardio concluída mais recentemente na sessão (campos de nível/velocidade/inclinação ficam à mão).
+    private var latestCompletedCardioSetID: UUID? {
+        guard exercise.measurementKind == .timeOrDistance else { return nil }
+        let overall = snapshot.exercises.flatMap(\.sets).filter(\.isCompleted).max { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
+        return exercise.sets.contains { $0.id == overall?.id } ? overall?.id : nil
+    }
+
     // MARK: Cabeçalhos
 
     private var collapsedHeader: some View {
@@ -70,6 +80,11 @@ struct SessionExerciseCard: View {
                         .font(FJFont.label)
                         .foregroundStyle(FJColor.textSecondary)
                         .multilineTextAlignment(.leading)
+                    if let pain = SessionPresentation.painText(score: exercise.painScore, location: exercise.painLocation) {
+                        Label(pain, systemImage: "bandage")
+                            .font(FJFont.caption)
+                            .foregroundStyle(FJColor.attention)
+                    }
                 }
                 Spacer(minLength: FJSpacing.s)
                 Image(systemName: "chevron.down")
@@ -82,7 +97,9 @@ struct SessionExerciseCard: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(Text("\(exercise.name), \(statusText)"))
-        .accessibilityValue(Text(SessionPresentation.exerciseSummary(exercise)))
+        .accessibilityValue(Text(([SessionPresentation.exerciseSummary(exercise),
+                                   SessionPresentation.spokenPain(score: exercise.painScore, location: exercise.painLocation)]
+            .compactMap { $0 }).joined(separator: ", ")))
         .accessibilityHint(Text("Abre o exercício"))
     }
 
@@ -108,10 +125,52 @@ struct SessionExerciseCard: View {
                 menu
             }
             tags
+            if isCurrent, let hint = SessionPresentation.groupRoundHint(snapshot) {
+                Label(hint, systemImage: snapshot.currentGroup?.completesRound == true ? "flag.checkered" : "arrow.right")
+                    .font(FJFont.label.weight(.semibold))
+                    .foregroundStyle(FJColor.training)
+            }
+            annotations
             if let last = info?.lastTime {
                 Text(last)
                     .font(FJFont.label)
                     .foregroundStyle(FJColor.textSecondary)
+            }
+        }
+    }
+
+    /// Dor/desconforto e anotação do exercício (tocar abre a edição).
+    @ViewBuilder
+    private var annotations: some View {
+        let pain = SessionPresentation.painText(score: exercise.painScore, location: exercise.painLocation)
+        let note = exercise.notes.flatMap { $0.isEmpty ? nil : $0 }
+        if pain != nil || note != nil {
+            VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                if let pain {
+                    Button(action: onPain) {
+                        Label(pain, systemImage: "bandage")
+                            .font(FJFont.label)
+                            .foregroundStyle(FJColor.attention)
+                            .frame(minHeight: FJSize.minTap, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text(SessionPresentation.spokenPain(score: exercise.painScore, location: exercise.painLocation) ?? pain))
+                    .accessibilityHint(Text("Edita a dor ou desconforto"))
+                }
+                if let note {
+                    Button(action: onNote) {
+                        Label(note, systemImage: "note.text")
+                            .font(FJFont.label)
+                            .foregroundStyle(FJColor.textSecondary)
+                            .multilineTextAlignment(.leading)
+                            .frame(minHeight: FJSize.minTap, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(Text("Anotação: \(note)"))
+                    .accessibilityHint(Text("Edita a anotação"))
+                }
             }
         }
     }
@@ -135,6 +194,13 @@ struct SessionExerciseCard: View {
             Button(action: onSkip) { Label("Pular", systemImage: "forward.fill") }
             Button { coordinator.send(.completeExercise(exerciseID: exercise.id)) } label: {
                 Label("Marcar como concluído", systemImage: "checkmark.circle")
+            }
+            Button(action: onNote) {
+                Label(exercise.notes?.isEmpty == false ? "Editar anotação" : "Anotação", systemImage: "note.text")
+            }
+            Button(action: onPain) {
+                Label(exercise.painScore != nil || exercise.painLocation != nil ? "Editar dor ou desconforto" : "Dor ou desconforto",
+                      systemImage: "bandage")
             }
             if exercise.exerciseID != nil, info?.existsInCatalog != false {
                 Button(action: onProgress) { Label("Ver evolução", systemImage: "chart.line.uptrend.xyaxis") }
@@ -205,7 +271,14 @@ struct SessionSetRow: View {
     let total: Int
     let isCurrent: Bool
     let showsRepsAfterCompletion: Bool
+    var showsCardioAfterCompletion = false
     let onEdit: () -> Void
+
+    @State private var confirmsRemove = false
+
+    private var setActions: SetActions {
+        SetActions(coordinator: coordinator, entry: entry, canRemove: total > 1, confirmsRemove: $confirmsRemove)
+    }
 
     private var spoken: String { SessionPresentation.spokenSet(index: index, of: total, set: entry) }
 
@@ -235,11 +308,28 @@ struct SessionSetRow: View {
                 .buttonStyle(.plain)
                 .accessibilityHidden(true)
                 FJCheckButton(state: checkState, accessibilityLabel: spoken) { coordinator.toggleSet(entry) }
-                    .accessibilityAction(named: Text("Editar série"), onEdit)
+                    .modifier(SetA11yModifier(actions: setActions, onEdit: onEdit))
             }
             if showsRepsAfterCompletion, entry.isCompleted, hasReps {
                 repsField
             }
+            if entry.isCompleted, exercise.measurementKind == .timeOrDistance {
+                if showsCardioAfterCompletion {
+                    cardioFields
+                } else if let detail = SessionPresentation.cardioDetailText(entry) {
+                    Text(detail).font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .modifier(SetMenuModifier(actions: setActions, onEdit: onEdit))
+    }
+
+    /// Distância e campos opcionais do aparelho, logo depois de concluir o cardio.
+    private var cardioFields: some View {
+        VStack(spacing: FJSpacing.s) {
+            NumberStepperField("Distância", value: distanceBinding, unit: "km", step: 0.1, range: 0...500, fractionDigits: 2)
+            SessionCardioFields.live(coordinator: coordinator, set: entry)
         }
     }
 
@@ -286,6 +376,7 @@ struct SessionSetRow: View {
                 }
                 Spacer(minLength: FJSpacing.s)
                 FJCheckButton(state: checkState, accessibilityLabel: spoken) { coordinator.toggleSet(entry) }
+                    .modifier(SetA11yModifier(actions: setActions, onEdit: onEdit))
             }
             switch exercise.measurementKind {
             case .repsAndLoad:
@@ -305,7 +396,7 @@ struct SessionSetRow: View {
         .padding(FJSpacing.m)
         .background(FJColor.fill.opacity(0.6), in: FJRadius.shape(FJRadius.field))
         .accessibilityElement(children: .contain)
-        .accessibilityAction(named: Text("Editar série"), onEdit)
+        .modifier(SetMenuModifier(actions: setActions, onEdit: onEdit))
     }
 
     /// "alvo 8–12" — sempre como prescrito (D2).
@@ -369,5 +460,73 @@ struct SessionSetRow: View {
                                             durationSeconds: entry.durationSeconds, distanceMeters: entry.distanceMeters))
             }
         )
+    }
+}
+
+/// Ações por série. Remover uma série concluída pede confirmação; a última série do exercício não sai.
+@MainActor
+private struct SetActions {
+    let coordinator: SessionCoordinator
+    let entry: SessionSnapshot.ExerciseSet
+    let canRemove: Bool
+    @Binding var confirmsRemove: Bool
+
+    func requestRemove() {
+        guard canRemove else { return }
+        if entry.isCompleted { confirmsRemove = true } else { coordinator.send(.removeSet(setID: entry.id)) }
+    }
+
+    func setKind(_ kind: WatchSetKind) { coordinator.send(.changeSetKind(setID: entry.id, kind: kind)) }
+}
+
+/// Menu de contexto e confirmação, no contêiner da linha.
+private struct SetMenuModifier: ViewModifier {
+    let actions: SetActions
+    let onEdit: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .contextMenu {
+                Button(action: onEdit) { Label("Editar série", systemImage: "pencil") }
+                Menu {
+                    ForEach(SessionPresentation.selectableKinds, id: \.self) { kind in
+                        Button { actions.setKind(kind) } label: {
+                            if kind == actions.entry.kind || (kind == .working && actions.entry.kind == .unknown) {
+                                Label(SessionPresentation.kindName(kind), systemImage: "checkmark")
+                            } else {
+                                Text(SessionPresentation.kindName(kind))
+                            }
+                        }
+                    }
+                } label: { Label("Tipo da série", systemImage: "tag") }
+                if actions.canRemove {
+                    Button(role: .destructive, action: actions.requestRemove) { Label("Remover série", systemImage: "trash") }
+                }
+            }
+            .confirmationDialog("Remover esta série?", isPresented: actions.$confirmsRemove, titleVisibility: .visible) {
+                Button("Remover série", role: .destructive) { actions.coordinator.send(.removeSet(setID: actions.entry.id)) }
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("A série já está concluída. Ela sai do treino e do volume.")
+            }
+    }
+}
+
+/// Ações do VoiceOver, anexadas ao elemento focável da linha (o check), não ao contêiner.
+private struct SetA11yModifier: ViewModifier {
+    let actions: SetActions
+    let onEdit: () -> Void
+
+    func body(content: Content) -> some View {
+        let base = content
+            .accessibilityAction(named: Text("Editar série"), onEdit)
+        let kinds = SessionPresentation.selectableKinds.reduce(AnyView(base)) { view, kind in
+            AnyView(view.accessibilityAction(named: Text("Tipo da série: \(SessionPresentation.kindName(kind))")) { actions.setKind(kind) })
+        }
+        if actions.canRemove {
+            kinds.accessibilityAction(named: Text("Remover série"), actions.requestRemove)
+        } else {
+            kinds
+        }
     }
 }

@@ -22,6 +22,8 @@ struct ProgramDigest: Codable, Sendable, Hashable {
         var exercises: [Exercise]
         /// Tipo do treino no Saúde (`HealthWorkoutType.rawValue`), derivado da ficha no iPhone (v2).
         var workoutType: String? = nil
+        /// `Routine.colorName` (cor da ficha; vazio/ausente = padrão), para o selo no relógio (v2).
+        var colorName: String? = nil
     }
 
     struct Exercise: Codable, Sendable, Hashable, Identifiable {
