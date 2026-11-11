@@ -50,7 +50,7 @@ final class HealthTrendsModel {
     private(set) var phase: Phase = .loading
     var period: HealthTrendPeriod = .weeks4
 
-    func load(reader: any HealthDataReading, context: ModelContext, calendar: Calendar = .current, now: Date = Date()) async {
+    func load(reader: any HealthDataReading, context: ModelContext, calendar: Calendar = AppCalendar.current, now: Date = Date()) async {
         if case .loaded = phase {} else { phase = .loading }
         let today = calendar.startOfDay(for: now)
         let end = calendar.date(byAdding: .day, value: 1, to: today) ?? now

@@ -86,7 +86,7 @@ struct ProgramStore {
     /// Aderência da semana (modo semanal): sessões concluídas **de ficha** (treino livre não conta),
     /// limitadas ao previsto. `nil` fora do modo semanal ou sem dias marcados.
     func weeklyAdherence(for program: TrainingProgram, now: Date = .now,
-                         calendar: Calendar = .current) throws -> (done: Int, planned: Int)? {
+                         calendar: Calendar = AppCalendar.current) throws -> (done: Int, planned: Int)? {
         guard program.scheduleMode == .weekly else { return nil }
         let planned = program.sortedRoutines.reduce(0) { $0 + $1.weekdays.count }
         let completed = SessionStatus.completed.rawValue

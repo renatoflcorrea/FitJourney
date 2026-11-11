@@ -103,7 +103,7 @@ struct RoutineMetaSheet: View {
     }
 }
 
-/// Sete botões de dia (semana começa na segunda), alvo mínimo de 44 pt.
+/// Sete botões de dia (semana começa como em Ajustes, segunda por padrão), alvo mínimo de 44 pt.
 /// Dia já usado por outra ficha leva um ponto e é anunciado pelo VoiceOver; pode ser compartilhado.
 struct WeekdayPicker: View {
     @Binding var selection: Set<Weekday>
@@ -111,7 +111,7 @@ struct WeekdayPicker: View {
 
     var body: some View {
         HStack(spacing: FJSpacing.xs) {
-            ForEach(Weekday.allCases, id: \.self) { day in
+            ForEach(Weekday.displayOrder, id: \.self) { day in
                 let on = selection.contains(day)
                 Button {
                     if on { selection.remove(day) } else { selection.insert(day) }

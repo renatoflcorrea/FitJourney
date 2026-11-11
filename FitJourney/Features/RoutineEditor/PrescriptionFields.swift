@@ -246,7 +246,7 @@ struct RestField: View {
                     }
                     FJFilterChip("Outro", isSelected: isCustom || customOpen) {
                         customOpen = true
-                        if seconds == nil || !isCustom { seconds = seconds ?? defaultSeconds ?? 90 }
+                        if seconds == nil || !isCustom { seconds = seconds ?? defaultSeconds ?? PrescriptionDefaults.restSeconds }
                     }
                 }
                 .padding(.vertical, FJSpacing.xxs)

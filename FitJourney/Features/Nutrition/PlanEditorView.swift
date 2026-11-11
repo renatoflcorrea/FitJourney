@@ -287,7 +287,7 @@ struct DayVariantEditor: View {
             }
             Section {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: FJSpacing.s)], alignment: .leading, spacing: FJSpacing.s) {
-                    ForEach(Weekday.allCases, id: \.self) { weekday in
+                    ForEach(Weekday.displayOrder, id: \.self) { weekday in
                         let taken = owner(of: weekday)
                         FJFilterChip(LocalizedStringKey(weekday.shortName), isSelected: day.weekdays.contains(weekday), area: .nutrition) {
                             var set = day.weekdays

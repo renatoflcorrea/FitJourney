@@ -71,14 +71,16 @@ final class HealthDayModel {
 
     private(set) var phase: Phase = .loading
     private(set) var date: Date
-    let calendar: Calendar
+    private let fixedCalendar: Calendar?
+    /// Calendário do app (semana começa como em Ajustes) salvo se um fixo foi injetado (testes).
+    var calendar: Calendar { fixedCalendar ?? AppCalendar.current }
     private let defaults: UserDefaults
     private var autoLinkAttempted: Set<String> = []
 
-    init(date: Date = Date(), calendar: Calendar = .current, defaults: UserDefaults = .standard) {
-        self.calendar = calendar
+    init(date: Date = Date(), calendar: Calendar? = nil, defaults: UserDefaults = .standard) {
+        self.fixedCalendar = calendar
         self.defaults = defaults
-        self.date = calendar.startOfDay(for: date)
+        self.date = (calendar ?? AppCalendar.current).startOfDay(for: date)
     }
 
     var isToday: Bool { calendar.isDateInToday(date) }

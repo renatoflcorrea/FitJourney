@@ -145,7 +145,7 @@ struct RoutineEditorView: View {
         return VStack(alignment: .leading, spacing: FJSpacing.s) {
             Text("Dias da semana").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
             HStack(spacing: FJSpacing.xs) {
-                ForEach(Weekday.allCases, id: \.self) { day in
+                ForEach(Weekday.displayOrder, id: \.self) { day in
                     let isOn = routine.weekdays.contains(day)
                     let shared = otherDays[day]
                     Button {

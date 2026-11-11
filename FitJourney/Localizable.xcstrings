@@ -536,16 +536,6 @@
     "3 itens sem calorias" : {
       "localizations" : {}
     },
-    "A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada (em breve)." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max heart rate defines your heart rate zones. Without a manual value we use 220 minus the age in your profile. Live Activity shows the workout and rest on the Lock Screen (coming soon)."
-          }
-        }
-      }
-    },
     "A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island." : {
       "localizations" : {
         "en" : {
@@ -3288,6 +3278,16 @@
         }
       }
     },
+    "Início da semana" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week starts on"
+          }
+        }
+      }
+    },
     "Ir" : {
       "localizations" : {}
     },
@@ -3617,12 +3617,12 @@
     "Mover para cima" : {
       "localizations" : {}
     },
-    "Mudar a unidade muda só a exibição. O histórico não é alterado." : {
+    "Mudar a unidade muda só a exibição. O histórico não é alterado. O início da semana vale para a Dieta, a aderência semanal, Saúde e o calendário; os dias das fichas não mudam." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Changing the unit only changes how values are shown. History is not changed."
+            "value" : "Changing the unit only changes how loads are shown. History is not altered. The week start applies to Diet, weekly adherence, Health and the calendar; routine days do not change."
           }
         }
       }
@@ -4018,6 +4018,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The built-in catalog comes back ready to use. AI keys live in the Keychain and are kept by default."
+          }
+        }
+      }
+    },
+    "O descanso padrão vale quando a ficha e o exercício não definem um. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada (em breve)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The default rest applies when the routine and the exercise don't set one. Max heart rate defines heart rate zones. Without a manual value, we use 220 minus the age in your profile. Live Activity shows the workout and rest on the Lock Screen and in the Dynamic Island."
           }
         }
       }

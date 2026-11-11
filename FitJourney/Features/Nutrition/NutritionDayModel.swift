@@ -34,7 +34,8 @@ final class NutritionDayModel {
     var onMealResolved: ((Meal, Date) -> Void)?
 
     private var store: NutritionStore?
-    private let calendar: Calendar = .autoupdatingCurrent
+    /// Calendário do app, relido a cada uso (a faixa da semana segue a preferência de Ajustes).
+    private var calendar: Calendar { AppCalendar.current }
 
     var phase: NutritionDayPhase { NutritionDayPhase(date: date, now: now, calendar: calendar) }
     var hasPlan: Bool { plan != nil }
@@ -51,6 +52,7 @@ final class NutritionDayModel {
     }
 
     func reload() {
+        store?.calendar = calendar
         guard let store else { return }
         now = .now
         do {

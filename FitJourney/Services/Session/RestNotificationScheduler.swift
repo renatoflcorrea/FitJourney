@@ -43,9 +43,21 @@ final class UserNotificationRestScheduler: RestNotificationScheduling {
     static let identifier = "br.com.renatocorrea.fitjourney.rest-end"
 
     private let center: UNUserNotificationCenter
+    private let defaults: UserDefaults
 
-    init(center: UNUserNotificationCenter = .current()) {
+    init(center: UNUserNotificationCenter = .current(), defaults: UserDefaults = .standard) {
         self.center = center
+        self.defaults = defaults
+    }
+
+    /// Conteúdo do aviso: com som padrão ou silencioso (`fj.restSound`).
+    static func content(body: String, soundEnabled: Bool) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "Descanso encerrado")
+        content.body = body
+        content.sound = soundEnabled ? .default : nil
+        content.threadIdentifier = "rest"
+        return content
     }
 
     func authorization() async -> RestNotificationAuthorization {
@@ -72,11 +84,8 @@ final class UserNotificationRestScheduler: RestNotificationScheduling {
                 scheduler.center.removePendingNotificationRequests(withIdentifiers: [Self.identifier])
                 return
             }
-            let content = UNMutableNotificationContent()
-            content.title = String(localized: "Descanso encerrado")
-            content.body = body
-            content.sound = .default
-            content.threadIdentifier = "rest"
+            // Preferência lida ao agendar: mudar em Ajustes vale já no próximo descanso.
+            let content = Self.content(body: body, soundEnabled: RestPreference.soundEnabled(scheduler.defaults))
             let request = UNNotificationRequest(identifier: Self.identifier, content: content,
                                                 trigger: UNTimeIntervalNotificationTrigger(timeInterval: interval, repeats: false))
             try? await scheduler.center.add(request)

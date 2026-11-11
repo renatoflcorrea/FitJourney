@@ -30,6 +30,8 @@ struct SessionSummary: Sendable, Hashable {
 struct SessionStore {
     let context: ModelContext
     var autosave: Bool
+    /// Descanso quando nem a série nem o exercício definem um (o motor passa o padrão de Ajustes).
+    var fallbackRestSeconds = 0
 
     init(context: ModelContext, autosave: Bool = true) {
         self.context = context
@@ -145,7 +147,7 @@ struct SessionStore {
                 var clock = session.clock
                 // Em bi-set/circuito, descanso só ao fim da rodada (SessionFlow.isEndOfRound).
                 if SessionFlow.isEndOfRound(after: exercise.id, in: session.flowStates) {
-                    clock.startRest(seconds: log.restSeconds ?? exercise.restSeconds ?? 0, at: date)
+                    clock.startRest(seconds: log.restSeconds ?? exercise.restSeconds ?? fallbackRestSeconds, at: date)
                 } else {
                     clock.skipRest()
                 }

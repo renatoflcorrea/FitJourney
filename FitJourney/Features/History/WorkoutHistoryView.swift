@@ -108,7 +108,7 @@ struct WorkoutHistoryView: View {
 
     @ViewBuilder
     private var calendarContent: some View {
-        let calendar = Calendar.current
+        let calendar = AppCalendar.current
         let trained = trainedDays
         FJCard {
             VStack(spacing: FJSpacing.m) {

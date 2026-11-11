@@ -12,22 +12,25 @@ enum WeightUnitPreference {
 
 /// Chaves e padrões das preferências de Ajustes (todas começam com `fj.`: "Apagar tudo" as remove).
 ///
-/// Com efeito hoje: `weightUnit` e `loadStep` (exibição e steppers), `maxHeartRate` (aba Saúde e zona ao
-/// vivo na sessão) e `mealReminders` (`MealReminderScheduler`). **Sem consumidor ainda** (e por isso
-/// escondidas em Ajustes até existirem): `weekStart`, `defaultRestSeconds`, `restSound`. `liveActivity` (padrão
-/// ligado) é lida pelo `LiveActivityController`. As chaves existem e já são apagadas por "Apagar tudo".
+/// Todas têm consumidor: `weightUnit` e `loadStep` (exibição e steppers), `weekStart` (`AppCalendar`),
+/// `defaultRestSeconds` (`RestPreference`: motor da sessão e padrões do editor), `restSound`
+/// (`RestPreference`: notificação de fim de descanso e alerta da Atividade ao Vivo), `maxHeartRate` (aba
+/// Saúde e zona ao vivo na sessão), `liveActivity` (`LiveActivityController`) e `mealReminders`
+/// (`MealReminderScheduler`).
 enum AppPreferenceKeys {
     /// "kg" | "lb" (ver `WeightUnitPreference`).
     static let weightUnit = WeightUnitPreference.key
     /// Passo de carga na unidade exibida; 0/ausente = padrão (0,5 kg / 1 lb).
     static let loadStep = "fj.loadStep"
-    /// "monday" (padrão) | "sunday". Futuro consumidor: `ScheduleResolver` e os calendários de
-    /// Hoje/Saúde/Dieta (hoje assumem segunda).
+    /// "monday" (padrão) | "sunday". Consumido por `AppCalendar.current` (faixa da Dieta, aderência
+    /// semanal, Saúde, Hoje, calendário do histórico) e pela ordem dos dias em seletores e pontos
+    /// (`Weekday.displayOrder`). Os dias gravados nas fichas não mudam.
     static let weekStart = "fj.weekStart"
-    /// Descanso padrão em segundos quando o exercício não define (padrão 90). Futuro consumidor:
-    /// `SessionEngine.defaultRestSeconds(for:)` (hoje usa o descanso do exercício, sem esta chave).
+    /// Descanso padrão em segundos quando a prescrição e o exercício não definem (padrão 90). Consumido
+    /// por `RestPreference.defaultSeconds` (`SessionEngine`, `PrescriptionDefaults.restSeconds`).
     static let defaultRestSeconds = "fj.defaultRestSeconds"
-    /// Som ao fim do descanso (padrão ligado). Futuro consumidor: notificação de fim de descanso e áudio da sessão.
+    /// Som ao fim do descanso (padrão ligado; ausente = ligado). Consumido por `RestPreference.soundEnabled`:
+    /// notificação de fim de descanso (`UserNotificationRestScheduler`) e alerta da Atividade ao Vivo.
     static let restSound = "fj.restSound"
     /// FC máxima manual em bpm; 0/ausente = pela idade (aba Saúde e zona ao vivo na sessão).
     static let maxHeartRate = "fj.maxHeartRate"
@@ -46,6 +49,22 @@ enum WeekStart: String, CaseIterable, Sendable {
 
     static var current: WeekStart {
         UserDefaults.standard.string(forKey: AppPreferenceKeys.weekStart).flatMap(WeekStart.init(rawValue:)) ?? .monday
+    }
+}
+
+/// Leitura das preferências de descanso (Ajustes › Treino).
+enum RestPreference {
+    static let fallbackSeconds = 90
+
+    /// Descanso padrão (`fj.defaultRestSeconds`); ausente ou inválido = 90 s.
+    static func defaultSeconds(_ defaults: UserDefaults = .standard) -> Int {
+        let stored = defaults.integer(forKey: AppPreferenceKeys.defaultRestSeconds)
+        return stored > 0 ? stored : fallbackSeconds
+    }
+
+    /// Som ao fim do descanso (`fj.restSound`); ausente = ligado.
+    static func soundEnabled(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: AppPreferenceKeys.restSound) as? Bool ?? true
     }
 }
 

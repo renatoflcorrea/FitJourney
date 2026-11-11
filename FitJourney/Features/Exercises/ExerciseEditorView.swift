@@ -26,7 +26,7 @@ struct ExerciseEditorView: View {
         _laterality = State(initialValue: exercise?.laterality ?? .bilateral)
         _kind = State(initialValue: exercise?.measurementKind ?? .repsAndLoad)
         _notes = State(initialValue: exercise?.notes ?? "")
-        _rest = State(initialValue: Double(exercise?.defaultRestSeconds ?? 90))
+        _rest = State(initialValue: Double(exercise?.defaultRestSeconds ?? PrescriptionDefaults.restSeconds))
         _items = State(initialValue: (exercise?.media ?? []).map(MediaItem.init))
     }
 
