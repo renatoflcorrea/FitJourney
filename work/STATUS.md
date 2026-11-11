@@ -36,12 +36,14 @@
 - P2.6+W2+W3b integrado (`6473794`) + PhoneWatchLink ligado no App (`5c7b569`): comandos novos do motor, protocolo v2 com IDs determinísticos (UUIDv5), WatchConnectivity, treino gravado no relógio com espelhamento, `.saved` durável.
 - P6.3 Ajustes integrado (`0326df0`): perfil, unidades kg/lb no app inteiro, FC máx (zona ao vivo), Saúde/Notificações/IA, Dados (exportar/importar/apagar com reset em duas fases), paleta oficial de fichas. Preferências escondidas até haver consumidor: início da semana, descanso padrão, som.
 
-## Em andamento
-- P2.7 (Sonnet): sessão iPhone + relógio consumindo os comandos novos (notas, dor, humor, remover/trocar série, cardio, gravar no relógio, cor da ficha no relógio).
-- P6.4 (Opus): Live Activity + Dynamic Island + App Intents.
+- P6.4 Live Activity integrada (`9fb2b34`); P2.7 sessão iPhone+relógio com comandos novos integrada (`f8ba486`). iOS e watchOS: build e testes verdes.
+- Makefile: `make device TEAM=<TEAM> [DEVICE_ID=<udid>]` (Team não versionado).
+
+## Pausado (limite de uso — retomar)
+- **P5.5 ChatGPT (login) experimental** (Opus): worktree `.claude/worktrees/agent-a3a3055d0c4becb2b` (branch `worktree-agent-a3a3055d0c4becb2b`), interrompido no meio — conferir `git status` e o que já foi commitado, terminar, `make build test`, revisar, integrar.
+- **P6.5 consumidores das preferências** (Sonnet): worktree `.claude/worktrees/agent-a73959d3d76d3dd70`, interrompido — mesmo procedimento.
 
 ## Próximo
-- Localização en completa + QA de acessibilidade (VoiceOver, AX5, claro/escuro, Reduzir Movimento) no simulador.
-- Consumidores de `fj.weekStart` e `fj.defaultRestSeconds` (domínio/engine).
-- Cartographer (`docs/CODEBASE_MAP.md`) e resumo final.
-- **Exige o usuário**: teste em iPhone + Apple Watch reais (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações), chave de API para o Coach, Team de assinatura.
+- Localização en completa (catálogo; relógio sem catálogo) + QA de acessibilidade no simulador.
+- `/cartographer:cartographer` → `docs/CODEBASE_MAP.md`.
+- **Usuário**: teste em iPhone + Apple Watch (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações) via `make device`; chave de API ou login ChatGPT (após P5.5) para o Coach.

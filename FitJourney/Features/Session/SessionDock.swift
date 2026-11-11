@@ -4,10 +4,10 @@ import SwiftUI
 /// próximo exercício ou finalizar (DESIGN_DIRECTION §4.5).
 struct SessionDock: View {
     let mode: SessionPresentation.DockMode
+    let snapshot: SessionSnapshot
     let coordinator: SessionCoordinator
     let holdPrep: SessionHoldPrep?
     let onAddExercise: () -> Void
-    let onContinueAfterRest: () -> Void
     let onAdvance: () -> Void
     let onFinish: () -> Void
     let onStartPrep: (UUID) -> Void
@@ -26,13 +26,14 @@ struct SessionDock: View {
                 FJRestTimerView(
                     endsAt: endsAt, total: total, nextUp: nextUp,
                     onAdjust: { coordinator.send(.adjustRest(seconds: Int($0))) },
-                    onSkip: {
-                        coordinator.send(.skipRest)
-                        onContinueAfterRest()
-                    }
+                    // `skipRest` também dispensa o descanso já vencido (limpa no motor).
+                    onSkip: { coordinator.send(.skipRest) }
                 )
-            case .holding(let setID, let startedAt, let target, let isCardio):
-                SessionHoldPanel(setID: setID, startedAt: startedAt, targetSeconds: target, isCardio: isCardio) {
+            case .holding(let setID, let startedAt, let target, let isCardio, let targetDistance):
+                SessionHoldPanel(
+                    startedAt: startedAt, targetSeconds: target, targetDistanceMeters: targetDistance, isCardio: isCardio,
+                    elapsedAt: { snapshot.holdElapsed(at: $0) ?? 0 }
+                ) {
                     coordinator.send(.endHold(setID: setID))
                 }
             case .set(let setID, let title, let detail, let measurement, _):
@@ -122,10 +123,12 @@ struct SessionHoldStartButton: View {
 /// Contagem regressiva da sustentação (ou cronômetro do cardio); depois da meta continua contando
 /// o excedente até "Parar".
 struct SessionHoldPanel: View {
-    let setID: UUID
     let startedAt: Date
     let targetSeconds: Int?
+    var targetDistanceMeters: Double?
     let isCardio: Bool
+    /// Tempo ativo no instante dado (`SessionSnapshot.holdElapsed(at:)`: congela na pausa).
+    let elapsedAt: (Date) -> TimeInterval
     let onStop: () -> Void
 
     @ScaledMetric(relativeTo: .largeTitle) private var timerSize: CGFloat = 60
@@ -133,7 +136,7 @@ struct SessionHoldPanel: View {
 
     var body: some View {
         TimelineView(.periodic(from: startedAt, by: 1)) { context in
-            let elapsed = SessionPresentation.holdElapsed(startedAt: startedAt, now: context.date)
+            let elapsed = elapsedAt(context.date)
             let reached = targetSeconds.map { elapsed >= Double($0) } ?? false
             let shown: Int = {
                 guard let targetSeconds else { return Int(elapsed) }
@@ -158,6 +161,12 @@ struct SessionHoldPanel: View {
                     ProgressView(value: min(1, elapsed / Double(max(targetSeconds, 1))))
                         .tint(FJColor.training)
                         .accessibilityHidden(true)
+                }
+                if isCardio, let target = SessionPresentation.cardioTargetText(
+                    durationSeconds: targetSeconds, distanceMeters: targetDistanceMeters) {
+                    Text("alvo \(target)")
+                        .font(FJFont.label)
+                        .foregroundStyle(FJColor.textSecondary)
                 }
                 Button(action: onStop) {
                     Text(isCardio ? "Concluir" : "Parar")

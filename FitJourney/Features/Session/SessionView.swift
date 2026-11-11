@@ -10,7 +10,8 @@ struct SessionView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    @State private var restDismissedFor: Date?
+    /// Só força nova leitura da doca quando o descanso concluído vence o `restFinishedLinger` (a decisão é derivada da data).
+    @State private var restTick = Date.now
     @State private var advanceTo: UUID?
     @State private var expandedExtra: Set<UUID> = []
     @State private var catalog: [UUID: SessionCatalogInfo] = [:]
@@ -25,6 +26,9 @@ struct SessionView: View {
     @State private var confirmsDiscard = false
     @State private var bannerDismissed = false
     @State private var holdPrep: SessionHoldPrep?
+    @State private var noteFor: UUID?
+    @State private var painFor: UUID?
+    @State private var showsSessionNote = false
 
     private var engine: SessionEngine { coordinator.engine }
 
@@ -83,6 +87,24 @@ struct SessionView: View {
             }
             .tint(FJColor.training)
         }
+        .sheet(item: $noteFor.identified) { item in
+            if let exercise = engine.snapshot?.exercises.first(where: { $0.id == item.id }) {
+                SessionNoteSheet(title: "Anotação do exercício", prompt: "Ajuste do aparelho, sensação, o que lembrar…",
+                                 initial: exercise.notes ?? "") {
+                    coordinator.send(.setExerciseNote(exerciseID: exercise.id, text: $0))
+                }
+            }
+        }
+        .sheet(item: $painFor.identified) { item in
+            if let exercise = engine.snapshot?.exercises.first(where: { $0.id == item.id }) {
+                SessionPainSheet(coordinator: coordinator, exercise: exercise)
+            }
+        }
+        .sheet(isPresented: $showsSessionNote) {
+            SessionNoteSheet(title: "Anotação do treino", prompt: "Como está o treino?", initial: engine.snapshot?.notes ?? "") {
+                coordinator.send(.setSessionNote(text: $0))
+            }
+        }
         .sheet(isPresented: $showsReorder) {
             SessionReorderSheet(coordinator: coordinator)
         }
@@ -123,7 +145,7 @@ struct SessionView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: FJSpacing.cardGap) {
-                    banners
+                    banners(snapshot)
                     if snapshot.exercises.isEmpty {
                         FJEmptyState(
                             "Adicione o primeiro exercício",
@@ -162,7 +184,8 @@ struct SessionView: View {
     }
 
     @ViewBuilder
-    private var banners: some View {
+    private func banners(_ snapshot: SessionSnapshot) -> some View {
+        SessionWatchStatus(snapshot: snapshot)
         if coordinator.notificationAuthorization == .denied, !bannerDismissed {
             FJBanner(
                 "Avisos de descanso desativados",
@@ -214,6 +237,8 @@ struct SessionView: View {
                 onSubstitute: { picker = .substitute(exercise.id) },
                 onSkip: { skipping = exercise.id },
                 onProgress: { progressExercise = exercise.exerciseID },
+                onNote: { noteFor = exercise.id },
+                onPain: { painFor = exercise.id },
                 onEditSet: { editing = $0 }
             )
         }
@@ -228,7 +253,10 @@ struct SessionView: View {
 
     private func headerTapped(_ exercise: SessionSnapshot.Exercise, isOpen: Bool, isExpanded: Bool) {
         if isOpen {
-            coordinator.send(.focusExercise(exerciseID: exercise.id))
+            // Já é o exercício escolhido: nada a enviar.
+            if engine.snapshot?.focusedExerciseID != exercise.id {
+                coordinator.send(.focusExercise(exerciseID: exercise.id))
+            }
         } else if expandedExtra.contains(exercise.id) {
             expandedExtra.remove(exercise.id)
         } else {
@@ -240,15 +268,15 @@ struct SessionView: View {
 
     @ViewBuilder
     private func dock(_ snapshot: SessionSnapshot) -> some View {
-        let mode = SessionPresentation.dockMode(
-            snapshot: snapshot, now: .now, restDismissedFor: restDismissedFor, advanceTo: advanceTo)
+        let _ = restTick
+        let mode = SessionPresentation.dockMode(snapshot: snapshot, now: .now, advanceTo: advanceTo)
         let isRest: Bool = if case .rest = mode { true } else { false }
         SessionDock(
             mode: mode,
+            snapshot: snapshot,
             coordinator: coordinator,
             holdPrep: holdPrep,
             onAddExercise: { picker = .add },
-            onContinueAfterRest: { restDismissedFor = snapshot.restEndsAt },
             onAdvance: { advanceTo = nil },
             onFinish: { showsFinish = true },
             onStartPrep: { holdPrep = SessionHoldPrep(setID: $0, count: 3) },
@@ -274,9 +302,9 @@ struct SessionView: View {
     private func dismissFinishedRestLater() async {
         guard let end = engine.snapshot?.restEndsAt else { return }
         let wait = end.addingTimeInterval(SessionPresentation.restFinishedLinger).timeIntervalSinceNow
-        if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+        if wait > 0 { try? await Task.sleep(for: .seconds(wait + 0.05)) }
         guard !Task.isCancelled else { return }
-        restDismissedFor = end
+        restTick = .now
     }
 
     private func advanceIfFinished(from old: UUID?, to new: UUID?) {
@@ -319,6 +347,7 @@ struct SessionView: View {
         }
         Button { picker = .add } label: { Label("Adicionar exercício", systemImage: "plus") }
         Button { showsReorder = true } label: { Label("Reordenar", systemImage: "arrow.up.arrow.down") }
+        Button { showsSessionNote = true } label: { Label("Anotação do treino", systemImage: "note.text") }
         Button { showsFinish = true } label: { Label("Finalizar treino", systemImage: "flag.checkered") }
         Divider()
         Button(role: .destructive) { confirmsDiscard = true } label: { Label("Descartar treino", systemImage: "trash") }
@@ -450,6 +479,12 @@ struct SessionSetEditSheet: View {
     @State private var reps: Int?
     @State private var seconds: Double
     @State private var distanceKm: Double
+    @State private var holdTarget: Double
+    @State private var confirmsRemove = false
+    @State private var kind: WatchSetKind
+    @State private var level: Int?
+    @State private var speed: Double?
+    @State private var incline: Double?
 
     init(coordinator: SessionCoordinator, exercise: SessionSnapshot.Exercise, set: SessionSnapshot.ExerciseSet) {
         self.coordinator = coordinator
@@ -459,7 +494,19 @@ struct SessionSetEditSheet: View {
         _reps = State(initialValue: set.reps)
         _seconds = State(initialValue: set.durationSeconds ?? 0)
         _distanceKm = State(initialValue: (set.distanceMeters ?? 0) / 1_000)
+        _holdTarget = State(initialValue: Double(set.targetHoldSeconds ?? set.targetDurationSeconds ?? 0))
+        _kind = State(initialValue: set.kind == .unknown ? .working : set.kind)
+        _level = State(initialValue: set.level)
+        _speed = State(initialValue: set.speedKmh)
+        _incline = State(initialValue: set.inclinePercent)
     }
+
+    private var holdRange: ClosedRange<Double> {
+        0...Double(max(SessionEngine.maxHoldSeconds, set.targetHoldSeconds ?? set.targetDurationSeconds ?? 0))
+    }
+
+    /// A última série do exercício não pode ser removida (o exercício ficaria sem séries).
+    private var canRemove: Bool { exercise.sets.count > 1 }
 
     private var unitText: String { (SessionPresentation.displayLoad(set)?.unit ?? .kg) == .kg ? "kg" : "lb" }
 
@@ -486,12 +533,33 @@ struct SessionSetEditSheet: View {
                                 FJOptionalNumberField("Repetições realizadas", prompt: "+ reps", value: $reps, unit: "reps")
                             case .isometric:
                                 NumberStepperField("Sustentação", value: $seconds, unit: "s", step: 1, range: 0...3_600)
+                                NumberStepperField("Alvo da sustentação", value: $holdTarget, unit: "s", step: 5, range: holdRange)
                             case .timeOrDistance:
                                 NumberStepperField("Duração", value: $seconds, unit: "s", step: 10, range: 0...36_000)
                                 NumberStepperField("Distância", value: $distanceKm, unit: "km", step: 0.1, range: 0...500, fractionDigits: 2)
+                                NumberStepperField("Duração alvo", value: $holdTarget, unit: "s", step: 60, range: holdRange)
                             case .unknown:
                                 EmptyView()
                             }
+                        }
+                    }
+                    if exercise.measurementKind == .timeOrDistance {
+                        FJCard {
+                            VStack(alignment: .leading, spacing: FJSpacing.m) {
+                                FJSectionHeader("Aparelho", subtitle: "Opcional")
+                                SessionCardioFields(level: $level, speed: $speed, incline: $incline)
+                            }
+                        }
+                    }
+                    FJCard {
+                        HStack {
+                            Text("Tipo da série").font(FJFont.label)
+                            Spacer(minLength: FJSpacing.s)
+                            Picker("Tipo da série", selection: $kind) {
+                                ForEach(SessionPresentation.selectableKinds, id: \.self) { Text(SessionPresentation.kindName($0)).tag($0) }
+                            }
+                            .pickerStyle(.menu)
+                            .frame(minHeight: FJSize.minTap)
                         }
                     }
                     if set.isCompleted {
@@ -501,8 +569,25 @@ struct SessionSetEditSheet: View {
                         }
                         .buttonStyle(.fjSecondary())
                     }
+                    if canRemove {
+                        Button("Remover série", role: .destructive) {
+                            if set.isCompleted { confirmsRemove = true } else { remove() }
+                        }
+                        .frame(minHeight: FJSize.minTap)
+                    } else {
+                        Text("Um exercício precisa de ao menos uma série. Para tirá-lo do treino, pule ou troque o exercício.")
+                            .font(FJFont.caption)
+                            .foregroundStyle(FJColor.textSecondary)
+                    }
                 }
                 .padding(FJSpacing.screenMargin)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .confirmationDialog("Remover esta série?", isPresented: $confirmsRemove, titleVisibility: .visible) {
+                Button("Remover série", role: .destructive, action: remove)
+                Button("Cancelar", role: .cancel) {}
+            } message: {
+                Text("A série já está concluída. Ela sai do treino e do volume.")
             }
             .fjScreenBackground()
             .navigationTitle("Editar série")
@@ -526,6 +611,21 @@ struct SessionSetEditSheet: View {
         }
         let distance: Double? = exercise.measurementKind == .timeOrDistance && distanceKm > 0 ? distanceKm * 1_000 : set.distanceMeters
         coordinator.send(.updateSet(setID: set.id, reps: reps, load: newLoad, durationSeconds: duration, distanceMeters: distance))
+        if kind != (set.kind == .unknown ? .working : set.kind) {
+            coordinator.send(.changeSetKind(setID: set.id, kind: kind))
+        }
+        if exercise.measurementKind == .timeOrDistance, (level, speed, incline) != (set.level, set.speedKmh, set.inclinePercent) {
+            coordinator.send(.updateCardio(setID: set.id, level: level, speedKmh: speed, inclinePercent: incline))
+        }
+        let originalTarget = set.targetHoldSeconds ?? set.targetDurationSeconds ?? 0
+        if [.isometric, .timeOrDistance].contains(exercise.measurementKind), Int(holdTarget) != originalTarget, holdTarget >= 1 {
+            coordinator.send(.updateHoldTarget(setID: set.id, seconds: Int(holdTarget)))
+        }
+        dismiss()
+    }
+
+    private func remove() {
+        coordinator.send(.removeSet(setID: set.id))
         dismiss()
     }
 }

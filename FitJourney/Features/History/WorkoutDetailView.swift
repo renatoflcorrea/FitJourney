@@ -27,6 +27,7 @@ struct WorkoutDetailView: View {
                 }
                 summaryCard
                 intensityCard
+                moodCard
                 notesCard
                 SessionHeartRateChart(session: session)
                 ForEach(exercises) { exercise in
@@ -119,6 +120,31 @@ struct WorkoutDetailView: View {
         }
     }
 
+    /// Humor/energia 1–5 informado ao finalizar (some se não informado, fora da edição).
+    @ViewBuilder
+    private var moodCard: some View {
+        if isEditing || session.mood != nil {
+            FJCard {
+                VStack(alignment: .leading, spacing: FJSpacing.m) {
+                    FJSectionHeader("Humor e energia")
+                    if isEditing {
+                        SessionNumberScale(value: Bindable(session).mood, range: 1...5, title: "Humor e energia de 1 a 5") {
+                            SessionPresentation.moodLabel($0)
+                        }
+                    } else if let mood = session.mood {
+                        HStack(alignment: .firstTextBaseline, spacing: FJSpacing.s) {
+                            Text(verbatim: "\(mood)/5").font(FJFont.numberHero)
+                            Text(SessionPresentation.moodLabel(mood)).font(FJFont.label).foregroundStyle(FJColor.textSecondary)
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(Text("Humor e energia"))
+                        .accessibilityValue(Text("\(mood) de 5, \(SessionPresentation.moodLabel(mood))"))
+                    }
+                }
+            }
+        }
+    }
+
     private var notesCard: some View {
         FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.s) {
@@ -160,10 +186,11 @@ struct WorkoutDetailView: View {
                 ForEach(Array(exercise.sortedSets.enumerated()), id: \.element.id) { index, log in
                     setRow(log, index: index + 1, exercise: exercise)
                 }
-                if let pain = exercise.painLevel {
-                    Label("Dor/desconforto \(pain)/10\(exercise.painLocation.map { " · \($0)" } ?? "")", systemImage: "bandage")
+                if let pain = SessionPresentation.painText(score: exercise.painLevel, location: exercise.painLocation) {
+                    Label(pain, systemImage: "bandage")
                         .font(FJFont.caption)
                         .foregroundStyle(FJColor.textSecondary)
+                        .accessibilityLabel(Text(SessionPresentation.spokenPain(score: exercise.painLevel, location: exercise.painLocation) ?? pain))
                 }
                 if !exercise.notes.isEmpty {
                     Text(exercise.notes).font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
@@ -192,6 +219,9 @@ struct WorkoutDetailView: View {
                 Text(log.isCompleted ? realized : String(localized: "Não feita"))
                     .font(FJFont.numberBody)
                     .foregroundStyle(log.isCompleted ? FJColor.textPrimary : FJColor.textSecondary)
+                if let cardio = SessionPresentation.cardioDetailText(level: log.level, speedKmh: log.speedKmh, inclinePercent: log.inclinePercent) {
+                    Text(cardio).font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                }
                 if !target.isEmpty {
                     Text("alvo \(target)").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 }

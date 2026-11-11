@@ -65,6 +65,11 @@ struct ControlsPage: View {
             control("Pular", "arrow.uturn.forward") {
                 if let id = model.display?.currentExerciseID { model.skip(exerciseID: id) }
             }
+            if model.canOfferWatchRecording {
+                control("Gravar", "applewatch") { model.startRecordingOnWatch() }
+                    .accessibilityLabel("Gravar no relógio")
+                    .accessibilityHint("Usa a frequência cardíaca e as calorias do relógio neste treino")
+            }
         }
         .padding(.horizontal, 4)
         .accessibilityLabel("Controles")

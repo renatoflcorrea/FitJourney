@@ -64,9 +64,7 @@ struct RoutineRow: View {
     let routine: ProgramDigest.Routine
     let overline: String?
     let highlighted: Bool
-    /// `Routine.colorName` da ficha. O resumo do iPhone (`ProgramDigest.Routine`) ainda não o carrega:
-    /// sem nome, o selo fica laranja.
-    var colorName: String?
+    private var colorName: String? { routine.colorName }
 
     var body: some View {
         HStack(spacing: 8) {

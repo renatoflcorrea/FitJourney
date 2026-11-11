@@ -233,4 +233,23 @@ struct ProgramDigestTests {
         #expect(sets[2].load == WatchLoad(value: 30))
         #expect(digest.routines[1].exercises[0].measurementKind == .timeOrDistance)
     }
+
+    @Test func digestCarriesRoutineColorName() throws {
+        let f = try PersistenceFixture()
+        let (_, routine, _) = try f.makeProgram()
+        routine.colorName = ""
+        try f.context.save()
+        #expect(try #require(try ProgramDigestBuilder.make(context: f.context)).routines[0].colorName == nil)
+        routine.colorName = "purple"
+        try f.context.save()
+        let digest = try #require(try ProgramDigestBuilder.make(context: f.context))
+        #expect(digest.routines[0].colorName == "purple")
+        // Resumo de versão anterior (sem o campo) continua decodificando.
+        var json = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(digest)) as? [String: Any])
+        var routines = try #require(json["routines"] as? [[String: Any]])
+        routines[0].removeValue(forKey: "colorName")
+        json["routines"] = routines
+        let old = try JSONDecoder().decode(ProgramDigest.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(old.routines[0].colorName == nil)
+    }
 }
