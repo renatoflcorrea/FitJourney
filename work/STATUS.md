@@ -29,14 +29,15 @@
 - **App navegável de ponta a ponta no simulador**: Hoje → Iniciar treino → sessão → encerrar → histórico; Treinos/editor/biblioteca; Dieta.
 - Infra: máquina no limite de simuladores (maxUserProcs) — um simulador por agente, sem desligar os de outros projetos.
 
+- P3.3 Lembretes integrados (`943dba3`) com delegate de notificações e reschedule no App; P5.3+P5.4 Coach integrado (`f2c42c9`) e aba Coach ligada (`e01a244`); P4.2+P4.3 aba Saúde integrada e ligada (`a712480`); P6.2 exportar/importar/apagar integrado com correções de segurança (`56a7316`), `BackupMaintenance` no launch (`02bbed0`).
+- Protótipo v3 publicado (mesmo link). 5 abas: Hoje, Treinos, Dieta, Saúde, Coach.
+- Incidente: um agente usou `simctl shutdown all` (desligou simuladores de outros projetos). Regra reforçada no AGENTS.md e nos briefs.
+
 ## Em andamento
-- P3.3 Lembretes de refeição — em revisão.
-- P5.3+P5.4 UI do Coach + Ajustes de IA — em revisão.
-- P6.2 Exportar/importar — agente retomado após falha do shell (código pronto, sem testes rodados).
-- P2.6 + W2 + W3b (Opus): lacunas do motor, protocolo v2 com IDs determinísticos, WatchConnectivity, HKWorkoutSession no relógio.
-- P4.2+P4.3 FC na sessão, gráfico por exercício e aba Saúde (Sonnet).
+- P2.6 + W2 + W3b (Opus): motor (notas/dor/humor, remover série, pausa na sustentação/cardio), protocolo v2, WatchConnectivity, HKWorkoutSession no relógio.
+- P6.3 (Sonnet): Ajustes gerais (unidades, treino, Saúde, notificações, IA, dados) + substituições do P6.1 + zona de FC ao vivo.
 
 ## Próximo
-- Integrar P3.3 (+ delegate de notificações e reschedule no App) e Coach (aba + repairInterruptedMessages).
-- P6.3 Ajustes gerais (unidades, Saúde, notificações, IA, dados) + substituições do P6.1 (RoutineColor→FJRoutineBadge, FlowLayout, relógio com cores de ficha).
-- Ciclo 6: Live Activity (DESIGN §4.14), localização en completa, QA, Cartographer; republicar protótipo.
+- Integrar W2 (ligações no App: transporte do iPhone) → UI da sessão consumir os comandos novos (notas, dor, remover série, tipo, cardio).
+- Ciclo 6: Live Activity (DESIGN §4.14, App Intents), localização en completa, QA de acessibilidade, Cartographer (docs/CODEBASE_MAP.md).
+- Decisões padrão assumidas (DESIGN §10, 10 perguntas): ver resumo enviado ao usuário.
