@@ -1,0 +1,25 @@
+.DS_Store
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+.build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.xcodeproj/
+.env
+.env.*
+*.pem
+*.key
+auth.json
+
+# Estado local de ferramentas
+.serena/
+.claude/worktrees/
+.opencode/node_modules/
+build/
+DerivedData/
+.DS_Store
+xcuserdata/
+.worktrees/

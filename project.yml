@@ -1,0 +1,59 @@
+name: FitJourney
+options:
+  bundleIdPrefix: br.com.renatocorrea
+  deploymentTarget:
+    iOS: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    TARGETED_DEVICE_FAMILY: "1"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  FitJourney:
+    type: application
+    platform: iOS
+    sources: [FitJourney]
+    info:
+      path: FitJourney/App/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+    entitlements:
+      path: FitJourney/App/FitJourney.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: br.com.renatocorrea.fitjourney
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleDisplayName: FitJourney
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSHealthShareUsageDescription: "O FitJourney lê frequência cardíaca, treinos e energia para mostrar seus treinos com os dados do Apple Watch."
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: "O FitJourney grava seus treinos no app Saúde."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "O FitJourney usa fotos e vídeos da galeria para ilustrar exercícios."
+        INFOPLIST_KEY_NSCameraUsageDescription: "O FitJourney usa a câmera para fotografar exercícios."
+        SWIFT_EMIT_LOC_STRINGS: YES
+  FitJourneyTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [FitJourneyTests]
+    dependencies:
+      - target: FitJourney
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: br.com.renatocorrea.fitjourney.tests
+schemes:
+  FitJourney:
+    build:
+      targets:
+        FitJourney: all
+        FitJourneyTests: [test]
+    test:
+      targets: [FitJourneyTests]
