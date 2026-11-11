@@ -63,6 +63,10 @@ struct HTTPClient: Sendable {
                    retryPolicy: retryPolicy)
     }
 
+    func withRetryPolicy(_ policy: RetryPolicy) -> HTTPClient {
+        HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames, retryPolicy: policy)
+    }
+
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         try await withRetry { try await dataOnce(for: request) }
     }

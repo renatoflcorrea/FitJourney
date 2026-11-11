@@ -87,6 +87,7 @@ actor DataEraser: ModelActor {
         var secretsDeleted = false
         if options.includingSecrets {
             for provider in AIProviderID.allCases { try secretStore.set(nil, for: .apiKey(provider)) }
+            try secretStore.set(nil, for: .chatGPTAuth) // login ChatGPT (experimental)
             secretsDeleted = true
         }
         progress?(BackupProgress(phase: .finished, fraction: 1))

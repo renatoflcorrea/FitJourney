@@ -6,8 +6,9 @@ import Foundation
 // Nome: a mensagem de fio chama-se `LLMMessage` porque `ChatMessage` é o modelo SwiftData.
 
 /// Provedores suportados (SPEC §7). O `rawValue` é persistido em `ProviderSettings` — não renomeie.
+/// `chatGPT` = login da assinatura ChatGPT (experimental, não oficial; `Services/AI/ChatGPT/`).
 enum AIProviderID: String, Codable, Sendable, Hashable, CaseIterable {
-    case openAI, anthropic, openRouter, custom
+    case openAI, anthropic, openRouter, custom, chatGPT
 }
 
 /// Papel de uma mensagem no fio.
