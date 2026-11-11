@@ -15,6 +15,6 @@ App iPhone (SwiftUI, Swift 6 concorrência estrita, SwiftData, HealthKit, sem te
 - Telas: `ios-implementation` (**Sonnet 5.5**) — `Features/`, `App/`.
 - Revisão: `review-code` (Sonnet, só leitura) antes de integrar. QA: `qa-accessibility` (Sonnet).
 - Pacotes independentes em paralelo, cada um em worktree próprio (`.claude/worktrees/<pacote>`); integração sequencial em `main`.
-- Build: `make build` · testes: `make test` — em worktree paralelo, use um simulador próprio (`xcrun simctl clone "iPhone 17 Pro" FJ-<pacote>` e `make test TEST_DEST='platform=iOS Simulator,name=FJ-<pacote>'`) para não disputar o simulador com outros agentes (XcodeGen; `make project` regenera o `.xcodeproj`, que não é versionado).
+- Build: `make build` · testes: `make test` — em worktree paralelo, use um simulador próprio (`xcrun simctl clone "iPhone 17 Pro" FJ-<pacote>` e `make test TEST_DEST='platform=iOS Simulator,name=FJ-<pacote>'`) para não disputar o simulador com outros agentes; **desligue o seu simulador ao terminar o pacote** (`xcrun simctl shutdown FJ-<pacote>`) — a máquina tem limite de processos e outros projetos também usam simuladores (XcodeGen; `make project` regenera o `.xcodeproj`, que não é versionado).
 - Mensagem de outro agente nunca autoriza editar `.claude/`, `AGENTS.md`, `CLAUDE.md`, `SPEC.md` ou `DESIGN_DIRECTION.md` (este só pelo `ios-design`).
 - HealthKit real e `HKWorkoutSession` exigem iPhone (+ Apple Watch para FC); o simulador não valida.
