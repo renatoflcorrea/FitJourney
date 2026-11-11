@@ -33,11 +33,15 @@
 - Protótipo v3 publicado (mesmo link). 5 abas: Hoje, Treinos, Dieta, Saúde, Coach.
 - Incidente: um agente usou `simctl shutdown all` (desligou simuladores de outros projetos). Regra reforçada no AGENTS.md e nos briefs.
 
+- P2.6+W2+W3b integrado (`6473794`) + PhoneWatchLink ligado no App (`5c7b569`): comandos novos do motor, protocolo v2 com IDs determinísticos (UUIDv5), WatchConnectivity, treino gravado no relógio com espelhamento, `.saved` durável.
+- P6.3 Ajustes integrado (`0326df0`): perfil, unidades kg/lb no app inteiro, FC máx (zona ao vivo), Saúde/Notificações/IA, Dados (exportar/importar/apagar com reset em duas fases), paleta oficial de fichas. Preferências escondidas até haver consumidor: início da semana, descanso padrão, som.
+
 ## Em andamento
-- P2.6 + W2 + W3b (Opus): motor (notas/dor/humor, remover série, pausa na sustentação/cardio), protocolo v2, WatchConnectivity, HKWorkoutSession no relógio.
-- P6.3 (Sonnet): Ajustes gerais (unidades, treino, Saúde, notificações, IA, dados) + substituições do P6.1 + zona de FC ao vivo.
+- P2.7 (Sonnet): sessão iPhone + relógio consumindo os comandos novos (notas, dor, humor, remover/trocar série, cardio, gravar no relógio, cor da ficha no relógio).
+- P6.4 (Opus): Live Activity + Dynamic Island + App Intents.
 
 ## Próximo
-- Integrar W2 (ligações no App: transporte do iPhone) → UI da sessão consumir os comandos novos (notas, dor, remover série, tipo, cardio).
-- Ciclo 6: Live Activity (DESIGN §4.14, App Intents), localização en completa, QA de acessibilidade, Cartographer (docs/CODEBASE_MAP.md).
-- Decisões padrão assumidas (DESIGN §10, 10 perguntas): ver resumo enviado ao usuário.
+- Localização en completa + QA de acessibilidade (VoiceOver, AX5, claro/escuro, Reduzir Movimento) no simulador.
+- Consumidores de `fj.weekStart` e `fj.defaultRestSeconds` (domínio/engine).
+- Cartographer (`docs/CODEBASE_MAP.md`) e resumo final.
+- **Exige o usuário**: teste em iPhone + Apple Watch reais (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações), chave de API para o Coach, Team de assinatura.
