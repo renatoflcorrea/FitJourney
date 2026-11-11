@@ -33,7 +33,7 @@ struct AppRoot: View {
                 NutritionRootView()
             }
             SwiftUI.Tab("Saúde", systemImage: "heart", value: Tab.health) {
-                PlaceholderScreen(title: "Saúde")
+                HealthRootView()
             }
             SwiftUI.Tab("Coach", systemImage: "sparkles", value: Tab.coach) {
                 CoachRootView()
@@ -54,15 +54,5 @@ private struct OptionalSessionHost: ViewModifier {
     }
 }
 
-private struct PlaceholderScreen: View {
-    let title: LocalizedStringKey
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(title, systemImage: "hammer", description: Text("Em construção"))
-                .navigationTitle(title)
-        }
-    }
-}
 
 #Preview { AppRoot().modelContainer(PersistenceController.preview) }
