@@ -169,14 +169,17 @@ enum NutritionTotals {
     }
 
     /// Status de uma refeição do plano a partir dos status das entradas vinculadas a ela no dia.
-    /// Sem entradas → pendente; alguma ajustada → ajustada; só puladas → pulada;
-    /// feitas (com ou sem marcador de pulo antigo) → feita.
+    /// Sem entradas → pendente. Só avulsos vinculados (status `nil`) = registro parcial: a refeição
+    /// continua pendente (o item conta nos totais e aparece dentro da refeição). Avulso vinculado a uma
+    /// refeição que já tem registro (feita/ajustada/pulada) → ajustada. Alguma ajustada → ajustada;
+    /// só puladas → pulada; feitas → feita.
     static func mealStatus(entryStatuses: [MealStatus?]) -> MealStatus {
-        let statuses = entryStatuses.map { $0 ?? .adjusted } // entrada vinculada sem status = ajuste manual
-        guard !statuses.isEmpty else { return .pending }
-        if statuses.contains(.adjusted) { return .adjusted }
-        if statuses.contains(.done) { return .done }
-        if statuses.allSatisfy({ $0 == .skipped }) { return .skipped }
+        let real = entryStatuses.compactMap { $0 }
+        guard !real.isEmpty else { return .pending }
+        if real.count < entryStatuses.count { return .adjusted }
+        if real.contains(.adjusted) { return .adjusted }
+        if real.contains(.done) { return .done }
+        if real.allSatisfy({ $0 == .skipped }) { return .skipped }
         return .pending
     }
 }

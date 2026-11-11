@@ -336,7 +336,7 @@ struct NutritionStoreTests {
 
     func makePlan(_ f: PersistenceFixture, activate: Bool = true) throws -> (NutritionPlan, Meal) {
         let store = NutritionStore(context: f.context, calendar: cal)
-        let plan = NutritionPlan(name: "D")
+        let plan = NutritionPlan(name: "D", startDate: Date(timeIntervalSince1970: 0))
         plan.targets = NutritionTargets(kcal: 2_000, protein: 150)
         f.context.insert(plan)
         let day = NutritionDay()
