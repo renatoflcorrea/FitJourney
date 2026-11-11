@@ -3,6 +3,7 @@ import Foundation
 /// Metadados estáticos de provedor. Listar um provedor nunca autoriza um pedido de rede.
 struct ProviderDescriptor: Sendable, Hashable, Identifiable {
     let id: AIProviderID
+    /// Nome completo (seletor de provedor). Experimentais carregam o aviso no próprio nome.
     let name: String
     /// URL base padrão (`nil` = o usuário precisa informar).
     let defaultBaseURL: URL?
@@ -12,10 +13,17 @@ struct ProviderDescriptor: Sendable, Hashable, Identifiable {
     let suggestedModels: [String]
     /// Onde o usuário cria a chave (para o texto de ajuda da UI).
     let keyHelpURL: URL?
+    /// Nome curto para resumos ("ChatGPT (login) · gpt-6-luna"); `nil` = `name`.
+    var shortName: String?
+    /// Endpoint não documentado/não oficial: a UI mostra o aviso de risco.
+    var isExperimental = false
 
     var defaultModel: String { suggestedModels.first ?? "" }
-    /// Chave no `SecretStore`.
-    var secretKey: SecretKey { SecretKey.apiKey(id) }
+    var displayShortName: String { shortName ?? name }
+    /// Credencial por login OAuth (ChatGPT), não por chave de API.
+    var usesChatGPTLogin: Bool { id == .chatGPT }
+    /// Onde a credencial fica no `SecretStore`: a chave de API, ou o blob do login ChatGPT.
+    var secretKey: SecretKey { usesChatGPTLogin ? .chatGPTAuth : SecretKey.apiKey(id) }
 }
 
 enum ProviderCatalog {
@@ -44,6 +52,14 @@ enum ProviderCatalog {
             requiresAPIKey: false,
             suggestedModels: ["llama3.1"],
             keyHelpURL: nil),
+        ProviderDescriptor(
+            id: .chatGPT, name: String(localized: "ChatGPT (login) · Experimental / não oficial"),
+            defaultBaseURL: ChatGPTResponsesGateway.defaultBaseURL,
+            requiresAPIKey: false,
+            suggestedModels: ChatGPTModelLister.fallbackModels,
+            keyHelpURL: nil,
+            shortName: String(localized: "ChatGPT (login)"),
+            isExperimental: true),
     ]
 
     static func descriptor(for id: AIProviderID) -> ProviderDescriptor {

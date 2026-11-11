@@ -7,6 +7,8 @@ struct SecretKey: RawRepresentable, Sendable, Hashable {
     init(rawValue: String) { self.rawValue = rawValue }
 
     static func apiKey(_ provider: AIProviderID) -> SecretKey { SecretKey(rawValue: "apiKey.\(provider.rawValue)") }
+    /// Blob JSON com os tokens do login ChatGPT (`ChatGPTCredentials`). Nunca sai do Keychain.
+    static let chatGPTAuth = SecretKey(rawValue: "chatGPT.auth")
 }
 
 /// Armazenamento de segredos. `set(nil)` apaga.

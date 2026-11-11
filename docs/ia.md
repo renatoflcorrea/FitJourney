@@ -42,3 +42,11 @@ Novos (não existem no fireplaice): **function calling** e **gateway Anthropic n
 ## Contratos
 
 `contracts/program-draft-v1.schema.json`, `contracts/nutrition-plan-draft-v1.schema.json`, `contracts/fitjourney-export-v1.schema.json`. Os mesmos servirão ao plugin do ChatGPT (servidor MCP/Apps SDK) e ao HealthProject.
+
+## Provedor experimental "ChatGPT (login)" (P5.5)
+
+Exceção à regra acima, a pedido do usuário: `Services/AI/ChatGPT/` porta o login da assinatura ChatGPT do fireplaice (pesquisa e riscos em `fireplaice/work/CHATGPT_OAUTH.md`). Rotulado **"ChatGPT (login) · Experimental / não oficial"**, só para uso pessoal.
+
+- OAuth PKCE em `auth.openai.com` com o client_id público do Codex CLI, redirect `http://localhost:1455/auth/callback` recebido por `ChatGPTLoopbackListener` (uso único, só loopback) enquanto a página abre numa `ASWebAuthenticationSession`; porta ocupada → colar a URL. `state` verificado (`ChatGPTLoginValidation`).
+- Tokens num único blob no Keychain (`SecretKey.chatGPTAuth`); o `id_token` (com e-mail) não é guardado. Renovação com folga de 2 min, serializada no processo (`ChatGPTRefreshCoordinator`); recusa permanente apaga o blob e vira `AIError.signInRequired`.
+- `ChatGPTResponsesGateway`: `chatgpt.com/backend-api/codex/responses` (SSE, `store:false`, `stream:true`, `instructions`), ferramentas no formato da Responses API (`function_call`/`function_call_output` por `call_id`), resumos de raciocínio, 401/403 → renova e repete uma vez. `ChatGPTModelLister` descobre os modelos da conta.

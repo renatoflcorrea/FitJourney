@@ -359,7 +359,8 @@ enum BackupSchema {
             "openAI",
             "anthropic",
             "openRouter",
-            "custom"
+            "custom",
+            "chatGPT"
           ]
         },
         "videoProvider": {
