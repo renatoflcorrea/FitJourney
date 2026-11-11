@@ -9,6 +9,7 @@ struct SessionFinishView: View {
     @State private var loadFailed = false
     @State private var rpe: Int?
     @State private var applied: Set<UUID> = []
+    @State private var knownProposals: Set<UUID> = []
     @State private var isSaving = false
     @State private var confirmsDiscard = false
 
@@ -66,8 +67,7 @@ struct SessionFinishView: View {
         } message: {
             Text("Nada será salvo no histórico.")
         }
-        .fjHaptic(.celebration, trigger: summary?.personalRecords.count ?? 0) { _, new in new > 0 }
-        .task { load() }
+        .task(id: engine.snapshot?.revision) { load() }
     }
 
     // MARK: Seções
@@ -203,12 +203,17 @@ struct SessionFinishView: View {
 
     // MARK: Ações
 
+    /// Recalcula o resumo a cada revisão do snapshot (comando do relógio, edição). Preserva as escolhas
+    /// do usuário nos toggles; propostas novas entram ligadas (padrão do motor).
     private func load() {
         do {
             let loaded = try engine.currentSummary()
+            let ids = Set(loaded?.loadProposals.map(\.id) ?? [])
+            let isFirst = summary == nil
+            applied = isFirst ? ids : applied.intersection(ids).union(ids.subtracting(knownProposals))
+            knownProposals = ids
             summary = loaded
-            // Padrão do motor: a política só propõe quando todas as séries válidas foram concluídas.
-            applied = Set(loaded?.loadProposals.map(\.id) ?? [])
+            loadFailed = false
         } catch {
             loadFailed = true
         }

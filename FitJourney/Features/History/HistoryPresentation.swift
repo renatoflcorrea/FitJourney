@@ -216,25 +216,50 @@ enum ProgressCalculator {
         switch kind {
         case .isometric:
             let times = done.compactMap(\.durationSeconds).map { "\(Int($0.rounded())) s" }
-            return times.isEmpty ? String(localized: "\(done.count) séries") : times.joined(separator: ", ")
+            return times.isEmpty ? SessionPresentation.seriesCount(done.count) : times.joined(separator: ", ")
         case .timeOrDistance:
             let minutes = done.compactMap(\.durationSeconds).reduce(0, +) / 60
             let km = done.compactMap(\.distanceMeters).reduce(0, +) / 1_000
             var parts: [String] = []
             if minutes > 0 { parts.append("\(FJFormat.number(minutes, maxFractionDigits: 0)) min") }
             if km > 0 { parts.append("\(FJFormat.number(km, maxFractionDigits: 2)) km") }
-            return parts.isEmpty ? String(localized: "\(done.count) séries") : parts.joined(separator: " · ")
+            return parts.isEmpty ? SessionPresentation.seriesCount(done.count) : parts.joined(separator: " · ")
         case .repsAndLoad, .repsOnly:
             let valid = done.map(\.performed).filter(\.counts)
             guard let top = valid.compactMap(\.load).max(by: { $0.externalKilograms < $1.externalKilograms }) else {
-                return String(localized: "\(valid.count) séries")
+                return SessionPresentation.seriesCount(valid.count)
             }
             let load = FJFormat.number(top.externalKilograms)
             let reps = valid.compactMap(\.reps)
             if !valid.isEmpty, reps.count == valid.count {
                 return "\(load) × " + reps.map(String.init).joined(separator: ", ")
             }
-            return "\(load) kg · " + String(localized: "\(valid.count) séries")
+            return "\(load) kg · " + SessionPresentation.seriesCount(valid.count)
         }
+    }
+}
+
+
+/// Edição de carga na unidade nativa da série (nunca converte para kg).
+enum LoadEditing {
+    /// Valor e unidade exibidos no campo.
+    static func native(_ load: Load?) -> (value: Double, unit: WeightUnit) {
+        switch load {
+        case .weight(let value, let unit)?: (value, unit)
+        case .bodyweight(let delta, let unit)?: (delta, unit)
+        case nil: (0, .kg)
+        }
+    }
+
+    static func unitText(_ unit: WeightUnit) -> String { unit == .kg ? "kg" : "lb" }
+
+    static func make(value: Double, unit: WeightUnit, isBodyweight: Bool) -> Load {
+        isBodyweight ? .bodyweight(delta: value, unit: unit) : .weight(value: value, unit: unit)
+    }
+
+    /// `true` se salvar mudaria algo (salvar sem alteração não marca "editado").
+    static func hasChanges(old: (reps: Int?, load: Load?, duration: Double?, distance: Double?),
+                           new: (reps: Int?, load: Load?, duration: Double?, distance: Double?)) -> Bool {
+        old.reps != new.reps || old.load != new.load || old.duration != new.duration || old.distance != new.distance
     }
 }

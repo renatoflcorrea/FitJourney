@@ -4,6 +4,8 @@ import SwiftUI
 /// Detalhe de uma sessão concluída: resumo, intensidade, notas, séries (editáveis com marca "editado").
 struct WorkoutDetailView: View {
     let session: WorkoutSession
+    /// Exclusão pedida ao pai depois de a tela sair (nil: este detalhe exclui sozinho ao sair).
+    var onDelete: ((WorkoutSession) -> Void)?
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -12,6 +14,7 @@ struct WorkoutDetailView: View {
     @State private var progressExerciseID: UUID?
     @State private var confirmsDelete = false
     @State private var saveFailed = false
+    @State private var deleteRequested = false
 
     private var exercises: [SessionExercise] { session.sortedExercises }
     private var performed: [PerformedSet] { exercises.flatMap(\.sortedSets).map(\.performed) }
@@ -64,15 +67,17 @@ struct WorkoutDetailView: View {
         }
         .confirmationDialog("Excluir esta sessão?", isPresented: $confirmsDelete, titleVisibility: .visible) {
             Button("Excluir sessão", role: .destructive) {
-                context.delete(session)
-                try? context.save()
+                deleteRequested = true
                 dismiss()
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text("A sessão e suas séries saem do histórico.")
         }
-        .onDisappear { persist() }
+        .onChange(of: isEditing) { _, editing in if !editing { persist() } }
+        .onDisappear {
+            if deleteRequested { performDelete() } else { persist() }
+        }
     }
 
     // MARK: Cartões
@@ -227,13 +232,33 @@ struct WorkoutDetailView: View {
     }
 
     private func persist() {
-        do { try context.save() } catch { saveFailed = true }
+        do {
+            try context.save()
+            saveFailed = false
+        } catch {
+            saveFailed = true
+        }
+    }
+
+    /// Depois de a tela sair, para a view não ler um modelo apagado.
+    private func performDelete() {
+        if let onDelete {
+            onDelete(session)
+            return
+        }
+        do {
+            context.delete(session)
+            try context.save()
+        } catch {
+            context.rollback()
+        }
     }
 }
 
 // MARK: - Edição de série passada
 
-/// Corrige uma série de sessão concluída; `SessionStore.updateSet` marca "editado".
+/// Corrige uma série de sessão concluída; `SessionStore.updateSet` marca "editado" (só se algo mudou).
+/// A carga é editada na unidade nativa da série (kg ou lb), sem converter.
 struct HistorySetEditSheet: View {
     let log: SetLog
     let measurementKind: MeasurementKind
@@ -245,12 +270,15 @@ struct HistorySetEditSheet: View {
     @State private var reps: Int?
     @State private var seconds: Double
     @State private var distanceKm: Double
+    private let unit: WeightUnit
 
     init(log: SetLog, measurementKind: MeasurementKind, onSaved: @escaping (Bool) -> Void) {
         self.log = log
         self.measurementKind = measurementKind
         self.onSaved = onSaved
-        _load = State(initialValue: (log.load ?? log.plannedLoad)?.externalKilograms ?? 0)
+        let native = LoadEditing.native(log.load ?? log.plannedLoad)
+        unit = native.unit
+        _load = State(initialValue: native.value)
         _reps = State(initialValue: log.reps)
         _seconds = State(initialValue: log.durationSeconds ?? 0)
         _distanceKm = State(initialValue: (log.distanceMeters ?? 0) / 1_000)
@@ -262,7 +290,8 @@ struct HistorySetEditSheet: View {
                 FJCard {
                     VStack(alignment: .leading, spacing: FJSpacing.m) {
                         if measurementKind != .timeOrDistance {
-                            NumberStepperField(measurementKind == .repsOnly ? "Lastro" : "Carga", value: $load, unit: "kg",
+                            NumberStepperField(measurementKind == .repsOnly ? "Lastro" : "Carga", value: $load,
+                                               unit: LoadEditing.unitText(unit),
                                                step: 0.5, range: measurementKind == .repsOnly ? -300...300 : 0...999,
                                                fractionDigits: 2, showsSign: measurementKind == .repsOnly)
                         }
@@ -291,19 +320,29 @@ struct HistorySetEditSheet: View {
     }
 
     private func save() {
-        let unit = (log.load ?? log.plannedLoad)?.unit ?? .kg
-        let newLoad: Load? = switch measurementKind {
-        case .timeOrDistance: log.load
-        case .repsOnly: .bodyweight(delta: load, unit: unit)
-        default: .weight(value: load, unit: unit)
+        let newLoad: Load? = measurementKind == .timeOrDistance ? log.load
+            : LoadEditing.make(value: load, unit: unit, isBodyweight: measurementKind == .repsOnly)
+        let newDuration = seconds > 0 ? seconds : log.durationSeconds
+        let newDistance: Double? = measurementKind == .timeOrDistance ? (distanceKm > 0 ? distanceKm * 1_000 : nil) : log.distanceMeters
+        // Compara com o que a tela mostrou ao abrir (carga exibida = realizada ou planejada).
+        let shownLoad: Load? = measurementKind == .timeOrDistance ? log.load
+            : LoadEditing.make(value: LoadEditing.native(log.load ?? log.plannedLoad).value, unit: unit,
+                               isBodyweight: measurementKind == .repsOnly)
+        let changed = LoadEditing.hasChanges(
+            old: (log.reps, shownLoad, log.durationSeconds, log.distanceMeters),
+            new: (reps, newLoad, newDuration, newDistance))
+        guard changed else {
+            dismiss()
+            return
         }
         do {
-            try SessionStore(context: context).updateSet(
-                log, reps: reps, load: newLoad,
-                durationSeconds: seconds > 0 ? seconds : log.durationSeconds,
-                distanceMeters: measurementKind == .timeOrDistance ? (distanceKm > 0 ? distanceKm * 1_000 : nil) : log.distanceMeters)
+            // Sem autosave: grava uma vez, ao confirmar.
+            try SessionStore(context: context, autosave: false).updateSet(
+                log, reps: reps, load: newLoad, durationSeconds: newDuration, distanceMeters: newDistance)
+            try context.save()
             onSaved(true)
         } catch {
+            context.rollback()
             onSaved(false)
         }
         dismiss()

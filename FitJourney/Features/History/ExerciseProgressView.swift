@@ -33,7 +33,7 @@ struct ExerciseProgressView: View {
     private var availableMetrics: [ProgressCalculator.Metric] { ProgressCalculator.Metric.available(for: kind) }
     private var activeMetric: ProgressCalculator.Metric { metric.flatMap { availableMetrics.contains($0) ? $0 : nil } ?? availableMetrics[0] }
 
-    private var samples: [ProgressCalculator.Sample] {
+    private func makeSamples() -> [ProgressCalculator.Sample] {
         executions.compactMap { execution in
             guard let session = execution.session else { return nil }
             return ProgressCalculator.Sample(
@@ -47,12 +47,13 @@ struct ExerciseProgressView: View {
     }
 
     var body: some View {
-        Group {
+        let samples = makeSamples()
+        return Group {
             if samples.isEmpty {
                 FJEmptyState("Sem registros ainda", systemImage: "chart.line.uptrend.xyaxis",
                              message: "Conclua um treino com este exercício para ver a evolução.")
             } else {
-                content
+                content(samples)
             }
         }
         .fjScreenBackground()
@@ -60,7 +61,7 @@ struct ExerciseProgressView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private var content: some View {
+    private func content(_ samples: [ProgressCalculator.Sample]) -> some View {
         let all = ProgressCalculator.points(samples, metric: activeMetric)
         let points = ProgressCalculator.filter(all, period: period)
         return ScrollView {
@@ -72,9 +73,9 @@ struct ExerciseProgressView: View {
                     .pickerStyle(.segmented)
                 }
                 periodChips
-                chartCard(points)
-                bestCards
-                sessionList
+                chartCard(points, samples: samples)
+                bestCards(samples)
+                sessionList(samples)
             }
             .padding(.horizontal, FJSpacing.screenMargin)
             .padding(.vertical, FJSpacing.s)
@@ -98,7 +99,7 @@ struct ExerciseProgressView: View {
 
     // MARK: Gráfico
 
-    private func chartCard(_ points: [ProgressCalculator.Point]) -> some View {
+    private func chartCard(_ points: [ProgressCalculator.Point], samples: [ProgressCalculator.Sample]) -> some View {
         let selected = selectedDate.flatMap { date in points.min { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) } }
         let unit = activeMetric.unit
         return FJCard {
@@ -161,30 +162,30 @@ struct ExerciseProgressView: View {
 
     private func chartSummary(_ points: [ProgressCalculator.Point]) -> String {
         guard let low = points.map(\.value).min(), let high = points.map(\.value).max() else { return "" }
-        return String(localized: "\(points.count) sessões, de \(FJFormat.number(low, maxFractionDigits: 1)) a \(FJFormat.number(high, maxFractionDigits: 1)) \(activeMetric.unit)")
+        return String(localized: "\(SessionPresentation.sessionsCount(points.count)), de \(FJFormat.number(low, maxFractionDigits: 1)) a \(FJFormat.number(high, maxFractionDigits: 1)) \(activeMetric.unit)")
     }
 
     // MARK: Melhor série e última vez
 
     @ViewBuilder
-    private var bestCards: some View {
+    private func bestCards(_ samples: [ProgressCalculator.Sample]) -> some View {
         if kind == .repsAndLoad || kind == .repsOnly {
             FJCard {
                 FJMetricGrid {
-                    FJMetricCell("Melhor série", value: bestSetText, systemImage: "trophy.fill", tint: FJColor.record)
-                    FJMetricCell("Última vez", value: lastTimeText, systemImage: "clock")
+                    FJMetricCell("Melhor série", value: bestSetText(samples), systemImage: "trophy.fill", tint: FJColor.record)
+                    FJMetricCell("Última vez", value: lastTimeText(samples), systemImage: "clock")
                 }
             }
         }
     }
 
-    private var bestSetText: String? {
+    private func bestSetText(_ samples: [ProgressCalculator.Sample]) -> String? {
         guard let best = ProgressCalculator.bestSet(samples) else { return nil }
         let load = "\(FJFormat.number(best.loadKg)) kg"
         return best.reps.map { "\(load) × \($0)" } ?? load
     }
 
-    private var lastTimeText: String? {
+    private func lastTimeText(_ samples: [ProgressCalculator.Sample]) -> String? {
         guard let last = samples.last else { return nil }
         let relative = last.date.formatted(.relative(presentation: .named))
         if let kg = ProgressCalculator.value(of: last, metric: .load) { return "\(FJFormat.number(kg)) kg · \(relative)" }
@@ -193,7 +194,7 @@ struct ExerciseProgressView: View {
 
     // MARK: Sessões
 
-    private var sessionList: some View {
+    private func sessionList(_ samples: [ProgressCalculator.Sample]) -> some View {
         VStack(alignment: .leading, spacing: FJSpacing.s) {
             FJSectionHeader("Sessões")
             FJCard {

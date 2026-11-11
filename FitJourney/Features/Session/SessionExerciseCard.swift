@@ -121,7 +121,9 @@ struct SessionExerciseCard: View {
         let hasTags = exercise.groupID != nil || info?.existsInCatalog == false
         if hasTags {
             HStack(spacing: FJSpacing.s) {
-                if exercise.groupID != nil { FJTag("Bi-set", systemImage: "link", area: .training) }
+                if let groupID = exercise.groupID {
+                    FJTag(LocalizedStringKey(SessionPresentation.groupName(memberCount: snapshot.exercises.filter { $0.groupID == groupID }.count)), systemImage: "link", area: .training)
+                }
                 if info?.existsInCatalog == false { FJTag("Fora do catálogo", systemImage: "exclamationmark.circle", tone: .neutral) }
             }
         }
@@ -303,7 +305,6 @@ struct SessionSetRow: View {
         .padding(FJSpacing.m)
         .background(FJColor.fill.opacity(0.6), in: FJRadius.shape(FJRadius.field))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(Text(spoken))
         .accessibilityAction(named: Text("Editar série"), onEdit)
     }
 

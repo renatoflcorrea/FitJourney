@@ -5,10 +5,13 @@ import SwiftUI
 struct SessionDock: View {
     let mode: SessionPresentation.DockMode
     let coordinator: SessionCoordinator
+    let holdPrep: SessionHoldPrep?
     let onAddExercise: () -> Void
     let onContinueAfterRest: () -> Void
     let onAdvance: () -> Void
     let onFinish: () -> Void
+    let onStartPrep: (UUID) -> Void
+    let onCancelPrep: () -> Void
 
     var body: some View {
         VStack(spacing: FJSpacing.s) {
@@ -32,18 +35,18 @@ struct SessionDock: View {
                 SessionHoldPanel(setID: setID, startedAt: startedAt, targetSeconds: target, isCardio: isCardio) {
                     coordinator.send(.endHold(setID: setID))
                 }
-            case .set(let setID, let title, let detail, let measurement, let target):
+            case .set(let setID, let title, let detail, let measurement, _):
                 Text(detail)
                     .font(FJFont.label)
                     .foregroundStyle(FJColor.textSecondary)
-                    .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                 switch measurement {
                 case .isometric:
-                    SessionHoldStartButton(title: title, targetSeconds: target) {
-                        coordinator.send(.startHold(setID: setID))
-                    }
+                    SessionHoldStartButton(
+                        title: title, countdown: holdPrep?.setID == setID ? holdPrep?.count : nil,
+                        onPrepare: { onStartPrep(setID) }, onCancel: onCancelPrep,
+                        onStartNow: { coordinator.send(.startHold(setID: setID)) })
                 case .timeOrDistance:
                     Button { coordinator.send(.startHold(setID: setID)) } label: { Label(title, systemImage: "stopwatch") }
                         .buttonStyle(.fjPrimary(.training))
@@ -77,41 +80,41 @@ struct SessionDock: View {
 
 // MARK: - Sustentação
 
-/// "Iniciar sustentação" com 3 s de preparação ("3, 2, 1") antes de o motor registrar o início.
+/// "Iniciar sustentação" com 3 s de preparação ("3, 2, 1") e "Iniciar agora" sem contagem (VoiceOver).
+/// A contagem vive na tela da sessão; aqui só se mostra.
 struct SessionHoldStartButton: View {
     let title: String
-    let targetSeconds: Int?
-    let onStart: () -> Void
-    @State private var countdown: Int?
+    let countdown: Int?
+    let onPrepare: () -> Void
+    let onCancel: () -> Void
+    let onStartNow: () -> Void
+
+    @ScaledMetric(relativeTo: .largeTitle) private var countSize: CGFloat = 60
 
     var body: some View {
         if let countdown {
             VStack(spacing: FJSpacing.s) {
                 Text(verbatim: "\(countdown)")
-                    .font(FJFont.timer(size: 60))
+                    .font(FJFont.timer(size: min(countSize, 96)))
                     .fjNumericTransition(countsDown: true)
                     .accessibilityLabel(Text("Preparação"))
                     .accessibilityValue(Text(verbatim: "\(countdown)"))
-                Button("Cancelar") { self.countdown = nil }
+                Button("Iniciar agora", action: onStartNow)
+                    .buttonStyle(.fjPrimary(.training))
+                Button("Cancelar", action: onCancel)
                     .buttonStyle(.fjSecondary())
             }
             .frame(maxWidth: .infinity)
             .padding(FJSpacing.l)
             .fjGlass(in: FJRadius.shape(FJRadius.panel))
-            .task(id: countdown) {
-                try? await Task.sleep(for: .seconds(1))
-                guard !Task.isCancelled, let current = self.countdown else { return }
-                if current > 1 {
-                    self.countdown = current - 1
-                } else {
-                    self.countdown = nil
-                    onStart()
-                }
-            }
             .fjHaptic(.selection, trigger: countdown)
         } else {
-            Button { countdown = 3 } label: { Label(title, systemImage: "timer") }
-                .buttonStyle(.fjPrimary(.training))
+            VStack(spacing: FJSpacing.s) {
+                Button(action: onPrepare) { Label(title, systemImage: "timer") }
+                    .buttonStyle(.fjPrimary(.training))
+                Button("Iniciar agora", action: onStartNow)
+                    .buttonStyle(.fjSecondary())
+            }
         }
     }
 }
@@ -126,10 +129,11 @@ struct SessionHoldPanel: View {
     let onStop: () -> Void
 
     @ScaledMetric(relativeTo: .largeTitle) private var timerSize: CGFloat = 60
+    @ScaledMetric(relativeTo: .headline) private var stopHeight: CGFloat = FJSize.primaryButton
 
     var body: some View {
         TimelineView(.periodic(from: startedAt, by: 1)) { context in
-            let elapsed = max(0, context.date.timeIntervalSince(startedAt))
+            let elapsed = SessionPresentation.holdElapsed(startedAt: startedAt, now: context.date)
             let reached = targetSeconds.map { elapsed >= Double($0) } ?? false
             let shown: Int = {
                 guard let targetSeconds else { return Int(elapsed) }
@@ -159,7 +163,7 @@ struct SessionHoldPanel: View {
                     Text(isCardio ? "Concluir" : "Parar")
                         .font(.headline)
                         .foregroundStyle(FJColor.onFill)
-                        .frame(maxWidth: .infinity, minHeight: FJSize.primaryButton)
+                        .frame(maxWidth: .infinity, minHeight: stopHeight)
                         .background(FJColor.trainingFill, in: Capsule())
                         .contentShape(Capsule())
                 }

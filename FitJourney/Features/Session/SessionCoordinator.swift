@@ -36,6 +36,9 @@ final class SessionCoordinator {
     /// Explicação contextual antes do pedido de permissão (1º descanso).
     var showsNotificationRationale = false
 
+    /// A doca está mostrando o painel de descanso (que vibra e anuncia sozinho ao zerar).
+    var restPanelVisible = false
+
     // Gatilhos de háptico (contadores: mudar dispara).
     private(set) var setCompletedTick = 0
     private(set) var restFinishedTick = 0
@@ -45,7 +48,6 @@ final class SessionCoordinator {
     private(set) var lastRejection: SessionCommandRejection?
 
     @ObservationIgnored private let defaults: UserDefaults
-    @ObservationIgnored private var suppressedHaptics: Set<UUID> = []
     @ObservationIgnored private var restored = false
 
     init(engine: SessionEngine, defaults: UserDefaults = .standard) {
@@ -102,15 +104,13 @@ final class SessionCoordinator {
         return true
     }
 
-    /// Conclui/desfaz uma série pelo check (que já vibra sozinho): evita o háptico duplicado do evento.
+    /// Conclui/desfaz uma série pelo check. O `FJCheckButton` vibra sozinho ao ir para "concluída",
+    /// qualquer que seja a origem, enquanto a linha está na tela; por isso o evento só vibra com a tela fechada.
     func toggleSet(_ set: SessionSnapshot.ExerciseSet) {
         if set.isCompleted {
             send(.uncompleteSet(setID: set.id))
         } else {
-            suppressedHaptics.insert(set.id)
-            if !send(.completeSet(setID: set.id, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil)) {
-                suppressedHaptics.remove(set.id)
-            }
+            send(.completeSet(setID: set.id, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil))
         }
     }
 
@@ -132,13 +132,14 @@ final class SessionCoordinator {
         switch event {
         case .sessionStarted:
             present()
-        case .setCompleted(let setID, _, _):
-            if suppressedHaptics.remove(setID) == nil { setCompletedTick += 1 }
+        case .setCompleted:
+            // Com a tela aberta o check da linha já vibra (inclusive para séries vindas do relógio).
+            if !isPresented { setCompletedTick += 1 }
         case .restStarted:
             Task { await askNotificationPermissionIfNeeded() }
         case .restFinished:
-            // Com a tela aberta, o painel do descanso já vibra e anuncia sozinho.
-            if !isPresented { restFinishedTick += 1 }
+            // O painel do descanso já vibra e anuncia sozinho; fora dele (outro modo da doca ou tela fechada) vibra aqui.
+            if !(isPresented && restPanelVisible) { restFinishedTick += 1 }
         case .sessionFinished:
             isPresented = false
             celebrationTick += 1
@@ -187,15 +188,23 @@ private struct SessionHostModifier: ViewModifier {
 
     private var engine: SessionEngine { coordinator.engine }
 
+    @State private var staleVisible = false
+    @State private var coverShown = false
+
+    private var coverIsUp: Bool {
+        coordinator.isPresented && engine.snapshot != nil && engine.staleSessionPrompt == nil
+    }
+
+    /// O treino esquecido fecha o cover sem apagar `isPresented`: o sheet abre no `onDismiss`.
     private var coverBinding: Binding<Bool> {
         Binding(
-            get: { coordinator.isPresented && engine.snapshot != nil && engine.staleSessionPrompt == nil },
-            set: { coordinator.isPresented = $0 }
+            get: { coverIsUp },
+            set: { if !$0, engine.staleSessionPrompt == nil { coordinator.isPresented = false } }
         )
     }
 
     private var staleBinding: Binding<Bool> {
-        Binding(get: { engine.staleSessionPrompt != nil }, set: { _ in })
+        Binding(get: { staleVisible && engine.staleSessionPrompt != nil }, set: { _ in })
     }
 
     private var showsAccessory: Bool {
@@ -205,13 +214,17 @@ private struct SessionHostModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .modifier(SessionAccessoryModifier(coordinator: coordinator, isEnabled: showsAccessory))
-            .fullScreenCover(isPresented: coverBinding) {
+            .fullScreenCover(isPresented: coverBinding, onDismiss: {
+                coverShown = false
+                if engine.staleSessionPrompt != nil { staleVisible = true }
+            }) {
                 SessionView(coordinator: coordinator)
+                    .onAppear { coverShown = true }
             }
             .background {
                 Color.clear.sheet(isPresented: staleBinding) {
                     if let prompt = engine.staleSessionPrompt {
-                        StaleSessionSheet(prompt: prompt, engine: engine)
+                        StaleSessionSheet(prompt: prompt, engine: engine, onContinue: { coordinator.present() })
                     }
                 }
             }
@@ -221,6 +234,7 @@ private struct SessionHostModifier: ViewModifier {
             .fjHaptic(.error, trigger: coordinator.errorTick)
             .task {
                 coordinator.restoreIfNeeded()
+                if engine.staleSessionPrompt != nil { staleVisible = true }
                 await coordinator.listen()
             }
             .onChange(of: scenePhase) { _, phase in
@@ -230,7 +244,8 @@ private struct SessionHostModifier: ViewModifier {
                 if id == nil { coordinator.isPresented = false }
             }
             .onChange(of: engine.staleSessionPrompt?.sessionID) { _, id in
-                if id != nil { coordinator.isPresented = false }
+                // Sem cover aberto o sheet entra já; com cover, entra no `onDismiss`.
+                staleVisible = id != nil && !coverShown
             }
     }
 }
@@ -275,7 +290,18 @@ private struct SessionAccessoryModifier: ViewModifier {
 struct StaleSessionSheet: View {
     let prompt: StaleSessionPrompt
     let engine: SessionEngine
+    var onContinue: () -> Void = {}
     @State private var confirmsDiscard = false
+    @State private var failed = false
+
+    private func resolve(_ resolution: StaleSessionResolution) {
+        failed = false
+        if engine.resolveStaleSession(resolution) {
+            if case .keepGoing = resolution { onContinue() }
+        } else {
+            failed = true
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -290,15 +316,18 @@ struct StaleSessionSheet: View {
                     .font(FJFont.body)
                     .foregroundStyle(FJColor.textSecondary)
                 Spacer(minLength: 0)
+                if failed {
+                    FJBanner("Não foi possível concluir", message: "Tente de novo. Seu treino continua salvo.", tone: .destructive)
+                }
                 VStack(spacing: FJSpacing.s) {
                     Button {
-                        engine.resolveStaleSession(.finishAtLastSet())
+                        resolve(.finishAtLastSet())
                     } label: {
                         Text("Finalizar às \(prompt.suggestedEndAt.formatted(date: .omitted, time: .shortened)), na última série")
                             .multilineTextAlignment(.center)
                     }
                     .buttonStyle(.fjPrimary(.training))
-                    Button("Continuar treino") { engine.resolveStaleSession(.keepGoing) }
+                    Button("Continuar treino") { resolve(.keepGoing) }
                         .buttonStyle(.fjSecondary())
                     Button("Descartar treino", role: .destructive) { confirmsDiscard = true }
                         .frame(minHeight: FJSize.minTap)
@@ -307,7 +336,7 @@ struct StaleSessionSheet: View {
             .padding(FJSpacing.screenMargin)
             .fjScreenBackground()
             .confirmationDialog("Descartar este treino?", isPresented: $confirmsDiscard, titleVisibility: .visible) {
-                Button("Descartar treino", role: .destructive) { engine.resolveStaleSession(.discard) }
+                Button("Descartar treino", role: .destructive) { resolve(.discard) }
                 Button("Cancelar", role: .cancel) {}
             } message: {
                 Text("Nada será salvo no histórico.")

@@ -33,6 +33,16 @@ struct SessionPresentationTests {
         #expect(SessionPresentation.compactSetText(set(reps: 9, done: true), kind: .repsAndLoad) == "26 kg × 9")
     }
 
+    @Test func pluralsAgree() {
+        #expect(SessionPresentation.seriesCount(1) == "1 série")
+        #expect(SessionPresentation.seriesCount(3) == "3 séries")
+        #expect(SessionPresentation.repsDone(1) == "1 repetição feita")
+        #expect(SessionPresentation.setsDone(1, of: 1) == "1 de 1 série")
+        #expect(SessionPresentation.groupName(memberCount: 2) == "Bi-set")
+        #expect(SessionPresentation.groupName(memberCount: 3) == "Tri-set")
+        #expect(SessionPresentation.groupName(memberCount: 5) == "Circuito")
+    }
+
     @Test func bodyweightLoadText() {
         #expect(SessionPresentation.loadText(WatchLoad(value: 10, isBodyweight: true)) == "+10 kg")
         #expect(SessionPresentation.loadText(WatchLoad(value: -20, isBodyweight: true)) == "−20 kg")
@@ -177,9 +187,50 @@ struct SessionCoordinatorTests {
         // Série concluída fora do check (doca, relógio) vibra pelo evento.
         coordinator.handle(.setCompleted(setID: set, exerciseID: UUID(), at: .now))
         #expect(coordinator.setCompletedTick == 1)
-        // Descanso vencido com a tela fechada vibra; com a tela aberta, não.
+        // Descanso vencido sem painel visível vibra pelo evento.
         coordinator.handle(.restFinished(at: .now))
         #expect(coordinator.restFinishedTick == 1)
+    }
+
+    @Test func hapticsDependOnWhatIsVisible() throws {
+        let (f, coordinator) = try make()
+        coordinator.start(routine: try f.makeRoutine())
+        #expect(coordinator.isPresented)
+        // Tela aberta: o check da linha vibra sozinho; o evento não duplica.
+        coordinator.handle(.setCompleted(setID: UUID(), exerciseID: UUID(), at: .now))
+        #expect(coordinator.setCompletedTick == 0)
+        // Painel de descanso visível vibra sozinho; sem painel (outro modo da doca), vibra pelo evento.
+        coordinator.restPanelVisible = true
+        coordinator.handle(.restFinished(at: .now))
+        #expect(coordinator.restFinishedTick == 0)
+        coordinator.restPanelVisible = false
+        coordinator.handle(.restFinished(at: .now))
+        #expect(coordinator.restFinishedTick == 1)
+        // Minimizada: ambos vibram.
+        coordinator.restPanelVisible = true
+        coordinator.minimize()
+        coordinator.handle(.setCompleted(setID: UUID(), exerciseID: UUID(), at: .now))
+        coordinator.handle(.restFinished(at: .now))
+        #expect(coordinator.setCompletedTick == 1)
+        #expect(coordinator.restFinishedTick == 2)
+        // Comemoração só no fim da sessão.
+        #expect(coordinator.celebrationTick == 0)
+    }
+
+    @Test func staleSessionOnForegroundKeepsPresentationState() throws {
+        let (f, coordinator) = try make()
+        coordinator.start(routine: try f.makeRoutine())
+        #expect(coordinator.isPresented)
+        f.clock.now = f.t0.addingTimeInterval(5 * 3_600)
+        coordinator.handleForeground()
+        #expect(f.engine.staleSessionPrompt != nil)
+        // O prompt não apaga o estado de apresentação; "Continuar" reabre.
+        #expect(coordinator.isPresented)
+        #expect(f.engine.resolveStaleSession(.keepGoing))
+        #expect(f.engine.staleSessionPrompt == nil)
+        coordinator.minimize()
+        coordinator.present()
+        #expect(coordinator.isPresented)
     }
 
     @Test func rejectedCommandRaisesErrorTick() throws {
@@ -281,6 +332,42 @@ struct HistoryPresentationTests {
         #expect(ProgressCalculator.sessionLine(withReps, kind: .repsAndLoad) == "\(FJFormat.number(32.5)) × 10, 10, 9, 8")
         let without = sample(1, load: 32.5, reps: [nil, nil, nil, nil])
         #expect(ProgressCalculator.sessionLine(without, kind: .repsAndLoad).hasSuffix("4 séries"))
+    }
+
+    @Test func loadEditingKeepsNativeUnit() {
+        let native = LoadEditing.native(.weight(value: 66, unit: .lb))
+        #expect(native.value == 66)
+        #expect(native.unit == .lb)
+        #expect(LoadEditing.unitText(native.unit) == "lb")
+        #expect(LoadEditing.make(value: 70, unit: .lb, isBodyweight: false) == .weight(value: 70, unit: .lb))
+        #expect(LoadEditing.make(value: -10, unit: .lb, isBodyweight: true) == .bodyweight(delta: -10, unit: .lb))
+        #expect(LoadEditing.native(.bodyweight(delta: 12, unit: .lb)).value == 12)
+        #expect(LoadEditing.native(nil).unit == .kg)
+    }
+
+    @Test func savingWithoutChangesIsNotAnEdit() {
+        let old: (reps: Int?, load: Load?, duration: Double?, distance: Double?) = (10, .weight(value: 66, unit: .lb), nil, nil)
+        #expect(!LoadEditing.hasChanges(old: old, new: old))
+        #expect(LoadEditing.hasChanges(old: old, new: (10, .weight(value: 67, unit: .lb), nil, nil)))
+        #expect(LoadEditing.hasChanges(old: old, new: (nil, old.load, nil, nil)))
+    }
+
+    @Test func historyEditInPoundsMarksEditedOnlyOnChange() throws {
+        let f = try EngineFixture()
+        let routine = try f.makeRoutine()
+        let session = try f.start(routine)
+        let id = try #require(f.engine.snapshot?.currentSetID)
+        f.apply(.completeSet(setID: id, reps: 8, load: WatchLoad(value: 66, unit: .lb), durationSeconds: nil, distanceMeters: nil), at: 10, session: session)
+        f.apply(.finish(rpe: nil, applyLoadProposalIDs: []), at: 20, session: session)
+        let finished = try #require(try f.base.sessions.completedSessions().first)
+        let log = try #require(finished.sortedExercises.flatMap(\.sortedSets).first { $0.id == id })
+        #expect(LoadEditing.native(log.load).unit == .lb)
+        #expect(!log.edited)
+        try SessionStore(context: f.context, autosave: false).updateSet(
+            log, reps: 9, load: LoadEditing.make(value: 68, unit: .lb, isBodyweight: false))
+        try f.context.save()
+        #expect(log.edited)
+        #expect(log.load == .weight(value: 68, unit: .lb))
     }
 
     @Test func metricsByKind() {

@@ -24,6 +24,7 @@ struct SessionView: View {
     @State private var showsFinish = false
     @State private var confirmsDiscard = false
     @State private var bannerDismissed = false
+    @State private var holdPrep: SessionHoldPrep?
 
     private var engine: SessionEngine { coordinator.engine }
 
@@ -83,9 +84,7 @@ struct SessionView: View {
             .tint(FJColor.training)
         }
         .sheet(isPresented: $showsReorder) {
-            if let snapshot = engine.snapshot {
-                SessionReorderSheet(coordinator: coordinator, exercises: snapshot.exercises)
-            }
+            SessionReorderSheet(coordinator: coordinator)
         }
         .confirmationDialog("Motivo", isPresented: skipDialogBinding, titleVisibility: .visible) {
             skipButtons
@@ -107,7 +106,12 @@ struct SessionView: View {
         .task(id: engine.snapshot?.exercises.map { "\($0.id)\($0.exerciseID?.uuidString ?? "")" }.joined()) {
             loadCatalog()
         }
-        .task(id: engine.snapshot?.restEndsAt) { await dismissFinishedRestLater() }
+        .task(id: RestTaskKey(endsAt: engine.snapshot?.restEndsAt, revision: engine.snapshot?.revision)) {
+            await dismissFinishedRestLater()
+        }
+        .task(id: holdPrep) { await tickHoldPrep() }
+        .onChange(of: engine.snapshot?.currentSetID) { holdPrep = nil }
+        .onDisappear { coordinator.restPanelVisible = false }
         .onChange(of: engine.snapshot?.currentExerciseID) { old, new in advanceIfFinished(from: old, to: new) }
         .task { await coordinator.refreshNotificationAuthorization() }
     }
@@ -238,15 +242,33 @@ struct SessionView: View {
     private func dock(_ snapshot: SessionSnapshot) -> some View {
         let mode = SessionPresentation.dockMode(
             snapshot: snapshot, now: .now, restDismissedFor: restDismissedFor, advanceTo: advanceTo)
+        let isRest: Bool = if case .rest = mode { true } else { false }
         SessionDock(
             mode: mode,
             coordinator: coordinator,
+            holdPrep: holdPrep,
             onAddExercise: { picker = .add },
             onContinueAfterRest: { restDismissedFor = snapshot.restEndsAt },
             onAdvance: { advanceTo = nil },
-            onFinish: { showsFinish = true }
+            onFinish: { showsFinish = true },
+            onStartPrep: { holdPrep = SessionHoldPrep(setID: $0, count: 3) },
+            onCancelPrep: { holdPrep = nil }
         )
         .fjAnimation(FJMotion.structure, value: mode)
+        .onChange(of: isRest, initial: true) { _, value in coordinator.restPanelVisible = value }
+    }
+
+    /// Contagem de preparação ("3, 2, 1"): vive aqui para sobreviver à troca de modo da doca.
+    private func tickHoldPrep() async {
+        guard let prep = holdPrep else { return }
+        try? await Task.sleep(for: .seconds(1))
+        guard !Task.isCancelled, holdPrep == prep else { return }
+        if prep.count > 1 {
+            holdPrep = SessionHoldPrep(setID: prep.setID, count: prep.count - 1)
+        } else {
+            holdPrep = nil
+            coordinator.send(.startHold(setID: prep.setID))
+        }
     }
 
     private func dismissFinishedRestLater() async {
@@ -366,6 +388,17 @@ extension SessionView.PickerPurpose {
     }
 }
 
+struct RestTaskKey: Hashable {
+    var endsAt: Date?
+    var revision: Int?
+}
+
+/// Contagem de preparação da sustentação em andamento.
+struct SessionHoldPrep: Equatable {
+    var setID: UUID
+    var count: Int
+}
+
 /// Dados de catálogo de um exercício da sessão (só leitura).
 struct SessionCatalogInfo: Equatable {
     var media: MediaRef?
@@ -428,6 +461,8 @@ struct SessionSetEditSheet: View {
         _distanceKm = State(initialValue: (set.distanceMeters ?? 0) / 1_000)
     }
 
+    private var unitText: String { (SessionPresentation.displayLoad(set)?.unit ?? .kg) == .kg ? "kg" : "lb" }
+
     private var index: Int { (exercise.sets.firstIndex { $0.id == set.id } ?? 0) + 1 }
 
     var body: some View {
@@ -442,7 +477,7 @@ struct SessionSetEditSheet: View {
                                 .foregroundStyle(FJColor.textSecondary)
                             if exercise.measurementKind != .timeOrDistance {
                                 NumberStepperField(exercise.measurementKind == .repsOnly ? "Lastro" : "Carga", value: $load,
-                                                   unit: "kg", step: 0.5,
+                                                   unit: unitText, step: 0.5,
                                                    range: exercise.measurementKind == .repsOnly ? -300...300 : 0...999,
                                                    fractionDigits: 2, showsSign: exercise.measurementKind == .repsOnly)
                             }
@@ -498,15 +533,12 @@ struct SessionSetEditSheet: View {
 // MARK: - Reordenar
 
 /// Modo "Reordenar": arrastar ou usar as ações de mover do VoiceOver (lista em modo de edição).
+/// A lista vem sempre do snapshot (mudanças do relógio aparecem aqui).
 struct SessionReorderSheet: View {
     let coordinator: SessionCoordinator
-    @State var exercises: [SessionSnapshot.Exercise]
     @Environment(\.dismiss) private var dismiss
 
-    init(coordinator: SessionCoordinator, exercises: [SessionSnapshot.Exercise]) {
-        self.coordinator = coordinator
-        _exercises = State(initialValue: exercises)
-    }
+    private var exercises: [SessionSnapshot.Exercise] { coordinator.engine.snapshot?.exercises ?? [] }
 
     var body: some View {
         NavigationStack {
@@ -521,9 +553,10 @@ struct SessionReorderSheet: View {
                 }
                 .onMove { source, destination in
                     guard let from = source.first else { return }
-                    let moved = exercises[from]
-                    exercises.move(fromOffsets: source, toOffset: destination)
-                    if let to = exercises.firstIndex(where: { $0.id == moved.id }) {
+                    var reordered = exercises
+                    let moved = reordered[from]
+                    reordered.move(fromOffsets: source, toOffset: destination)
+                    if let to = reordered.firstIndex(where: { $0.id == moved.id }) {
                         coordinator.send(.reorderExercise(exerciseID: moved.id, toIndex: to))
                     }
                 }

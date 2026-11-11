@@ -2,6 +2,40 @@ import Foundation
 
 /// Regras puras de apresentação da sessão (textos, VoiceOver, modo da doca). Sem SwiftUI: testável.
 enum SessionPresentation {
+    // MARK: Plurais (frases inteiras localizáveis)
+
+    static func seriesCount(_ n: Int) -> String {
+        n == 1 ? String(localized: "1 série") : String(localized: "\(n) séries")
+    }
+
+    static func repsDone(_ n: Int) -> String {
+        n == 1 ? String(localized: "1 repetição feita") : String(localized: "\(n) repetições feitas")
+    }
+
+    static func sessionsCount(_ n: Int) -> String {
+        n == 1 ? String(localized: "1 sessão") : String(localized: "\(n) sessões")
+    }
+
+    /// "4 de 5 séries" (concordância pelo total).
+    static func setsDone(_ done: Int, of total: Int) -> String {
+        total == 1 ? String(localized: "\(done) de 1 série") : String(localized: "\(done) de \(total) séries")
+    }
+
+    /// Bi-set (2), Tri-set (3), Circuito (4+).
+    static func groupName(memberCount: Int) -> String {
+        switch memberCount {
+        case ...2: String(localized: "Bi-set")
+        case 3: String(localized: "Tri-set")
+        default: String(localized: "Circuito")
+        }
+    }
+
+    /// Tempo da sustentação/cronômetro. Ponto único: quando o motor passar a descontar a pausa,
+    /// só este cálculo muda (a doca já troca para "Pausado" enquanto a sessão está pausada).
+    static func holdElapsed(startedAt: Date, now: Date) -> TimeInterval {
+        max(0, now.timeIntervalSince(startedAt))
+    }
+
     // MARK: Cargas
 
     /// "26 kg", "+10 kg" / "−20 kg" (peso corporal com lastro/assistência), "Peso corporal".
@@ -48,7 +82,7 @@ enum SessionPresentation {
         var parts = [String(localized: "Série \(index) de \(total)")]
         if !set.targetText.isEmpty { parts.append(String(localized: "alvo \(spokenTarget(set.targetText))")) }
         if let load = spokenLoad(displayLoad(set)) { parts.append(load) }
-        if let reps = set.reps { parts.append(String(localized: "\(reps) repetições feitas")) }
+        if let reps = set.reps { parts.append(repsDone(reps)) }
         return parts.joined(separator: ", ")
     }
 
@@ -93,11 +127,11 @@ enum SessionPresentation {
         switch exercise.status {
         case .completed, .partial:
             let done = exercise.sets.filter(\.isCompleted).count
-            return join([String(localized: "\(done) de \(exercise.sets.count) séries"), load])
+            return join([setsDone(done, of: exercise.sets.count), load])
         case .skipped:
             return String(localized: "Pulado")
         default:
-            let count = first.targetText.isEmpty ? String(localized: "\(base.count) séries") : "\(base.count) × \(first.targetText)"
+            let count = first.targetText.isEmpty ? seriesCount(base.count) : "\(base.count) × \(first.targetText)"
             return join([count, load])
         }
     }
@@ -116,7 +150,7 @@ enum SessionPresentation {
         if reps.count == done.count, Set(reps).count == 1, let first = reps.first {
             countText = "\(done.count) × \(first)"
         } else {
-            countText = String(localized: "\(done.count) séries")
+            countText = seriesCount(done.count)
         }
         let text = loadText.map { String(localized: "\(countText) com \($0)") } ?? countText
         return String(localized: "última vez: \(text)")
@@ -131,8 +165,7 @@ enum SessionPresentation {
         guard members.count > 1 else { return nil }
         let rounds = max(members.map(\.sets.count).max() ?? 1, 1)
         let done = members.map { $0.sets.filter(\.isCompleted).count }.min() ?? 0
-        let name: String = members.count == 2 ? String(localized: "Bi-set")
-            : members.count == 3 ? String(localized: "Tri-set") : String(localized: "Circuito")
+        let name = groupName(memberCount: members.count)
         return String(localized: "\(name) · rodada \(min(done + 1, rounds)) de \(rounds)")
     }
 
@@ -225,7 +258,7 @@ enum SessionPresentation {
             return snapshot.exercises.isEmpty ? nil : String(localized: "Pronto para finalizar")
         }
         guard let position = snapshot.currentSetPosition else { return exercise.name }
-        return "\(exercise.name) · " + String(localized: "série \(position.index) de \(position.of)")
+        return String(localized: "\(exercise.name) · série \(position.index) de \(position.of)")
     }
 
     /// Nome exibido da ficha ("Treino livre" quando vazio).

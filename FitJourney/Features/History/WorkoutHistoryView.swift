@@ -19,8 +19,32 @@ struct WorkoutHistoryView: View {
 
     init() {}
 
-    private var rows: [HistoryPresentation.Row] { sessions.map(HistoryPresentation.row) }
-    private var sessionsByID: [UUID: WorkoutSession] { Dictionary(sessions.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a }) }
+    // Estado derivado: recalculado quando a lista muda (e ao voltar de um detalhe), não a cada render.
+    @State private var rows: [HistoryPresentation.Row] = []
+    @State private var sections: [HistoryPresentation.MonthSection] = []
+    @State private var trainedDays: Set<Date> = []
+    @State private var sessionsByID: [UUID: WorkoutSession] = [:]
+    @State private var deleteFailed = false
+    @Environment(\.modelContext) private var context
+
+    private func refresh() {
+        rows = sessions.map(HistoryPresentation.row)
+        sections = HistoryPresentation.sections(rows)
+        trainedDays = HistoryPresentation.trainedDays(rows)
+        sessionsByID = Dictionary(sessions.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+    }
+
+    private func delete(_ session: WorkoutSession) {
+        do {
+            context.delete(session)
+            try context.save()
+            deleteFailed = false
+        } catch {
+            context.rollback()
+            deleteFailed = true
+        }
+        refresh()
+    }
 
     var body: some View {
         Group {
@@ -30,6 +54,9 @@ struct WorkoutHistoryView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: FJSpacing.cardGap, pinnedViews: []) {
+                        if deleteFailed {
+                            FJBanner("Não foi possível excluir", message: "A sessão continua no histórico. Tente de novo.", tone: .destructive)
+                        }
                         Picker("Visualização", selection: $mode) {
                             ForEach(Mode.allCases) { Text($0.title).tag($0) }
                         }
@@ -48,13 +75,15 @@ struct WorkoutHistoryView: View {
         .fjScreenBackground()
         .navigationTitle("Histórico")
         .navigationBarTitleDisplayMode(.large)
+        .task(id: sessions.count) { refresh() }
+        .onAppear { refresh() }
     }
 
     // MARK: Lista
 
     @ViewBuilder
     private var listContent: some View {
-        ForEach(HistoryPresentation.sections(rows), id: \.monthStart) { section in
+        ForEach(sections, id: \.monthStart) { section in
             FJSectionHeader(LocalizedStringKey(section.monthStart.formatted(.dateTime.month(.wide).year()).capitalized))
                 .padding(.top, FJSpacing.s)
             ForEach(section.rows) { row in
@@ -67,7 +96,7 @@ struct WorkoutHistoryView: View {
     private func sessionLink(_ row: HistoryPresentation.Row) -> some View {
         if let session = sessionsByID[row.id] {
             NavigationLink {
-                WorkoutDetailView(session: session)
+                WorkoutDetailView(session: session, onDelete: delete)
             } label: {
                 HistoryRowView(row: row)
             }
@@ -80,7 +109,7 @@ struct WorkoutHistoryView: View {
     @ViewBuilder
     private var calendarContent: some View {
         let calendar = Calendar.current
-        let trained = HistoryPresentation.trainedDays(rows)
+        let trained = trainedDays
         FJCard {
             VStack(spacing: FJSpacing.m) {
                 HStack {
