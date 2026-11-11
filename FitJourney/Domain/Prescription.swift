@@ -123,6 +123,9 @@ struct CardioTarget: Codable, Sendable, Hashable {
 
 /// Duração estimada de uma ficha (SPEC §3.2): Σ (execução + descanso) por série.
 enum RoutineEstimate {
+    /// Tempo de troca entre membros de um bi-set/circuito (sem descanso).
+    static let groupTransitionSeconds = 15
+
     /// - Parameters:
     ///   - restSeconds: descanso efetivo de cada série prescrita.
     ///   - workSecondsPerSet: tempo médio de execução de uma série (padrão 40 s).

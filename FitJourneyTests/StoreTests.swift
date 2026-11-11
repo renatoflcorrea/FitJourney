@@ -430,3 +430,31 @@ struct NutritionStoreTests {
         #expect(try f.count(FoodEntry.self) == 2) // registros do dia são histórico
     }
 }
+
+@MainActor
+struct RoutineDurationGroupTests {
+    @Test func groupMembersOnlyRestAtRoundEnd() throws {
+        let container = try PersistenceController.makeContainer(inMemory: true)
+        let context = container.mainContext
+        let routine = Routine(name: "A")
+        context.insert(routine)
+        let group = UUID()
+        for i in 0..<2 {
+            let re = RoutineExercise()
+            re.sortIndex = i
+            re.groupID = group
+            re.restSeconds = 90
+            re.routine = routine
+            context.insert(re)
+            for s in 0..<3 {
+                let set = SetPrescription()
+                set.sortIndex = s
+                set.routineExercise = re
+                context.insert(set)
+            }
+        }
+        // 6 séries × 40 s + 3 transições de 15 s (1º membro) + 3 descansos de 90 s (último membro)
+        let expected: Int = 6 * 40 + 3 * 15 + 3 * 90
+        #expect(routine.estimatedDurationSeconds == expected)
+    }
+}

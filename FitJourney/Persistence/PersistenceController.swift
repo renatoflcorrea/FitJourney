@@ -12,6 +12,7 @@ enum SchemaV1: VersionedSchema {
             WorkoutSession.self, SessionExercise.self, SetLog.self,
             NutritionPlan.self, NutritionDay.self, Meal.self, MealItem.self,
             FoodItem.self, FoodEntry.self, WaterLog.self,
+            ChatConversation.self, ChatMessage.self,
         ]
     }
 }
