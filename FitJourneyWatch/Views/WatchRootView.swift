@@ -27,6 +27,8 @@ struct WatchRootView: View {
     @ViewBuilder private var content: some View {
         if let summary = model.summary {
             SummaryView(summary: summary)
+        } else if model.isSavingSession {
+            SavingView()
         } else if model.hasActiveSession {
             if let since = model.staleSessionSince {
                 StaleSessionView(since: since)
@@ -94,5 +96,25 @@ struct StaleSessionView: View {
                 Button("Descartar", role: .destructive) { model.discard() }.buttonStyle(.glass)
             }
         }
+    }
+}
+
+/// Fim da sessão enviado, ainda sem confirmação do iPhone.
+struct SavingView: View {
+    @Environment(WatchSessionModel.self) private var model
+
+    var body: some View {
+        VStack(spacing: 8) {
+            if model.connection == .phoneUnreachable {
+                Image(systemName: "iphone.slash").font(.system(size: 30)).foregroundStyle(WF.textSecondary).accessibilityHidden(true)
+                Text("Salvo no relógio").font(.headline)
+                Text("Será enviado ao iPhone quando conectar.").font(.footnote).foregroundStyle(WF.textSecondary).multilineTextAlignment(.center)
+                Button("OK") { model.dismissSaving() }.buttonStyle(.glass)
+            } else {
+                ProgressView()
+                Text("Salvando…").font(.headline)
+            }
+        }
+        .accessibilityElement(children: .contain)
     }
 }

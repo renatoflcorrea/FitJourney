@@ -27,7 +27,7 @@ struct WatchHarnessScene {
         case "never": reachable = false
         case "noprogram": break
         case "list", "detail", "offline": break
-        case "series", "controls", "metrics", "routine", "finish", "summary", "unreachable":
+        case "series", "controls", "metrics", "routine", "finish", "summary", "saving", "unreachable":
             snapshot = WatchFixtures.snapshot(completed: 1, now: now)
         case "series-last": snapshot = WatchFixtures.snapshot(completed: 3, now: now)
         case "rest", "rest-done": snapshot = WatchFixtures.snapshot(completed: 1, now: now)
@@ -50,6 +50,7 @@ struct WatchHarnessScene {
         if name == "intro" { healthAccess = .authorized }
 
         let transport = MockWatchTransport(digest: name == "never" || name == "noprogram" ? nil : digest, snapshot: snapshot, reachable: reachable)
+        if name == "saving" { transport.autoRespond = false }
         let model = WatchSessionModel(transport: transport, haptics: RecordingHaptics(), health: FixedHealthProvider(access: healthAccess))
         if name != "never" {
             model.receive(digest: name == "noprogram" ? nil : digest)
@@ -59,9 +60,15 @@ struct WatchHarnessScene {
         if name == "rest" { model.restTotalSeconds = 90 }
         if name == "intro" { model.introExerciseID = WatchFixtures.id(200) }
         if name == "rest-done" { model.restFinishedAt = now }
-        if name == "summary" {
-            model.finish(rpe: 8)
+        if name == "summary", let snapshot {
+            // iPhone confirma o fim: só então o resumo existe.
+            let finish = SessionCommand(sessionID: snapshot.sessionID, issuedAt: now, origin: .watch, kind: .finish(rpe: 8, applyLoadProposalIDs: []))
+            if var done = SessionReducer.apply(finish, to: snapshot, digest: digest) {
+                done.revision = snapshot.revision + 1
+                model.receive(snapshot: done)
+            }
         }
+        if name == "saving" { model.finish(rpe: 8) }
         switch name {
         case "detail":
             override = { AnyView(NavigationStack { RoutineDetailView(routine: digest.routines[0]) }) }

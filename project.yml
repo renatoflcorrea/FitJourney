@@ -63,6 +63,10 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: br.com.renatocorrea.fitjourney
+        # W3b (não implementado aqui): adicionar WKBackgroundModes [workout-processing] e o entitlement
+        # com.apple.developer.healthkit (+ healthkit.access []) ao alvo do relógio ao ligar a HKWorkoutSession.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: br.com.renatocorrea.fitjourney.watchkitapp

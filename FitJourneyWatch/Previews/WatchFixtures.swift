@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 
 /// Dados de exemplo para previews, testes e o harness de screenshots (nunca vão para o usuário final:
@@ -51,9 +52,10 @@ enum WatchFixtures {
             let command = SessionCommand(sessionID: sessionID, issuedAt: now.addingTimeInterval(-offset), origin: .phone,
                                          kind: .completeSet(setID: setID, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil))
             snapshot = SessionReducer.apply(command, to: snapshot, digest: digest)!
-            offset -= 120
+            offset -= 50
         }
         snapshot.revision = revision
         return snapshot
     }
 }
+#endif

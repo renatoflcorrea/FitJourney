@@ -1,12 +1,22 @@
 import Foundation
 
+#if DEBUG
 /// iPhone simulado: guarda o programa e a sessão "de verdade", aplica comandos com o mesmo
 /// `SessionReducer`, devolve resposta + snapshot (revisão +1) e enfileira o que chega fora de alcance.
 /// Usado em previews, testes e no harness de screenshots. Sem latência artificial por padrão.
 @MainActor
 final class MockWatchTransport: WatchTransport {
-    let events: AsyncStream<WatchTransportEvent>
-    private let continuation: AsyncStream<WatchTransportEvent>.Continuation
+    private var continuations: [UUID: AsyncStream<WatchTransportEvent>.Continuation] = [:]
+
+    func makeEventStream() -> AsyncStream<WatchTransportEvent> {
+        let id = UUID()
+        return AsyncStream(bufferingPolicy: .unbounded) { continuation in
+            continuations[id] = continuation
+            continuation.onTermination = { [weak self] _ in Task { @MainActor in self?.continuations[id] = nil } }
+        }
+    }
+
+    private func yield(_ event: WatchTransportEvent) { for continuation in continuations.values { continuation.yield(event) } }
 
     private(set) var isReachable: Bool
     /// Programa que o "iPhone" publica (`nil` = sem programa ativo).
@@ -22,11 +32,10 @@ final class MockWatchTransport: WatchTransport {
     var rejectNext: SessionCommandRejection?
     /// Se `false`, o mock não responde sozinho (testes controlam respostas à mão com `emit`).
     var autoRespond = true
+    /// O "iPhone" cria IDs novos de série/exercício ao iniciar sessão (como o `SessionStore` real) — não mascara o bug de IDs (A1).
+    var generatesFreshIDs = true
 
     init(digest: ProgramDigest? = nil, snapshot: SessionSnapshot? = nil, reachable: Bool = true) {
-        var cont: AsyncStream<WatchTransportEvent>.Continuation!
-        events = AsyncStream(bufferingPolicy: .unbounded) { cont = $0 }
-        continuation = cont
         self.digest = digest
         self.phoneSnapshot = snapshot
         self.isReachable = reachable
@@ -40,21 +49,21 @@ final class MockWatchTransport: WatchTransport {
             if isReachable { handle(command) } else { offlineQueue.append(command) }
         case .snapshotRequest:
             guard isReachable else { return }
-            continuation.yield(.message(.programDigest(digest)))
-            continuation.yield(.message(.snapshot(phoneSnapshot)))
+            yield(.message(.programDigest(digest)))
+            yield(.message(.snapshot(phoneSnapshot)))
         default:
             break
         }
     }
 
     /// Entrega uma mensagem ao relógio como se viesse do iPhone.
-    func emit(_ message: WatchLinkMessage) { continuation.yield(.message(message)) }
+    func emit(_ message: WatchLinkMessage) { yield(.message(message)) }
 
     /// Muda a alcançabilidade; ao voltar, entrega a fila acumulada em ordem.
     func setReachable(_ reachable: Bool) {
         guard reachable != isReachable else { return }
         isReachable = reachable
-        continuation.yield(.reachability(reachable))
+        yield(.reachability(reachable))
         if reachable {
             let queued = offlineQueue
             offlineQueue = []
@@ -67,9 +76,24 @@ final class MockWatchTransport: WatchTransport {
         handle(command, replyTo: false)
     }
 
-    func publishDigest() { continuation.yield(.message(.programDigest(digest))) }
+    func publishDigest() { yield(.message(.programDigest(digest))) }
 
-    func finish() { continuation.finish() }
+    func finish() { continuations.values.forEach { $0.finish() } }
+
+    static func withFreshIDs(_ snapshot: SessionSnapshot) -> SessionSnapshot {
+        var s = snapshot
+        for e in s.exercises.indices {
+            let old = s.exercises[e].id
+            s.exercises[e].id = UUID()
+            if s.currentExerciseID == old { s.currentExerciseID = s.exercises[e].id }
+            for i in s.exercises[e].sets.indices {
+                let oldSet = s.exercises[e].sets[i].id
+                s.exercises[e].sets[i].id = UUID()
+                if s.currentSetID == oldSet { s.currentSetID = s.exercises[e].sets[i].id }
+            }
+        }
+        return s
+    }
 
     private func handle(_ command: SessionCommand, replyTo: Bool = true) {
         let outcome: SessionCommandReply.Outcome
@@ -81,6 +105,7 @@ final class MockWatchTransport: WatchTransport {
         } else {
             let updated = SessionReducer.apply(command, to: phoneSnapshot, digest: digest)
             if var updated {
+                if case .start = command.kind, generatesFreshIDs { updated = Self.withFreshIDs(updated) }
                 updated.revision = (phoneSnapshot?.sessionID == updated.sessionID ? phoneSnapshot?.revision ?? 0 : 0) + 1
                 phoneSnapshot = updated
                 appliedCommandIDs.insert(command.commandID)
@@ -90,10 +115,11 @@ final class MockWatchTransport: WatchTransport {
             }
         }
         if replyTo {
-            continuation.yield(.message(.commandReply(.init(commandID: command.commandID, sessionID: command.sessionID,
+            yield(.message(.commandReply(.init(commandID: command.commandID, sessionID: command.sessionID,
                                                             outcome: outcome, revision: phoneSnapshot?.revision ?? 0))))
         }
         if case .rejected = outcome { return }
-        continuation.yield(.message(.snapshot(phoneSnapshot)))
+        yield(.message(.snapshot(phoneSnapshot)))
     }
 }
+#endif

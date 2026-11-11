@@ -23,24 +23,27 @@ enum SessionReducer {
         case .completeSet(let setID, let reps, let load, let duration, let distance):
             resumeIfNeeded(&s, at: at)
             guard let location = locate(setID, in: s), !s.exercises[location.e].sets[location.s].isCompleted else { return s }
+            let isIsometric = s.exercises[location.e].measurementKind == .isometric
             mutate(&s, location) {
                 $0.isCompleted = true
                 $0.completedAt = at
                 if let reps { $0.reps = reps }
                 if let load { $0.load = load }
-                if let duration { $0.durationSeconds = duration }
+                // Isométrico concluído sem medição: usa o alvo como duração (mesma regra do iPhone).
+                if let duration { $0.durationSeconds = duration } else if isIsometric, let hold = $0.targetHoldSeconds { $0.durationSeconds = Double(hold) }
                 if let distance { $0.distanceMeters = distance }
             }
             s.holdSetID = nil
             s.holdStartedAt = nil
             let set = s.exercises[location.e].sets[location.s]
             let rest = set.restSeconds ?? s.exercises[location.e].restSeconds ?? fallbackRestSeconds
-            if rest > 0 { s.restEndsAt = at.addingTimeInterval(Double(rest)) }
             advance(&s, after: location.e)
+            // Bi-set/circuito: o descanso só começa no fim da rodada (`SessionFlow.isEndOfRound`).
+            if rest > 0, isEndOfRound(s, after: location.e) { s.restEndsAt = at.addingTimeInterval(Double(rest)) }
         case .uncompleteSet(let setID):
             guard let location = locate(setID, in: s) else { return s }
             mutate(&s, location) { $0.isCompleted = false; $0.completedAt = nil }
-            retarget(&s, preferring: s.exercises[location.e].id)
+            reopen(&s, exerciseAt: location.e)
         case .updateSet(let setID, let reps, let load, let duration, let distance):
             guard let location = locate(setID, in: s) else { return s }
             mutate(&s, location) {
@@ -69,6 +72,7 @@ enum SessionReducer {
             guard locate(setID, in: s) != nil else { return s }
             s.holdSetID = setID
             s.holdStartedAt = at
+            s.restEndsAt = nil
         case .endHold(let setID):
             guard s.holdSetID == setID, let started = s.holdStartedAt else { return s }
             var completion = command
@@ -78,14 +82,17 @@ enum SessionReducer {
         case .skipExercise(let exerciseID, _):
             guard let index = s.exercises.firstIndex(where: { $0.id == exerciseID }) else { return s }
             s.exercises[index].status = .skipped
-            if s.currentExerciseID == exerciseID { retarget(&s, preferring: nil, after: index) }
+            if s.currentExerciseID == exerciseID { selectCurrent(&s) }
         case .completeExercise(let exerciseID):
             guard let index = s.exercises.firstIndex(where: { $0.id == exerciseID }) else { return s }
             let allDone = s.exercises[index].sets.allSatisfy(\.isCompleted)
             s.exercises[index].status = allDone ? .completed : .partial
-            if s.currentExerciseID == exerciseID { retarget(&s, preferring: nil, after: index) }
+            if s.currentExerciseID == exerciseID { selectCurrent(&s) }
         case .focusExercise(let exerciseID):
             guard s.exercises.contains(where: { $0.id == exerciseID }) else { return s }
+            if let index = s.exercises.firstIndex(where: { $0.id == exerciseID }), s.exercises[index].status == .skipped {
+                s.exercises[index].status = .inProgress // escolher um pulado o retoma
+            }
             s.currentExerciseID = exerciseID
             s.currentSetID = s.exercises.first { $0.id == exerciseID }?.sets.first { !$0.isCompleted }?.id
         case .addSet(let exerciseID, let kind):
@@ -148,7 +155,7 @@ enum SessionReducer {
             holdSetID: nil, holdStartedAt: nil, currentExerciseID: nil, currentSetID: nil, exercises: exercises,
             metrics: .init(completedSets: 0, totalSets: 0, exercisesDone: 0, exercisesTotal: 0, volumeKg: 0, hasEstimatedVolume: false),
             loadProposals: [])
-        retarget(&snapshot, preferring: nil, after: -1)
+        selectCurrent(&snapshot)
         snapshot.metrics = metrics(of: snapshot)
         return snapshot
     }
@@ -181,38 +188,60 @@ enum SessionReducer {
         s.pausedAt = nil
     }
 
-    /// Depois de concluir uma série: o exercício atual continua enquanto houver série pendente.
-    private static func advance(_ s: inout SessionSnapshot, after exerciseIndex: Int) {
-        let exercise = s.exercises[exerciseIndex]
-        if exercise.sets.allSatisfy(\.isCompleted) {
-            s.exercises[exerciseIndex].status = .completed
-            if s.currentExerciseID == exercise.id || s.currentExerciseID == nil {
-                retarget(&s, preferring: nil, after: exerciseIndex)
-            }
-        } else {
-            s.exercises[exerciseIndex].status = .inProgress
-            if s.currentExerciseID == nil || s.currentExerciseID == exercise.id {
-                s.currentExerciseID = exercise.id
-                s.currentSetID = exercise.sets.first { !$0.isCompleted }?.id
-            }
-        }
+    /// Ainda há o que fazer (`SessionFlow.ExerciseState.isOpen`).
+    private static func isOpen(_ e: SessionSnapshot.Exercise) -> Bool {
+        (e.status == .pending || e.status == .inProgress) && (e.sets.isEmpty || e.sets.contains { !$0.isCompleted })
     }
 
-    /// Escolhe o exercício atual: `preferring` se ainda tem série pendente; senão o próximo aberto depois de `after`.
-    private static func retarget(_ s: inout SessionSnapshot, preferring: UUID?, after: Int? = nil) {
-        func isOpen(_ e: SessionSnapshot.Exercise) -> Bool {
-            e.status != .skipped && e.status != .completed && e.sets.contains { !$0.isCompleted }
+    private static func completedCount(_ e: SessionSnapshot.Exercise) -> Int { e.sets.filter(\.isCompleted).count }
+
+    /// Porta de `SessionFlow.currentExerciseID` (sem escolha explícita): blocos em ordem; em grupo, alterna por rodada.
+    static func flowCurrentID(_ exercises: [SessionSnapshot.Exercise]) -> UUID? {
+        var visited = Set<UUID>()
+        for exercise in exercises {
+            guard let group = exercise.groupID else {
+                if isOpen(exercise) { return exercise.id }
+                continue
+            }
+            guard visited.insert(group).inserted else { continue }
+            let open = exercises.filter { $0.groupID == group && isOpen($0) }
+            if let next = open.min(by: { completedCount($0) < completedCount($1) }) { return next.id }
         }
-        var pick: SessionSnapshot.Exercise?
-        if let preferring, let e = s.exercises.first(where: { $0.id == preferring }) {
-            pick = e
-            if e.status == .completed || e.status == .skipped { s.exercises[s.exercises.firstIndex { $0.id == preferring }!].status = .inProgress }
-        } else {
-            let start = (after ?? -1) + 1
-            pick = s.exercises.dropFirst(start).first(where: isOpen) ?? s.exercises.first(where: isOpen)
+        return nil
+    }
+
+    /// Porta de `SessionFlow.isEndOfRound`: exercício solto = sempre; em grupo, quando ninguém aberto está atrás.
+    static func isEndOfRound(_ s: SessionSnapshot, after index: Int) -> Bool {
+        let exercise = s.exercises[index]
+        guard let group = exercise.groupID else { return true }
+        let done = completedCount(exercise)
+        return s.exercises.enumerated()
+            .filter { $0.offset != index && $0.element.groupID == group && isOpen($0.element) }
+            .allSatisfy { completedCount($0.element) >= done }
+    }
+
+    /// Depois de concluir uma série.
+    private static func advance(_ s: inout SessionSnapshot, after exerciseIndex: Int) {
+        let exercise = s.exercises[exerciseIndex]
+        s.exercises[exerciseIndex].status = exercise.sets.allSatisfy(\.isCompleted) ? .completed : .inProgress
+        selectCurrent(&s)
+    }
+
+    /// Mantém o atual se for um exercício solto ainda aberto (escolha do usuário vale); senão aplica a regra do fluxo.
+    private static func selectCurrent(_ s: inout SessionSnapshot) {
+        if let current = s.exercises.first(where: { $0.id == s.currentExerciseID }), current.groupID == nil, isOpen(current) {
+            s.currentSetID = current.sets.first { !$0.isCompleted }?.id
+            return
         }
-        s.currentExerciseID = pick?.id
-        s.currentSetID = pick?.sets.first { !$0.isCompleted }?.id
+        let id = flowCurrentID(s.exercises)
+        s.currentExerciseID = id
+        s.currentSetID = s.exercises.first { $0.id == id }?.sets.first { !$0.isCompleted }?.id
+    }
+
+    private static func reopen(_ s: inout SessionSnapshot, exerciseAt index: Int) {
+        if s.exercises[index].status == .completed { s.exercises[index].status = .inProgress }
+        s.currentExerciseID = s.exercises[index].id
+        s.currentSetID = s.exercises[index].sets.first { !$0.isCompleted }?.id
     }
 
     static func metrics(of s: SessionSnapshot) -> SessionSnapshot.Metrics {

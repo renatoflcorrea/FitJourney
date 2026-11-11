@@ -70,16 +70,16 @@ struct LoadCrownModifier: ViewModifier {
 }
 
 extension View {
-    func loadCrown(setID: UUID, load: WatchLoad?) -> some View {
+    func loadCrown(setID: UUID?, load: WatchLoad?) -> some View {
         modifier(OptionalLoadCrown(setID: setID, load: load))
     }
 }
 
 private struct OptionalLoadCrown: ViewModifier {
-    let setID: UUID
+    let setID: UUID?
     let load: WatchLoad?
     func body(content: Content) -> some View {
-        if let load { content.modifier(LoadCrownModifier(setID: setID, load: load)) } else { content }
+        if let load, let setID { content.modifier(LoadCrownModifier(setID: setID, load: load)) } else { content }
     }
 }
 
@@ -247,7 +247,7 @@ struct RestView: View {
             if typeSize >= .accessibility1 { ScrollView { column }.safeAreaInset(edge: .bottom) { skipButton } }
             else { VStack(spacing: 4) { column; Spacer(minLength: 0); skipButton } }
         }
-        .loadCrown(setID: next?.set.id ?? UUID(), load: next.flatMap { effectiveLoad(of: $0.set, in: $0.exercise) })
+        .loadCrown(setID: next?.set.id, load: next.flatMap { effectiveLoad(of: $0.set, in: $0.exercise) })
         .sheet(isPresented: $showingReps) { RepsSheet() }
     }
 
@@ -314,7 +314,16 @@ struct RepsSheet: View {
         VStack(spacing: 6) {
             Text("Repetições").font(.footnote).foregroundStyle(WF.textSecondary)
             Text("\(Int(reps))").font(WF.number(48))
-                .accessibilityValue("\(Int(reps)) repetições")
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Repetições")
+                .accessibilityValue("\(Int(reps))")
+                .accessibilityAdjustableAction { direction in
+                    switch direction {
+                    case .increment: reps = min(100, reps + 1)
+                    case .decrement: reps = max(0, reps - 1)
+                    @unknown default: break
+                    }
+                }
             HStack(spacing: 5) {
                 Button("Limpar") { if let set = lastCompleted { model.updateReps(setID: set.id, reps: nil) }; dismiss() }
                     .buttonStyle(.glass)
@@ -335,13 +344,7 @@ struct RepsSheet: View {
                 }
             }
         }
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment: reps = min(100, reps + 1)
-            case .decrement: reps = max(0, reps - 1)
-            @unknown default: break
-            }
-        }
+        .accessibilityElement(children: .contain)
     }
 }
 
@@ -352,6 +355,7 @@ struct HoldView: View {
     let exercise: SessionSnapshot.Exercise
     let set: SessionSnapshot.ExerciseSet
     @State private var countdown: Int?
+    @State private var countdownTask: Task<Void, Never>?
     @State private var reachedTarget = false
 
     private var target: Int { self.set.targetHoldSeconds ?? 0 }
@@ -387,7 +391,15 @@ struct HoldView: View {
                 WatchPrimaryButton(title: "Iniciar", systemImage: "play.fill", accessibilityLabel: "Iniciar sustentação") { beginCountdown() }
             }
         }
-        .onChange(of: set.id) { _, _ in reachedTarget = false; countdown = nil }
+        .onChange(of: set.id) { _, _ in reachedTarget = false; cancelCountdown() }
+        .onChange(of: model.display?.status) { _, _ in cancelCountdown() }
+        .onDisappear { cancelCountdown() }
+    }
+
+    private func cancelCountdown() {
+        countdownTask?.cancel()
+        countdownTask = nil
+        countdown = nil
     }
 
     private func holdBar(elapsed: TimeInterval) -> some View {
@@ -404,15 +416,19 @@ struct HoldView: View {
     }
 
     private func beginCountdown() {
-        Task { @MainActor in
+        let setID = set.id
+        countdownTask?.cancel()
+        countdownTask = Task { @MainActor in
             for value in stride(from: 3, through: 1, by: -1) {
                 countdown = value
                 model.haptics.play(.countdownTick)
                 try? await Task.sleep(for: .seconds(1))
+                if Task.isCancelled { return }
             }
             countdown = nil
+            countdownTask = nil
             model.haptics.play(.countdownGo)
-            model.startHold()
+            model.startHold(setID: setID) // valida que a série ainda é a atual e a sessão está ativa
         }
     }
 }
@@ -422,15 +438,15 @@ struct CardioView: View {
     @Environment(WatchSessionModel.self) private var model
     let exercise: SessionSnapshot.Exercise
     let set: SessionSnapshot.ExerciseSet
-    @State private var startedAt = Date()
 
     var body: some View {
         VStack(spacing: 4) {
             Text(exercise.name).font(WF.exerciseName).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
             Spacer(minLength: 0)
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                Text(WatchFormat.clock(context.date.timeIntervalSince(startedAt))).font(WF.number(WatchLayout.timerFontSize, weight: .semibold))
-                    .accessibilityLabel("Tempo \(WatchFormat.clock(context.date.timeIntervalSince(startedAt)))")
+                let elapsed = model.cardioElapsed(setID: set.id, at: context.date) // início no modelo; desconta pausas
+                Text(WatchFormat.clock(elapsed)).font(WF.number(WatchLayout.timerFontSize, weight: .semibold))
+                    .accessibilityLabel("Tempo \(WatchFormat.clock(elapsed))")
             }
             HStack(spacing: 6) {
                 Image(systemName: "heart.fill").foregroundStyle(WF.health.opacity(model.liveMetrics.heartRate == nil ? 0.4 : 1)).accessibilityHidden(true)
@@ -443,10 +459,9 @@ struct CardioView: View {
             Text(WatchFormat.target(text: set.targetText, effort: nil)).font(.footnote).foregroundStyle(WF.textSecondary)
             Spacer(minLength: 0)
             WatchPrimaryButton(title: "Concluir", accessibilityLabel: "Concluir \(exercise.name)") {
-                model.completeCurrentSet(durationSeconds: Date().timeIntervalSince(startedAt))
+                model.completeCurrentSet() // duração = cronômetro do modelo
             }
         }
-        .onChange(of: set.id) { _, _ in startedAt = Date() }
     }
 }
 

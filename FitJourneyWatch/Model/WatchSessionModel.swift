@@ -25,7 +25,7 @@ struct WatchNotice: Equatable, Identifiable, Sendable {
     var text: String
 }
 
-/// Resumo da sessão encerrada (DESIGN §9.4, Finalizar → Resumo).
+/// Resumo da sessão encerrada (DESIGN §9.4, Finalizar → Resumo); só nasce com o fim confirmado pelo iPhone.
 struct WatchSessionSummary: Equatable, Sendable {
     var sessionID: UUID
     var duration: TimeInterval
@@ -45,8 +45,16 @@ struct WatchSessionSummary: Equatable, Sendable {
 /// - Snapshot com revisão **menor** que a confirmada (mesma sessão) é descartado; igual ou maior substitui.
 /// - Resposta `applied`/`duplicate`: o comando fica na fila até chegar um snapshot de revisão ≥ a da resposta
 ///   (antes disso o snapshot ainda não o contém, então continua reaplicado — sem "pulo" visual).
-/// - Resposta `rejected`: o comando sai, o valor volta ao do iPhone e aparece "Atualizado pelo iPhone".
-/// - Fora de alcance: nada se perde; ao reconectar, os pendentes sem resposta são reenviados (idempotentes).
+/// - Resposta `rejected`: o comando sai, o valor volta ao do iPhone, pede-se novo snapshot e aparece "Atualizado pelo iPhone".
+/// - Sem resposta (perdida) por `resendInterval`: reenvia o mesmo `commandID` (o iPhone responde `duplicate`) e pede snapshot.
+/// - Fim da sessão (`finish`/`discard`): `summary`, `closedSessionIDs` e `workoutDidEnd` só quando o snapshot
+///   **confirmado** for terminal; antes disso a tela mostra "Salvando…" e uma rejeição volta ao estado ativo.
+///
+/// IDs de uma sessão iniciada aqui (INTERINO, A1): o iPhone cria `SetLog`/`SessionExercise` com IDs novos, diferentes dos da
+/// prescrição que o relógio usa para renderizar o `start` otimista. Enquanto o 1º snapshot dessa sessão não chega, comandos
+/// não-`start` ficam **retidos** (`isHeld`, não enviados); ao chegar, são remapeados por posição (exercício, série) e os que
+/// não casam são descartados com aviso. W2: com IDs determinísticos no `start`, o remapeamento vira identidade e este caminho
+/// some (ponto único: `releaseHeldCommands`).
 ///
 /// Pontos de injeção (W2/W3b): `WatchTransport` (WatchConnectivity + canal da `HKWorkoutSession`) e
 /// `WatchHealthProvider` (`HKWorkoutSession` do relógio); ver os protocolos.
@@ -56,6 +64,9 @@ final class WatchSessionModel {
         var command: SessionCommand
         /// Revisão devolvida pelo iPhone quando aplicou; `nil` = sem resposta ainda.
         var ackedRevision: Int?
+        /// Retido: a sessão ainda não tem snapshot confirmado (ver A1 acima). Nunca enviado enquanto retido.
+        var isHeld = false
+        var lastSentAt: Date?
         var id: UUID { command.commandID }
     }
 
@@ -72,6 +83,7 @@ final class WatchSessionModel {
     private(set) var hasReceivedData = false
     private(set) var isAwaitingSnapshot = false
     private(set) var notice: WatchNotice?
+    /// Resumo da sessão encerrada; só existe depois que o iPhone confirmou o fim.
     private(set) var summary: WatchSessionSummary?
     /// Aviso de versão incompatível ("atualize o app no iPhone"/"atualize o relógio").
     private(set) var incompatibility: WatchLinkCompatibility?
@@ -90,9 +102,22 @@ final class WatchSessionModel {
     @ObservationIgnored let haptics: any WatchHaptics
     @ObservationIgnored let health: any WatchHealthProvider
     @ObservationIgnored private let clock: @MainActor () -> Date
+    /// Espera por resposta antes de reenviar um comando; espera máxima por um snapshot pedido.
+    @ObservationIgnored var resendInterval: TimeInterval = 5
+    @ObservationIgnored var snapshotTimeout: TimeInterval = 10
 
     @ObservationIgnored private var closedSessionIDs: Set<UUID> = []
+    @ObservationIgnored private var handledTerminalSessionIDs: Set<UUID> = []
+    @ObservationIgnored private var seenActiveSessionIDs: Set<UUID> = []
     @ObservationIgnored private var staleAcknowledgedSessionID: UUID?
+    @ObservationIgnored private var savingDismissedSessionID: UUID?
+    @ObservationIgnored private var activeWorkoutSessionID: UUID?
+    /// Snapshot otimista do `start` de cada sessão iniciada aqui (base do remapeamento de IDs).
+    @ObservationIgnored private var startBaselines: [UUID: SessionSnapshot] = [:]
+    @ObservationIgnored private var cardioStartElapsed: [UUID: TimeInterval] = [:]
+    @ObservationIgnored private var awaitingSince: Date?
+    @ObservationIgnored private var loopTask: Task<Void, Never>?
+    @ObservationIgnored private var tickTask: Task<Void, Never>?
     @ObservationIgnored private var restTask: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var observedRest: (end: Date?, status: SessionSnapshot.Status?) = (nil, nil)
@@ -126,6 +151,12 @@ final class WatchSessionModel {
     }
     var pendingCount: Int { pending.count }
 
+    /// Finalizado aqui, ainda sem confirmação do iPhone: a tela mostra "Salvando…".
+    var isSavingSession: Bool {
+        guard summary == nil, let display, display.status == .finished, savingDismissedSessionID != display.sessionID else { return false }
+        return !(confirmed?.sessionID == display.sessionID && confirmed?.status == .finished)
+    }
+
     /// Sessão aberta há mais de 4 h sem atividade (DESIGN §9.5).
     var staleSessionSince: Date? {
         guard let display, hasActiveSession, staleAcknowledgedSessionID != display.sessionID else { return nil }
@@ -143,18 +174,61 @@ final class WatchSessionModel {
 
     func routine(id: UUID) -> ProgramDigest.Routine? { digest?.routines.first { $0.id == id } }
 
+    /// Cardio: tempo ativo desde que a série passou a ser a atual (desconta pausas; sem comando de início no protocolo — W2).
+    func cardioElapsed(setID: UUID, at date: Date) -> TimeInterval {
+        guard let display, let start = cardioStartElapsed[setID] else { return 0 }
+        return max(0, display.elapsed(at: date) - start)
+    }
+
     // MARK: Ciclo de vida do canal
 
-    /// Consome o fluxo do transporte até ele terminar. O app chama em `.task`.
-    func run() async {
+    /// Começa a escutar o transporte e a reenviar o que ficou sem resposta. Idempotente (guarda); o app chama no `.task`.
+    func start() {
+        guard loopTask == nil else { return }
         isPhoneReachable = transport.isReachable
+        let stream = transport.makeEventStream() // antes do pedido, para não perder a resposta
         requestSnapshot()
-        for await event in transport.events { handle(event) }
+        loopTask = Task { [weak self] in
+            for await event in stream {
+                guard let self else { return }
+                self.handle(event)
+            }
+            self?.loopTask = nil // transporte terminou: `start()` pode reassinar
+        }
+        tickTask?.cancel()
+        tickTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                self?.retryStalePending()
+            }
+        }
+    }
+
+    func stop() {
+        loopTask?.cancel(); loopTask = nil
+        tickTask?.cancel(); tickTask = nil
     }
 
     func requestSnapshot() {
         isAwaitingSnapshot = true
+        awaitingSince = now
         transport.send(.snapshotRequest)
+    }
+
+    /// Reenvia comandos sem resposta há `resendInterval` (resposta perdida) e abandona pedido de snapshot sem retorno.
+    func retryStalePending() {
+        guard isPhoneReachable else { return }
+        var resent = false
+        for index in pending.indices where !pending[index].isHeld && pending[index].ackedRevision == nil {
+            if now.timeIntervalSince(pending[index].lastSentAt ?? .distantPast) >= resendInterval {
+                transmit(index)
+                resent = true
+            }
+        }
+        if resent { requestSnapshot() }
+        if isAwaitingSnapshot, let since = awaitingSince, now.timeIntervalSince(since) >= snapshotTimeout {
+            isAwaitingSnapshot = false
+        }
     }
 
     func handle(_ event: WatchTransportEvent) {
@@ -163,7 +237,7 @@ final class WatchSessionModel {
             let wasReachable = isPhoneReachable
             isPhoneReachable = reachable
             if reachable && !wasReachable {
-                for item in pending where item.ackedRevision == nil { transport.send(.command(item.command)) }
+                for index in pending.indices where !pending[index].isHeld && pending[index].ackedRevision == nil { transmit(index) }
                 requestSnapshot()
             }
         case .message(let message):
@@ -181,6 +255,11 @@ final class WatchSessionModel {
         }
     }
 
+    private func transmit(_ index: Int) {
+        pending[index].lastSentAt = now
+        transport.send(.command(pending[index].command))
+    }
+
     // MARK: Recepção
 
     func receive(digest: ProgramDigest?) {
@@ -194,8 +273,8 @@ final class WatchSessionModel {
         hasReceivedData = true
         isAwaitingSnapshot = false
         guard let snapshot else {
-            // "Sem sessão": ignora enquanto um `start` nosso ainda não foi confirmado.
-            if pending.contains(where: { $0.command.kind.isStart && $0.ackedRevision == nil }) { return }
+            // "Sem sessão" atrasado em relação a um `start` nosso (qualquer estado de resposta): ignora.
+            if pending.contains(where: { $0.command.kind.isStart }) { return }
             confirmed = nil
             pending.removeAll()
             recompute()
@@ -206,6 +285,8 @@ final class WatchSessionModel {
         confirmed = snapshot
         pending.removeAll { $0.ackedRevision.map { $0 <= snapshot.revision } ?? false }
         pending.removeAll { $0.command.sessionID != snapshot.sessionID && !$0.command.kind.isStart }
+        releaseHeldCommands(for: snapshot)
+        pruneCommandsWithUnknownIDs(in: snapshot)
         recompute()
     }
 
@@ -219,16 +300,112 @@ final class WatchSessionModel {
                 pending[index].ackedRevision = reply.revision
             }
         case .rejected:
-            pending.remove(at: index)
+            let rejected = pending.remove(at: index)
+            if rejected.command.kind.isStart {
+                // Sessão não nasceu: tudo o que dependia dela cai junto.
+                pending.removeAll { $0.command.sessionID == rejected.command.sessionID }
+                closedSessionIDs.insert(rejected.command.sessionID)
+            }
             haptics.play(.failure)
             show(notice: "Atualizado pelo iPhone")
+            requestSnapshot()
         }
         recompute()
     }
 
+    // MARK: IDs de sessão iniciada aqui (interino, A1)
+
+    /// IDs referenciados por um comando: (séries, exercícios).
+    static func referencedIDs(_ kind: SessionCommand.Kind) -> (sets: [UUID], exercises: [UUID]) {
+        switch kind {
+        case .completeSet(let id, _, _, _, _), .uncompleteSet(let id), .updateSet(let id, _, _, _, _),
+             .adjustLoad(let id, _), .startHold(let id), .endHold(let id):
+            return ([id], [])
+        case .skipExercise(let id, _), .completeExercise(let id), .focusExercise(let id), .addSet(let id, _),
+             .substituteExercise(let id, _), .reorderExercise(let id, _):
+            return ([], [id])
+        case .addExercise(_, let after):
+            return ([], after.map { [$0] } ?? [])
+        default:
+            return ([], [])
+        }
+    }
+
+    /// Troca os IDs de série/exercício de um comando; `nil` se algum não tem correspondente.
+    static func remap(_ kind: SessionCommand.Kind, sets: [UUID: UUID], exercises: [UUID: UUID]) -> SessionCommand.Kind? {
+        switch kind {
+        case .completeSet(let id, let r, let l, let d, let m):
+            return sets[id].map { .completeSet(setID: $0, reps: r, load: l, durationSeconds: d, distanceMeters: m) }
+        case .uncompleteSet(let id): return sets[id].map { .uncompleteSet(setID: $0) }
+        case .updateSet(let id, let r, let l, let d, let m):
+            return sets[id].map { .updateSet(setID: $0, reps: r, load: l, durationSeconds: d, distanceMeters: m) }
+        case .adjustLoad(let id, let delta): return sets[id].map { .adjustLoad(setID: $0, delta: delta) }
+        case .startHold(let id): return sets[id].map { .startHold(setID: $0) }
+        case .endHold(let id): return sets[id].map { .endHold(setID: $0) }
+        case .skipExercise(let id, let reason): return exercises[id].map { .skipExercise(exerciseID: $0, reason: reason) }
+        case .completeExercise(let id): return exercises[id].map { .completeExercise(exerciseID: $0) }
+        case .focusExercise(let id): return exercises[id].map { .focusExercise(exerciseID: $0) }
+        case .addSet(let id, let kind): return exercises[id].map { .addSet(exerciseID: $0, kind: kind) }
+        case .substituteExercise(let id, let with):
+            return exercises[id].map { .substituteExercise(exerciseID: $0, withCatalogExerciseID: with) }
+        case .reorderExercise(let id, let to): return exercises[id].map { .reorderExercise(exerciseID: $0, toIndex: to) }
+        case .addExercise(let catalog, let after):
+            guard let after else { return kind }
+            return exercises[after].map { .addExercise(catalogExerciseID: catalog, afterExerciseID: $0) }
+        default: return kind
+        }
+    }
+
+    /// Chegou o 1º snapshot de uma sessão iniciada aqui: remapeia (por posição) e envia o que estava retido.
+    private func releaseHeldCommands(for snapshot: SessionSnapshot) {
+        let heldIndices = pending.indices.filter { pending[$0].isHeld && pending[$0].command.sessionID == snapshot.sessionID }
+        guard !heldIndices.isEmpty else { return }
+        var setMap: [UUID: UUID] = [:], exerciseMap: [UUID: UUID] = [:]
+        for exercise in snapshot.exercises {
+            exerciseMap[exercise.id] = exercise.id
+            for set in exercise.sets { setMap[set.id] = set.id }
+        }
+        if let baseline = startBaselines[snapshot.sessionID] {
+            for (ei, local) in baseline.exercises.enumerated() where snapshot.exercises.indices.contains(ei) {
+                let real = snapshot.exercises[ei]
+                if exerciseMap[local.id] == nil { exerciseMap[local.id] = real.id }
+                for (si, localSet) in local.sets.enumerated() where real.sets.indices.contains(si) {
+                    if setMap[localSet.id] == nil { setMap[localSet.id] = real.sets[si].id }
+                }
+            }
+        }
+        var dropped: [UUID] = []
+        for index in heldIndices {
+            if let kind = Self.remap(pending[index].command.kind, sets: setMap, exercises: exerciseMap) {
+                pending[index].command.kind = kind
+                pending[index].isHeld = false
+                transmit(index)
+            } else {
+                dropped.append(pending[index].id)
+            }
+        }
+        pending.removeAll { dropped.contains($0.id) }
+        startBaselines[snapshot.sessionID] = nil
+        if !dropped.isEmpty { show(notice: "Atualizado pelo iPhone") }
+    }
+
+    /// Descarta pendentes que citam séries/exercícios que o snapshot da sessão não tem (o iPhone os recusaria).
+    private func pruneCommandsWithUnknownIDs(in snapshot: SessionSnapshot) {
+        guard snapshot.status == .active || snapshot.status == .paused else { return }
+        let sets = Set(snapshot.exercises.flatMap(\.sets).map(\.id))
+        let exercises = Set(snapshot.exercises.map(\.id))
+        let before = pending.count
+        pending.removeAll { item in
+            guard item.command.sessionID == snapshot.sessionID, item.ackedRevision == nil else { return false }
+            let ids = Self.referencedIDs(item.command.kind)
+            return !ids.sets.allSatisfy(sets.contains) || !ids.exercises.allSatisfy(exercises.contains)
+        }
+        if pending.count != before { show(notice: "Atualizado pelo iPhone") }
+    }
+
     // MARK: Comandos
 
-    /// Emite um comando: aplica na hora (otimista), guarda na fila e envia. `nil` se não há sessão alvo.
+    /// Emite um comando: aplica na hora (otimista), guarda na fila e envia (ou retém, ver A1). `nil` se não há sessão alvo.
     @discardableResult
     func send(_ kind: SessionCommand.Kind) -> SessionCommand? {
         let sessionID: UUID
@@ -240,14 +417,16 @@ final class WatchSessionModel {
             return nil
         }
         let command = SessionCommand(sessionID: sessionID, issuedAt: now, origin: .watch, kind: kind)
-        pending.append(PendingCommand(command: command))
+        let held = !kind.isStart && confirmed?.sessionID != sessionID
+        pending.append(PendingCommand(command: command, isHeld: held))
+        if kind.isStart, let baseline = SessionReducer.apply(command, to: nil, digest: digest) { startBaselines[sessionID] = baseline }
         recompute()
-        transport.send(.command(command))
+        if !held, let index = pending.firstIndex(where: { $0.id == command.commandID }) { transmit(index) }
         return command
     }
 
     func startSession(routineID: UUID) {
-        guard !hasActiveSession else { return }
+        guard !hasActiveSession, !pending.contains(where: { $0.command.kind.isStart }) else { return }
         summary = nil
         send(.start(routineID: routineID))
     }
@@ -255,11 +434,15 @@ final class WatchSessionModel {
     /// Conclui a série atual com a carga exibida. Isométrico/cardio podem passar a duração medida.
     func completeCurrentSet(durationSeconds: Double? = nil) {
         guard let set = currentSet, !set.isCompleted else { return }
-        send(.completeSet(setID: set.id, reps: nil, load: nil, durationSeconds: durationSeconds, distanceMeters: nil))
+        var duration = durationSeconds
+        if duration == nil, currentExercise?.measurementKind == .timeOrDistance {
+            duration = cardioElapsed(setID: set.id, at: now)
+        }
+        send(.completeSet(setID: set.id, reps: nil, load: nil, durationSeconds: duration, distanceMeters: nil))
         haptics.play(.setCompleted)
     }
 
-    /// Registra reps realizadas na série atual (botão "+ reps"): mantém a carga exibida. Reps são opcionais (D2).
+    /// Registra reps realizadas (botão "+ reps"): mantém a carga exibida. Reps são opcionais (D2).
     func updateReps(setID: UUID, reps: Int?) {
         guard let set = display?.exercises.flatMap(\.sets).first(where: { $0.id == setID }) else { return }
         send(.updateSet(setID: setID, reps: reps, load: set.load, durationSeconds: set.durationSeconds, distanceMeters: set.distanceMeters))
@@ -285,9 +468,10 @@ final class WatchSessionModel {
     func skipRest() { send(.skipRest) }
     func extendRest(by seconds: Int = 15) { send(.adjustRest(seconds: seconds)) }
 
-    func startHold() {
-        guard let set = currentSet else { return }
-        send(.startHold(setID: set.id))
+    /// Começa a sustentação da série `setID` — só se ela ainda é a atual e a sessão está ativa (contagem cancelável).
+    func startHold(setID: UUID) {
+        guard display?.status == .active, currentSet?.id == setID else { return }
+        send(.startHold(setID: setID))
     }
 
     func endHold() {
@@ -342,6 +526,9 @@ final class WatchSessionModel {
         introExerciseID = nil
     }
 
+    /// "Salvando…" sem iPhone: volta à lista; o `finish` continua na fila.
+    func dismissSaving() { savingDismissedSessionID = display?.sessionID }
+
     func keepStaleSessionGoing() { staleAcknowledgedSessionID = display?.sessionID }
 
     func requestHealthAccess() async {
@@ -356,23 +543,26 @@ final class WatchSessionModel {
         for item in pending { snapshot = SessionReducer.apply(item.command, to: snapshot, digest: digest) }
         display = snapshot
         didChangeDisplay(from: old, to: snapshot)
+        handleConfirmedTerminal()
     }
 
     private func didChangeDisplay(from old: SessionSnapshot?, to new: SessionSnapshot?) {
         let wasActive = old.map { $0.status == .active || $0.status == .paused } ?? false
         let isActive = new.map { $0.status == .active || $0.status == .paused } ?? false
 
-        if let new, isActive, !wasActive || old?.sessionID != new.sessionID {
-            health.workoutDidBegin(sessionID: new.sessionID, startedAt: new.startedAt)
-            introExerciseID = nil
-        }
-        if let new, new.status == .finished || new.status == .discarded {
-            closedSessionIDs.insert(new.sessionID)
-            if wasActive, old?.sessionID == new.sessionID {
-                health.workoutDidEnd()
-                if new.status == .finished, summary == nil { summary = makeSummary(new) }
+        if let new, isActive {
+            seenActiveSessionIDs.insert(new.sessionID)
+            if activeWorkoutSessionID != new.sessionID {
+                if activeWorkoutSessionID != nil { health.workoutDidEnd() }
+                activeWorkoutSessionID = new.sessionID
+                health.workoutDidBegin(sessionID: new.sessionID, startedAt: new.startedAt)
+                introExerciseID = nil
             }
         }
+        // Saiu da sessão sem ser por fim otimista (start rejeitado, snapshot nil, outra sessão): encerra o treino do Saúde.
+        // Fim otimista (`finish`/`discard` pendente) espera a confirmação (`handleConfirmedTerminal`).
+        if wasActive, !isActive, new?.status != .finished, new?.status != .discarded { endWorkout() }
+
         // Próximo exercício começou porque o anterior fechou (não por escolha do usuário).
         if let old, let new, isActive, old.sessionID == new.sessionID,
            let previousID = old.currentExerciseID, let nextID = new.currentExerciseID, previousID != nextID,
@@ -383,7 +573,30 @@ final class WatchSessionModel {
         }
         if !isActive { introExerciseID = nil }
 
+        if let new, isActive, let exercise = new.currentExercise, exercise.measurementKind == .timeOrDistance,
+           let set = exercise.sets.first(where: { $0.id == new.currentSetID }), !set.isCompleted,
+           cardioStartElapsed[set.id] == nil {
+            cardioStartElapsed[set.id] = new.elapsed(at: now)
+        }
+
         observeRest(old: old, new: new)
+    }
+
+    /// Fim da sessão só vale quando o snapshot **confirmado** é terminal (A2).
+    private func handleConfirmedTerminal() {
+        guard let confirmed, confirmed.status == .finished || confirmed.status == .discarded,
+              handledTerminalSessionIDs.insert(confirmed.sessionID).inserted else { return }
+        closedSessionIDs.insert(confirmed.sessionID)
+        if activeWorkoutSessionID == confirmed.sessionID { endWorkout() }
+        if confirmed.status == .finished, seenActiveSessionIDs.contains(confirmed.sessionID), summary == nil {
+            summary = makeSummary(confirmed)
+        }
+    }
+
+    private func endWorkout() {
+        guard activeWorkoutSessionID != nil else { return }
+        activeWorkoutSessionID = nil
+        health.workoutDidEnd()
     }
 
     private func makeSummary(_ s: SessionSnapshot) -> WatchSessionSummary {

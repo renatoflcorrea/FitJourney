@@ -74,9 +74,20 @@ struct FinishView: View {
         ScrollView {
             VStack(spacing: 4) {
                 Text("Como foi o treino?").font(.footnote).foregroundStyle(WF.textSecondary)
-                Text("\(Int(rpe))").font(WF.number(52)).foregroundStyle(WF.training)
-                    .accessibilityHidden(true)
-                Text(WatchFormat.rpeLabel(Int(rpe))).font(.footnote.weight(.semibold))
+                VStack(spacing: 2) {
+                    Text("\(Int(rpe))").font(WF.number(52)).foregroundStyle(WF.training)
+                    Text(WatchFormat.rpeLabel(Int(rpe))).font(.footnote.weight(.semibold))
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Esforço percebido")
+                .accessibilityValue("\(Int(rpe)), \(WatchFormat.rpeLabel(Int(rpe)))")
+                .accessibilityAdjustableAction { direction in
+                    switch direction {
+                    case .increment: rpe = min(10, rpe + 1)
+                    case .decrement: rpe = max(1, rpe - 1)
+                    @unknown default: break
+                    }
+                }
                 WatchPrimaryButton(title: "Salvar") { save(Int(rpe)) }
                 Button("Sem nota") { save(nil) }.buttonStyle(.glass)
             }
@@ -84,15 +95,6 @@ struct FinishView: View {
         }
         .focusable()
         .digitalCrownRotation($rpe, from: 1, through: 10, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment: rpe = min(10, rpe + 1)
-            case .decrement: rpe = max(1, rpe - 1)
-            @unknown default: break
-            }
-        }
-        .accessibilityLabel("Esforço percebido")
-        .accessibilityValue("\(Int(rpe)), \(WatchFormat.rpeLabel(Int(rpe)))")
     }
 
     private func save(_ value: Int?) {

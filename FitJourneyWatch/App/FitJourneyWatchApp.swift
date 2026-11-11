@@ -20,14 +20,14 @@ struct FitJourneyWatchApp: App {
             }
                 .environment(model)
                 .preferredColorScheme(.dark)
-                .task { await model.run() }
+                .task { await model.start() }
         }
     }
 }
 
 /// Composição das dependências do app.
 ///
-/// PONTO DE INJEÇÃO (W2/W3b): hoje o transporte é o `MockWatchTransport` (iPhone simulado) e a saúde é o
+/// PONTO DE INJEÇÃO (W2/W3b): hoje o transporte é o `UnavailableWatchTransport` (o `MockWatchTransport`, só DEBUG, serve a previews/testes/harness) e a saúde é o
 /// `UnavailableHealthProvider`. O W2 troca por um `WatchConnectivityTransport` (+ canal da `HKWorkoutSession`
 /// espelhada) e o W3b por um `HealthKitWorkoutProvider` — só aqui, sem mexer em modelo nem telas.
 enum WatchAppComposition {
@@ -43,7 +43,8 @@ enum WatchAppComposition {
         if let scene = WatchHarnessScene.fromLaunchArguments() { return scene.build() }
         #endif
         // Sem canal real ainda: o relógio abre como "nunca sincronizou" (iPhone fora de alcance, sem dados).
-        let transport = MockWatchTransport(reachable: false)
+        // PENDÊNCIA DE LANÇAMENTO: trocar `UnavailableWatchTransport` pelo transporte real do W2.
+        let transport = UnavailableWatchTransport()
         let model = WatchSessionModel(transport: transport, haptics: SystemWatchHaptics())
         return Result(model: model, initialPage: 1, rootOverride: nil)
     }
