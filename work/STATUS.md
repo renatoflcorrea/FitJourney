@@ -46,6 +46,14 @@
 - `docs/CODEBASE_MAP.md` gerado pelo Cartographer.
 - P6.7 pendências de acessibilidade integradas (`331b15f`); P5.6 `get_health_summary` real integrado (`f958e9b`). **Plano de implementação concluído.**
 
+## Em andamento (pedidos do teste em aparelho, 11/11)
+- C7.1 design do copiloto (Fable) ∥ C7.2 núcleo do copiloto (Opus) → C7.3 telas (Sonnet).
+- P2.8 memória de carga (sem "0 kg"; última carga usada; primeira carga vira atual) + iniciar no Apple Watch automaticamente (`startWatchApp`) (Opus).
+- Alerta insistente de fim de descanso no relógio e no iPhone (Fable, design + implementação).
+
+## Fila
+- P6.8 Idioma do app (Sistema/Português/English em Ajustes, reiniciar para aplicar; relógio segue o iPhone) + nomes de exercícios harmonizados (iPhone envia nomes já localizados no digest/snapshot; também VoiceOver da sessão e Coach). Disparar após P2.8 (mesmos arquivos: WatchLinkMapping, Ajustes).
+
 ## Próximo
 - Nomes de exercícios em en também no VoiceOver da sessão, no Coach e no relógio (hoje só nas telas).
 - **Usuário**: teste em iPhone + Apple Watch (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações) via `make device TEAM=<TEAM> DEVICE_ID=<udid>`; chave de API ou login ChatGPT para o Coach.
