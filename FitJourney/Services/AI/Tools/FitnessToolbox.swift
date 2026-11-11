@@ -70,7 +70,7 @@ final class FitnessToolbox {
         }
     }
 
-    static func spec(_ name: Name) -> ToolSpec {
+    nonisolated static func spec(_ name: Name) -> ToolSpec {
         switch name {
         case .getProfile:
             ToolSpec(name: name.rawValue, description: "Perfil do usuário (idade, sexo, altura, peso, nível, objetivo, restrições/lesões, equipamentos, dias e tempo por semana, preferências alimentares) e a data de hoje. Campos null = não informado.",
@@ -111,13 +111,13 @@ final class FitnessToolbox {
         }
     }
 
-    private static let emptySchema = #"{"type":"object","properties":{},"required":[],"additionalProperties":false}"#
+    private nonisolated static let emptySchema = #"{"type":"object","properties":{},"required":[],"additionalProperties":false}"#
 
-    private static func dateProperty(_ description: String) -> String {
+    private nonisolated static func dateProperty(_ description: String) -> String {
         #"{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","description":"AAAA-MM-DD. "# + description + #""}"#
     }
 
-    private static func objectSchema(_ properties: [String: String]) -> String {
+    private nonisolated static func objectSchema(_ properties: [String: String]) -> String {
         let keys = properties.keys.sorted()
         let body = keys.map { "\"\($0)\":\(properties[$0]!)" }.joined(separator: ",")
         let required = keys.map { "\"\($0)\"" }.joined(separator: ",")
