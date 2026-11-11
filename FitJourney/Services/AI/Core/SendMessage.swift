@@ -221,7 +221,7 @@ final class CoachConversationService {
 
             for call in calls {
                 try Task.checkCancellation()
-                let outcome = toolbox.execute(call)
+                let outcome = await toolbox.execute(call)
                 let result = ChatMessage(role: .tool, content: Self.limitToolResult(outcome.content),
                                          sortIndex: conversation.nextSortIndex)
                 result.toolCallID = call.id
