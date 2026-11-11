@@ -67,8 +67,7 @@ struct CoachRootView: View {
 
     private static func currentGate(secrets: any SecretStore, defaults: UserDefaults) -> CoachGate {
         let settings = ProviderSettingsStore(defaults: defaults).load()
-        let key = (try? secrets.string(for: ProviderCatalog.descriptor(for: settings.provider).secretKey)) ?? nil
-        let hasKey = !(key ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let hasKey = ProviderCatalog.descriptor(for: settings.provider).hasCredential(in: secrets)
         return CoachGate.evaluate(hasConsented: CoachProfileStore(defaults: defaults).hasConsented,
                                   readiness: ProviderReadiness.evaluate(settings, hasAPIKey: hasKey))
     }

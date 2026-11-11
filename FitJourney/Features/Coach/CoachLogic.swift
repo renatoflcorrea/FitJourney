@@ -5,7 +5,7 @@ import SwiftUI
 
 /// O que a UI mostra para um `AIError`: texto e ação oferecida.
 struct CoachErrorPresentation: Equatable {
-    enum Action: Equatable { case configureKey, retry, none }
+    enum Action: Equatable { case configureKey, signIn, retry, none }
 
     var title: String
     var message: String
@@ -17,6 +17,9 @@ struct CoachErrorPresentation: Equatable {
         case .unauthorized:
             title = String(localized: "Chave recusada")
             action = .configureKey
+        case .signInRequired:
+            title = String(localized: "Entre de novo no ChatGPT")
+            action = .signIn
         case .notConfigured:
             title = String(localized: "Coach não configurado")
             action = .configureKey

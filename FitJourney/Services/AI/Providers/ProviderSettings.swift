@@ -74,11 +74,16 @@ enum ProviderReadiness: Sendable, Equatable {
     case missingModel
     case invalidEndpoint
     case missingAPIKey(AIProviderID)
+    /// Provedor ChatGPT (login) sem login guardado.
+    case signedOut
 
     var isReady: Bool { self == .ready }
 
+    /// - Parameter hasAPIKey: há credencial guardada em `descriptor.secretKey` — a chave de API ou, no
+    ///   ChatGPT, o blob do login.
     static func evaluate(_ settings: ProviderSettings, hasAPIKey: Bool) -> ProviderReadiness {
         let descriptor = ProviderCatalog.descriptor(for: settings.provider)
+        if descriptor.usesChatGPTLogin, !hasAPIKey { return .signedOut }
         guard !settings.model.isEmpty else { return .missingModel }
         guard let url = settings.baseURL(for: settings.provider), isAcceptable(url) else { return .invalidEndpoint }
         if descriptor.requiresAPIKey, !hasAPIKey { return .missingAPIKey(settings.provider) }

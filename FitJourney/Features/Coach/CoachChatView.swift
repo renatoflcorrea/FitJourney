@@ -111,6 +111,8 @@ struct CoachChatView: View {
         switch presentation.action {
         case .configureKey:
             FJBanner(title, message: message, tone: .attention, actionTitle: "Configurar chave") { showSettings = true }
+        case .signIn:
+            FJBanner(title, message: message, tone: .attention, actionTitle: "Entrar de novo") { showSettings = true }
         case .retry:
             if let failed = retryableMessage {
                 FJBanner(title, message: message, tone: .destructive, actionTitle: "Tentar de novo") { retry(failed) }

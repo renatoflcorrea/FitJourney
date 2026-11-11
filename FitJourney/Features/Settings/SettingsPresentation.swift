@@ -59,7 +59,7 @@ enum SettingsPresentation {
         guard ProviderReadiness.evaluate(settings, hasAPIKey: hasAPIKey).isReady else {
             return String(localized: "Não configurado")
         }
-        return "\(ProviderCatalog.descriptor(for: settings.provider).name) · \(settings.model)"
+        return "\(ProviderCatalog.descriptor(for: settings.provider).displayShortName) · \(settings.model)"
     }
 
     // MARK: Treino

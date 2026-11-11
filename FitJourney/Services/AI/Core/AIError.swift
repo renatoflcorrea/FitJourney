@@ -7,6 +7,9 @@ enum AIError: Error, Sendable, Hashable {
     case notConfigured(reason: String)
     /// 401/403: chave inválida ou sem permissão.
     case unauthorized(message: String)
+    /// Login do ChatGPT ausente, expirado ou recusado (refresh revogado, 401/403 mesmo após renovar):
+    /// a UI pede "Entre de novo".
+    case signInRequired
     /// 429, com o atraso sugerido pelo servidor.
     case rateLimited(retryAfter: TimeInterval?)
     /// Demais 4xx: o pedido está errado.
@@ -41,6 +44,8 @@ extension AIError: LocalizedError {
             String(localized: "Coach não configurado: \(reason)")
         case .unauthorized:
             String(localized: "A chave do provedor foi recusada. Confira a chave em Ajustes.")
+        case .signInRequired:
+            String(localized: "O login do ChatGPT expirou ou foi recusado. Entre de novo em Ajustes de IA.")
         case let .rateLimited(retryAfter):
             if let retryAfter {
                 String(localized: "Limite de uso do provedor atingido. Tente de novo em \(Int(retryAfter.rounded())) s.")

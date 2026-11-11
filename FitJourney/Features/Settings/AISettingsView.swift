@@ -14,7 +14,24 @@ enum AISettingsText {
         case let .missingAPIKey(provider):
             (String(localized: "Falta a chave de API"),
              String(localized: "Salve a chave do \(ProviderCatalog.descriptor(for: provider).name) para começar."), .attention)
+        case .signedOut:
+            (String(localized: "Entre com o ChatGPT"),
+             String(localized: "Este provedor usa o login da sua assinatura ChatGPT, sem chave de API."), .attention)
         }
+    }
+
+    /// Aviso de risco do provedor ChatGPT (login) — experimental e não oficial.
+    static let chatGPTRisk = String(localized: """
+    Experimental e não oficial. Usa o login da sua assinatura ChatGPT por um endpoint não documentado (o mesmo \
+    do Codex CLI), que pode mudar ou parar de funcionar sem aviso. Usar esse acesso em outro app é uma zona \
+    cinzenta dos termos da OpenAI: só para uso pessoal, por sua conta e risco. As conversas contam no limite \
+    de uso da sua assinatura.
+    """)
+
+    /// "Conectado · Plus" ou "Conectado".
+    static func chatGPTStatus(plan: String?) -> String {
+        guard let plan, !plan.isEmpty else { return String(localized: "Conectado") }
+        return String(localized: "Conectado · \(plan)")
     }
 
     /// `nil` = campo vazio ou aceitável; texto = motivo de recusa.
@@ -47,6 +64,11 @@ struct AISettingsView: View {
     @State private var hasConsented: Bool
     @State private var errorMessage: String?
     @State private var showRevoke = false
+    @State private var chatGPTLogin = ChatGPTLoginModel()
+    @State private var chatGPTPlan: String?
+    @State private var chatGPTModels: [String]?
+    @State private var pastedCallback = ""
+    @Environment(\.openURL) private var openURL
 
     init() {
         self.init(secrets: KeychainSecretStore(), defaults: .standard)
@@ -73,7 +95,7 @@ struct AISettingsView: View {
             providerSection
             modelSection
             if settings.provider == .custom { customSection }
-            keySection
+            if descriptor.usesChatGPTLogin { chatGPTSection } else { keySection }
             sharingSection
             consentSection
         }
@@ -86,6 +108,8 @@ struct AISettingsView: View {
             sharing = store.load().sharing
         }
         .onChange(of: settings) { ProviderSettingsStore(defaults: defaults).save(settings) }
+        .task(id: descriptor.usesChatGPTLogin && hasKey) { await discoverChatGPTModels() }
+        .onDisappear { chatGPTLogin.cancel() }
         .onChange(of: sharing) {
             let store = CoachProfileStore(defaults: defaults)
             var profile = store.load()
@@ -131,13 +155,17 @@ struct AISettingsView: View {
                 reloadKeyState()
             }
         } footer: {
-            Text("A chave é sua (BYOK). As requisições vão direto do aparelho ao provedor escolhido.")
+            if descriptor.usesChatGPTLogin {
+                Text("Sem chave de API: entra com a sua conta ChatGPT. As requisições vão direto do aparelho ao ChatGPT.")
+            } else {
+                Text("A chave é sua (BYOK). As requisições vão direto do aparelho ao provedor escolhido.")
+            }
         }
     }
 
     private var modelSection: some View {
         Section("Modelo") {
-            ForEach(descriptor.suggestedModels, id: \.self) { model in
+            ForEach(modelSuggestions, id: \.self) { model in
                 Button {
                     settings.model = model
                 } label: {
@@ -151,7 +179,7 @@ struct AISettingsView: View {
                 .accessibilityAddTraits(settings.model == model ? .isSelected : [])
             }
             TextField("Outro modelo", text: Binding(
-                get: { descriptor.suggestedModels.contains(settings.model) ? "" : settings.model },
+                get: { modelSuggestions.contains(settings.model) ? "" : settings.model },
                 set: { settings.model = $0 }
             ))
             .textInputAutocapitalization(.never)
@@ -221,6 +249,91 @@ struct AISettingsView: View {
         }
     }
 
+    /// Lista descoberta da conta ChatGPT (quando logado) ou as sugestões do catálogo.
+    private var modelSuggestions: [String] {
+        descriptor.usesChatGPTLogin ? (chatGPTModels ?? descriptor.suggestedModels) : descriptor.suggestedModels
+    }
+
+    private var chatGPTSection: some View {
+        Section {
+            FJBanner("Experimental / não oficial", message: LocalizedStringKey(AISettingsText.chatGPTRisk), tone: .attention)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .accessibilityIdentifier("settings.chatgpt.warning")
+            if hasKey {
+                LabeledContent("Conta ChatGPT") {
+                    Text(AISettingsText.chatGPTStatus(plan: chatGPTPlan)).foregroundStyle(FJTone.success.color)
+                }
+                .accessibilityIdentifier("settings.chatgpt.status")
+                Button("Sair", role: .destructive, action: signOutChatGPT)
+                    .frame(minHeight: FJSize.minTap, alignment: .leading)
+                    .accessibilityIdentifier("settings.chatgpt.signOut")
+            } else {
+                chatGPTSignInRows
+            }
+            if case let .failed(message) = chatGPTLogin.phase {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(FJFont.caption)
+                    .foregroundStyle(FJTone.attention.color)
+            }
+        } header: {
+            Text("Conta ChatGPT")
+        } footer: {
+            Text("Os tokens do login ficam só no Keychain deste aparelho, fora de backups. Sair apaga o login daqui.")
+        }
+    }
+
+    @ViewBuilder
+    private var chatGPTSignInRows: some View {
+        switch chatGPTLogin.phase {
+        case .waiting:
+            HStack(spacing: FJSpacing.s) {
+                ProgressView()
+                Text("Aguardando o ChatGPT…").foregroundStyle(FJColor.textSecondary)
+            }
+            .frame(minHeight: FJSize.minTap)
+            Button("Cancelar") { chatGPTLogin.cancel() }
+                .frame(minHeight: FJSize.minTap, alignment: .leading)
+        case let .manual(url, problem):
+            Text("Não deu para receber o login aqui (porta 1455 ocupada). Entre na página pelo navegador e cole aqui o endereço inteiro em que ele parar.")
+                .font(FJFont.caption)
+                .foregroundStyle(FJColor.textSecondary)
+            if let problem {
+                Label(problem, systemImage: "exclamationmark.triangle.fill")
+                    .font(FJFont.caption)
+                    .foregroundStyle(FJTone.attention.color)
+            }
+            Button("Abrir a página de login") { openURL(url) }
+                .frame(minHeight: FJSize.minTap, alignment: .leading)
+            TextField("Cole o endereço (http://localhost:1455/auth/callback?…)", text: $pastedCallback)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            Button("Concluir") {
+                let text = pastedCallback
+                pastedCallback = ""
+                Task {
+                    if await chatGPTLogin.finishManually(text, store: SecretChatGPTStore(secrets: secrets)) {
+                        reloadKeyState()
+                    }
+                }
+            }
+            .disabled(pastedCallback.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .frame(minHeight: FJSize.minTap, alignment: .leading)
+            Button("Cancelar") { chatGPTLogin.cancel() }
+                .frame(minHeight: FJSize.minTap, alignment: .leading)
+        case .idle, .failed:
+            Button {
+                Task {
+                    if await chatGPTLogin.signIn(store: SecretChatGPTStore(secrets: secrets)) { reloadKeyState() }
+                }
+            } label: {
+                Label("Entrar com ChatGPT", systemImage: "person.badge.key")
+            }
+            .frame(minHeight: FJSize.minTap, alignment: .leading)
+            .accessibilityIdentifier("settings.chatgpt.signIn")
+        }
+    }
+
     private var sharingSection: some View {
         Section {
             SharingToggles(sharing: $sharing)
@@ -250,7 +363,34 @@ struct AISettingsView: View {
     // MARK: Ações
 
     private func reloadKeyState() {
-        hasKey = secrets.contains(descriptor.secretKey)
+        hasKey = descriptor.hasCredential(in: secrets)
+        chatGPTPlan = descriptor.usesChatGPTLogin
+            ? SecretChatGPTStore(secrets: secrets).loadIgnoringErrors()?.planLabel : nil
+    }
+
+    private func signOutChatGPT() {
+        chatGPTLogin.cancel()
+        do {
+            try SecretChatGPTStore(secrets: secrets).clear()
+            chatGPTModels = nil
+            reloadKeyState()
+        } catch {
+            errorMessage = String(localized: "Não foi possível remover do Keychain.")
+        }
+    }
+
+    /// Lista de modelos da conta (backend não oficial); sem login ou com falha, fica a lista do catálogo.
+    private func discoverChatGPTModels() async {
+        guard descriptor.usesChatGPTLogin, hasKey else { return }
+        let lister = ChatGPTModelLister(session: ChatGPTAuthSession(store: SecretChatGPTStore(secrets: secrets)))
+        let models = await lister.models()
+        guard !Task.isCancelled else { return }
+        chatGPTModels = models
+        // Modelo salvo que a conta não oferece: vira o primeiro da lista (como no fireplaice).
+        if let first = models.first, !models.contains(settings.model), settings.models[.chatGPT] == nil {
+            settings.model = first
+        }
+        reloadKeyState() // um refresh permanente recusado apaga o login
     }
 
     private func saveKey() {

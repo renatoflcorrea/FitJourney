@@ -50,17 +50,30 @@ struct HTTPClient: Sendable {
     private let session: URLSession
     private let sensitiveHeaderNames: Set<String>
     let retryPolicy: RetryPolicy
+    /// 403 vira `badRequest(status: 403)` em vez de `unauthorized` (o ChatGPT distingue token vencido de bloqueio).
+    private let forbiddenKeepsStatus: Bool
 
     init(session: URLSession = HTTPClient.sharedSession, sensitiveHeaderNames: Set<String> = [],
-         retryPolicy: RetryPolicy = .standard) {
+         retryPolicy: RetryPolicy = .standard, forbiddenKeepsStatus: Bool = false) {
         self.session = session
         self.sensitiveHeaderNames = Set(sensitiveHeaderNames.map { $0.lowercased() })
         self.retryPolicy = retryPolicy
+        self.forbiddenKeepsStatus = forbiddenKeepsStatus
     }
 
     func addingSensitiveHeaders(_ names: some Sequence<String>) -> HTTPClient {
         HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames.union(names.map { $0.lowercased() }),
-                   retryPolicy: retryPolicy)
+                   retryPolicy: retryPolicy, forbiddenKeepsStatus: forbiddenKeepsStatus)
+    }
+
+    func withRetryPolicy(_ policy: RetryPolicy) -> HTTPClient {
+        HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames, retryPolicy: policy,
+                   forbiddenKeepsStatus: forbiddenKeepsStatus)
+    }
+
+    func keepingForbiddenStatus() -> HTTPClient {
+        HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames, retryPolicy: retryPolicy,
+                   forbiddenKeepsStatus: true)
     }
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -88,13 +101,22 @@ struct HTTPClient: Sendable {
         }
     }
 
-    private func dataOnce(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+    /// Como `data(for:)`, mas devolve 4xx/5xx para quem chama decidir (OAuth distingue 400 `invalid_grant`,
+    /// 401 e 403). Redirecionamentos continuam recusados; sem repetição automática.
+    func dataAllowingErrorStatus(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        try await dataOnce(for: request, validateStatus: false)
+    }
+
+    private func dataOnce(for request: URLRequest, validateStatus: Bool = true) async throws -> (Data, HTTPURLResponse) {
         do {
             let (data, response) = try await session.data(for: request, delegate: RedirectRefusingDelegate())
             guard let http = response as? HTTPURLResponse else {
                 throw AIError.network(code: URLError.badServerResponse.rawValue, retryable: false)
             }
-            try Self.validate(http, data: data, request: request, sensitiveHeaders: sensitiveHeaderNames)
+            if validateStatus || (300 ..< 400).contains(http.statusCode) {
+                try Self.validate(http, data: data, request: request, sensitiveHeaders: sensitiveHeaderNames,
+                                  forbiddenKeepsStatus: forbiddenKeepsStatus)
+            }
             return (data, http)
         } catch {
             throw Self.normalize(error)
@@ -113,7 +135,8 @@ struct HTTPClient: Sendable {
                     body.append(byte)
                     if body.count > 64_000 { break }
                 }
-                try Self.validate(http, data: body, request: request, sensitiveHeaders: sensitiveHeaderNames)
+                try Self.validate(http, data: body, request: request, sensitiveHeaders: sensitiveHeaderNames,
+                                  forbiddenKeepsStatus: forbiddenKeepsStatus)
                 throw AIError.network(code: URLError.badServerResponse.rawValue, retryable: false)
             }
             return (bytes, http)
@@ -134,7 +157,7 @@ struct HTTPClient: Sendable {
     }
 
     static func validate(_ response: HTTPURLResponse, data: Data, request: URLRequest? = nil,
-                         sensitiveHeaders: Set<String> = []) throws {
+                         sensitiveHeaders: Set<String> = [], forbiddenKeepsStatus: Bool = false) throws {
         let status = response.statusCode
         guard !(200 ..< 300).contains(status) else { return }
 
@@ -151,6 +174,8 @@ struct HTTPClient: Sendable {
         switch status {
         case 300 ..< 400:
             throw AIError.badRequest(status: status, message: "redirecionamento recusado")
+        case 403 where forbiddenKeepsStatus:
+            throw AIError.badRequest(status: 403, message: message)
         case 401, 403:
             throw AIError.unauthorized(message: message)
         case 429:
