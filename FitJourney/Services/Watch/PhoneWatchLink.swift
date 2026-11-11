@@ -8,6 +8,7 @@ import SwiftData
 protocol WatchHealthBridge: AnyObject {
     var hasRemoteSession: Bool { get }
     var onMirroredSessionDiscarded: ((UUID) -> Void)? { get set }
+    var onRemoteSessionChange: ((Bool) -> Void)? { get set }
     func remoteData() -> AsyncStream<Data>
     func sendToRemote(_ data: Data) async throws
     func receiveRemoteMetrics(_ updates: [HealthLiveUpdate])
@@ -22,34 +23,54 @@ protocol WatchHealthBridge: AnyObject {
 
 extension HealthWorkoutController: WatchHealthBridge {}
 
+/// Procura no Saúde o treino gravado para uma sessão (`HKMetadataKeyExternalUUID` = ID da sessão).
+typealias WatchWorkoutFinder = @MainActor (_ sessionID: UUID, _ interval: DateInterval) async -> UUID?
+
 /// Transporte do iPhone com o relógio (W2, SPEC §6.4). O iPhone é a fonte de verdade: aplica os comandos do
 /// relógio no `SessionEngine` e devolve resposta + snapshots.
 ///
 /// **Canais** (relógio ↔ iPhone, sempre envelopes do `WatchLinkCodec`):
 /// - Sessão espelhada conectada (`WatchHealthBridge.hasRemoteSession`): tudo pelo canal de dados da
-///   `HKWorkoutSession` (`remoteData()`/`sendToRemote`). Falhou → cai no WatchConnectivity.
+///   `HKWorkoutSession` (`remoteData()`/`sendToRemote`), numa fila serial (a ordem dos envios é mantida).
+///   Falhou → cai no WatchConnectivity.
 /// - Relógio alcançável: `sendMessageData` (o relógio manda comandos com resposta: a resposta é o `commandReply`;
 ///   no `snapshotRequest`, a resposta é o snapshot).
-/// - Fora de alcance: o `applicationContext` guarda o estado mais recente — `ProgramDigest` + último snapshot —
-///   e chega quando o relógio acordar. Comandos do relógio offline chegam por `transferUserInfo` (aplicados igual).
+/// - Fora de alcance: o `applicationContext` guarda o estado mais recente — `ProgramDigest` + último snapshot +
+///   carimbo (`stamp`) — e chega quando o relógio acordar. Comandos do relógio offline chegam por
+///   `transferUserInfo` (aplicados igual).
+/// - Ativação: nada vai para o `applicationContext` antes de o `WCSession` ativar; em `.activated` o contexto
+///   (digest + último snapshot) é sempre republicado.
 ///
 /// **Snapshots:** assina `SessionEngine.snapshots()`, coalesce `snapshotCoalescing` (250 ms) e envia o mais
 /// recente; terminal (`finished`/`discarded`) sai na hora. Comando duplicado/recusado reenvia o snapshot atual.
 ///
-/// **Digest:** no `start()` e a cada gravação do SwiftData (`ModelContext.didSave`, com espera de 1 s) recalcula o
-/// `ProgramDigest`; se mudou (ignorando `generatedAt`), atualiza o `applicationContext` e envia se alcançável.
+/// **Digest:** no `start()`, ao fim de cada sessão e quando o SwiftData grava programas/fichas/exercícios/séries
+/// prescritas (`ModelContext.didSave` filtrado, espera `digestDebounce`), recalcula o `ProgramDigest`; se mudou
+/// (ignorando `generatedAt`), atualiza o contexto e envia se alcançável.
 ///
-/// **Saúde:** `workoutStatus` do relógio → `.recording`: `adoptRemoteRecording` (o iPhone não grava);
-/// `.notRecording`: `unmarkMirrored` + volta a gravar no iPhone; `.saved(id)`: `linkWorkout` (repetido até a
-/// sessão estar encerrada aqui); `.failed`: `unmarkMirrored` + reconciliação (gravador simples). `liveMetrics` →
-/// `receiveRemoteMetrics`. Sessão espelhada descartada (`onMirroredSessionDiscarded`) → o snapshot terminal sai
-/// na hora (o relógio encerra a `HKWorkoutSession`).
+/// **Saúde (quem grava):** `workoutStatus` do relógio →
+/// - `.recording`: `adoptRemoteRecording` (o iPhone não grava);
+/// - `.notRecording`: `unmarkMirrored` + `resumeIfNeeded` (o iPhone volta a gravar a sessão em andamento);
+/// - `.saved(id)`: `linkWorkout`; enquanto a sessão não terminou aqui o vínculo fica pendente (persistido em
+///   `UserDefaults`) e é repetido a cada comando, snapshot terminal e `handleForeground()`;
+/// - `.failed`: `unmarkMirrored` + `reconcilePendingWorkouts()` — **sem** `resumeIfNeeded`: o relógio só falha no
+///   fim (gravação do `HKWorkout`), com a sessão já encerrada; a reconciliação grava pelo gravador simples.
+/// Sessão espelhada concluída sem vínculo há mais de `linkDeadline` (10 min): `reconcileMirroredSessions()`
+/// (no `start()` e em `handleForeground()`) procura o treino no Saúde pelo `HKMetadataKeyExternalUUID`
+/// (`workoutFinder`) e vincula; não achou → libera a sessão para a reconciliação do iPhone.
+/// `liveMetrics` → `receiveRemoteMetrics`. Sessão espelhada descartada → o snapshot terminal sai na hora.
+/// Espelho conectou/caiu (`onRemoteSessionChange`) → reavalia o alcance.
 ///
-/// **Versão:** mensagem de versão não suportada → responde `.incompatible` (formato estável); aviso recebido do
-/// relógio fica em `watchIncompatibility` (a UI pede para atualizar o app do relógio).
+/// **Versão:** só mensagens de canal ativo (mensagem com/sem resposta ou canal espelhado) com versão não
+/// suportada recebem `.incompatible`; `userInfo` antigo é ignorado. Aviso recebido do relógio fica em
+/// `watchIncompatibility` e some na próxima mensagem válida.
 @MainActor
 @Observable
 final class PhoneWatchLink {
+    static let pendingLinksKey = "watchLink.pendingLinks"
+    /// Entidades cuja gravação muda o digest.
+    static let digestEntities: Set<String> = ["TrainingProgram", "Routine", "RoutineExercise", "SetPrescription", "Exercise"]
+
     /// Relógio alcançável (WatchConnectivity) ou sessão espelhada conectada.
     private(set) var isWatchReachable = false
     /// Relógio pareado com o app do FitJourney instalado.
@@ -63,10 +84,15 @@ final class PhoneWatchLink {
     @ObservationIgnored private let session: any WatchLinkSession
     @ObservationIgnored private weak var health: (any WatchHealthBridge)?
     @ObservationIgnored private let digestProvider: @MainActor () -> ProgramDigest?
+    @ObservationIgnored private let workoutFinder: WatchWorkoutFinder?
+    @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored var snapshotCoalescing: Duration = .milliseconds(250)
-    @ObservationIgnored var digestDebounce: Duration = .seconds(1)
+    @ObservationIgnored var digestDebounce: Duration = .seconds(2)
+    /// Prazo para uma sessão espelhada concluída receber o vínculo do relógio antes de procurar no Saúde.
+    @ObservationIgnored var linkDeadline: TimeInterval = 600
 
     @ObservationIgnored private var lastDigest: ProgramDigest?
+    @ObservationIgnored private var hasComputedDigest = false
     @ObservationIgnored private var hasPublishedDigest = false
     @ObservationIgnored private var pendingSnapshot: SessionSnapshot?
     @ObservationIgnored private var lastSentSnapshot: SessionSnapshot?
@@ -74,26 +100,41 @@ final class PhoneWatchLink {
     @ObservationIgnored private var digestTask: Task<Void, Never>?
     @ObservationIgnored private var snapshotListener: Task<Void, Never>?
     @ObservationIgnored private var remoteListener: Task<Void, Never>?
+    @ObservationIgnored private var remoteChain: Task<Void, Never>?
     @ObservationIgnored private var saveObserver: (any NSObjectProtocol)?
-    /// Treinos do relógio aguardando a sessão encerrar aqui para o vínculo.
-    @ObservationIgnored private var pendingLinks: [UUID: UUID] = [:]
+    @ObservationIgnored private var isReconciling = false
 
     /// - Parameters:
     ///   - health: o `HealthWorkoutController` do app (espelhamento/vínculo); `nil` = sem Saúde.
     ///   - digestProvider: padrão = `ProgramDigestBuilder.make(context: engine.context)`.
+    ///   - workoutFinder: busca no Saúde por `HKMetadataKeyExternalUUID` (use `PhoneWatchLink.finder(reading:)`
+    ///     com `HealthQueries`); `nil` = sessão sem vínculo no prazo vai direto para a reconciliação.
+    ///   - defaults: onde ficam os vínculos pendentes.
     init(engine: SessionEngine, session: any WatchLinkSession = WCWatchLinkSession(), health: (any WatchHealthBridge)? = nil,
-         digestProvider: (@MainActor () -> ProgramDigest?)? = nil) {
+         digestProvider: (@MainActor () -> ProgramDigest?)? = nil, workoutFinder: WatchWorkoutFinder? = nil,
+         defaults: UserDefaults = .standard) {
         self.engine = engine
         self.session = session
         self.health = health
+        self.workoutFinder = workoutFinder
+        self.defaults = defaults
         let context = engine.context
         self.digestProvider = digestProvider ?? { try? ProgramDigestBuilder.make(context: context) }
     }
 
+    /// `workoutFinder` a partir das leituras do Saúde: treino deste app com `externalUUID` = ID da sessão.
+    static func finder(reading: any HealthDataReading) -> WatchWorkoutFinder {
+        { sessionID, interval in
+            let window = DateInterval(start: interval.start.addingTimeInterval(-3_600), end: interval.end.addingTimeInterval(3_600))
+            let records = (try? await reading.workouts(in: window))?.value ?? []
+            return records.first { $0.externalUUID?.uppercased() == sessionID.uuidString }?.id
+        }
+    }
+
     // MARK: Ciclo de vida
 
-    /// Ativa o `WCSession`, publica o digest e passa a acompanhar snapshots, o canal espelhado e as gravações.
-    /// Idempotente. Chamar no lançamento, depois do `engine.restore()`.
+    /// Ativa o `WCSession`, publica o digest (depois da ativação) e passa a acompanhar snapshots, o canal espelhado
+    /// e as gravações. Idempotente. Chamar no lançamento, depois do `engine.restore()`.
     func start() {
         guard snapshotListener == nil else { return }
         session.onEvent = { [weak self] event in self?.handle(event) }
@@ -111,15 +152,22 @@ final class PhoneWatchLink {
             remoteListener = Task { [weak self] in
                 for await packet in data {
                     guard let self, !Task.isCancelled else { return }
-                    self.receive(packet, reply: nil, viaRemote: true)
+                    self.receive(packet, reply: nil, channel: .remote)
                 }
             }
             health.onMirroredSessionDiscarded = { [weak self] _ in self?.flushSnapshot() }
+            health.onRemoteSessionChange = { [weak self] _ in self?.refreshConnection() }
         }
-        saveObserver = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.scheduleDigestRefresh() }
+        saveObserver = NotificationCenter.default.addObserver(forName: ModelContext.didSave, object: nil, queue: .main) { [weak self] note in
+            let names = Self.entityNames(in: note)
+            MainActor.assumeIsolated {
+                guard !names.isDisjoint(with: Self.digestEntities) else { return }
+                self?.scheduleDigestRefresh()
+            }
         }
         refreshDigest()
+        retryPendingLinks()
+        Task { await reconcileMirroredSessions() }
     }
 
     func stop() {
@@ -130,6 +178,14 @@ final class PhoneWatchLink {
         if let saveObserver { NotificationCenter.default.removeObserver(saveObserver) }
         saveObserver = nil
         session.onEvent = nil
+        health?.onRemoteSessionChange = nil
+    }
+
+    /// Volta ao primeiro plano: reavalia o alcance, repete vínculos pendentes e procura treinos sem vínculo.
+    func handleForeground() {
+        refreshConnection()
+        retryPendingLinks()
+        Task { await reconcileMirroredSessions() }
     }
 
     /// Recalcula o digest agora e publica se mudou (o app pode chamar depois de editar programas).
@@ -137,10 +193,13 @@ final class PhoneWatchLink {
         digestTask?.cancel()
         digestTask = nil
         let digest = digestProvider()
-        guard !hasPublishedDigest || !Self.sameContent(digest, lastDigest) else { return }
-        hasPublishedDigest = true
+        let changed = !hasComputedDigest || !Self.sameContent(digest, lastDigest)
+        hasComputedDigest = true
         lastDigest = digest
-        updateContext()
+        // Antes da ativação só guarda; o `.activated` publica.
+        guard session.isActivated, changed || !hasPublishedDigest else { return }
+        hasPublishedDigest = true
+        publishContext()
         if session.isReachable { sendByConnectivity(.programDigest(digest)) }
     }
 
@@ -161,14 +220,22 @@ final class PhoneWatchLink {
 
     // MARK: Recepção
 
+    private enum Channel { case message, userInfo, remote }
+
     private func handle(_ event: WatchLinkSessionEvent) {
         switch event {
-        case .activated, .reachability:
+        case .activated:
+            refreshConnection()
+            // Sempre republica o estado (contexto feito antes da ativação se perdeu).
+            if !hasComputedDigest { lastDigest = digestProvider(); hasComputedDigest = true }
+            hasPublishedDigest = true
+            publishContext()
+        case .reachability:
             refreshConnection()
         case .message(let data, let reply):
-            receive(data, reply: reply, viaRemote: false)
+            receive(data, reply: reply, channel: .message)
         case .userInfo(let data):
-            receive(data, reply: nil, viaRemote: false)
+            receive(data, reply: nil, channel: .userInfo)
         case .context:
             break // o relógio não publica contexto
         }
@@ -184,17 +251,24 @@ final class PhoneWatchLink {
     }
 
     /// Mensagem do relógio (WatchConnectivity ou canal espelhado). `reply` = o relógio espera resposta.
-    func receive(_ data: Data, reply: WatchLinkReply?, viaRemote: Bool) {
+    private func receive(_ data: Data, reply: WatchLinkReply?, channel: Channel) {
+        let viaRemote = channel == .remote
         let message: WatchLinkMessage
         do {
             message = try WatchLinkCodec.decode(data)
         } catch WatchLinkCodecError.unsupportedVersion {
-            if let notice = try? WatchLinkCodec.incompatibilityNotice() { respond(raw: notice, reply: reply, viaRemote: viaRemote) }
+            // Só canal ativo responde (fila offline antiga não merece aviso).
+            if channel != .userInfo, let notice = try? WatchLinkCodec.incompatibilityNotice() {
+                respond(raw: notice, reply: reply, viaRemote: viaRemote)
+            } else {
+                reply?(Data())
+            }
             return
         } catch {
             reply?(Data())
             return
         }
+        if case .incompatible = message {} else { watchIncompatibility = nil }
         switch message {
         case .command(let command):
             handle(command, reply: reply, viaRemote: viaRemote)
@@ -249,9 +323,12 @@ final class PhoneWatchLink {
             Task { await health.resumeIfNeeded(sessionID: sessionID) }
         case .saved(let workoutID):
             if watchRecordingSessionID == sessionID { watchRecordingSessionID = nil }
-            pendingLinks[sessionID] = workoutID
+            var links = pendingLinks
+            links[sessionID] = workoutID
+            pendingLinks = links
             retryPendingLinks()
         case .failed:
+            // Sem `resumeIfNeeded`: a falha é na gravação do fim, com a sessão já encerrada (ver doc da classe).
             if watchRecordingSessionID == sessionID { watchRecordingSessionID = nil }
             guard let health else { return }
             health.unmarkMirrored(sessionID)
@@ -259,12 +336,62 @@ final class PhoneWatchLink {
         }
     }
 
+    // MARK: Vínculo do treino do relógio
+
+    /// Vínculos recebidos do relógio aguardando a sessão encerrar aqui (persistidos).
+    var pendingLinks: [UUID: UUID] {
+        get {
+            let raw = defaults.dictionary(forKey: Self.pendingLinksKey) as? [String: String] ?? [:]
+            return Dictionary(uniqueKeysWithValues: raw.compactMap { key, value in
+                guard let session = UUID(uuidString: key), let workout = UUID(uuidString: value) else { return nil }
+                return (session, workout)
+            })
+        }
+        set {
+            let raw = Dictionary(uniqueKeysWithValues: newValue.map { ($0.key.uuidString, $0.value.uuidString) })
+            defaults.set(raw, forKey: Self.pendingLinksKey)
+        }
+    }
+
     /// `linkWorkout` só vale com a sessão encerrada aqui (o `finish` pode chegar depois do treino gravado).
     private func retryPendingLinks() {
-        guard let health, !pendingLinks.isEmpty else { return }
-        for (sessionID, workoutID) in pendingLinks where health.linkWorkout(workoutID, to: sessionID) {
-            pendingLinks[sessionID] = nil
+        guard let health else { return }
+        var links = pendingLinks
+        guard !links.isEmpty else { return }
+        for (sessionID, workoutID) in links where health.linkWorkout(workoutID, to: sessionID) {
+            links[sessionID] = nil
         }
+        pendingLinks = links
+    }
+
+    /// Sessões espelhadas concluídas há mais de `linkDeadline` sem treino vinculado: procura no Saúde e vincula;
+    /// sem resultado, libera para a reconciliação do iPhone (gravador simples).
+    func reconcileMirroredSessions() async {
+        guard let health, !isReconciling else { return }
+        isReconciling = true
+        defer { isReconciling = false }
+        retryPendingLinks()
+        let now = engine.now()
+        let since = now.addingTimeInterval(-HealthWorkoutController.reconcileWindow)
+        let deadline = now.addingTimeInterval(-linkDeadline)
+        let completed = SessionStatus.completed.rawValue
+        let descriptor = FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.statusRaw == completed && $0.healthKitWorkoutID == nil && $0.startedAt > since })
+        let sessions = ((try? engine.context.fetch(descriptor)) ?? []).filter {
+            guard let ended = $0.endedAt else { return false }
+            return ended <= deadline && health.isMirrored($0.id)
+        }
+        let candidates = sessions.map { ($0.id, DateInterval(start: $0.startedAt, end: max($0.startedAt, $0.endedAt ?? $0.startedAt))) }
+        var released = false
+        for (sessionID, interval) in candidates where pendingLinks[sessionID] == nil {
+            if let finder = workoutFinder, let workoutID = await finder(sessionID, interval) {
+                health.linkWorkout(workoutID, to: sessionID)
+            } else {
+                health.unmarkMirrored(sessionID)
+                released = true
+            }
+        }
+        if released { await health.reconcilePendingWorkouts() }
     }
 
     // MARK: Snapshots
@@ -273,7 +400,10 @@ final class PhoneWatchLink {
         pendingSnapshot = snapshot
         if snapshot.status == .finished || snapshot.status == .discarded || force {
             flushSnapshot()
-            if snapshot.status == .finished { retryPendingLinks() }
+            if snapshot.status == .finished {
+                retryPendingLinks()
+                scheduleDigestRefresh() // última execução/cargas atuais mudaram
+            }
             return
         }
         guard flushTask == nil else { return }
@@ -292,27 +422,33 @@ final class PhoneWatchLink {
         guard let snapshot = pendingSnapshot else { return }
         pendingSnapshot = nil
         lastSentSnapshot = snapshot
-        updateContext(snapshot: snapshot)
+        publishContext()
         send(.snapshot(snapshot))
     }
 
     // MARK: Envio
 
-    /// Melhor canal disponível: espelhado → mensagem (se alcançável). Fora de alcance o `applicationContext` já
-    /// carrega o estado; o relógio reenvia comandos sem resposta.
+    /// Melhor canal disponível: espelhado (fila serial) → mensagem (se alcançável). Fora de alcance o
+    /// `applicationContext` já carrega o estado; o relógio reenvia comandos sem resposta.
     private func send(_ message: WatchLinkMessage) {
         guard let data = try? WatchLinkCodec.encode(message) else { return }
         if let health, health.hasRemoteSession {
-            Task { [weak self] in
-                do {
-                    try await health.sendToRemote(data)
-                } catch {
-                    self?.sendByConnectivity(data)
-                }
-            }
+            sendRemote(data, health: health)
             return
         }
         sendByConnectivity(data)
+    }
+
+    private func sendRemote(_ data: Data, health: any WatchHealthBridge) {
+        let previous = remoteChain
+        remoteChain = Task { [weak self] in
+            await previous?.value
+            do {
+                try await health.sendToRemote(data)
+            } catch {
+                self?.sendByConnectivity(data)
+            }
+        }
     }
 
     private func sendByConnectivity(_ message: WatchLinkMessage) {
@@ -337,20 +473,18 @@ final class PhoneWatchLink {
         if let reply {
             reply(data)
         } else if viaRemote, let health {
-            Task { [weak self] in
-                do { try await health.sendToRemote(data) } catch { self?.sendByConnectivity(data) }
-            }
+            sendRemote(data, health: health)
         } else {
             sendByConnectivity(data)
         }
     }
 
-    /// `applicationContext` = digest + último snapshot (estado mais recente para o relógio fora de alcance).
-    private func updateContext(snapshot: SessionSnapshot? = nil) {
-        var context: [String: Data] = [:]
+    /// `applicationContext` = digest + último snapshot + carimbo. Antes da ativação só marca para o `.activated`.
+    private func publishContext() {
+        guard session.isActivated else { return }
+        var context: [String: Data] = [WatchLinkSessionKey.stamp: WatchLinkSessionKey.encodeStamp(engine.now())]
         if let digest = try? WatchLinkCodec.encode(.programDigest(lastDigest)) { context[WatchLinkSessionKey.digest] = digest }
-        let current = snapshot ?? lastSentSnapshot
-        if let data = try? WatchLinkCodec.encode(.snapshot(current)) { context[WatchLinkSessionKey.snapshot] = data }
+        if let data = try? WatchLinkCodec.encode(.snapshot(lastSentSnapshot)) { context[WatchLinkSessionKey.snapshot] = data }
         try? session.updateContext(context)
     }
 
@@ -363,6 +497,16 @@ final class PhoneWatchLink {
             self?.digestTask = nil
             self?.refreshDigest()
         }
+    }
+
+    /// Nomes das entidades inseridas/alteradas/apagadas numa gravação do SwiftData.
+    nonisolated static func entityNames(in note: Notification) -> Set<String> {
+        let keys = [ModelContext.NotificationKey.insertedIdentifiers, .updatedIdentifiers, .deletedIdentifiers]
+        var names = Set<String>()
+        for key in keys {
+            for id in note.userInfo?[key.rawValue] as? [PersistentIdentifier] ?? [] { names.insert(id.entityName) }
+        }
+        return names
     }
 
     static func sameContent(_ a: ProgramDigest?, _ b: ProgramDigest?) -> Bool {

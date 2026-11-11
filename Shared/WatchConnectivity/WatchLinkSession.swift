@@ -8,12 +8,23 @@ import WatchConnectivity
 // Formato no fio: cada mensagem é um envelope do `WatchLinkCodec` (`Data`).
 // - `sendMessageData` (com resposta quando quem envia espera uma);
 // - `transferUserInfo` = `[WatchLinkSessionKey.payload: Data]` (fila offline, entregue em ordem);
-// - `applicationContext` = estado mais recente: `[digest: Data, snapshot: Data]` (só o último vale).
+// - `applicationContext` = estado mais recente: `[digest: Data, snapshot: Data, stamp: Data]` (só o último vale;
+//   `stamp` = quando o iPhone montou o contexto, para o relógio ignorar contexto mais velho que o guardado).
+//
+// Os transportes só usam `transferUserInfo`/`updateContext` com a sessão ativada: antes disso guardam e
+// descarregam no `.activated` (o `WCSession` descarta chamadas feitas antes da ativação).
 
 enum WatchLinkSessionKey {
     static let payload = "p"
     static let digest = "digest"
     static let snapshot = "snapshot"
+    static let stamp = "stamp"
+
+    static func encodeStamp(_ date: Date) -> Data { Data(String(date.timeIntervalSinceReferenceDate).utf8) }
+    static func decodeStamp(_ data: Data?) -> Date? {
+        guard let data, let value = Double(String(decoding: data, as: UTF8.self)) else { return nil }
+        return Date(timeIntervalSinceReferenceDate: value)
+    }
 }
 
 /// Resposta única (thread-safe) de `didReceiveMessageData` — o bloco do sistema não é anotado `Sendable`.

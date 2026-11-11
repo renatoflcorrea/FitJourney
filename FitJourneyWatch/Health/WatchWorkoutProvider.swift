@@ -11,15 +11,21 @@ import HealthKit
 /// - Ao vivo: FC (e zona pela FC máxima 220 − idade do Saúde), FC média e energia ativa → `onMetrics`
 ///   (o modelo repassa ao iPhone). Sem leitura = `nil`, nunca zero.
 /// - Pausa/retomada: `pause()`/`resume()` da sessão do Saúde (eventos gerados pelo próprio HealthKit).
-/// - Fim com snapshot `finished`: eventos `.segment` por exercício e `.marker` por série
-///   (`HealthWorkoutEventPlan`, as mesmas regras do iPhone), metadados com `HKMetadataKeyExternalUUID` =
-///   ID da sessão, e `finishWorkout` → `.saved(workoutID)` (o iPhone vincula com `linkWorkout`). Falha → `.failed`.
-///   Descartada → `discardWorkout`, nada gravado.
+/// - Fim com snapshot `finished`, na ordem do HealthKit: `stopActivity(with: fim)` → espera o estado `.stopped`
+///   (delegate, até `stopTimeout`) → eventos `.segment` por exercício e `.marker` por série
+///   (`HealthWorkoutEventPlan`, as mesmas regras do iPhone) e metadados (`HKMetadataKeyExternalUUID` = ID da sessão)
+///   → `endCollection` → `finishWorkout` → `end()`. Gravado → `.saved(workoutID)` (o iPhone vincula com
+///   `linkWorkout`); falha → `.failed`. Descartada → `discardWorkout`, nada gravado.
+/// - Fim externo (o sistema/usuário encerrou a `HKWorkoutSession` fora do app): grava o que foi coletado com os
+///   metadados (sem eventos por exercício) → `.saved`; falhou → `.notRecording` (o iPhone volta a gravar).
 /// - Recuperação: o contexto fica em `UserDefaults`; `recoverActiveWorkout()` (chamado pelo delegate do app em
-///   `handleActiveWorkoutRecovery`) reassume a sessão do Saúde depois de o app do relógio ter sido encerrado.
+///   `handleActiveWorkoutRecovery`) reassume a sessão do Saúde depois de o app do relógio ter sido encerrado e
+///   reenvia `.recording`; sessão recuperada sem contexto (órfã) é encerrada sem gravar.
 @MainActor
 final class WatchWorkoutProvider: NSObject, WatchHealthProvider, WatchWorkoutDataChannel {
     static let contextKey = "watchWorkout.context"
+    /// Espera máxima pelo estado `.stopped` depois de `stopActivity`.
+    static let stopTimeout: Duration = .seconds(5)
 
     var onMetrics: (@MainActor (WatchLiveMetrics) -> Void)?
     var onStatus: (@MainActor (WatchWorkoutStatus) -> Void)?
@@ -38,6 +44,7 @@ final class WatchWorkoutProvider: NSObject, WatchHealthProvider, WatchWorkoutDat
     private var context: WatchWorkoutContext?
     private var zones: HeartRateZones?
     private var metrics = WatchLiveMetrics.empty
+    private var stopWaiter: CheckedContinuation<Void, Never>?
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -156,18 +163,63 @@ final class WatchWorkoutProvider: NSObject, WatchHealthProvider, WatchWorkoutDat
         ]
         if !final.routineName.isEmpty { metadata[HealthMetadataKey.routineName] = final.routineName }
         do {
+            session.stopActivity(with: end)
+            await waitUntilStopped(session)
             let events = plan.workoutEvents
             if !events.isEmpty { try await Self.addEvents(builder, events) }
             try await Self.addMetadata(builder, metadata)
-            session.stopActivity(with: end)
-            session.end()
             try await Self.endCollection(builder, at: end)
             let workout = try await Self.finishWorkout(builder)
+            session.end()
             onStatus?(WatchWorkoutStatus(sessionID: final.sessionID, state: .saved(workoutID: workout)))
         } catch {
             session.end()
             builder.discardWorkout()
             onStatus?(WatchWorkoutStatus(sessionID: final.sessionID, state: .failed))
+        }
+    }
+
+    /// Espera o `.stopped` (o delegate acorda) ou o tempo máximo.
+    private func waitUntilStopped(_ session: HKWorkoutSession) async {
+        guard session.state != .stopped, session.state != .ended else { return }
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            stopWaiter = continuation
+            Task { [weak self] in
+                try? await Task.sleep(for: Self.stopTimeout)
+                self?.resumeStopWaiter()
+            }
+        }
+    }
+
+    fileprivate func resumeStopWaiter() {
+        stopWaiter?.resume()
+        stopWaiter = nil
+    }
+
+    /// A `HKWorkoutSession` acabou sem o app pedir: grava o coletado com os metadados da sessão.
+    fileprivate func endedExternally(_ session: HKWorkoutSession, at date: Date) {
+        guard session === self.session, let builder, let context else { return }
+        self.session = nil
+        self.builder = nil
+        self.context = nil
+        clearPersisted()
+        isMirroring = false
+        Task {
+            var metadata: [String: Any] = [
+                HKMetadataKeyExternalUUID: context.sessionID.uuidString,
+                HKMetadataKeyIndoorWorkout: NSNumber(value: true),
+            ]
+            if let type = context.workoutType { metadata[HealthMetadataKey.workoutType] = type }
+            if !context.routineName.isEmpty { metadata[HealthMetadataKey.routineName] = context.routineName }
+            do {
+                try await Self.addMetadata(builder, metadata)
+                try await Self.endCollection(builder, at: date)
+                let workout = try await Self.finishWorkout(builder)
+                onStatus?(WatchWorkoutStatus(sessionID: context.sessionID, state: .saved(workoutID: workout)))
+            } catch {
+                builder.discardWorkout()
+                onStatus?(WatchWorkoutStatus(sessionID: context.sessionID, state: .notRecording))
+            }
         }
     }
 
@@ -203,9 +255,15 @@ final class WatchWorkoutProvider: NSObject, WatchHealthProvider, WatchWorkoutDat
 
     /// App do relógio reaberto com treino em curso (delegate `handleActiveWorkoutRecovery`).
     func recoverActiveWorkout() async {
-        guard session == nil, let saved = persistedContext() else { return }
+        guard session == nil else { return }
         guard let recovered = try? await store.recoverActiveWorkoutSession() else {
             clearPersisted()
+            return
+        }
+        guard let saved = persistedContext() else {
+            // Órfã (sem a sessão do app que a originou): encerra sem gravar.
+            recovered.end()
+            recovered.associatedWorkoutBuilder().discardWorkout()
             return
         }
         context = saved
@@ -214,6 +272,7 @@ final class WatchWorkoutProvider: NSObject, WatchHealthProvider, WatchWorkoutDat
         recovered.delegate = self
         builder?.delegate = self
         if zones == nil { loadZones() }
+        onStatus?(WatchWorkoutStatus(sessionID: saved.sessionID, state: .recording))
         await mirror(recovered)
     }
 
@@ -335,7 +394,19 @@ enum WatchWorkoutError: Error {
 
 extension WatchWorkoutProvider: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState,
-                                    from fromState: HKWorkoutSessionState, date: Date) {}
+                                    from fromState: HKWorkoutSessionState, date: Date) {
+        let id = ObjectIdentifier(workoutSession)
+        let state = toState.rawValue
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if state == HKWorkoutSessionState.stopped.rawValue {
+                self.resumeStopWaiter()
+            } else if state == HKWorkoutSessionState.ended.rawValue {
+                self.resumeStopWaiter()
+                if let session = self.session, ObjectIdentifier(session) == id { self.endedExternally(session, at: date) }
+            }
+        }
+    }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: any Error) {
         let id = ObjectIdentifier(workoutSession)

@@ -275,6 +275,7 @@ final class WatchSessionModel {
     }
 
     func handle(_ message: WatchLinkMessage) {
+        if case .incompatible = message {} else { incompatibility = nil } // mensagem válida: versões se entendem
         switch message {
         case .snapshot(let snapshot): receive(snapshot: snapshot)
         case .commandReply(let reply): receive(reply: reply)
@@ -393,8 +394,14 @@ final class WatchSessionModel {
     /// Descarta pendentes que citam séries/exercícios que o snapshot da sessão não tem (o iPhone os recusaria).
     private func pruneCommandsWithUnknownIDs(in snapshot: SessionSnapshot) {
         guard snapshot.status == .active || snapshot.status == .paused else { return }
-        let sets = Set(snapshot.exercises.flatMap(\.sets).map(\.id))
-        let exercises = Set(snapshot.exercises.map(\.id))
+        var sets = Set(snapshot.exercises.flatMap(\.sets).map(\.id))
+        var exercises = Set(snapshot.exercises.map(\.id))
+        // IDs que `addSet`/`addExercise` ainda pendentes vão criar (mesma derivação do iPhone, `WatchLinkIDs`).
+        for item in pending where item.command.sessionID == snapshot.sessionID {
+            let created = Self.createdIDs(item.command)
+            sets.formUnion(created.sets)
+            exercises.formUnion(created.exercises)
+        }
         let before = pending.count
         pending.removeAll { item in
             guard item.command.sessionID == snapshot.sessionID, item.ackedRevision == nil else { return false }
@@ -403,6 +410,25 @@ final class WatchSessionModel {
         }
         if pending.count != before { show(notice: "Atualizado pelo iPhone") }
     }
+
+    /// Séries/exercícios que um comando cria (IDs determinísticos). `addExercise` cria até
+    /// `addedExerciseSetCount` séries (o padrão do iPhone).
+    static func createdIDs(_ command: SessionCommand) -> (sets: [UUID], exercises: [UUID]) {
+        switch command.kind {
+        case .addSet:
+            return ([WatchLinkIDs.extraSetID(sessionID: command.sessionID, commandID: command.commandID)], [])
+        case .addExercise:
+            let sets = (0..<addedExerciseSetCount).map {
+                WatchLinkIDs.addedSetID(sessionID: command.sessionID, commandID: command.commandID, index: $0)
+            }
+            return (sets, [WatchLinkIDs.addedExerciseID(sessionID: command.sessionID, commandID: command.commandID)])
+        default:
+            return ([], [])
+        }
+    }
+
+    /// Séries que o `SessionStore.addExercise` cria por padrão.
+    static let addedExerciseSetCount = 3
 
     // MARK: Comandos
 
@@ -602,7 +628,11 @@ final class WatchSessionModel {
                 recordingSessionID = nil
                 watchRecordedSessionIDs.remove(status.sessionID)
             }
-        case .recording, .saved:
+        case .saved:
+            // Gravado (inclusive fim externo do treino com a sessão ainda aberta): não reinicia outra gravação.
+            if recordingSessionID == status.sessionID { recordingSessionID = nil }
+            watchRecordedSessionIDs.remove(status.sessionID)
+        case .recording:
             break
         }
         transport.send(.workoutStatus(status))

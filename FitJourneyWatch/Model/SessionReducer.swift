@@ -268,7 +268,7 @@ enum SessionReducer {
         s.accumulatedPauseSeconds += gap
         if let end = s.restEndsAt, end > pausedAt { s.restEndsAt = end.addingTimeInterval(gap) }
         // A pausa não conta na sustentação/cronômetro de cardio (mesma regra do iPhone).
-        if let started = s.holdStartedAt { s.holdStartedAt = started.addingTimeInterval(gap) }
+        if let started = s.holdStartedAt { s.holdStartedAt = started.addingTimeInterval(max(0, at.timeIntervalSince(max(pausedAt, started)))) }
         s.status = .active
         s.pausedAt = nil
     }

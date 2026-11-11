@@ -4,7 +4,8 @@ import Foundation
 /// `SessionExercise`/`SetLog` a partir do ID da sessão e da prescrição de origem, então um comando
 /// emitido no relógio antes do 1º snapshot já cita os IDs que o iPhone vai criar — sem reter nem remapear.
 ///
-/// UUID versão 5 (RFC 9562, SHA-1) com o ID da sessão como *namespace* e um nome com prefixo por tipo:
+/// UUID versão 5 (RFC 9562, SHA-1). *Namespace* = `sessionID` (o ID da própria sessão, não um namespace fixo);
+/// nome = prefixo por tipo + ID de origem:
 /// - exercício da ficha: `"exercise:" + RoutineExercise.id`
 /// - série prescrita: `"set:" + SetPrescription.id`
 /// - série extra (`addSet`): `"extra-set:" + commandID`

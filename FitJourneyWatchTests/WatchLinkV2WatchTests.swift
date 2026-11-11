@@ -13,6 +13,7 @@ struct WatchLinkIDsWatchTests {
         let command = try #require(UUID(uuidString: "C0000000-0000-0000-0000-000000000001"))
         let dns = try #require(UUID(uuidString: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"))
         #expect(WatchLinkIDs.uuid5(namespace: dns, name: "python.org").uuidString == "886313E1-3B8A-5372-9B90-0C9AEE199E5D")
+        #expect(WatchLinkIDs.uuid5(namespace: dns, name: "www.example.com").uuidString == "2ED6657D-E927-568B-95E1-2665A8AEA6A2")
         #expect(WatchLinkIDs.sessionExerciseID(sessionID: session, routineExerciseID: routineExercise).uuidString
                 == "04199F87-B496-54FD-8F06-BB25EE79AF03")
         #expect(WatchLinkIDs.setLogID(sessionID: session, prescriptionID: prescription).uuidString
@@ -105,6 +106,32 @@ struct WatchSessionModelV2Tests {
         model.receive(snapshot: phone) // resposta perdida
         #expect(model.pendingCount == 0)
         #expect(model.display?.exercises[0].sets[0].load?.value == 26.5) // sem dobrar
+    }
+
+    @Test func pendingAddSetKeepsCommandsOnTheNewSet() throws {
+        let snapshot = WatchFixtures.snapshot(completed: 0, now: t0, startedAgo: 600, revision: 5)
+        let transport = MockWatchTransport(digest: WatchFixtures.digest(now: t0), snapshot: snapshot)
+        transport.autoRespond = false
+        let model = model(transport: transport, clock: TestClock(t0))
+        model.loadCoalesceInterval = 0
+        model.receive(snapshot: snapshot)
+        let add = try #require(model.send(.addSet(exerciseID: snapshot.exercises[0].id, kind: nil)))
+        let newSet = WatchLinkIDs.extraSetID(sessionID: snapshot.sessionID, commandID: add.commandID)
+        model.adjustLoad(setID: newSet, by: 0.5)
+        var next = snapshot
+        next.revision = 6 // ainda sem a série extra
+        model.receive(snapshot: next)
+        #expect(model.pendingCount == 2)
+        #expect(model.notice == nil)
+        #expect(model.display?.exercises[0].sets.last?.id == newSet)
+    }
+
+    @Test func validMessageClearsIncompatibility() {
+        let model = WatchSessionModel(transport: MockWatchTransport(), haptics: RecordingHaptics(), clock: { [t0] in t0 })
+        model.handle(.incompatible(WatchLinkCompatibility(minimumVersion: 3, currentVersion: 3)))
+        #expect(model.incompatibility != nil)
+        model.handle(.snapshot(nil))
+        #expect(model.incompatibility == nil)
     }
 
     // MARK: Coalescência da Coroa
@@ -431,6 +458,65 @@ struct WatchConnectivityTransportTests {
         session.onEvent?(.message(future, reply: WatchLinkReply { response = $0 }))
         let decoded = try WatchLinkCodec.decode(try #require(response))
         #expect(decoded == .incompatible(.current))
+    }
+
+    @Test func offlineQueueWaitsForActivation() {
+        let session = FakeLinkSession()
+        session.isActivated = false
+        let transport = WatchConnectivityTransport(session: session, defaults: defaults())
+        let command = command()
+        transport.send(.command(command))
+        #expect(session.userInfos.isEmpty)
+        session.isActivated = true
+        session.onEvent?(.activated)
+        #expect(decode(session.userInfos) == [.command(command)])
+    }
+
+    @Test func savedStatusIsDurableUntilDelivered() {
+        let store = defaults()
+        let session = FakeLinkSession()
+        session.isActivated = false
+        let transport = WatchConnectivityTransport(session: session, defaults: store)
+        let status = WatchWorkoutStatus(sessionID: UUID(), state: .saved(workoutID: UUID()))
+        transport.send(.workoutStatus(status))
+        #expect(store.data(forKey: WatchConnectivityTransport.savedStatusKey) != nil)
+        withExtendedLifetime(transport) {}
+
+        // App relançado: ao ativar, reenvia e limpa.
+        let relaunchedSession = FakeLinkSession()
+        let relaunched = WatchConnectivityTransport(session: relaunchedSession, defaults: store)
+        relaunched.activate()
+        #expect(decode(relaunchedSession.userInfos) == [.workoutStatus(status)])
+        #expect(store.data(forKey: WatchConnectivityTransport.savedStatusKey) == nil)
+    }
+
+    @Test func olderContextAndNilSnapshotDoNotOverrideActiveSession() async throws {
+        let store = defaults()
+        let session = FakeLinkSession()
+        let transport = WatchConnectivityTransport(session: session, defaults: store)
+        var events = transport.makeEventStream().makeAsyncIterator()
+        let active = WatchFixtures.snapshot(now: t0)
+        func context(_ snapshot: SessionSnapshot?, stamp: TimeInterval) throws -> [String: Data] {
+            [WatchLinkSessionKey.snapshot: try WatchLinkCodec.encode(.snapshot(snapshot)),
+             WatchLinkSessionKey.stamp: WatchLinkSessionKey.encodeStamp(t0.addingTimeInterval(stamp))]
+        }
+        session.onEvent?(.context(try context(active, stamp: 100)))
+        #expect(await next(&events) == .message(.snapshot(active)))
+        session.onEvent?(.context(try context(nil, stamp: 50))) // mais velho: ignorado
+        session.onEvent?(.context(try context(nil, stamp: 200))) // "sem sessão" do contexto não apaga a ativa
+        var finished = active
+        finished.status = .finished
+        session.onEvent?(.context(try context(finished, stamp: 300)))
+        #expect(await next(&events) == .message(.snapshot(finished)))
+    }
+
+    @Test func passiveChannelsGetNoIncompatibleNotice() throws {
+        let session = FakeLinkSession()
+        session.isReachable = true
+        let transport = WatchConnectivityTransport(session: session, defaults: defaults())
+        session.onEvent?(.userInfo(try WatchLinkCodec.encode(WatchLinkEnvelope(message: .snapshotRequest, schemaVersion: 99))))
+        #expect(session.messages.isEmpty)
+        withExtendedLifetime(transport) {}
     }
 
     @Test func mirroredWorkoutChannelIsPreferredAndCountsAsReachable() async throws {

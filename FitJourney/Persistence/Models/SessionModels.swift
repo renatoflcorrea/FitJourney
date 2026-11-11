@@ -46,6 +46,8 @@ final class WorkoutSession {
     var holdStartedAt: Date?
     /// Duração total do descanso em curso (com ajustes ±15 s), para a barra de progresso (P2.6).
     var restTotalSeconds: Double?
+    /// `issuedAt` do último comando que mexeu na anotação da sessão (comandos mais antigos são ignorados).
+    var notesUpdatedAt: Date?
 
     @Relationship(deleteRule: .cascade, inverse: \SessionExercise.session)
     var exercises: [SessionExercise]? = []
@@ -124,6 +126,9 @@ final class SessionExercise {
     /// Dor/desconforto opcional (local + 0–10), sem interpretação.
     var painLocation: String?
     var painLevel: Int?
+    /// `issuedAt` do último comando de anotação/dor (comandos mais antigos que chegam depois são ignorados).
+    var notesUpdatedAt: Date?
+    var painUpdatedAt: Date?
 
     var session: WorkoutSession?
 

@@ -9,6 +9,7 @@ struct WatchLinkIDsTests {
     @Test func uuid5MatchesRFCVector() throws {
         let dns = try #require(UUID(uuidString: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"))
         #expect(WatchLinkIDs.uuid5(namespace: dns, name: "python.org").uuidString == "886313E1-3B8A-5372-9B90-0C9AEE199E5D")
+        #expect(WatchLinkIDs.uuid5(namespace: dns, name: "www.example.com").uuidString == "2ED6657D-E927-568B-95E1-2665A8AEA6A2")
         // Nome maior que um bloco SHA-1 (64 bytes).
         let session = try #require(UUID(uuidString: "5E000000-0000-0000-0000-000000000001"))
         #expect(WatchLinkIDs.uuid5(namespace: session, name: String(repeating: "x", count: 100)).uuidString
@@ -317,6 +318,7 @@ final class FakeWatchLinkSession: WatchLinkSession {
 final class FakeWatchHealth: WatchHealthBridge {
     var hasRemoteSession = false
     var onMirroredSessionDiscarded: ((UUID) -> Void)?
+    var onRemoteSessionChange: ((Bool) -> Void)?
     var mirrored: Set<UUID> = []
     var adopted: [UUID] = []
     var unmarked: [UUID] = []
@@ -355,12 +357,15 @@ struct PhoneWatchLinkTests {
         let link: PhoneWatchLink
         let routine: Routine
 
-        init() throws {
+        let defaults: UserDefaults
+
+        init(finder: WatchWorkoutFinder? = nil, defaults: UserDefaults? = nil) throws {
             session = FakeWatchLinkSession()
             health = FakeWatchHealth()
             f = try EngineFixture()
             routine = try f.makeRoutine()
-            link = PhoneWatchLink(engine: f.engine, session: session, health: health)
+            self.defaults = defaults ?? UserDefaults(suiteName: "phone-link-\(UUID().uuidString)")!
+            link = PhoneWatchLink(engine: f.engine, session: session, health: health, workoutFinder: finder, defaults: self.defaults)
             link.snapshotCoalescing = .seconds(60) // os testes descarregam com `flushSnapshot()`
             link.digestDebounce = .seconds(60)
         }
@@ -554,6 +559,158 @@ struct PhoneWatchLinkTests {
         r.link.refreshDigest()
         #expect(r.session.contexts.count == count + 1)
         #expect(r.session.sentMessages.contains { if case .programDigest(let d) = $0 { d?.routines.contains { $0.name == "A2" } == true } else { false } })
+    }
+}
+
+@MainActor
+struct PhoneWatchLinkReviewTests {
+    private func drain() async { for _ in 0..<50 { await Task.yield() } }
+
+    @Test func contextWaitsForActivationAndIsRepublishedOnActivated() async throws {
+        let r = try PhoneWatchLinkTests.Rig()
+        r.session.isActivated = false
+        r.session.isReachable = false
+        r.link.start()
+        defer { r.link.stop() }
+        #expect(r.session.contexts.isEmpty)
+        let sessionID = UUID()
+        r.session.onEvent?(.userInfo(try WatchLinkCodec.encode(.command(r.command(.start(routineID: r.routine.id), at: 0, session: sessionID)))))
+        await drain()
+        r.link.flushSnapshot()
+        #expect(r.session.contexts.isEmpty)
+        // Ativação assíncrona: o contexto sai com digest + último snapshot.
+        r.session.isActivated = true
+        r.session.onEvent?(.activated)
+        let context = try #require(r.session.contexts.last)
+        #expect(context[WatchLinkSessionKey.digest] != nil)
+        #expect(WatchLinkSessionKey.decodeStamp(context[WatchLinkSessionKey.stamp]) != nil)
+        guard case .snapshot(let snapshot) = try WatchLinkCodec.decode(try #require(context[WatchLinkSessionKey.snapshot])) else {
+            Issue.record("sem snapshot"); return
+        }
+        #expect(snapshot?.sessionID == sessionID)
+        // Toda nova ativação republica.
+        r.session.onEvent?(.activated)
+        #expect(r.session.contexts.count == 2)
+    }
+
+    @Test func oldUserInfoGetsNoNoticeAndValidMessageClearsIncompatibility() throws {
+        let r = try PhoneWatchLinkTests.Rig()
+        r.link.start()
+        defer { r.link.stop() }
+        let sentBefore = r.session.sent.count
+        r.session.onEvent?(.userInfo(try WatchLinkCodec.encode(WatchLinkEnvelope(message: .snapshotRequest, schemaVersion: 1))))
+        #expect(r.session.sent.count == sentBefore)
+        try r.session.receive(.incompatible(WatchLinkCompatibility(minimumVersion: 3, currentVersion: 3)), expectsReply: false)
+        #expect(r.link.watchIncompatibility != nil)
+        try r.session.receive(.snapshotRequest)
+        #expect(r.link.watchIncompatibility == nil)
+    }
+
+    @Test func mirrorChangesRefreshReachability() throws {
+        let r = try PhoneWatchLinkTests.Rig()
+        r.session.isReachable = false
+        r.link.start()
+        defer { r.link.stop() }
+        #expect(!r.link.isWatchReachable)
+        r.health.hasRemoteSession = true
+        r.health.onRemoteSessionChange?(true)
+        #expect(r.link.isWatchReachable)
+        r.health.hasRemoteSession = false
+        r.health.onRemoteSessionChange?(false)
+        #expect(!r.link.isWatchReachable)
+    }
+
+    @Test func pendingLinksSurviveRelaunch() throws {
+        let defaults = UserDefaults(suiteName: "phone-link-\(UUID().uuidString)")!
+        let r = try PhoneWatchLinkTests.Rig(defaults: defaults)
+        r.link.start()
+        let sessionID = UUID(), workoutID = UUID()
+        r.health.linkAllowed = { _ in false }
+        try r.session.receive(.workoutStatus(WatchWorkoutStatus(sessionID: sessionID, state: .saved(workoutID: workoutID))), expectsReply: false)
+        r.link.stop()
+        #expect(r.link.pendingLinks[sessionID] == workoutID)
+
+        let relaunched = PhoneWatchLink(engine: r.f.engine, session: FakeWatchLinkSession(), health: r.health, defaults: defaults)
+        r.health.linkAllowed = { _ in true }
+        relaunched.handleForeground()
+        #expect(r.health.links.map(\.0) == [workoutID])
+        #expect(relaunched.pendingLinks.isEmpty)
+    }
+
+    private func finishedMirroredSession(_ r: PhoneWatchLinkTests.Rig) async throws -> UUID {
+        r.link.start()
+        await drain() // a reconciliação do `start()` roda antes de existir sessão
+        let sessionID = UUID()
+        try r.session.receive(.command(r.command(.start(routineID: r.routine.id), at: 0, session: sessionID)))
+        try r.session.receive(.command(r.command(.finish(rpe: 7, applyLoadProposalIDs: []), at: 600, session: sessionID)))
+        r.health.mirrored.insert(sessionID)
+        return sessionID
+    }
+
+    @Test func unlinkedMirroredSessionIsFoundInHealthAfterDeadline() async throws {
+        let workoutID = UUID()
+        let asked = AskedBox()
+        let r = try PhoneWatchLinkTests.Rig(finder: { sessionID, _ in asked.ids.append(sessionID); return workoutID })
+        let sessionID = try await finishedMirroredSession(r)
+        defer { r.link.stop() }
+        r.f.clock.now = r.f.t0.addingTimeInterval(600 + 300)
+        await r.link.reconcileMirroredSessions()
+        #expect(asked.ids.isEmpty) // ainda no prazo
+        r.f.clock.now = r.f.t0.addingTimeInterval(600 + 601)
+        await r.link.reconcileMirroredSessions()
+        #expect(asked.ids == [sessionID])
+        #expect(r.health.links.map(\.0) == [workoutID])
+        #expect(r.health.reconciled == 0)
+    }
+
+    @Test func unlinkedMirroredSessionNotInHealthIsReleased() async throws {
+        let r = try PhoneWatchLinkTests.Rig(finder: { _, _ in nil })
+        let sessionID = try await finishedMirroredSession(r)
+        defer { r.link.stop() }
+        r.f.clock.now = r.f.t0.addingTimeInterval(600 + 601)
+        await r.link.reconcileMirroredSessions()
+        #expect(r.health.unmarked == [sessionID])
+        #expect(r.health.reconciled == 1)
+    }
+}
+
+@MainActor
+final class AskedBox {
+    var ids: [UUID] = []
+}
+
+@MainActor
+struct SessionEngineReviewOrderTests {
+    @Test func olderNotePainAndRemoveAreIgnored() throws {
+        let f = try EngineFixture()
+        let session = try f.start(try f.makeRoutine())
+        let exercise = try f.snapshot.exercises[0].id
+        #expect(f.apply(.setExerciseNote(exerciseID: exercise, text: "nova"), at: 100, session: session).isApplied)
+        #expect(f.apply(.setExerciseNote(exerciseID: exercise, text: "velha"), at: 50, session: session, phoneAt: 120).isApplied)
+        #expect(try f.snapshot.exercises[0].notes == "nova")
+        #expect(f.apply(.setPain(exerciseID: exercise, location: "joelho", score: 2), at: 100, session: session).isApplied)
+        #expect(f.apply(.setPain(exerciseID: exercise, location: nil, score: nil), at: 60, session: session, phoneAt: 130).isApplied)
+        #expect(try f.snapshot.exercises[0].painScore == 2)
+        #expect(f.apply(.setSessionNote(text: "nova"), at: 100, session: session).isApplied)
+        #expect(f.apply(.setSessionNote(text: "velha"), at: 70, session: session, phoneAt: 140).isApplied)
+        #expect(try f.snapshot.notes == "nova")
+        let set = try f.sets(0)[1].id
+        #expect(f.apply(.updateSet(setID: set, reps: 10, load: nil, durationSeconds: nil, distanceMeters: nil), at: 150, session: session).isApplied)
+        #expect(f.apply(.removeSet(setID: set), at: 80, session: session, phoneAt: 160).isApplied)
+        #expect(try f.sets(0).contains { $0.id == set })
+    }
+
+    @Test func holdStartedDuringPauseCountsFromResume() throws {
+        let f = try EngineFixture()
+        let session = try f.start(try f.makeRoutine())
+        let plank = try f.sets(3)[0].id
+        #expect(f.apply(.pause, at: 100, session: session).isApplied)
+        // Chegou atrasado: emitido antes da pausa (fila offline) — registra sem retomar.
+        #expect(f.apply(.startHold(setID: plank), at: 90, session: session, phoneAt: 150).isApplied)
+        #expect(f.apply(.resume, at: 200, session: session).isApplied)
+        #expect(try f.snapshot.holdStartedAt == f.t0.addingTimeInterval(190)) // 10 s antes da pausa contam
+        #expect(f.apply(.endHold(setID: plank), at: 230, session: session).isApplied)
+        #expect(try f.sets(3)[0].durationSeconds == 40)
     }
 }
 

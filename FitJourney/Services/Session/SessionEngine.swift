@@ -584,6 +584,7 @@ final class SessionEngine {
 
         case .removeSet(let setID):
             let log = try setLog(setID, in: session)
+            guard touch(log, at: at) else { return }
             if session.holdSetID == setID {
                 session.holdSetID = nil
                 session.holdStartedAt = nil
@@ -598,17 +599,24 @@ final class SessionEngine {
 
         case let .setExerciseNote(exerciseID, text):
             try validate(text: text)
-            try store.setNote(try sessionExercise(exerciseID, in: session), text: text, at: at)
+            let exercise = try sessionExercise(exerciseID, in: session)
+            guard Self.isNewer(at, than: exercise.notesUpdatedAt) else { return }
+            exercise.notesUpdatedAt = at
+            try store.setNote(exercise, text: text, at: at)
 
         case let .setPain(exerciseID, location, score):
             if let score, !(0...10).contains(score) { throw SessionCommandRejection.invalidValue }
             if let location { try validate(text: location) }
             let trimmed = location?.trimmingCharacters(in: .whitespacesAndNewlines)
-            try store.setPain(try sessionExercise(exerciseID, in: session),
-                              location: trimmed?.isEmpty == false ? trimmed : nil, level: score, at: at)
+            let exercise = try sessionExercise(exerciseID, in: session)
+            guard Self.isNewer(at, than: exercise.painUpdatedAt) else { return }
+            exercise.painUpdatedAt = at
+            try store.setPain(exercise, location: trimmed?.isEmpty == false ? trimmed : nil, level: score, at: at)
 
         case .setSessionNote(let text):
             try validate(text: text)
+            guard Self.isNewer(at, than: session.notesUpdatedAt) else { return }
+            session.notesUpdatedAt = at
             session.notes = text
             session.updatedAt = at
 
@@ -700,9 +708,11 @@ final class SessionEngine {
     /// A sustentação/cronômetro em curso é deslocada pela duração da pausa (a pausa não conta).
     private func resumeIfPaused(_ session: WorkoutSession, at: Date, events: inout [SessionEvent]) throws {
         guard let pausedAt = session.pausedAt, at > pausedAt else { return }
-        let gap = at.timeIntervalSince(pausedAt)
         try store.resume(session, at: at)
-        if let started = session.holdStartedAt { session.holdStartedAt = started.addingTimeInterval(gap) }
+        // Só o trecho realmente pausado da sustentação: começou durante a pausa (comando fora de ordem) → conta da retomada.
+        if let started = session.holdStartedAt {
+            session.holdStartedAt = started.addingTimeInterval(max(0, at.timeIntervalSince(max(pausedAt, started))))
+        }
         events.append(.sessionResumed(at: at))
     }
 
@@ -808,6 +818,11 @@ final class SessionEngine {
             throw SessionCommandRejection.unknownCatalogExercise
         }
         return exercise
+    }
+
+    /// Ordem por `issuedAt` de campos sem série (anotações/dor): `false` = comando mais antigo que o último aplicado.
+    private static func isNewer(_ at: Date, than last: Date?) -> Bool {
+        last.map { at >= $0 } ?? true
     }
 
     private func validate(text: String) throws {

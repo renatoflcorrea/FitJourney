@@ -99,6 +99,8 @@ final class HealthWorkoutController {
 
     /// W2: chamado ao descartar uma sessão espelhada (encerrar a sessão no relógio).
     @ObservationIgnored var onMirroredSessionDiscarded: ((UUID) -> Void)?
+    /// W2: a sessão espelhada do relógio conectou (`true`) ou caiu (`false`) — o transporte reavalia o alcance.
+    @ObservationIgnored var onRemoteSessionChange: ((Bool) -> Void)?
 
     @ObservationIgnored private let store: any HealthStoreProtocol
     @ObservationIgnored private let authorization: HealthAuthorization
@@ -357,6 +359,7 @@ final class HealthWorkoutController {
             self.remoteEnded(error: error)
         }
         state = .mirrored(sessionID: currentSessionID)
+        onRemoteSessionChange?(true)
     }
 
     /// Envia dados ao relógio pela sessão espelhada.
@@ -405,6 +408,7 @@ final class HealthWorkoutController {
     private func remoteEnded(error: String?) {
         remote = nil
         if let error { lastError = error }
+        onRemoteSessionChange?(false)
         // A marca fica: o relógio grava o treino mesmo desconectado.
         if let id = currentSessionID, fetchSession(id)?.status == .inProgress {
             state = .mirrorDisconnected(sessionID: id)
