@@ -160,6 +160,7 @@ sequenceDiagram
 - **Canais** (ordem): canal da `HKWorkoutSession` espelhada → `sendMessageData` com resposta → `applicationContext` (digest + snapshot + carimbo) / `transferUserInfo` (fila offline). Buffers antes da ativação; `.incompatible` só em canal ativo.
 - **iPhone**: aplica via `engine.apply`, responde `commandReply`, coalesce snapshots (250 ms, terminal imediato), digest só quando programas mudam (debounce 2 s), `.saved` do relógio → `linkWorkout` (pendências persistidas; após 10 min busca no Saúde por `ExternalUUID`).
 - **Relógio**: `display = confirmed + pending` reaplicados pelo `SessionReducer`; poda por `appliedCommandIDs` e por IDs inexistentes (somando os que `addSet/addExercise` vão criar); reenvio a cada 5 s com o mesmo `commandID`; coalescência da Coroa (0,35 s) só para comando nunca enviado; digest/snapshot em cache para abrir offline.
+- **Alerta de fim de descanso** (`fj.restAlertRepeat`, padrão ligado): relógio — `WatchSessionModel.restAlert` + `WatchHapticLoop`/`WatchRestAlertPattern` (laço até `silenceRestAlert()`/`startSetAfterRest()` ou 60 s; tela `RestAlertView` no lugar da sessão; a preferência chega em `SessionSnapshot.restAlertRepeat`, só `false` quando desligada); iPhone — `SessionCoordinator.restAlert`/`activeRestAlert` + `FJAlertVibrating`, cartão `FJRestAlertCard` sobre a doca só com a `SessionView` à vista (`restAlertHostReady`). "Começar série" envia `skipRest` (fecha o alerta do outro aparelho); parar não envia nada. Com o pulso abaixado o laço do relógio depende da `HKWorkoutSession` do relógio.
 - **Quem grava no Saúde**: iniciado no relógio → relógio grava (`.recording` antes do `start`); iniciado no iPhone → iPhone grava, relógio controla (pode pedir "Gravar no relógio").
 
 ### HealthKit e espelhamento
@@ -220,6 +221,7 @@ sequenceDiagram
 - `get_health_summary` (`FitnessToolbox+Health.swift`) só com `Sharing.health`; sem `Sharing.workouts` as sessões do app ficam de fora; campos sem leitura vêm `null` + `status` (nunca zero); dia corrente é parcial e fica fora das médias.
 - `docs/ia.md` lista itens do plano não portados (`GeminiGateway`, `GatewayRouter`) — Gemini só via OpenRouter.
 - Zip sem Zip64 (4 GB, 65.535 entradas). `.xcodeproj` não é versionado (`make project`). Team de assinatura só por variável (`make device TEAM=…`).
+- Alerta de fim de descanso: o watchOS não entrega botão lateral/clique da Coroa ao app (só giro, toque e toque duplo param o laço); sem gravação no relógio o app é suspenso com o pulso abaixado; a mudança de `fj.restAlertRepeat` só chega ao relógio no snapshot seguinte.
 - Tokens do relógio (`WF`) espelham os do iPhone manualmente; a extensão compila 4 arquivos de tokens e o catálogo do app.
 
 ## Guia de navegação

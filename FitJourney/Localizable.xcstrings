@@ -202,6 +202,16 @@
         }
       }
     },
+    "%@. Próxima: %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Next: %@."
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "en" : {
@@ -1108,6 +1118,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ABC — Example"
+          }
+        }
+      }
+    },
+    "Alerta insistente no fim do descanso" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Persistent alert when rest ends"
           }
         }
       }
@@ -2650,6 +2670,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start with an example (ABC)"
+          }
+        }
+      }
+    },
+    "Começar série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start set"
           }
         }
       }
@@ -4911,6 +4941,16 @@
         }
       }
     },
+    "há %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ago"
+          }
+        }
+      }
+    },
     "Há carga atual diferente da inicial (veja em Carga)." : {
       "localizations" : {
         "en" : {
@@ -6798,6 +6838,26 @@
         }
       }
     },
+    "Para a vibração e volta à série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops the vibration and returns to the set"
+          }
+        }
+      }
+    },
+    "Parar vibração" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop vibration"
+          }
+        }
+      }
+    },
     "PAUSADO" : {
       "localizations" : {
         "en" : {
@@ -8244,6 +8304,16 @@
         }
       }
     },
+    "Toque em qualquer lugar para parar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap anywhere to stop"
+          }
+        }
+      }
+    },
     "TREINO COMPLETO" : {
       "localizations" : {
         "en" : {
@@ -8880,6 +8950,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Link to a meal"
+          }
+        }
+      }
+    },
+    "Volta à série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Returns to the set"
           }
         }
       }
@@ -12772,12 +12852,12 @@
         }
       }
     },
-    "O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island." : {
+    "O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. Com o alerta insistente, o relógio e a tela do treino vibram várias vezes até você tocar; desligado, vibram uma vez. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The default rest applies when the routine and exercise don't set one, starting with the next rest. Without sound, the Live Activity alert is dismissed and the notice arrives silently as a notification. Max heart rate defines the heart rate zones. Without a manual value, we use 220 minus the age in your profile. The Live Activity shows the workout and rest on the Lock Screen and in the Dynamic Island."
+            "value" : "The default rest applies when the routine and exercise don't set one, starting with the next rest. Without sound, the Live Activity alert is dismissed and the notice arrives silently as a notification. With the persistent alert, the watch and the workout screen vibrate repeatedly until you tap; when off, they vibrate once. Max heart rate defines the heart rate zones. Without a manual value, we use 220 minus the age in your profile. The Live Activity shows the workout and rest on the Lock Screen and in the Dynamic Island."
           }
         }
       }

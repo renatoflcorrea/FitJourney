@@ -32,6 +32,9 @@ struct WatchRootView: View {
         } else if model.hasActiveSession {
             if let since = model.staleSessionSince {
                 StaleSessionView(since: since)
+            } else if let alert = model.restAlert {
+                // Tela cheia por cima de qualquer página da sessão; ao fechar, a sessão reabre na Série.
+                RestAlertView(alert: alert)
             } else {
                 SessionView(initialPage: initialPage)
             }

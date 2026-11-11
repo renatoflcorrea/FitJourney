@@ -24,6 +24,8 @@ enum FJColor {
     static let textTertiary = Color(uiColor: .tertiaryLabel)
     /// Texto/símbolo sobre preenchimento `fill` de área ou tom.
     static let onFill = Color.white
+    /// Véu que escurece a tela atrás de um alerta que flutua (alerta de fim de descanso).
+    static let scrim = Color.black.opacity(0.4)
 
     // MARK: Áreas
 

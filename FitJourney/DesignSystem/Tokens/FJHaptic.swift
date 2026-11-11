@@ -1,3 +1,4 @@
+import AudioToolbox
 import SwiftUI
 
 /// Hápticos com significado (DESIGN_DIRECTION §2.4). Declarativos, via `sensoryFeedback`.
@@ -30,6 +31,18 @@ enum FJHaptic: Sendable {
         case .error: .error
         }
     }
+}
+
+/// Vibração de alerta (DESIGN_DIRECTION §2.4): a vibração longa do sistema, a mesma do timer do iPhone.
+/// Única exceção ao `sensoryFeedback` — só o alerta insistente de fim de descanso a usa, em laço, porque
+/// precisa ser sentida com o aparelho longe da mão. Respeita os ajustes de vibração do sistema.
+@MainActor
+protocol FJAlertVibrating {
+    func vibrate()
+}
+
+struct FJSystemAlertVibration: FJAlertVibrating {
+    func vibrate() { AudioServicesPlaySystemSound(kSystemSoundID_Vibrate) }
 }
 
 extension View {

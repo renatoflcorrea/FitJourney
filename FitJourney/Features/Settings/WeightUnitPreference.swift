@@ -14,7 +14,8 @@ enum WeightUnitPreference {
 ///
 /// Todas têm consumidor: `weightUnit` e `loadStep` (exibição e steppers), `weekStart` (`AppCalendar`),
 /// `defaultRestSeconds` (`RestPreference`: motor da sessão e padrões do editor), `restSound`
-/// (`RestPreference`: notificação de fim de descanso e alerta da Atividade ao Vivo), `maxHeartRate` (aba
+/// (`RestPreference`: notificação de fim de descanso e alerta da Atividade ao Vivo), `restAlertRepeat`
+/// (`RestPreference`: alerta insistente na sessão e no relógio), `maxHeartRate` (aba
 /// Saúde e zona ao vivo na sessão), `liveActivity` (`LiveActivityController`) e `mealReminders`
 /// (`MealReminderScheduler`).
 enum AppPreferenceKeys {
@@ -34,6 +35,11 @@ enum AppPreferenceKeys {
     /// notificação de fim de descanso (`UserNotificationRestScheduler`) e alerta da Atividade ao Vivo.
     /// Lido ao agendar: vale a partir do próximo descanso.
     static let restSound = "fj.restSound"
+    /// Alerta insistente no fim do descanso (padrão ligado; ausente = ligado). Ligado: o relógio e a tela da
+    /// sessão no iPhone vibram em laço e mostram "Descanso concluído" até um toque (teto de 60 s). Desligado:
+    /// uma vibração só. Consumidores: `SessionCoordinator` (iPhone) e `SessionSnapshot.restAlertRepeat`
+    /// (relógio, pelo `SessionEngine`); o relógio recebe a mudança no snapshot seguinte.
+    static let restAlertRepeat = "fj.restAlertRepeat"
     /// FC máxima manual em bpm; 0/ausente = pela idade (aba Saúde e zona ao vivo na sessão).
     static let maxHeartRate = "fj.maxHeartRate"
     /// Atividade ao Vivo + Dynamic Island da sessão (padrão ligado; ausente = ligado). Consumidor:
@@ -70,6 +76,11 @@ enum RestPreference {
     /// Som ao fim do descanso (`fj.restSound`); ausente = ligado.
     static func soundEnabled(_ defaults: UserDefaults = .standard) -> Bool {
         defaults.object(forKey: AppPreferenceKeys.restSound) as? Bool ?? true
+    }
+
+    /// Alerta insistente no fim do descanso (`fj.restAlertRepeat`); ausente = ligado.
+    static func alertRepeatEnabled(_ defaults: UserDefaults = .standard) -> Bool {
+        defaults.object(forKey: AppPreferenceKeys.restAlertRepeat) as? Bool ?? true
     }
 }
 

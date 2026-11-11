@@ -95,7 +95,7 @@ enum SessionDisplay {
 @MainActor
 enum SessionSnapshotBuilder {
     static func make(session: WorkoutSession, store: SessionStore, status: SessionSnapshot.Status? = nil,
-                     revision: Int? = nil) -> SessionSnapshot {
+                     revision: Int? = nil, restAlertRepeat: Bool = true) -> SessionSnapshot {
         let exercises = session.sortedExercises
         let prescriptions = (try? prescriptions(ids: Set(exercises.flatMap { ($0.sets ?? []).compactMap(\.prescriptionID) }),
                                                 context: store.context)) ?? [:]
@@ -186,6 +186,7 @@ enum SessionSnapshotBuilder {
         snapshot.currentGroup = SessionSnapshot.groupRound(exercises: snapshot.exercises, currentID: currentID)
         snapshot.notes = session.notes.isEmpty ? nil : session.notes
         snapshot.workoutType = workoutType.rawValue
+        snapshot.restAlertRepeat = restAlertRepeat ? nil : false
         return snapshot
     }
 

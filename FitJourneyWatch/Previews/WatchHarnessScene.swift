@@ -2,7 +2,8 @@
 import SwiftUI
 
 /// Harness de screenshots/QA no simulador (só DEBUG): `-FJWScene <nome>` abre o app já num estado de teste.
-/// Cenas: never, noprogram, list, offline, detail, series, series-last, rest, rest-done, hold, hold-running, cardio, paused,
+/// Cenas: never, noprogram, list, offline, detail, series, series-last, rest, rest-done (aviso de 2 s, alerta insistente
+/// desligado), rest-alert (alerta vibrando), rest-alert-quiet (alerta silenciado), hold, hold-running, cardio, paused,
 /// controls, metrics, routine, finish, summary, intro, unreachable.
 struct WatchHarnessScene {
     let name: String
@@ -30,7 +31,7 @@ struct WatchHarnessScene {
         case "series", "controls", "metrics", "routine", "finish", "summary", "saving", "unreachable":
             snapshot = WatchFixtures.snapshot(completed: 1, now: now)
         case "series-last": snapshot = WatchFixtures.snapshot(completed: 3, now: now)
-        case "rest", "rest-done": snapshot = WatchFixtures.snapshot(completed: 1, now: now)
+        case "rest", "rest-done", "rest-alert", "rest-alert-quiet": snapshot = WatchFixtures.snapshot(completed: 1, now: now)
         case "intro": snapshot = WatchFixtures.snapshot(completed: 4, now: now)
         case "hold", "hold-running", "cardio": snapshot = WatchFixtures.snapshot(completed: 10, now: now)
         case "paused": snapshot = WatchFixtures.snapshot(completed: 2, now: now)
@@ -41,6 +42,8 @@ struct WatchHarnessScene {
         if name == "metrics" { page = 2; metrics = WatchLiveMetrics(heartRate: 128, heartRateZone: 3, activeKilocalories: 214, averageHeartRate: 121) }
         if name == "routine" { page = 3 }
         if name == "rest" { snapshot?.restEndsAt = now.addingTimeInterval(52) }
+        let alertEnd = now.addingTimeInterval(-12)
+        if name.hasPrefix("rest-alert") { snapshot?.restEndsAt = alertEnd }
         if name == "hold-running" {
             let holdID = snapshot?.currentSetID
             snapshot?.holdSetID = holdID
@@ -60,6 +63,10 @@ struct WatchHarnessScene {
         if name == "rest" { model.restTotalSeconds = 90 }
         if name == "intro" { model.introExerciseID = WatchFixtures.id(200) }
         if name == "rest-done" { model.restFinishedAt = now }
+        if name.hasPrefix("rest-alert") {
+            model.restDidEnd(at: alertEnd)
+            if name == "rest-alert-quiet" { model.silenceRestAlert() }
+        }
         if name == "summary", let snapshot {
             // iPhone confirma o fim: só então o resumo existe.
             let finish = SessionCommand(sessionID: snapshot.sessionID, issuedAt: now, origin: .watch, kind: .finish(rpe: 8, applyLoadProposalIDs: []))

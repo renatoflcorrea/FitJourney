@@ -25,6 +25,14 @@ struct WatchNotice: Equatable, Identifiable, Sendable {
     var text: String
 }
 
+/// Alerta de fim de descanso (DESIGN §9.4 "Descanso concluído"): tela cheia + laço háptico até o usuário interagir.
+struct WatchRestAlert: Equatable, Sendable {
+    /// Fim do descanso (a data do snapshot): a tela conta "+0:12" a partir daqui.
+    var endedAt: Date
+    /// O laço háptico ainda toca; para em qualquer interação ou no teto (`WatchRestAlertPattern.ceiling`).
+    var isRinging: Bool
+}
+
 /// Resumo da sessão encerrada (DESIGN §9.4, Finalizar → Resumo); só nasce com o fim confirmado pelo iPhone.
 struct WatchSessionSummary: Equatable, Sendable {
     var sessionID: UUID
@@ -65,6 +73,16 @@ struct WatchSessionSummary: Equatable, Sendable {
 /// no iPhone → o relógio só controla, e oferece "gravar no relógio" (`canOfferWatchRecording`,
 /// `startRecordingOnWatch()`, ou `recordingRequest` do iPhone). FC/energia vão ao iPhone (`.liveMetrics`).
 ///
+/// Fim do descanso (`restAlert`): com o alerta insistente ligado (`SessionSnapshot.restAlertRepeat`, preferência
+/// `fj.restAlertRepeat` do iPhone; ausente = ligado) o fim do descanso abre a tela "Descanso concluído" e toca
+/// `WatchRestAlertPattern` em laço até `silenceRestAlert()` (qualquer toque/Coroa — não envia comando),
+/// `startSetAfterRest()` ("Começar série": fecha a tela e dispensa o descanso vencido com `skipRest`) ou o teto
+/// de 60 s contado do fim do descanso (o laço para, a tela fica). O alerta some sozinho se o descanso dele deixar
+/// de ser o da sessão (pulado/ajustado/nova série em outro aparelho, pausa, fim). Desligado: uma vibração e
+/// "Descanso concluído" por 2 s (`restFinishedAt`). O laço roda enquanto o app roda: com o pulso abaixado isso
+/// exige a `HKWorkoutSession` do relógio (sessão gravada aqui); sem ela o watchOS suspende o app e o laço só
+/// continua (dentro do teto) quando a tela volta.
+///
 /// Pontos de injeção: `WatchTransport` (WatchConnectivity + canal da `HKWorkoutSession`) e
 /// `WatchHealthProvider` (`HKWorkoutSession` do relógio); ver os protocolos.
 @MainActor @Observable
@@ -100,8 +118,10 @@ final class WatchSessionModel {
     var introExerciseID: UUID?
     /// Duração total (s) do descanso em curso, para a barra de progresso.
     var restTotalSeconds: Double = 0
-    /// Quando o descanso acabou (para "Descanso concluído" por 2 s).
+    /// Quando o descanso acabou — só com o alerta insistente desligado ("Descanso concluído" por 2 s).
     var restFinishedAt: Date?
+    /// Alerta insistente de fim de descanso em curso (`nil` = sem alerta).
+    private(set) var restAlert: WatchRestAlert?
     var liveMetrics = WatchLiveMetrics.empty
     var healthAccess: WatchHealthAccess
     /// Sessão cujo treino o relógio está gravando no Saúde (`nil` = só controle).
@@ -120,6 +140,9 @@ final class WatchSessionModel {
     @ObservationIgnored var loadCoalesceInterval: TimeInterval = 0.35
     /// Intervalo mínimo entre envios de métricas ao iPhone.
     @ObservationIgnored var metricsInterval: TimeInterval = 2
+    /// Intervalo entre os pulsos do alerta de fim de descanso e teto contado do fim do descanso.
+    @ObservationIgnored var restAlertInterval: TimeInterval = WatchRestAlertPattern.interval
+    @ObservationIgnored var restAlertCeiling: TimeInterval = WatchRestAlertPattern.ceiling
 
     @ObservationIgnored private var closedSessionIDs: Set<UUID> = []
     @ObservationIgnored private var handledTerminalSessionIDs: Set<UUID> = []
@@ -138,6 +161,10 @@ final class WatchSessionModel {
     @ObservationIgnored private var restTask: Task<Void, Never>?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var observedRest: (end: Date?, status: SessionSnapshot.Status?) = (nil, nil)
+    @ObservationIgnored private let restAlertLoop = WatchHapticLoop()
+    @ObservationIgnored private var restAlertPulses = 0
+    /// Fim de descanso já avisado (um aviso por descanso, mesmo que o temporizador dispare de novo).
+    @ObservationIgnored private var announcedRestEnd: Date?
 
     init(transport: any WatchTransport, haptics: any WatchHaptics, health: any WatchHealthProvider = UnavailableHealthProvider(),
          clock: @escaping @MainActor () -> Date = { Date() }) {
@@ -168,6 +195,9 @@ final class WatchSessionModel {
         return currentExercise?.sets.first { $0.id == id }
     }
     var pendingCount: Int { pending.count }
+
+    /// Alerta insistente no fim do descanso: preferência do iPhone no snapshot (ausente = ligado).
+    var restAlertRepeats: Bool { display?.restAlertRepeat ?? true }
 
     /// Finalizado aqui, ainda sem confirmação do iPhone: a tela mostra "Salvando…".
     var isSavingSession: Bool {
@@ -234,6 +264,7 @@ final class WatchSessionModel {
     func stop() {
         loopTask?.cancel(); loopTask = nil
         tickTask?.cancel(); tickTask = nil
+        clearRestAlert()
     }
 
     func requestSnapshot() {
@@ -705,6 +736,7 @@ final class WatchSessionModel {
             introExerciseID = nextID
         }
         if !isActive { introExerciseID = nil }
+        reconcileRestAlert(with: new)
 
         if let new, isActive, let exercise = new.currentExercise, exercise.measurementKind == .timeOrDistance,
            let set = exercise.sets.first(where: { $0.id == new.currentSetID }), !set.isCompleted,
@@ -770,11 +802,76 @@ final class WatchSessionModel {
         }
     }
 
-    /// O descanso vencido dispara o háptico forte (o pulso abaixado também sente) uma única vez.
+    /// Fim do descanso (uma vez por descanso). Alerta insistente ligado: tela "Descanso concluído" + laço háptico
+    /// até uma interação ou o teto; desligado: um háptico forte e o aviso de 2 s.
     func restDidEnd(at end: Date) {
-        guard let display, display.status == .active, display.restEndsAt == end else { return }
-        restFinishedAt = now
-        haptics.play(.restEnded)
+        guard let display, display.status == .active, display.restEndsAt == end, announcedRestEnd != end else { return }
+        announcedRestEnd = end
+        guard restAlertRepeats else {
+            restFinishedAt = now
+            haptics.play(.restEnded)
+            return
+        }
+        restFinishedAt = nil
+        restAlertPulses = 0
+        // Temporizador atrasado além do teto (app suspenso com o pulso abaixado): avisa uma vez, sem laço.
+        let ringing = now.timeIntervalSince(end) < restAlertCeiling
+        restAlert = WatchRestAlert(endedAt: end, isRinging: ringing)
+        playRestAlertPulse()
+        guard ringing else { return }
+        restAlertLoop.start(every: restAlertInterval) { [weak self] in self?.restAlertTick() }
+    }
+
+    /// Um passo do laço (o temporizador chama a cada `restAlertInterval`; os testes chamam direto): toca o
+    /// próximo pulso ou para no teto, deixando a tela.
+    func restAlertTick() {
+        guard let alert = restAlert, alert.isRinging else {
+            restAlertLoop.cancel()
+            return
+        }
+        guard now.timeIntervalSince(alert.endedAt) < restAlertCeiling else {
+            silenceRestAlert()
+            return
+        }
+        playRestAlertPulse()
+    }
+
+    private func playRestAlertPulse() {
+        haptics.play(WatchRestAlertPattern.event(forPulse: restAlertPulses))
+        restAlertPulses += 1
+    }
+
+    /// Qualquer interação (toque na tela, Coroa, ação do VoiceOver) ou o teto: o laço para e a tela fica.
+    /// Não envia comando.
+    func silenceRestAlert() {
+        restAlertLoop.cancel()
+        guard restAlert?.isRinging == true else { return }
+        restAlert?.isRinging = false
+        haptics.cancelPending()
+    }
+
+    /// "Começar série": para o laço, fecha a tela e volta à Série (sem a introdução do exercício). O descanso
+    /// vencido é dispensado no iPhone (`skipRest`), o que também encerra o alerta de lá.
+    func startSetAfterRest() {
+        let expired = display.flatMap { $0.status == .active ? $0.restEndsAt : nil }.map { $0 <= now } ?? false
+        clearRestAlert()
+        restFinishedAt = nil
+        introExerciseID = nil
+        if expired { send(.skipRest) }
+    }
+
+    private func clearRestAlert() {
+        restAlertLoop.cancel()
+        guard let alert = restAlert else { return }
+        if alert.isRinging { haptics.cancelPending() }
+        restAlert = nil
+    }
+
+    /// O alerta só vale enquanto o descanso dele é o da sessão ativa: pulado, ajustado, série nova (outro
+    /// descanso), pausa ou fim — aqui ou no iPhone — encerram o alerta.
+    private func reconcileRestAlert(with snapshot: SessionSnapshot?) {
+        guard let alert = restAlert else { return }
+        if snapshot?.status != .active || snapshot?.restEndsAt != alert.endedAt { clearRestAlert() }
     }
 
     private func show(notice text: String) {

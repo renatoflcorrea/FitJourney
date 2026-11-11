@@ -61,6 +61,16 @@
         }
       }
     },
+    "%@. Próxima: %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Next: %@."
+          }
+        }
+      }
+    },
     "%lld" : {
       "localizations" : {
         "en" : {
@@ -427,6 +437,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start"
+          }
+        }
+      }
+    },
+    "Começar série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start set"
           }
         }
       }
@@ -901,6 +921,26 @@
         }
       }
     },
+    "há %lld min" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min ago"
+          }
+        }
+      }
+    },
+    "há %lld segundos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld seconds ago"
+          }
+        }
+      }
+    },
     "HÁ MAIS TEMPO" : {
       "localizations" : {
         "en" : {
@@ -1137,6 +1177,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Other"
+          }
+        }
+      }
+    },
+    "Para a vibração e volta à série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops the vibration and returns to the set"
+          }
+        }
+      }
+    },
+    "Parar vibração" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop vibration"
           }
         }
       }
@@ -1701,6 +1761,16 @@
         }
       }
     },
+    "Toque para parar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to stop"
+          }
+        }
+      }
+    },
     "Trapézio" : {
       "localizations" : {
         "en" : {
@@ -1767,6 +1837,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uses the Watch's heart rate and calories for this workout"
+          }
+        }
+      }
+    },
+    "Volta à série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Returns to the set"
           }
         }
       }

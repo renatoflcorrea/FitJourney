@@ -149,12 +149,13 @@ Formatos: carga com vírgula decimal local e sem zeros à direita ("32,5 kg"); t
 | Série concluída (`setCompleted`) | impacto médio |
 | Exercício concluído (`exerciseCompleted`) | impacto forte |
 | Descanso/sustentação terminou (`timerFinished`) | aviso (duplo) + som opcional (Ajustes) |
+| Alerta insistente de fim de descanso (`FJAlertVibrating`) | vibração longa do sistema (a do timer do iPhone), repetida a cada 1,5 s até um toque; teto de 60 s (§4.5) |
 | +/− em carga/reps (`stepUp`/`stepDown`) | incremento / decremento |
 | Chip, RPE, segmento (`selection`) | seleção |
 | Sessão salva, recorde (`celebration`) | sucesso |
 | Erro ao salvar (`error`) | erro |
 
-Desfazer um check não vibra (`fjHaptic(_:trigger:when:)`). Hápticos respeitam o ajuste do sistema; "Hápticos na sessão" em Ajustes desliga os da sessão.
+Desfazer um check não vibra (`fjHaptic(_:trigger:when:)`). A vibração do alerta insistente é a única fora do `sensoryFeedback`: precisa ser sentida com o aparelho no banco ou no bolso, e só toca com a tela da sessão aberta. Hápticos respeitam o ajuste do sistema; "Hápticos na sessão" em Ajustes desliga os da sessão.
 
 ### 2.5 Movimento (`FJMotion`, `.fjAnimation(_:value:)`)
 
@@ -381,11 +382,41 @@ Push a partir da ficha. `List` nativa em modo de edição permanente (alças de 
 | Modo | Conteúdo |
 |---|---|
 | Série | `FJPrimaryButton("Concluir série 2")` — faz o mesmo que o check da série atual. Sublinha acima: "Supino inclinado · 26 kg · alvo 8–12". |
-| Descanso | `FJRestTimerView`: "DESCANSO", o que vem a seguir ("Série 3 de 4 · 26 kg · alvo 8–12"), tempo em 60 pt, barra, **−15 s · Pular · +15 s** (52 pt de altura). Ao zerar: háptico + som opcional + anúncio no VoiceOver, rótulo "Descanso concluído", tempo parado em 0:00 e o botão central vira "Continuar"; a doca volta ao modo Série ao tocar em Continuar/qualquer check, ou sozinha após 10 s. A lista continua utilizável durante o descanso (ajustar a próxima carga, informar as reps da série feita). |
+| Descanso | `FJRestTimerView`: "DESCANSO", o que vem a seguir ("Série 3 de 4 · 26 kg · alvo 8–12"), tempo em 60 pt, barra, **−15 s · Pular · +15 s** (52 pt de altura). Ao zerar: háptico + som opcional + anúncio no VoiceOver, rótulo "Descanso concluído", tempo parado em 0:00 e o botão central vira "Continuar"; a doca volta ao modo Série ao tocar em Continuar/qualquer check, ou sozinha após 10 s. A lista continua utilizável durante o descanso (ajustar a próxima carga, informar as reps da série feita). Com o **alerta insistente** ligado (padrão), o fim do descanso abre o alerta abaixo por cima da doca. |
 | Sustentação | Antes: `FJPrimaryButton("Iniciar sustentação")`. Durante: contagem regressiva em 60 pt com 3 s de preparação ("3, 2, 1"), botão "Parar" (registra o tempo real e conclui a série); ao zerar: háptico, continua contando o excedente até "Parar". |
 | Cardio | Cronômetro em 60 pt, "Iniciar" / "Pausar" / "Concluir". |
 | Próximo | Exercício concluído: "Próximo: Crucifixo" (`FJPrimaryButton`), 1 toque expande o próximo. |
 | Finalizar | Tudo concluído ou pulado: `FJPrimaryButton("Finalizar treino", "flag.checkered")`. Com pendentes, "Finalizar treino" continua no menu "…". |
+
+**Alerta de fim de descanso** (`FJRestAlertCard`; preferência "Alerta insistente no fim do descanso", ligada por padrão). Pedido do usuário: "igual ao timer do iPhone — vibra várias vezes até eu tocar".
+
+```
+┌──────────────────────────────────┐
+│░░░░░░░░ lista escurecida ░░░░░░░░│  véu (`FJColor.scrim`): qualquer toque para e fecha
+│ ┌──────────────────────────────┐ │
+│ │          ((  ◯  ))           │ │  anel laranja pulsando
+│ │           +0:12              │ │  tempo desde o fim do descanso
+│ │      Descanso concluído      │ │
+│ │       Supino inclinado       │ │
+│ │ Série 3 de 4 · 26 kg · 8–12  │ │  a próxima série, como prescrita
+│ │ [       Começar série      ] │ │  botão principal (56 pt)
+│ │ Toque em qualquer lugar para │ │
+│ │            parar             │ │
+│ └──────────────────────────────┘ │  cartão de vidro no lugar da doca
+└──────────────────────────────────┘
+```
+
+- **Quando abre**: o descanso zera com a tela da sessão aberta, o app em primeiro plano e nada por cima (folha, diálogo, encerramento). Fora disso vale o de antes: uma vibração (tela minimizada ou folha aberta) ou a notificação/Atividade ao Vivo (app em segundo plano ou bloqueado, §4.14).
+- **O que faz**: o iPhone vibra a cada 1,5 s (vibração longa, §2.4) e o cartão cobre a doca; a lista fica escurecida e não recebe toques. O anel pulsa (ondas saindo do anel + contorno do cartão) e o número conta para cima a partir de "+0:00" — o descanso oficial continua parado em 0:00 (decisão 9); aqui se mostra há quanto tempo ele acabou.
+- **Como para**: **qualquer toque ou arrasto** na tela para a vibração e fecha o alerta sem enviar nada — a doca aparece como estaria ("Descanso concluído · Continuar" nos primeiros 10 s, depois "Concluir série 3"). **Começar série** faz o mesmo e dispensa o descanso (igual ao "Continuar"). Alerta fechado no relógio ("Começar série" de lá) fecha o do iPhone, e vice-versa.
+- **Teto**: 60 s depois do fim do descanso a vibração para sozinha; o cartão fica, sem pulsar e sem a dica, até um toque.
+- **Não duplica**: um alerta por descanso. Pular, ±15 s, concluir outra série, pausar ou finalizar (aqui, no relógio ou na Tela Bloqueada) encerram o alerta; +15 s depois do fim abre um novo no novo horário.
+- **Som**: o alerta em primeiro plano só vibra. "Som ao fim do descanso" continua valendo para a notificação e a Atividade ao Vivo.
+- **Reduzir Movimento**: nada pulsa; o anel vira um disco laranja cheio com o número em branco e o contorno do cartão fica fixo (destaque só por contraste). A vibração continua.
+- **Reduzir Transparência**: cartão sólido (`fjGlass`), véu igual.
+- **VoiceOver**: ao abrir anuncia "Descanso concluído. Próxima: Supino inclinado, Série 3 de 4 · 26 kg · alvo 8–12."; o cartão é modal (o foco não escapa para a lista); cabeçalho "Descanso concluído, há 12 segundos"; "Começar série" com a dica "Para a vibração e volta à série"; gesto de escape (Z), toque mágico e a ação "Parar vibração" fecham o alerta.
+- **Texto grande (AX)**: sem anel; "Descanso concluído" e "+0:12" em linhas próprias, nome e próxima série quebram linha, botão em largura total.
+- **Desligado** (Ajustes › Treino): comportamento anterior — uma vibração e a doca em "Descanso concluído".
 
 | Estado | O que muda |
 |---|---|
@@ -603,7 +634,7 @@ Sheet `.large` a partir do avatar em Hoje, com `NavigationStack` próprio; cada 
 |---|---|
 | (topo) | **Perfil** — círculo com as iniciais, "Seu perfil" e o resumo ("34 anos · 78 kg · intermediário") ou "Opcional — ajuda o Coach a conhecer você" → push (§4.13.6) |
 | Unidades | Carga (**kg \| lb**, segmentado na linha) · Passo de carga (menu: **0,5** · 1 · 2 · 2,5 · 5; padrão 0,5 kg / 1 lb) · Distância (km \| mi) · Semana começa em (segunda \| domingo). Rodapé: "Mudar a unidade muda só a exibição. O histórico não é alterado." |
-| Treino | Descanso padrão · Som ao fim do descanso · Hápticos na sessão · **Atividade ao Vivo** (§4.14) · Sugerir progressão (desligado) · Limite de vídeo |
+| Treino | Descanso padrão · Som ao fim do descanso · **Alerta insistente no fim do descanso** (ligado; relógio e tela do treino vibram até um toque — desligado, uma vibração; vale no relógio a partir da próxima ação na sessão) · Hápticos na sessão · **Atividade ao Vivo** (§4.14) · Sugerir progressão (desligado) · Limite de vídeo |
 | Dieta | Tamanho do copo |
 | Integrações | **Saúde** (estado à direita: "Conectado" / "Não conectado") → push · **Notificações** (estado: "Permitidas" / "Desativadas") → push · **Coach e IA** (estado: "OpenAI · gpt-5-mini" / "Não configurado") → push (§4.13.5) |
 | Dados | **Exportar, importar e apagar** → push |
@@ -1073,6 +1104,7 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 14. A carga da série atual e o timer são legíveis a 1,5 m (≥ 28 pt e ≥ 60 pt no tamanho de texto padrão).
 15. Fechar o app à força durante o descanso e reabrir após 2 min: mesma série atual, tempo decorrido correto (±1 s), descanso mostrado como concluído.
 16. Minimizar mostra o acessório em todas as abas; tocar reabre no mesmo ponto de rolagem.
+16a. Alerta de fim de descanso (§4.5): com a sessão aberta o iPhone vibra repetidamente até um toque em qualquer ponto; "Começar série" fecha e dispensa o descanso; para sozinho em 60 s deixando o cartão; não abre duas vezes para o mesmo descanso; com Reduzir Movimento nada pulsa; desligado em Ajustes, vibra uma vez. A vibração em si só é verificável no aparelho.
 17. Desfazer um check restaura o estado pendente sem perder os valores editados.
 18. VoiceOver na linha de série lê "Série *n* de *N*, *tipo*, *carga*, alvo *reps*, *estado*"; desfazer um check não vibra.
 19. Sem Apple Watch, a sessão inteira funciona e o badge de FC mostra "—". Com a sessão pausada, o tempo da barra e do acessório não avança.
@@ -1142,6 +1174,8 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 | `FJSectionHeader` | `Components/FJSectionHeader.swift` | Cabeçalho de seção com ação |
 | `NumberStepperField`, `FJOptionalNumberField`, `.fjKeyboardDone(_:)` | `Components/NumberStepperField.swift` | Carga, tempo, lastro com +/−; campo opcional discreto ("+ reps"); botão OK na barra do teclado |
 | `FJRestTimerView` | `Components/FJRestTimerView.swift` | Painel de descanso (por datas; para de atualizar e anuncia ao terminar) |
+| `FJRestAlertCard` | `Components/FJRestAlertCard.swift` | Cartão "Descanso concluído" do alerta insistente: anel pulsando, "+0:12", próxima série, "Começar série" (por datas; sem pulsar com Reduzir Movimento) |
+| `FJAlertVibrating`, `FJSystemAlertVibration` | `Tokens/FJHaptic.swift` | Vibração longa do alerta insistente (injetável para testes) |
 | `FJCheckButton`, `FJRPEScale`, `FJSessionAccessory` | `Components/FJSessionControls.swift` | Check de série/refeição; RPE 1–10; conteúdo do `tabViewBottomAccessory` (recebe `startedAt`, `pausedSeconds`, `pausedAt` do `SessionClock`) |
 | `FJHeartRateZoneBadge`, `FJHeartRateBadge` | `Components/FJHeartRate.swift` | Zona e FC ao vivo |
 | `FJEmptyState`, `FJLoadingState`, `FJBanner` | `Components/FJStates.swift` | Estados |
@@ -1172,7 +1206,7 @@ Comportamento e arquitetura de dados: SPEC §6.4. Objetivo: o iPhone fica no bol
 - **Cor**: as mesmas de §2.1, tons do tema escuro (treino `#FF9A3D`, preenchimento `#D4450C`, zonas, saúde). Texto primário branco; secundário branco 66%.
 - **Tipografia**: estilos de texto do sistema, números em SF Rounded com dígitos monoespaçados. Carga: `.largeTitle` rounded bold (≈ 40 pt). Timer de descanso/sustentação: 48 pt (41 mm) / 54 pt (46 mm), `minimumScaleFactor(0.6)`. Nome do exercício: `.headline`, até 2 linhas (1 no 41 mm).
 - **Alvos**: botão principal em largura total, 46 pt de altura (41 mm) / 52 pt (46 mm); demais ≥ 44 pt — exceção: os dois botões de vidro do descanso no 41 mm têm 40 pt visíveis com área de toque de 44 pt (é a tela mais apertada). Margens: `scenePadding`.
-- **Movimento**: `FJMotion.value` para número e check; sem animação em laço. Tela sempre ligada (Always On): brilho reduzido, timer a 1 Hz, sem animações.
+- **Movimento**: `FJMotion.value` para número e check; sem animação em laço — única exceção: o anel do alerta de fim de descanso (§9.4), que pulsa enquanto o relógio vibra. Tela sempre ligada (Always On): brilho reduzido, timer a 1 Hz, sem animações (o anel também para).
 - O código de tokens é compartilhado com o iPhone (`FJColor`, `FJFont`, `FJFormat`, `FJHeartRateZone`); componentes do relógio ficam em um diretório próprio do alvo watchOS.
 
 ### 9.3 Arquitetura de telas
@@ -1222,7 +1256,31 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 - Título "Descanso" na toolbar (no lugar do tempo da sessão); contagem regressiva grande; barra fina de progresso.
 - "Próxima: 26,0 kg" — a Coroa continua ajustando a carga, agora da próxima série (Q-W2).
 - Linha de botões de vidro: `+ reps` (abre seletor pela Coroa, começando no piso da faixa; "Limpar" volta a não informado) e `+15 s`. Abaixo, `Pular` em largura total (toque duplo).
-- Fim: háptico forte (§9.6), "Descanso concluído" por 2 s e volta à Série. Com o pulso abaixado o háptico toca do mesmo jeito.
+- Fim: abre o **alerta "Descanso concluído"** (abaixo). Com "Alerta insistente" desligado no iPhone: háptico forte uma vez (§9.6), "Descanso concluído" por 2 s e volta à Série.
+
+**Sessão · Descanso concluído (alerta)** — tela cheia, no lugar das páginas da sessão
+
+```
+┌────────────────────┐
+│               10:11│  hora do sistema (sem toolbar, sem páginas)
+│      ((  ◯  ))     │  anel laranja pulsando
+│       +0:12        │  tempo desde o fim do descanso, dentro do anel
+│ Descanso concluído │  laranja
+│ Supino · série 3/4 │  "Supino inclinado · série 3 de 4"
+│  26 kg · alvo 8–12 │
+│ [  Começar série ] │  botão principal · toque duplo
+│  Toque para parar  │
+└────────────────────┘
+```
+
+- **O relógio vibra em laço** (§9.6) desde o fim do descanso até uma interação. A tela substitui a sessão inteira, em qualquer página (Controles, Métricas, Ficha) e fecha a folha que estiver aberta.
+- **Para a vibração, a tela fica**: qualquer toque na tela ou giro da Coroa. O anel para de pulsar e vira um disco laranja cheio; a dica some; o tempo continua contando.
+- **Começar série** (toque duplo / `handGestureShortcut(.primaryAction)`): para, fecha a tela e abre a página Série na próxima série (pulando a introdução "Próximo: …"); dispensa o descanso vencido no iPhone, o que também fecha o alerta de lá. Sem próxima série o botão diz "Continuar".
+- **Teto de 60 s** depois do fim do descanso: a vibração para sozinha; a tela fica até "Começar série".
+- **Some sozinha** se o descanso dela deixar de valer: +15 s, série concluída ou "Continuar" no iPhone, pausa, fim do treino.
+- **Um alerta por descanso**: descanso pulado não alerta; ajustado alerta uma vez, no novo horário.
+- **Pulso abaixado**: com o relógio gravando o treino (`HKWorkoutSession` ativa) o app continua rodando e o laço toca com a tela apagada. Sem gravação no relógio (sessão só controlada) o watchOS suspende o app com o pulso abaixado: o laço só toca com o app em primeiro plano; ao levantar o pulso dentro dos 60 s ele vibra pelo tempo que resta, depois disso avisa uma vez e mostra a tela parada. Nesse caso o aviso com o pulso abaixado continua sendo a notificação do iPhone espelhada no relógio.
+- **Botão lateral e clique da Coroa** não chegam ao app (o watchOS não os entrega): saem para o mostrador e a vibração segue até o teto. Giro da Coroa, toque e toque duplo param.
 
 **Sessão · Sustentação** (isométrico)
 - "Sustentação · alvo 0:45" + `Iniciar` (toque duplo) → "3, 2, 1" com cliques → cronômetro grande contando o tempo sustentado, marca do alvo na barra; háptico ao atingir o alvo; `Parar` (toque duplo) registra o tempo real e conclui a série.
@@ -1271,7 +1329,8 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 |---|---|
 | Detente da Coroa (carga, reps, RPE) | detente do sistema |
 | Série concluída | `.success` |
-| Fim do descanso | `.notification`, duas vezes com 0,4 s |
+| Fim do descanso (alerta insistente desligado) | `.notification`, duas vezes com 0,4 s |
+| Fim do descanso (alerta insistente) | laço a cada 1,8 s alternando `.notification` duplo e `.retry`, até toque/Coroa/"Começar série" ou 60 s |
 | "3, 2, 1" (início, sustentação) | `.click` a cada segundo, `.start` no zero |
 | Alvo da sustentação atingido | `.directionUp` |
 | Parar sustentação / pausar | `.stop` |
@@ -1283,7 +1342,8 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 
 - **VoiceOver**: a página Série é lida como "Supino inclinado, série 2 de 4, 26 quilos, alvo 8 a 12 repetições"; a carga é um elemento ajustável (deslizar para cima/baixo = ±0,5 kg), independente da Coroa; botões com rótulo completo ("Concluir série 2"); o fim do descanso é anunciado. Páginas têm nome ("Controles", "Série", "Métricas", "Ficha").
 - **Texto grande (até AX3 no relógio)**: a página Série vira rolável; como a rolagem passa a usar a Coroa, a carga deixa de ser ajustada por ela e ganha botões − / + visíveis ao lado do número. O botão principal continua fixo na base. Nenhum texto essencial é truncado: o nome do exercício quebra em até 3 linhas.
-- **Reduzir Movimento**: sem rolagem de dígitos nem transição de página animada entre série e descanso (esmaecimento); hápticos mantidos.
+- **Reduzir Movimento**: sem rolagem de dígitos nem transição de página animada entre série e descanso (esmaecimento); hápticos mantidos. No alerta de fim de descanso nada pulsa: disco laranja cheio com o número em branco (só contraste).
+- **Alerta de fim de descanso**: ao abrir, o VoiceOver anuncia "Descanso concluído. Próxima: Supino inclinado, série 3 de 4, 26 quilos, alvo 8 a 12 repetições."; ordem de leitura: tempo ("Descanso concluído, há 12 segundos") → próxima série → "Começar série" (dica: "Para a vibração e volta à série"); toque mágico e a ação "Parar vibração" silenciam sem sair da tela. Texto grande: a tela rola (a Coroa passa a rolar, então não silencia), o botão fica fixo na base e os textos quebram linha.
 - **Sem depender de gesto**: toque duplo e Coroa têm sempre um botão equivalente na tela (folha "Carga" com − / +).
 - **Cor nunca sozinha**: zona com "Z3", estado do exercício com símbolo, pausa com texto.
 - **AssistiveTouch / uma mão**: toda a sessão é operável só com toque duplo + Coroa, ou só com toques.
@@ -1295,7 +1355,7 @@ Exigem iPhone + Apple Watch pareados; no simulador vale só layout.
 W1. Da face do relógio até a sessão iniciada: no máximo 3 toques (app → ficha do dia → Iniciar).
 W2. Concluir uma série = 1 toque ou 1 toque duplo, sem olhar para o iPhone; ajustar a carga em 0,5 kg = 1 detente da Coroa.
 W3. O alvo aparece como prescrito ("8–12", "10", "máx."); nenhuma tela exige reps para concluir.
-W4. O fim do descanso é sentido com o pulso abaixado e a tela apagada.
+W4. O fim do descanso é sentido com o pulso abaixado e a tela apagada: com o relógio gravando o treino, vibra repetidamente até uma interação (ou 60 s).
 W5. Série concluída no relógio aparece no iPhone em até 2 s (e vice-versa) com os dois por perto.
 W6. Com o iPhone em modo avião: iniciar, concluir todas as séries e finalizar funcionam; ao reconectar, a sessão no iPhone tem as mesmas séries, cargas e horários (±1 s), sem duplicar.
 W7. Sessão iniciada no iPhone aparece no relógio sem tocar em nada além de abrir o app (ou a notificação).
@@ -1306,6 +1366,7 @@ W11. Toda área de toque ≥ 44 pt; botão principal ≥ 46 pt (41 mm).
 W12. VoiceOver percorre a página Série em ordem: exercício → série → carga (ajustável) → alvo → Concluir.
 W13. Com texto no maior tamanho a carga é ajustável por botões e nada essencial é cortado.
 W14. Finalizar: RPE pela Coroa, "Sem nota" disponível, resumo mostra quantas cargas foram atualizadas.
+W15. Alerta de fim de descanso: toque em qualquer ponto ou giro da Coroa para a vibração e mantém a tela; "Começar série" (ou toque duplo) leva à próxima série em 1 ação; a tela cabe em 41 mm sem cortar o tempo, a próxima série ou o botão; descanso pulado ou ajustado não alerta em dobro; desligado no iPhone, volta a uma vibração.
 
 ### 9.9 Fora do W0
 
@@ -1349,10 +1410,13 @@ Decididas neste documento:
 22. **A tab bar some dentro da conversa** (a composição ocupa a base); a sessão em andamento continua a um "voltar" de distância e avisa pelo descanso (notificação/Atividade ao Vivo).
 23. **Ajustes em um `Form` com sub-telas** (Saúde, Notificações, Coach e IA, Dados, Perfil); a troca kg/lb é só de exibição.
 24. **`nutritionFill` escuro passou de `#1F8A40` para `#1C8540`**: o anterior dava 4,4:1 com branco.
+25. **Fim do descanso insiste até um toque** (pedido do usuário): relógio e iPhone vibram em laço com a tela "Descanso concluído", teto de 60 s, ligado por padrão e desligável em Ajustes › Treino. No relógio o toque só silencia (a tela fica com "Começar série"); no iPhone o toque silencia e fecha (a doca já mostra o próximo passo). O alerta em primeiro plano não toca som. Responde à Q4 quando o alerta está ligado: fica até um toque.
 
 Perguntas em aberto:
 
-- Q4. A doca volta sozinha de "Descanso concluído" para "Concluir série" após 10 s — ou deve ficar até um toque?
+- Q4. A doca volta sozinha de "Descanso concluído" para "Concluir série" após 10 s — ou deve ficar até um toque? (Com o alerta insistente ligado o cartão fica até um toque — decisão 25; a pergunta vale só para o alerta desligado.)
+- Q-RA1. O alerta do iPhone só vibra. Deve também tocar um som em laço (respeitando "Som ao fim do descanso"), como o timer do sistema?
+- Q-RA2. Sem gravação no relógio o laço não toca com o pulso abaixado (o watchOS suspende o app). Vale pedir uma sessão em segundo plano no relógio só para o descanso, ou sempre gravar o treino no relógio?
 - Q5. O laranja de preenchimento é queimado (`#D4450C`) para manter texto branco legível. Alternativa: laranja vivo (`#FF9500`) com texto **preto** nos botões. Qual prefere?
 - Q6. "Atenção" e "recorde" ficaram na mesma família amarela (diferenciados por símbolo). Aceitável, ou o recorde deve ter outra cor?
 - Q-W1. Sessão no relógio em páginas **horizontais** (Coroa livre para a carga), não verticais como sugerido. Confirma?

@@ -177,6 +177,32 @@ svg.i.f{fill:currentColor;stroke:none}
 .rest .ctls{display:flex;gap:8px}
 .rest .ctls span{flex:1;height:52px;border-radius:26px;background:var(--fill2);display:grid;place-items:center;font-weight:600;font-size:17px}
 .rest .ctls span.p{background:var(--training-fill);color:#fff}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:29}
+.ralert{border-radius:28px;padding:16px;text-align:center;outline:2px solid var(--training);outline-offset:-2px}
+.ralert .ring{position:relative;width:104px;height:104px;margin:14px auto 12px;border-radius:50%;border:5px solid var(--training);background:color-mix(in srgb,var(--training) 16%,transparent);display:grid;place-items:center;font-size:31px;font-weight:600}
+.ralert .ring::before,.ralert .ring::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--training);animation:rpulse 1.8s ease-out infinite}
+.ralert .ring::after{animation-delay:.9s}
+.ralert .ttl{font-size:20px;font-weight:600;color:var(--training)}
+.ralert .nm{font-weight:600;font-size:17px;margin-top:8px}
+.ralert .primary{margin-top:12px}
+.ralert .hint{font-size:13px;color:var(--text2);margin-top:10px}
+.ralert.still{outline-color:var(--training)}
+.ralert.still .ring{background:var(--training-fill);border-color:var(--training-fill);color:#fff}
+.ralert.still .ring::before,.ralert.still .ring::after{display:none}
+@keyframes rpulse{from{transform:scale(1);opacity:.6}to{transform:scale(1.45);opacity:0}}
+.watch .wring{position:relative;width:70px;height:70px;margin:2px auto 3px;border-radius:50%;border:4px solid var(--training);background:color-mix(in srgb,var(--training) 18%,transparent);display:grid;place-items:center;font-size:21px;font-weight:700;flex:none}
+.watch .wring::before,.watch .wring::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:2px solid var(--training);animation:rpulse 1.8s ease-out infinite}
+.watch .wring::after{animation-delay:.9s}
+.watch .wring.still{background:var(--training-fill);border-color:var(--training)}
+.watch .wring.still::before,.watch .wring.still::after{display:none}
+.watch.s41 .wring{width:56px;height:56px;font-size:17px}
+.watch .wal{text-align:center;display:flex;flex-direction:column;gap:1px}
+.watch .wal b{color:var(--training);font-size:15px;font-weight:600}
+.watch .wal span{font-size:11.5px;font-weight:600;white-space:nowrap;letter-spacing:-.01em}
+.watch .wal small{font-size:12.5px;color:var(--text2)}
+.watch.s41 .wal b{font-size:14px}.watch.s41 .wal span{font-size:9.5px}.watch.s41 .wal small{font-size:11px}
+.watch .whint{text-align:center;font-size:10.5px;color:var(--text2);margin-top:2px}
+@media (prefers-reduced-motion:reduce){.ralert .ring::before,.ralert .ring::after,.watch .wring::before,.watch .wring::after{animation:none;display:none}}
 .dockbtn{border-radius:34px;padding:10px}
 .dockbtn .cap{text-align:center;margin-bottom:8px;color:var(--text)}
 
@@ -746,6 +772,25 @@ svg.g{width:1em;height:1em;flex:none;vertical-align:-.12em}
   <div class="pd"><i></i><i class="on"></i><i></i><i></i></div>
 </template>
 
+<template data-device="watch" data-title="Descanso concluído · alerta" data-note="O descanso zerou: tela cheia no lugar da sessão (em qualquer página), anel laranja pulsando com o tempo desde o fim e o relógio vibrando em laço — como o timer do iPhone. Qualquer toque ou giro da Coroa para a vibração; “Começar série” (toque duplo) para e abre a próxima série. Para sozinho em 60 s.">
+  <div class="wtop"><b></b><span class="num">10:11</span></div>
+  <div class="w" style="padding-top:22px">
+    <div class="wring num">+0:12</div>
+    <div class="wal"><b>Descanso concluído</b><span>Supino inclinado · série 3 de 4</span><small class="num">26 kg · alvo 8–12</small></div>
+    <div class="wbtn" style="margin-top:auto">Começar série</div>
+    <div class="whint">Toque para parar</div>
+  </div>
+</template>
+
+<template data-device="watch" data-title="Descanso concluído · silenciado" data-note="Depois de um toque, do giro da Coroa ou do teto de 60 s: a vibração para e a tela fica até “Começar série”. É também como o alerta aparece com Reduzir Movimento e na tela sempre ligada: nada pulsa, o anel vira um disco laranja cheio (só contraste).">
+  <div class="wtop"><b></b><span class="num">10:12</span></div>
+  <div class="w" style="padding-top:22px">
+    <div class="wring still num">+0:47</div>
+    <div class="wal"><b>Descanso concluído</b><span>Supino inclinado · série 3 de 4</span><small class="num">26 kg · alvo 8–12</small></div>
+    <div class="wbtn" style="margin-top:auto">Começar série</div>
+  </div>
+</template>
+
 <template data-device="watch" data-title="Sessão · Sustentação" data-note="Isométrico: “Iniciar” → 3, 2, 1 → tempo sustentado com a marca do alvo; háptico ao atingir; “Parar” registra o tempo real.">
   <div class="wtop"><b class="num">41:20</b><span class="num">10:18</span></div>
   <div class="w dots">
@@ -1138,6 +1183,54 @@ svg.g{width:1em;height:1em;flex:none;vertical-align:-.12em}
     <div class="form"><div class="fr">Preferências e alergias<span class="v">Sem lactose</span></div></div>
   </div>
 </template>
+
+<template data-late data-title="24 · Sessão — alerta de fim de descanso" data-note="O descanso zerou com a sessão aberta: o iPhone vibra em laço (a vibração longa do timer) e o cartão “Descanso concluído” cobre a doca — anel laranja pulsando, tempo desde o fim, a próxima série e “Começar série”. A lista fica escurecida; qualquer toque para e fecha o alerta. Para sozinho em 60 s (o cartão fica). Desligável em Ajustes › Treino.">
+  <div class="topbar"><div class="in"><div class="gbtn glass"><svg class="i"><use href="#down"/></svg></div>
+    <div class="mid"><b class="num">34:26</b><small>3 de 6 exercícios</small></div>
+    <div class="hr glass"><svg class="i f"><use href="#heart"/></svg><span class="num">118</span><span class="zb" style="--zc:var(--z2)"><i></i>Z2</span></div><div class="gbtn glass"><svg class="i"><use href="#dots"/></svg></div></div>
+    <div class="prog"><i style="width:47%"></i></div></div>
+  <div class="scroll" style="padding-top:124px">
+    <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div><div class="nm">Supino reto</div><div class="cap num">4 séries · 32,5 kg</div></div></div></div>
+    <div class="card" style="padding-bottom:6px">
+      <div class="ex"><div style="flex:1"><div class="h">Supino inclinado halter</div><div class="cap">última vez: <span class="num">3 séries com 24 kg</span> · banco 30°</div></div><div class="thumb"><svg class="i f"><use href="#play"/></svg></div></div>
+      <div class="set" style="margin-top:12px"><span class="n num">1</span><span class="v num">24 <small>kg</small> × 10</span><div class="chk done sp"><svg class="i"><use href="#check"/></svg></div></div>
+      <div class="set"><span class="n num">2</span><span class="v num">26 <small>kg · alvo 8–12</small></span><span class="lnk2 sm sp">+ reps</span><div class="chk done"><svg class="i"><use href="#check"/></svg></div></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="dock"><div class="ralert glass">
+    <div class="ring num">+0:12</div>
+    <div class="ttl">Descanso concluído</div>
+    <div class="nm">Supino inclinado halter</div>
+    <div class="sub num">Série 3 de 3 · 26 kg · alvo 8–12</div>
+    <div class="primary">Começar série</div>
+    <div class="hint">Toque em qualquer lugar para parar</div>
+  </div></div>
+</template>
+
+<template data-late data-title="25 · Sessão — alerta parado (Reduzir Movimento ou depois de 60 s)" data-note="Com Reduzir Movimento nada pulsa: o anel vira um disco laranja cheio com o número em branco e o contorno do cartão fica fixo; a vibração continua. É também o estado depois do teto de 60 s — a vibração para, a dica some e o cartão espera um toque.">
+  <div class="topbar"><div class="in"><div class="gbtn glass"><svg class="i"><use href="#down"/></svg></div>
+    <div class="mid"><b class="num">34:26</b><small>3 de 6 exercícios</small></div>
+    <div class="hr glass"><svg class="i f"><use href="#heart"/></svg><span class="num">118</span><span class="zb" style="--zc:var(--z2)"><i></i>Z2</span></div><div class="gbtn glass"><svg class="i"><use href="#dots"/></svg></div></div>
+    <div class="prog"><i style="width:47%"></i></div></div>
+  <div class="scroll" style="padding-top:124px">
+    <div class="card" style="padding:12px 16px"><div class="ex"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div><div class="nm">Supino reto</div><div class="cap num">4 séries · 32,5 kg</div></div></div></div>
+    <div class="card" style="padding-bottom:6px">
+      <div class="ex"><div style="flex:1"><div class="h">Supino inclinado halter</div><div class="cap">última vez: <span class="num">3 séries com 24 kg</span> · banco 30°</div></div><div class="thumb"><svg class="i f"><use href="#play"/></svg></div></div>
+      <div class="set" style="margin-top:12px"><span class="n num">1</span><span class="v num">24 <small>kg</small> × 10</span><div class="chk done sp"><svg class="i"><use href="#check"/></svg></div></div>
+      <div class="set"><span class="n num">2</span><span class="v num">26 <small>kg · alvo 8–12</small></span><span class="lnk2 sm sp">+ reps</span><div class="chk done"><svg class="i"><use href="#check"/></svg></div></div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="dock"><div class="ralert still glass">
+    <div class="ring num">+1:04</div>
+    <div class="ttl">Descanso concluído</div>
+    <div class="nm">Supino inclinado halter</div>
+    <div class="sub num">Série 3 de 3 · 26 kg · alvo 8–12</div>
+    <div class="primary">Começar série</div>
+  </div></div>
+</template>
+
 
 <script>
 (function(){

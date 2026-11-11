@@ -309,6 +309,7 @@ struct RestView: View {
     private var skipButton: some View { WatchPrimaryButton(title: "Pular", systemImage: "forward.fill", accessibilityLabel: "Pular descanso") { model.skipRest() } }
 }
 
+/// Aviso curto de 2 s — só com o alerta insistente desligado (ligado: `RestAlertView` em tela cheia).
 struct RestDoneView: View {
     var body: some View {
         VStack(spacing: 6) {

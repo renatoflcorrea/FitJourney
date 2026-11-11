@@ -17,6 +17,7 @@ struct SettingsRootView: View {
     @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @AppStorage(AppPreferenceKeys.defaultRestSeconds) private var defaultRest = RestPreference.fallbackSeconds
     @AppStorage(AppPreferenceKeys.restSound) private var restSound = true
+    @AppStorage(AppPreferenceKeys.restAlertRepeat) private var restAlertRepeat = true
     @AppStorage(AppPreferenceKeys.maxHeartRate) private var maxHeartRate = 0.0
     /// Atividade ao Vivo (padrão ligado; consumidor: `LiveActivityController`).
     @AppStorage(AppPreferenceKeys.liveActivity) private var liveActivity = true
@@ -179,12 +180,13 @@ struct SettingsRootView: View {
                 }
             }
             Toggle("Som ao fim do descanso", isOn: $restSound)
+            Toggle("Alerta insistente no fim do descanso", isOn: $restAlertRepeat)
             heartRateRows
             liveActivityRows
         } header: {
             Text("Treino")
         } footer: {
-            Text("O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island.")
+            Text("O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. Com o alerta insistente, o relógio e a tela do treino vibram várias vezes até você tocar; desligado, vibram uma vez. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island.")
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { systemLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled }

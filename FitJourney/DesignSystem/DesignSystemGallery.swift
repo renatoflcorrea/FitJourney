@@ -11,6 +11,8 @@ struct DesignSystemGallery: View {
     @State private var filters: Set<String> = ["Peito"]
     @State private var restEndsAt = Date.now.addingTimeInterval(75)
     @State private var restTotal: TimeInterval = 90
+    @State private var restAlertEndedAt = Date.now.addingTimeInterval(-12)
+    @State private var restAlertRinging = true
     @State private var routineColor: FJRoutineColor = .orange
 
     private let sessionStart = Date.now.addingTimeInterval(-1934)
@@ -258,6 +260,10 @@ struct DesignSystemGallery: View {
                     },
                     onSkip: { restEndsAt = .now }
                 )
+                FJRestAlertCard(endedAt: restAlertEndedAt, exerciseName: "Supino inclinado",
+                                nextUp: "Série 3 de 4 · 32,5 kg · alvo 8–12", isRinging: restAlertRinging) {
+                    restAlertRinging.toggle()
+                }
                 FJCard { FJRPEScale(value: $rpe) }
                 FJSessionAccessory(
                     routineName: "A — Peito e tríceps",

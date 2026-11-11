@@ -440,7 +440,7 @@ final class SessionEngine {
             session.restTotalSeconds = nil
             try store.finish(session, at: at, sessionRPE: rpe, mood: mood, notes: notes, applying: proposals)
             try record(command, in: session, at: at)
-            terminal = SessionSnapshotBuilder.make(session: session, store: store)
+            terminal = SessionSnapshotBuilder.make(session: session, store: store, restAlertRepeat: RestPreference.alertRepeatEnabled(preferences))
         } catch {
             return reject(error)
         }
@@ -457,7 +457,8 @@ final class SessionEngine {
         let revision = session.revision + 1
         let sessionID = session.id
         let commandIDs = appliedIDs(of: session).ids + [command.commandID]
-        let terminal = SessionSnapshotBuilder.make(session: session, store: store, status: .discarded, revision: revision)
+        let terminal = SessionSnapshotBuilder.make(session: session, store: store, status: .discarded, revision: revision,
+                                                   restAlertRepeat: RestPreference.alertRepeatEnabled(preferences))
         do {
             try store.discard(session)
         } catch {
@@ -889,7 +890,8 @@ final class SessionEngine {
     // MARK: Publicação
 
     private func publish(_ session: WorkoutSession) {
-        let snapshot = SessionSnapshotBuilder.make(session: session, store: store)
+        let snapshot = SessionSnapshotBuilder.make(session: session, store: store,
+                                                   restAlertRepeat: RestPreference.alertRepeatEnabled(preferences))
         self.snapshot = snapshot
         broadcast(snapshot)
     }
