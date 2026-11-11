@@ -24,9 +24,10 @@ watch-test: project
 clean:
 	rm -rf FitJourney.xcodeproj build
 
-# Aparelho real (Team não é versionado): make device TEAM=XXXXXXXXXX [DEVICE_ID=<udid do iPhone>]
+# Aparelho real (Team não é versionado): make device TEAM=XXXXXXXXXX [DEVICE_ID=<udid do iPhone>] [WATCH_ID=<udid do relógio>]
 TEAM ?=
 DEVICE_ID ?=
+WATCH_ID ?=
 device: project
 	@test -n "$(TEAM)" || (echo "Informe TEAM=<Team ID>" && exit 1)
 	xcodebuild -project FitJourney.xcodeproj -scheme $(SCHEME) -destination 'generic/platform=iOS' \
@@ -35,4 +36,5 @@ device: project
 	@if [ -n "$(DEVICE_ID)" ]; then \
 	  xcrun devicectl device install app --device $(DEVICE_ID) build/device/Build/Products/Debug-iphoneos/FitJourney.app && \
 	  xcrun devicectl device process launch --device $(DEVICE_ID) br.com.renatocorrea.fitjourney; \
+	  if [ -n "$(WATCH_ID)" ]; then xcrun devicectl device install app --device $(WATCH_ID) build/device/Build/Products/Debug-watchos/FitJourneyWatch.app; fi; \
 	else echo "Build pronto em build/device. Para instalar: make device TEAM=$(TEAM) DEVICE_ID=<udid> (xcrun devicectl list devices)"; fi

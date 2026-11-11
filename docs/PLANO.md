@@ -82,6 +82,14 @@ Obs.: o motor da sessão (P2.1) já nasce com comandos idempotentes e snapshot, 
 | P5.3 Aba Coach: conversas, streaming, cartões de proposta → editor | ios-implementation | P5.2 |
 | P5.4 Ajustes de provedor/modelo/chave, perfil, privacidade | ios-implementation | P5.1 |
 
+## Ciclo 7 — Copiloto de IA (SPEC §7A)
+
+| Pacote | Agente | Depende | Entrega |
+|---|---|---|---|
+| C7.1 Design do copiloto | ios-design (Fable) | SPEC §7A | Fluxos e telas (importar, entrevista, revisão, cartões de alteração, Desfazer) em `DESIGN_DIRECTION.md` + protótipo + componentes no DesignSystem |
+| C7.2 Núcleo: anexos multimodais, extração por schema, entrevista, ferramentas de escrita propostas | core-engineer (Opus) | — | `Services/AI/` (anexos, `ImportSession`, contratos `program-import-v1`/`nutrition-import-v1`, `propose_*_changes`, `ChangeApplier` com desfazer) |
+| C7.3 Telas: botões Importar com IA, fluxo de importação, copiloto de edição com cartões | ios-implementation (Sonnet) | C7.1, C7.2 | `Features/Copilot/` + pontos de entrada em Treinos/Dieta/Hoje/Coach |
+
 ## Ciclo 6 — Acabamento
 
 Live Activity de descanso, exportar/importar JSON, localização en, acessibilidade completa, ícone, QA em aparelho.

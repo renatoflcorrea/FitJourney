@@ -18,6 +18,7 @@ Termos: "deve" = requisito da v1; "fase 2" = entra depois da v1; "futuro" = fora
 | O4 | Cadastrar dieta por horário, registrar refeições do plano e qualquer item fora do plano | v1 |
 | O5b | App do Apple Watch para controlar a sessão (iniciar, ficha, séries, descanso, pausa, finalizar) | v1 (ciclo 4b) |
 | O5 | Apple Health: gravar treinos, ler frequência cardíaca, gráfico por sessão com os exercícios marcados, distinguir força x aeróbico | v1 (ciclo 4) |
+| O6b | Copiloto de IA: importar treino/dieta de PDF/foto/texto com entrevista e editar por conversa com cartões de alteração | ciclo 7 |
 | O6 | Coach IA em aba própria (chat), com acesso a todo o histórico, que propõe treinos/dietas como rascunho aplicável | fase 2 |
 | O7 | Plugin/app do ChatGPT (objetivo, calorias ingeridas/gastas) | futuro |
 | O8 | Versão Android | futuro |
@@ -198,6 +199,28 @@ Objetivo: durante o treino o iPhone pode ficar no bolso/armário; **todo o contr
 - Linguagem: sem diagnóstico nem prescrição médica; recomenda profissional quando houver dor/lesão/condição de saúde.
 
 ---
+
+## 7A. Copiloto de IA — importar e editar (decisão 11/11, ciclo 7)
+
+Objetivo: montar e editar treinos e dietas **conversando com a IA**, inclusive a partir de fichas e dietas prontas (PDF, foto, texto) passadas por personal/nutricionista. **Sem OCR no aparelho**: o arquivo vai ao provedor de IA (multimodal), e o app diz exatamente quais campos quer extrair.
+
+### 7A.1 Importar treino / dieta (prioridade)
+- Botões **"Importar com IA"** (símbolo `sparkles`) em: Treinos (criar programa / nova ficha), editor de ficha (adicionar fichas a um programa existente), Dieta (novo plano) e no primeiro uso (Hoje).
+- Entrada: **um ou mais arquivos** — PDF, imagens (galeria, câmera, arquivos; HEIC/JPEG/PNG), texto (.txt/.md/colar texto). Limites: até 10 arquivos, 20 MB cada (imagens redimensionadas para ≤ 2048 px antes do envio; PDFs com muitas páginas avisam custo).
+- **Extração orientada por schema**: o app envia os arquivos + o **contrato de extração** (`contracts/program-import-v1.schema.json`, `nutrition-import-v1.schema.json`) com campos **obrigatórios** e **opcionais**; a IA devolve a melhor estimativa e, para cada item, `confidence` (alta/média/baixa), `source` (arquivo/página) e `notes` (o que estava ambíguo). Treino: programa (nome, objetivo, agenda sugerida) → **N fichas detectadas** (ex.: "Peito e tríceps", "Ombro", "Perna", "Costas e bíceps") → exercícios (nome como escrito + casamento com o catálogo) → séries (tipo, reps fixas/faixa/AMRAP, carga ou peso corporal, descanso, cadência, RIR/RPE, isometria, cardio, observações). Dieta: metas (kcal/macros se houver), dias/variações, refeições com horário, itens com quantidade/unidade/kcal/macros, substituições.
+- **Entrevista (copiloto de montagem)**: depois da extração, uma conversa guiada mostra o que foi entendido e **pergunta só o que falta ou é incerto** (campos obrigatórios ausentes, baixa confiança, exercício sem casamento no catálogo, carga ilegível, "isto é 3×12 ou 3 séries de 12?"). Respostas do usuário atualizam o rascunho. A IA também pode dizer que os arquivos têm **vários treinos diferentes** → o usuário escolhe quais importar (cada ficha com seu cartão, marcável).
+- **Revisão final**: cartões por ficha/refeição com tudo preenchido, indicadores de confiança, edição inline e "Criar programa"/"Adicionar ao programa X"/"Criar dieta". Nada é salvo antes. Programa/plano criado **inativo** (`origin = .ai`/`author = .ai`, "importado de N arquivos") com opção "Ativar agora".
+- Consentimento: arquivos são enviados ao provedor escolhido; o fluxo exige consentimento do Coach (aviso específico: "o arquivo inteiro vai ao provedor"). Arquivos não são guardados no app depois da importação (só o resultado), salvo opção "manter anexo na ficha".
+
+### 7A.2 Copiloto de edição (conversa)
+- No Coach e a partir de qualquer ficha/dieta ("Editar com IA"), o usuário pede mudanças em linguagem natural: "sobe o supino para 34 kg", "troca o crucifixo por voador", "adiciona 30 g de whey no lanche", "registrei um açaí de 300 ml agora".
+- A IA usa **ferramentas de escrita propostas** (nunca grava sozinha): `propose_routine_changes`, `propose_nutrition_changes`, `propose_food_log`. Cada proposta vira um **cartão de alteração** na conversa: diff legível (antes → depois), escopo (ficha/refeição/dia), botões **Aplicar** / **Ajustar** / **Descartar**. Aplicar grava pelo store correspondente (mesmas validações do editor) e o cartão vira "Aplicado ✓" com **Desfazer**. Alterações refletem imediatamente no app.
+- Regras: nada aplicado sem toque; sessão de treino em andamento não é alterada pelo copiloto (avisa); carga alterada vira `currentLoad` (não mexe em `initialLoad`), salvo pedido explícito.
+
+### 7A.3 Requisitos técnicos
+- Camada de IA ganha **anexos multimodais** (`LLMMessage` com partes: texto, imagem base64, PDF/documento) para OpenAI (Chat Completions/Responses com `image_url`/`input_file`), Anthropic (`image`/`document`) e ChatGPT login (Responses `input_image`/`input_file`). Provedor sem suporte a PDF → converter páginas em imagens no aparelho (PDFKit) **apenas para enviar** (não é OCR).
+- Extração com JSON Schema estrito (ferramenta `submit_extraction`), validação local e reparo; estado do import persistido (retomável se o app fechar).
+- Privacidade: anexos nunca vão para log/backup; redimensionar e remover metadados EXIF/GPS das fotos antes de enviar.
 
 ## 8. Futuro (arquitetura deve permitir)
 
