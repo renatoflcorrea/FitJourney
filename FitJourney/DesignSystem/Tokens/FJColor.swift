@@ -32,7 +32,7 @@ enum FJColor {
     static let trainingFill = Color(fjLight: 0xD4450C, dark: 0xD4450C)
     /// Dieta — verde.
     static let nutrition = Color(fjLight: 0x18803A, dark: 0x30D158)
-    static let nutritionFill = Color(fjLight: 0x18803A, dark: 0x1F8A40)
+    static let nutritionFill = Color(fjLight: 0x18803A, dark: 0x1C8540)
     /// Saúde — rosa-vermelho (coração).
     static let health = Color(fjLight: 0xD70F45, dark: 0xFF5C7A)
     static let healthFill = Color(fjLight: 0xD70F45, dark: 0xD92350)

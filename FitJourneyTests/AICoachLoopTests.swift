@@ -1,4 +1,5 @@
 import Foundation
+import os
 import SwiftData
 import Testing
 @testable import FitJourney
@@ -220,6 +221,69 @@ struct AICoachLoopTests {
         #expect(await service.send("oi", in: conversation) == false)
         guard case .notConfigured? = service.lastError else { Issue.record("esperado notConfigured"); return }
         #expect(conversation.sortedMessages.isEmpty)
+    }
+
+    @Test("regenerate: refaz o turno com a mesma mensagem do usuário, sem duplicar")
+    func regenerate() async throws {
+        let fixture = try ToolboxFixture(seed: false)
+        let gateway = ScriptedGateway([
+            .events([.delta("parcial"), .finished(reason: .length)]),
+            .events([.delta("completo"), .finished(reason: .stop)]),
+        ])
+        let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m") }
+        let conversation = try service.createConversation()
+        #expect(await service.send("monte um treino", in: conversation) == false)
+        let stopped = try #require(conversation.sortedMessages.last)
+        #expect(stopped.state == .stopped)
+        #expect(service.lastErrorConversationID == conversation.id)
+
+        #expect(await service.regenerate(after: stopped, in: conversation))
+        #expect(service.lastError == nil)
+        #expect(service.lastErrorConversationID == nil)
+        let messages = conversation.sortedMessages
+        #expect(messages.filter { $0.role == .user }.count == 1)
+        #expect(messages.filter { $0.role == .assistant }.count == 1)
+        let answer = try #require(messages.last)
+        #expect(answer.content == "completo")
+        #expect(answer.state == .complete)
+        #expect(gateway.requests.count == 2)
+        #expect(gateway.requests[1].messages.filter { $0.role == .user }.count == 1)
+
+        // Resposta completa não é elegível; só a última mensagem vale.
+        #expect(await service.regenerate(after: answer, in: conversation) == false)
+    }
+
+    @Test("regenerate sem provedor configurado não apaga a resposta anterior")
+    func regenerateKeepsMessageOnConfigError() async throws {
+        let fixture = try ToolboxFixture(seed: false)
+        let configured = OSAllocatedUnfairLock(initialState: true)
+        let gateway = ScriptedGateway([.events([.delta("parcial"), .finished(reason: .length)])])
+        let service = makeService(fixture) {
+            if !configured.withLock({ $0 }) { throw AIError.notConfigured(reason: "chave") }
+            return ResolvedChat(gateway: gateway, model: "m")
+        }
+        let conversation = try service.createConversation()
+        _ = await service.send("oi", in: conversation)
+        let stopped = try #require(conversation.sortedMessages.last)
+        configured.withLock { $0 = false }
+        #expect(await service.regenerate(after: stopped, in: conversation) == false)
+        #expect(conversation.sortedMessages.last?.id == stopped.id)
+    }
+
+    @Test("apagar conversa em streaming espera a tarefa terminar")
+    func deleteWhileStreaming() async throws {
+        let fixture = try ToolboxFixture(seed: false)
+        let gateway = ScriptedGateway([.hang("Começando")])
+        let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m") }
+        let conversation = try service.createConversation()
+        let sending = Task { await service.send("oi", in: conversation) }
+        for _ in 0 ..< 200 where !service.isRunning || gateway.requests.isEmpty { try await Task.sleep(for: .milliseconds(10)) }
+        try await Task.sleep(for: .milliseconds(50))
+        try await service.delete(conversation)
+        #expect(!service.isRunning)
+        #expect(await sending.value == false)
+        #expect(try fixture.context.fetch(FetchDescriptor<ChatConversation>()).isEmpty)
+        #expect(try fixture.context.fetch(FetchDescriptor<ChatMessage>()).isEmpty)
     }
 
     @Test("reparo no launch: .streaming vira .stopped mantendo o texto")

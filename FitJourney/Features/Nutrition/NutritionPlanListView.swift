@@ -39,6 +39,10 @@ struct NutritionPlanListView: View {
     @State private var planToDelete: NutritionPlan?
     @State private var planToActivate: NutritionPlan?
     @State private var errorMessage: String?
+    @Environment(\.mealReminderScheduler) private var scheduler
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var authorization: RestNotificationAuthorization = .authorized
+    @State private var hasReminders = false
 
     private var active: NutritionPlan? { plans.first(where: \.isActive) }
     private var others: [NutritionPlan] { plans.filter { !$0.isActive } }
@@ -48,6 +52,11 @@ struct NutritionPlanListView: View {
             if let errorMessage {
                 FJBanner("Não foi possível concluir", message: LocalizedStringKey(errorMessage), tone: .destructive,
                          actionTitle: "Fechar") { self.errorMessage = nil }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+            if authorization == .denied && hasReminders {
+                NotificationsDisabledBanner()
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
@@ -84,6 +93,10 @@ struct NutritionPlanListView: View {
         .scrollContentBackground(.hidden)
         .fjScreenBackground()
         .navigationTitle("Plano")
+        .task { await refreshReminderState() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await refreshReminderState() } }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: NutritionPlan.self) { PlanEditorView(plan: $0) }
         .toolbar {
@@ -137,6 +150,12 @@ struct NutritionPlanListView: View {
 
     private func run<T>(_ work: () throws -> T) {
         do { _ = try work() } catch { errorMessage = String(localized: "Tente de novo. Nada foi perdido.") }
+        Task { await scheduler?.reschedule(for: context); await refreshReminderState() }
+    }
+
+    private func refreshReminderState() async {
+        authorization = await scheduler?.authorization() ?? .authorized
+        hasReminders = ((try? context.fetchCount(FetchDescriptor<Meal>(predicate: #Predicate { $0.reminderEnabled }))) ?? 0) > 0
     }
 }
 
@@ -174,6 +193,7 @@ private struct PlanRow: View {
 struct NewPlanSheet: View {
     @Environment(\.modelContext) private var mainContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.mealReminderScheduler) private var scheduler
     @State private var draft: ModelContext?
     @State private var plan: NutritionPlan?
     @State private var showActivate = false
@@ -228,6 +248,7 @@ struct NewPlanSheet: View {
         plan.updatedAt = .now
         do {
             try draft.save()
+            Task { await scheduler?.reschedule(for: mainContext) }
             savedID = plan.persistentModelID
             currentActive = try NutritionStore(context: mainContext).activePlan()
             if currentActive == nil { activate() } else { showActivate = true }
@@ -240,6 +261,7 @@ struct NewPlanSheet: View {
         do {
             if let savedID, let saved = mainContext.model(for: savedID) as? NutritionPlan {
                 try NutritionStore(context: mainContext).switchActive(to: saved)
+                Task { await scheduler?.reschedule(for: mainContext) }
             }
             dismiss()
         } catch {
