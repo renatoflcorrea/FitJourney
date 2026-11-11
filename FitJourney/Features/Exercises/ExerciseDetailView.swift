@@ -36,7 +36,7 @@ struct ExerciseDetailView: View {
             .padding(FJSpacing.screenMargin)
         }
         .fjScreenBackground()
-        .navigationTitle(exercise.name)
+        .navigationTitle(exercise.name.exerciseDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

@@ -29,7 +29,7 @@ struct ExerciseProgressView: View {
     }
 
     private var kind: MeasurementKind { executions.last?.measurementKind ?? catalog.first?.measurementKind ?? .repsAndLoad }
-    private var name: String { catalog.first?.name ?? executions.last?.name ?? String(localized: "Exercício") }
+    private var name: String { (catalog.first?.name ?? executions.last?.name)?.exerciseDisplayName ?? String(localized: "Exercício") }
     private var availableMetrics: [ProgressCalculator.Metric] { ProgressCalculator.Metric.available(for: kind) }
     private var activeMetric: ProgressCalculator.Metric { metric.flatMap { availableMetrics.contains($0) ? $0 : nil } ?? availableMetrics[0] }
 
