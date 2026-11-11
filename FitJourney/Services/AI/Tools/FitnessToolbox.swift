@@ -42,18 +42,36 @@ final class FitnessToolbox {
         case proposeNutritionPlan = "propose_nutrition_plan"
     }
 
-    private let context: ModelContext
+    let context: ModelContext
     private let profile: @MainActor () -> CoachProfile
-    private let now: @MainActor () -> Date
-    let calendar: Calendar
+    let now: @MainActor () -> Date
+    private let fixedCalendar: Calendar?
+    /// Calendário do app resolvido a cada uso (`AppCalendar.current`: a preferência de início da semana
+    /// vale na hora) ou o fixo dos testes.
+    var calendar: Calendar { fixedCalendar ?? AppCalendar.current }
+    /// Leitor do Saúde (`HealthQueries.live` no app; fake nos testes).
+    let health: any HealthDataReading
+    /// Estado da conexão com o Saúde, consultado a cada chamada de `get_health_summary`.
+    let healthAccess: @MainActor () -> HealthToolAccess
 
+    /// - Parameters:
+    ///   - health: leitor do Saúde; `nil` = `HealthQueries.live`.
+    ///   - healthAccess: conexão/aparelho; o padrão lê `HKHealthStore` e a preferência "Conectar ao Saúde".
+    ///     No app, prefira `HealthToolAccess.from(_:)` com a `HealthAuthorization` compartilhada.
     init(context: ModelContext, profile: @escaping @MainActor () -> CoachProfile = { CoachProfileStore().load() },
-         now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar = .current) {
+         now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar? = nil,
+         health: (any HealthDataReading)? = nil,
+         healthAccess: @escaping @MainActor () -> HealthToolAccess = HealthToolAccess.system) {
         self.context = context
         self.profile = profile
         self.now = now
-        self.calendar = calendar
+        self.fixedCalendar = calendar
+        self.health = health ?? HealthQueries.live
+        self.healthAccess = healthAccess
     }
+
+    /// O usuário compartilha treinos (nomes de fichas podem aparecer no resumo de saúde).
+    var sharesWorkouts: Bool { profile().sharing.workouts }
 
     // MARK: - Especificações
 
@@ -104,8 +122,9 @@ final class FitnessToolbox {
             ToolSpec(name: name.rawValue, description: "O que foi comido (realizado) por dia no período, com totais, água e metas do plano ativo. Máximo 31 dias.",
                      parametersSchema: objectSchema(["from": dateProperty("Início (inclusive)."), "to": dateProperty("Fim (inclusive).")]))
         case .getHealthSummary:
-            ToolSpec(name: name.rawValue, description: "Resumo do app Saúde (passos, energia, FC de repouso) no período.",
-                     parametersSchema: objectSchema(["from": dateProperty("Início (inclusive)."), "to": dateProperty("Fim (inclusive).")]))
+            ToolSpec(name: name.rawValue, description: "Resumo agregado do app Saúde por dia (treinos sem duplicar os vinculados, minutos por tipo, energia ativa, FC em repouso, passos) e médias/tendência do período. Máximo 31 dias; padrão: últimos 7. null = sem dado (ver status: no_data/unavailable), nunca zero. Contexto, não diagnóstico.",
+                     parametersSchema: objectSchema(["from": nullableDateProperty("Início (inclusive); null = 6 dias antes de to."),
+                                                     "to": nullableDateProperty("Fim (inclusive); null = hoje.")]))
         case .proposeProgram:
             ToolSpec(name: name.rawValue, description: "Propõe um programa de treino como RASCUNHO. O app valida e mostra um cartão para o usuário revisar e salvar; nada é gravado. Use catalogKey de list_exercises quando houver.",
                      parametersSchema: DraftValidation.toolParameters(fromContract: DraftSchemas.programDraftV1))
@@ -121,6 +140,10 @@ final class FitnessToolbox {
         #"{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","description":"AAAA-MM-DD. "# + description + #""}"#
     }
 
+    private nonisolated static func nullableDateProperty(_ description: String) -> String {
+        #"{"type":["string","null"],"pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","description":"AAAA-MM-DD. "# + description + #""}"#
+    }
+
     private nonisolated static func objectSchema(_ properties: [String: String]) -> String {
         let keys = properties.keys.sorted()
         let body = keys.map { "\"\($0)\":\(properties[$0]!)" }.joined(separator: ",")
@@ -130,7 +153,8 @@ final class FitnessToolbox {
 
     // MARK: - Execução
 
-    func execute(_ call: ToolCall) -> ToolOutcome {
+    /// Executa uma ferramenta. Assíncrona só por causa do Saúde (as demais leem o SwiftData na hora).
+    func execute(_ call: ToolCall) async -> ToolOutcome {
         guard let name = Name(rawValue: call.name) else {
             return error("unknown_tool", "Ferramenta desconhecida: \(call.name)")
         }
@@ -159,12 +183,11 @@ final class FitnessToolbox {
             case .listNutritionPlans: return ok(try listNutritionPlans())
             case .getNutritionLog: return try nutritionLog(from: args["from"]?.stringValue, to: args["to"]?.stringValue)
             case .getHealthSummary:
-                return ok(.object([
-                    "status": .string("unavailable"),
-                    "reason": .string("A integração com o app Saúde ainda não está disponível nesta versão."),
-                ]))
+                return try await healthSummary(from: args["from"]?.stringValue, to: args["to"]?.stringValue)
             case .proposeProgram, .proposeNutritionPlan: return error("internal", "unreachable")
             }
+        } catch is CancellationError {
+            return self.error("cancelled", "Leitura cancelada.")
         } catch {
             return self.error("internal", "Falha ao ler os dados locais.")
         }
@@ -481,9 +504,9 @@ final class FitnessToolbox {
 
     // MARK: - Utilitários
 
-    private func ok(_ value: JSONValue) -> ToolOutcome { ToolOutcome(content: value.jsonString()) }
+    func ok(_ value: JSONValue) -> ToolOutcome { ToolOutcome(content: value.jsonString()) }
 
-    private func error(_ code: String, _ message: String) -> ToolOutcome {
+    func error(_ code: String, _ message: String) -> ToolOutcome {
         ToolOutcome(content: JSONValue.object(["error": .string(code), "message": .string(message)]).jsonString(), isError: true)
     }
 
@@ -506,7 +529,12 @@ final class FitnessToolbox {
         return DateRange(start: from, end: end, lastDay: to, clamped: false)
     }
 
+    /// Estrito: exatamente `AAAA-MM-DD` (dígitos ASCII) e data existente no calendário.
     static func parseDay(_ text: String, _ calendar: Calendar) -> Date? {
+        let chars = Array(text.utf8)
+        guard chars.count == 10, chars[4] == UInt8(ascii: "-"), chars[7] == UInt8(ascii: "-"),
+              chars.enumerated().allSatisfy({ $0.offset == 4 || $0.offset == 7 || (UInt8(ascii: "0") ... UInt8(ascii: "9")).contains($0.element) })
+        else { return nil }
         let parts = text.split(separator: "-").compactMap { Int($0) }
         guard parts.count == 3, (1 ... 12).contains(parts[1]), (1 ... 31).contains(parts[2]) else { return nil }
         let components = DateComponents(year: parts[0], month: parts[1], day: parts[2])

@@ -224,11 +224,11 @@ struct AIReviewLocalTests {
     }
 
     @Test("B1: get_exercise_progress só olha o último ano")
-    func progressWindow() throws {
+    func progressWindow() async throws {
         let fixture = try ToolboxFixture()
         try fixture.addSession(daysAgo: 400, load: 200)
         try fixture.addSession(daysAgo: 10, load: 50)
-        let (json, _) = try fixture.run(fixture.toolbox(), "get_exercise_progress", #"{"exercise":"Supino reto com barra"}"#)
+        let (json, _) = try await fixture.run(fixture.toolbox(), "get_exercise_progress", #"{"exercise":"Supino reto com barra"}"#)
         #expect(json["totalSessions"] == .number(1))
         #expect(json["bests"]?["heaviestKg"] == .number(50))
     }

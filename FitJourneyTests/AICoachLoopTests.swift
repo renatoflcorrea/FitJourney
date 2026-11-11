@@ -51,6 +51,27 @@ private final class ScriptedGateway: ChatGateway, StructuredCompleting, @uncheck
     }
 }
 
+/// Leitor do Saúde que fica pendurado na leitura de treinos até ser cancelado.
+private final class HangingHealthReader: HealthDataReading, @unchecked Sendable {
+    private let lock = NSLock()
+    private var didEnter = false
+    var entered: Bool { lock.withLock { didEnter } }
+
+    func workouts(in interval: DateInterval) async throws -> HealthReading<[HealthWorkoutRecord]> {
+        lock.withLock { didEnter = true }
+        try await Task.sleep(for: .seconds(30))
+        return .noData
+    }
+
+    func heartRateSamples(in interval: DateInterval) async throws -> HealthReading<[HeartRateSample]> { .noData }
+    func heartRateBuckets(in interval: DateInterval, bucket: TimeInterval) async throws -> HealthReading<[HeartRateBucket]> { .noData }
+    func workoutPauses(workoutID: UUID) async throws -> HealthReading<[DateInterval]> { .noData }
+    func activeEnergyKcal(in interval: DateInterval) async throws -> HealthReading<Double> { .noData }
+    func steps(in interval: DateInterval) async throws -> HealthReading<Double> { .noData }
+    func restingHeartRate(days interval: DateInterval) async throws -> HealthReading<[HealthDailyValue]> { .noData }
+    func latestBodyMassKg() async throws -> HealthReading<Double> { .noData }
+}
+
 @MainActor
 private func makeService(_ fixture: ToolboxFixture, chat: @escaping @MainActor () throws -> ResolvedChat) -> CoachConversationService {
     CoachConversationService(context: fixture.context, toolbox: fixture.toolbox(), resolveChat: chat)
@@ -189,6 +210,29 @@ struct AICoachLoopTests {
         #expect(assistant.role == .assistant)
         #expect(assistant.state == .stopped)
         #expect(assistant.content == "Começando a resp")
+    }
+
+    @Test("parar durante uma ferramenta (leitura do Saúde) não grava resultado \"cancelled\"")
+    func cancellationDuringTool() async throws {
+        var fixture = try ToolboxFixture(seed: false)
+        fixture.profile.sharing.health = true
+        let reader = HangingHealthReader()
+        fixture.healthReader = reader
+        let gateway = ScriptedGateway([
+            .events([.toolCall(id: "h1", name: "get_health_summary", argumentsJSON: #"{"from":null,"to":null}"#),
+                     .finished(reason: .toolCalls)]),
+        ])
+        let service = makeService(fixture) { ResolvedChat(gateway: gateway, model: "m") }
+        let conversation = try service.createConversation()
+        let sending = Task { await service.send("como foi minha semana?", in: conversation) }
+        for _ in 0 ..< 300 where !reader.entered { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(reader.entered)
+        service.stop()
+        let ok = await sending.value
+        #expect(!ok)
+        #expect(service.lastError == nil)
+        #expect(!conversation.sortedMessages.contains { $0.role == .tool })
+        #expect(!conversation.sortedMessages.contains { $0.content.contains("cancelled") })
     }
 
     @Test("erro do provedor: mensagem .failed com motivo sem segredo e lastError preenchido")

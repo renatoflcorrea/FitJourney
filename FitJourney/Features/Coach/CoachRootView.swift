@@ -10,6 +10,8 @@ import SwiftUI
 struct CoachRootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    /// Conexão com o Saúde para `get_health_summary` (ausente em previews: cai no padrão do sistema).
+    @Environment(HealthAuthorization.self) private var healthAuthorization: HealthAuthorization?
 
     private let secrets: any SecretStore
     private let defaults: UserDefaults
@@ -79,9 +81,11 @@ struct CoachRootView: View {
         if service == nil {
             let secrets = secrets
             let defaults = defaults
+            let healthAccess = healthAuthorization.map(HealthToolAccess.from) ?? HealthToolAccess.system
             service = CoachConversationService(
                 context: context,
-                toolbox: FitnessToolbox(context: context, profile: { CoachProfileStore(defaults: defaults).load() }),
+                toolbox: FitnessToolbox(context: context, profile: { CoachProfileStore(defaults: defaults).load() },
+                                        health: HealthQueries.live, healthAccess: healthAccess),
                 resolveChat: {
                     try ProviderFactory.makeChat(settingsStore: ProviderSettingsStore(defaults: defaults), secrets: secrets)
                 })
