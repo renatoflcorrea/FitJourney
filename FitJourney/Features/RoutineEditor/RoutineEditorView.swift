@@ -4,6 +4,7 @@ import SwiftUI
 /// Editor de ficha (SPEC §3.2, DESIGN §4.3): cabeçalho, exercícios reordenáveis, agrupamento e prescrição.
 /// Empurre dentro de uma `NavigationStack`. Tudo é gravado na hora; "OK" volta.
 struct RoutineEditorView: View {
+    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @Bindable var routine: Routine
 
     @Environment(\.modelContext) private var context
@@ -145,7 +146,7 @@ struct RoutineEditorView: View {
         return VStack(alignment: .leading, spacing: FJSpacing.s) {
             Text("Dias da semana").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
             HStack(spacing: FJSpacing.xs) {
-                ForEach(Weekday.displayOrder, id: \.self) { day in
+                ForEach(Weekday.ordered(startingOn: WeekStart(rawValue: weekStartRaw) ?? .monday), id: \.self) { day in
                     let isOn = routine.weekdays.contains(day)
                     let shared = otherDays[day]
                     Button {

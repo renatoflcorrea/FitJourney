@@ -151,7 +151,7 @@ struct SettingsRootView: View {
                 Text("Segunda").tag(WeekStart.monday.rawValue)
                 Text("Domingo").tag(WeekStart.sunday.rawValue)
             }
-            .pickerStyle(.segmented)
+            .pickerStyle(.menu)
         } header: {
             Text("Unidades")
         } footer: {
@@ -174,7 +174,7 @@ struct SettingsRootView: View {
         } header: {
             Text("Treino")
         } footer: {
-            Text("O descanso padrão vale quando a ficha e o exercício não definem um. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island.")
+            Text("O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island.")
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { systemLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled }

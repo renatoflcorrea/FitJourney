@@ -26,7 +26,8 @@ struct ExerciseEditorView: View {
         _laterality = State(initialValue: exercise?.laterality ?? .bilateral)
         _kind = State(initialValue: exercise?.measurementKind ?? .repsAndLoad)
         _notes = State(initialValue: exercise?.notes ?? "")
-        _rest = State(initialValue: Double(exercise?.defaultRestSeconds ?? PrescriptionDefaults.restSeconds))
+        _useDefaultRest = State(initialValue: exercise?.defaultRestSeconds == nil)
+        _rest = State(initialValue: Double(exercise?.defaultRestSeconds ?? PrescriptionDefaults.restSeconds()))
         _items = State(initialValue: (exercise?.media ?? []).map(MediaItem.init))
     }
 
@@ -42,6 +43,8 @@ struct ExerciseEditorView: View {
     @State private var kind: MeasurementKind
     @State private var notes: String
     @State private var rest: Double
+    /// `true` = sem descanso próprio (grava `nil`: vale o padrão de Ajustes).
+    @State private var useDefaultRest: Bool
     /// Mídias com identidade estável (reordenar/remover não reaproveita a linha errada).
     @State private var items: [MediaItem]
 
@@ -71,7 +74,7 @@ struct ExerciseEditorView: View {
         }
         return name != exercise.name || primary != exercise.primaryMuscles || secondary != exercise.secondaryMuscles
             || equipment != exercise.equipment || laterality != exercise.laterality || kind != exercise.measurementKind
-            || notes != exercise.notes || Int(rest) != exercise.defaultRestSeconds || media != exercise.media
+            || notes != exercise.notes || (useDefaultRest ? nil : Int(rest)) != exercise.defaultRestSeconds || media != exercise.media
     }
 
     var body: some View {
@@ -196,7 +199,12 @@ struct ExerciseEditorView: View {
 
     private var restSection: some View {
         Section("Descanso") {
-            NumberStepperField("Descanso padrão", value: $rest, unit: "s", step: 15, range: 0...600)
+            Toggle(isOn: $useDefaultRest) {
+                Text("Padrão (\(FJFormat.clock(PrescriptionDefaults.restSeconds())))")
+            }
+            if !useDefaultRest {
+                NumberStepperField("Descanso padrão", value: $rest, unit: "s", step: 15, range: 0...600)
+            }
         }
     }
 
@@ -379,7 +387,7 @@ struct ExerciseEditorView: View {
             target.measurementKind = kind
         }
         target.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
-        target.defaultRestSeconds = Int(rest)
+        target.defaultRestSeconds = useDefaultRest ? nil : Int(rest)
         target.media = media
         target.updatedAt = .now
         if exercise == nil { context.insert(target) }

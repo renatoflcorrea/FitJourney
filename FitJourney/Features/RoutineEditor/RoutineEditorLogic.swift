@@ -300,7 +300,7 @@ enum PrescriptionDefaults {
     static func setCount(for kind: MeasurementKind) -> Int { kind == .timeOrDistance ? 1 : 3 }
 
     /// Descanso quando nada o define (Ajustes › Treino › Descanso padrão; 90 s sem preferência).
-    static var restSeconds: Int { RestPreference.defaultSeconds() }
+    static func restSeconds(_ defaults: UserDefaults = .standard) -> Int { RestPreference.defaultSeconds(defaults) }
 }
 
 // MARK: - Resumo
@@ -455,13 +455,16 @@ enum RoutineEditorOps {
     }
 
     /// Descanso efetivo de uma série (série → exercício na ficha → catálogo → descanso padrão de Ajustes).
-    static func effectiveRest(_ set: SetDraft, exerciseRest: Int?, catalogRest: Int?) -> Int {
-        set.restSeconds ?? exerciseRest ?? catalogRest ?? PrescriptionDefaults.restSeconds
+    static func effectiveRest(_ set: SetDraft, exerciseRest: Int?, catalogRest: Int?,
+                              defaults: UserDefaults = .standard) -> Int {
+        RestPolicy.effective(set: set.restSeconds, routineExercise: exerciseRest, exercise: catalogRest,
+                             fallback: PrescriptionDefaults.restSeconds(defaults))
     }
 
     /// Descanso do exercício (no último membro de um grupo = descanso ao fim da rodada).
-    static func effectiveRest(of item: RoutineExercise) -> Int {
-        item.sortedSets.last?.restSeconds ?? item.restSeconds ?? item.exercise?.defaultRestSeconds ?? PrescriptionDefaults.restSeconds
+    static func effectiveRest(of item: RoutineExercise, defaults: UserDefaults = .standard) -> Int {
+        RestPolicy.effective(set: item.sortedSets.last?.restSeconds, routineExercise: item.restSeconds,
+                             exercise: item.exercise?.defaultRestSeconds, fallback: PrescriptionDefaults.restSeconds(defaults))
     }
 
     /// `true` se o item é membro de grupo e não o último (o descanso só vale ao fim da rodada).

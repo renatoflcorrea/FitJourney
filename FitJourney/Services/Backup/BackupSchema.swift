@@ -647,8 +647,7 @@ enum BackupSchema {
             "measurementKind",
             "media",
             "isBuiltIn",
-            "notes",
-            "defaultRestSeconds"
+            "notes"
           ],
           "properties": {
             "id": {
@@ -710,6 +709,7 @@ enum BackupSchema {
               "maxLength": 10000
             },
             "defaultRestSeconds": {
+              "description": "Ausente = usar o descanso padrão de Ajustes.",
               "type": "integer",
               "minimum": 0,
               "maximum": 3600

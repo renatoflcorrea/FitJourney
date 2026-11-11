@@ -258,6 +258,7 @@ private struct DayVariantRow: View {
 
 /// Uma variação do plano: nome, dias da semana e refeições (com "Copiar de…").
 struct DayVariantEditor: View {
+    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @Environment(\.modelContext) private var context
     @Bindable var day: NutritionDay
     let plan: NutritionPlan
@@ -287,7 +288,7 @@ struct DayVariantEditor: View {
             }
             Section {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 72), spacing: FJSpacing.s)], alignment: .leading, spacing: FJSpacing.s) {
-                    ForEach(Weekday.displayOrder, id: \.self) { weekday in
+                    ForEach(Weekday.ordered(startingOn: WeekStart(rawValue: weekStartRaw) ?? .monday), id: \.self) { weekday in
                         let taken = owner(of: weekday)
                         FJFilterChip(LocalizedStringKey(weekday.shortName), isSelected: day.weekdays.contains(weekday), area: .nutrition) {
                             var set = day.weekdays

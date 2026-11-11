@@ -12,7 +12,8 @@ struct CatalogExercise: Sendable, Hashable {
     var equipment: Equipment
     var laterality: Laterality = .bilateral
     var kind: MeasurementKind = .repsAndLoad
-    var rest: Int = 90
+    /// `nil` = segue o descanso padrão de Ajustes; só exercícios com recomendação própria fixam um valor.
+    var rest: Int?
     /// Versão do catálogo em que o exercício entrou (só versões novas são semeadas em bases existentes).
     var addedInVersion: Int = 1
 }

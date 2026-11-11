@@ -852,8 +852,9 @@ final class SessionEngine {
             return rest
         }
         let current = currentExercise(of: session)
-        return current?.sortedSets.first { !$0.isCompleted }?.restSeconds ?? current?.restSeconds
-            ?? RestPreference.defaultSeconds(preferences)
+        return RestPolicy.effective(set: current?.sortedSets.first { !$0.isCompleted }?.restSeconds,
+                                    routineExercise: current?.restSeconds, exercise: nil,
+                                    fallback: RestPreference.defaultSeconds(preferences))
     }
 
     private func currentExercise(of session: WorkoutSession) -> SessionExercise? {

@@ -3,6 +3,7 @@ import SwiftUI
 
 /// Histórico de sessões concluídas (SPEC §4.4): lista por mês ou calendário. Empurrável.
 struct WorkoutHistoryView: View {
+    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @Query(filter: #Predicate<WorkoutSession> { $0.statusRaw == "completed" },
            sort: \WorkoutSession.startedAt, order: .reverse)
     private var sessions: [WorkoutSession]
@@ -108,7 +109,7 @@ struct WorkoutHistoryView: View {
 
     @ViewBuilder
     private var calendarContent: some View {
-        let calendar = AppCalendar.current
+        let calendar = AppCalendar.make(weekStart: WeekStart(rawValue: weekStartRaw) ?? .monday)
         let trained = trainedDays
         FJCard {
             VStack(spacing: FJSpacing.m) {
@@ -124,7 +125,7 @@ struct WorkoutHistoryView: View {
                         .accessibilityLabel(Text("Próximo mês"))
                 }
                 weekdayHeader(calendar)
-                ForEach(Array(HistoryPresentation.calendarWeeks(month: month).enumerated()), id: \.offset) { _, week in
+                ForEach(Array(HistoryPresentation.calendarWeeks(month: month, calendar: calendar).enumerated()), id: \.offset) { _, week in
                     HStack(spacing: 0) {
                         ForEach(0..<7, id: \.self) { column in
                             dayCell(week[column], trained: trained, calendar: calendar)

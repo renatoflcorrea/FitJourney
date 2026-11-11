@@ -23,14 +23,16 @@ enum AppPreferenceKeys {
     /// Passo de carga na unidade exibida; 0/ausente = padrão (0,5 kg / 1 lb).
     static let loadStep = "fj.loadStep"
     /// "monday" (padrão) | "sunday". Consumido por `AppCalendar.current` (faixa da Dieta, aderência
-    /// semanal, Saúde, Hoje, calendário do histórico) e pela ordem dos dias em seletores e pontos
+    /// semanal, Saúde, calendário do histórico) e pela ordem dos dias em seletores e pontos
     /// (`Weekday.displayOrder`). Os dias gravados nas fichas não mudam.
     static let weekStart = "fj.weekStart"
-    /// Descanso padrão em segundos quando a prescrição e o exercício não definem (padrão 90). Consumido
-    /// por `RestPreference.defaultSeconds` (`SessionEngine`, `PrescriptionDefaults.restSeconds`).
+    /// Descanso padrão em segundos quando a série, a ficha e o exercício não definem (padrão 90), pela
+    /// `RestPolicy` (`SessionEngine`/`SessionStore`, editor, estimativa de duração, relógio). Vale a
+    /// partir do próximo descanso; um descanso em andamento não muda.
     static let defaultRestSeconds = "fj.defaultRestSeconds"
     /// Som ao fim do descanso (padrão ligado; ausente = ligado). Consumido por `RestPreference.soundEnabled`:
     /// notificação de fim de descanso (`UserNotificationRestScheduler`) e alerta da Atividade ao Vivo.
+    /// Lido ao agendar: vale a partir do próximo descanso.
     static let restSound = "fj.restSound"
     /// FC máxima manual em bpm; 0/ausente = pela idade (aba Saúde e zona ao vivo na sessão).
     static let maxHeartRate = "fj.maxHeartRate"
@@ -47,8 +49,11 @@ enum AppPreferenceKeys {
 enum WeekStart: String, CaseIterable, Sendable {
     case monday, sunday
 
-    static var current: WeekStart {
-        UserDefaults.standard.string(forKey: AppPreferenceKeys.weekStart).flatMap(WeekStart.init(rawValue:)) ?? .monday
+    static var current: WeekStart { resolved(.standard) }
+
+    /// Preferência gravada em `defaults`; ausente ou inválida = segunda (SPEC §11 Q2).
+    static func resolved(_ defaults: UserDefaults) -> WeekStart {
+        defaults.string(forKey: AppPreferenceKeys.weekStart).flatMap(WeekStart.init(rawValue:)) ?? .monday
     }
 }
 

@@ -11,6 +11,7 @@ struct HealthDayView: View {
     @Environment(\.healthReader) private var injectedReader
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @Environment(HealthAuthorization.self) private var authorization: HealthAuthorization?
     @Environment(HealthWorkoutController.self) private var controller: HealthWorkoutController?
     @State private var showsCalendar = false
@@ -39,7 +40,7 @@ struct HealthDayView: View {
             }
         }
         .task(id: LoadKey(date: model.date, token: reloadToken, connected: authorization?.isConnectionEnabled,
-                          access: authorization?.access, phase: scenePhase == .active)) {
+                          access: authorization?.access, phase: scenePhase == .active, weekStart: weekStartRaw)) {
             await load()
         }
         .fjHaptic(.celebration, trigger: linkTick)
@@ -55,6 +56,7 @@ struct HealthDayView: View {
         var connected: Bool?
         var access: HealthAuthorization.Access?
         var phase: Bool
+        var weekStart: String
     }
 
     private func load() async {

@@ -4022,12 +4022,12 @@
         }
       }
     },
-    "O descanso padrão vale quando a ficha e o exercício não definem um. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada (em breve)." : {
+    "O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada (em breve)." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The default rest applies when the routine and the exercise don't set one. Max heart rate defines heart rate zones. Without a manual value, we use 220 minus the age in your profile. Live Activity shows the workout and rest on the Lock Screen and in the Dynamic Island."
+            "value" : "The default rest applies when the routine and the exercise don't set one, from the next rest on. Without sound, the Live Activity alert is skipped and the notice arrives silently as a notification. Max heart rate defines heart rate zones. Without a manual value, we use 220 minus the age in your profile. Live Activity shows the workout and rest on the Lock Screen and in the Dynamic Island."
           }
         }
       }
@@ -4242,6 +4242,16 @@
     },
     "Padrão" : {
       "localizations" : {}
+    },
+    "Padrão (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default (%@)"
+          }
+        }
+      }
     },
     "Padrão (%lld s)" : {
       "localizations" : {}

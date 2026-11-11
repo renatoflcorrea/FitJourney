@@ -123,7 +123,8 @@ enum BackupV1 {
         var isBuiltIn: Bool
         var catalogKey: String?
         var notes: String
-        var defaultRestSeconds: Int
+        /// Ausente = usar o descanso padrão de Ajustes.
+        var defaultRestSeconds: Int?
     }
 
     struct Program: Codable, Sendable, Equatable {
