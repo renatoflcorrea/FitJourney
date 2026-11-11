@@ -13,6 +13,9 @@ struct FitJourneyApp: App {
     /// Apple Health: autorização contextual e gravação do treino acoplada ao motor (SPEC §6).
     @State private var healthAuthorization: HealthAuthorization
     @State private var healthController: HealthWorkoutController
+    /// Ponte com o Apple Watch (WatchConnectivity + canal da sessão espelhada). Iniciada cedo no launch:
+    /// comandos feitos offline no relógio chegam por `transferUserInfo` assim que o WCSession ativa.
+    @State private var watchLink: PhoneWatchLink
     /// Lembretes de refeição (agendamento) e tratamento das notificações locais. O delegate do
     /// `UNUserNotificationCenter` é fraco: o App o retém.
     private let mealReminders: MealReminderScheduler
@@ -50,8 +53,12 @@ struct FitJourneyApp: App {
         _sessionEngine = State(initialValue: engine)
         _sessionCoordinator = State(initialValue: SessionCoordinator(engine: engine))
         _healthAuthorization = State(initialValue: authorization)
-        _healthController = State(initialValue: HealthWorkoutController(
-            store: HealthKitStore.shared, authorization: authorization, context: container.mainContext))
+        let controller = HealthWorkoutController(
+            store: HealthKitStore.shared, authorization: authorization, context: container.mainContext)
+        _healthController = State(initialValue: controller)
+        _watchLink = State(initialValue: PhoneWatchLink(
+            engine: engine, health: controller,
+            workoutFinder: PhoneWatchLink.finder(reading: HealthQueries.live)))
     }
 
     var body: some Scene {
@@ -61,19 +68,24 @@ struct FitJourneyApp: App {
                 .environment(sessionCoordinator)
                 .environment(healthAuthorization)
                 .environment(healthController)
+                .environment(watchLink)
                 .environment(\.mealReminderScheduler, mealReminders)
                 .task {
                     await categoryRegistry.apply()
                     await mealReminders.reschedule(for: modelContainer.mainContext)
                 }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { Task { await mealReminders.reschedule(for: modelContainer.mainContext) } }
+                    if phase == .active {
+                        Task { await mealReminders.reschedule(for: modelContainer.mainContext) }
+                        watchLink.handleForeground()
+                    }
                 }
                 .task {
                     // Recuperar sessões espelhadas do relógio e acoplar o Saúde aos eventos do motor
                     // (retoma a gravação de uma sessão em andamento e reconcilia treinos pendentes).
                     healthController.startObservingMirroredSessions()
                     healthController.attach(to: sessionEngine)
+                    watchLink.start()
                 }
                 .task {
                     // FC ao vivo na tela da sessão (zona exige FC máx configurada — entra com os Ajustes).
