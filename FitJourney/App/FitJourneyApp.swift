@@ -32,6 +32,8 @@ struct FitJourneyApp: App {
         }
         #endif
         modelContainer = container
+        // Coach: respostas que ficaram `.streaming` quando o app morreu viram `.stopped`.
+        _ = try? CoachConversationService.repairInterruptedMessages(in: container.mainContext)
 
         // Notificações: delegate e categorias antes de qualquer view (ação "Marcar como feita" no cold start).
         let reminders = MealReminderScheduler()
