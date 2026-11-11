@@ -31,9 +31,12 @@ private enum DaySheet: Identifiable {
 struct NutritionDayView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.mealReminderScheduler) private var scheduler
     @State private var model = NutritionDayModel()
     @State private var sheet: DaySheet?
     @State private var showPlans = false
+    @State private var showHistory = false
+    @State private var showFavorites = false
     @State private var toggledMeals: Set<UUID> = []
     @State private var entryToDelete: FoodEntry?
 
@@ -41,6 +44,7 @@ struct NutritionDayView: View {
         ScrollView {
             LazyVStack(spacing: FJSpacing.cardGap) {
                 dayNavigator
+                WeekStrip(cells: model.weekStrip) { model.jump(to: $0) }
                 if let message = model.errorMessage {
                     FJBanner("Algo deu errado", message: LocalizedStringKey(message), tone: .destructive,
                              systemImage: "exclamationmark.triangle", actionTitle: "Fechar") { model.errorMessage = nil }
@@ -63,9 +67,17 @@ struct NutritionDayView: View {
             ToolbarItem(placement: .secondaryAction) {
                 Button("Plano", systemImage: "list.bullet.clipboard") { showPlans = true }
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button("Histórico", systemImage: "calendar") { showHistory = true }
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                Button("Favoritos", systemImage: "star") { showFavorites = true }
+            }
         }
         .navigationDestination(isPresented: $showPlans) { NutritionPlanListView() }
-        .sheet(item: $sheet, onDismiss: model.reload) { sheet in
+        .navigationDestination(isPresented: $showHistory) { NutritionHistoryView { model.jump(to: $0) } }
+        .navigationDestination(isPresented: $showFavorites) { NutritionFavoritesView(day: model.registrationDate) }
+        .sheet(item: $sheet, onDismiss: { model.reload(); model.afterChange?() }) { sheet in
             switch sheet {
             case .log(let entry):
                 LogFoodSheet(day: model.registrationDate, editing: entry)
@@ -84,7 +96,11 @@ struct NutritionDayView: View {
                             titleVisibility: .visible, presenting: entryToDelete) { entry in
             Button("Apagar", role: .destructive) { model.delete(entry) }
         }
-        .task { model.attach(context) }
+        .task {
+            model.attach(context)
+            model.afterChange = { Task { await scheduler?.reschedule(for: context) } }
+            model.onMealResolved = { meal, day in Task { await scheduler?.clearNotifications(mealID: meal.id, day: day) } }
+        }
         .onAppear { model.reload() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.reload() } }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in model.dayChanged() }

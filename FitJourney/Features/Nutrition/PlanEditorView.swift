@@ -32,6 +32,7 @@ private struct PlanEditorForm: View {
     @State private var showCollapseConfirm = false
     @State private var dayToDelete: NutritionDay?
     @State private var errorMessage: String?
+    @Environment(\.mealReminderScheduler) private var scheduler
 
     private var readOnly: Bool { plan.isPrevious && !isNew }
 
@@ -80,6 +81,7 @@ private struct PlanEditorForm: View {
             }
         }
         .task { setupIfNeeded() }
+        .onDisappear { reschedule() }
         .onChange(of: plan.startDate) { _, start in
             if let end = plan.endDate, end < start { plan.endDate = start } // fim nunca antes do início
         }
@@ -169,6 +171,12 @@ private struct PlanEditorForm: View {
 
     private func commit() {
         do { try context.commitEdits() } catch { errorMessage = String(localized: "Tente de novo. Nada foi perdido.") }
+        reschedule()
+    }
+
+    /// Só com o contexto principal (o rascunho de "Novo plano" não está salvo).
+    private func reschedule() {
+        if context.autosaveEnabled { Task { await scheduler?.reschedule(for: context) } }
     }
 
     private func setupIfNeeded() {
