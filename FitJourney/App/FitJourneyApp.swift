@@ -23,6 +23,9 @@ struct FitJourneyApp: App {
     private let categoryRegistry: NotificationCategoryRegistry
     /// Exportar/importar/apagar vivem aqui: sobrevivem ao reset da árvore e mostram o resultado depois dele.
     @State private var dataTransfer: DataTransferModel
+    /// Atividade ao Vivo + Dynamic Island da sessão (P6.4). Também atende os botões +15 s/Pular
+    /// (`LiveActivityIntentRouter`), inclusive quando o sistema acorda o app só para o intent.
+    private let liveActivity: LiveActivityController
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -50,7 +53,14 @@ struct FitJourneyApp: App {
         notificationDelegate = delegate
         categoryRegistry = registry
 
-        let engine = SessionEngine(context: container.mainContext, notifications: UserNotificationRestScheduler())
+        // Com Atividade ao Vivo ativa, a notificação de fim de descanso dá lugar ao alerta da atividade.
+        let restGate = LiveActivityRestNotificationGate(wrapping: UserNotificationRestScheduler())
+        let engine = SessionEngine(context: container.mainContext, notifications: restGate)
+        let live = LiveActivityController(
+            engine: engine, gate: restGate,
+            routineColorName: LiveActivityController.routineColorLookup(context: container.mainContext))
+        LiveActivityIntentRouter.handler = live
+        liveActivity = live
         let authorization = HealthAuthorization(store: HealthKitStore.shared)
         _dataTransfer = State(initialValue: DataTransferModel(container: container))
         _sessionEngine = State(initialValue: engine)
@@ -82,6 +92,7 @@ struct FitJourneyApp: App {
                     if phase == .active {
                         Task { await mealReminders.reschedule(for: modelContainer.mainContext) }
                         watchLink.handleForeground()
+                        liveActivity.handleForeground()
                     }
                 }
                 .task {
@@ -90,6 +101,7 @@ struct FitJourneyApp: App {
                     healthController.startObservingMirroredSessions()
                     healthController.attach(to: sessionEngine)
                     watchLink.start()
+                    liveActivity.start()
                 }
                 .task {
                     // FC ao vivo na tela da sessão; a zona usa a FC máxima de Ajustes (ou 220 − idade do perfil).

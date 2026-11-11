@@ -15,9 +15,12 @@ targets:
   FitJourney:
     type: application
     platform: iOS
-    sources: [FitJourney, Shared/WatchLink, Shared/WatchConnectivity, Shared/Health]
+    sources: [FitJourney, Shared/WatchLink, Shared/WatchConnectivity, Shared/Health, Shared/LiveActivity]
     dependencies:
       - target: FitJourneyWatch
+        embed: true
+      # Atividade ao Vivo + Dynamic Island (P6.4).
+      - target: FitJourneyWidgets
         embed: true
     info:
       path: FitJourney/App/Info.plist
@@ -30,6 +33,8 @@ targets:
         # Coach com servidor compatível na rede local (Ollama): HTTP só para endereços locais.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # Atividade ao Vivo da sessão (DESIGN_DIRECTION §4.14).
+        NSSupportsLiveActivities: true
     entitlements:
       path: FitJourney/App/FitJourney.entitlements
       properties:
@@ -49,6 +54,32 @@ targets:
         INFOPLIST_KEY_NSCameraUsageDescription: "O FitJourney usa a câmera para fotografar exercícios."
         INFOPLIST_KEY_NSLocalNetworkUsageDescription: "O FitJourney acessa a rede local só se você configurar o Coach com um servidor de IA no seu computador (ex.: Ollama)."
         SWIFT_EMIT_LOC_STRINGS: YES
+  FitJourneyWidgets:
+    type: app-extension
+    platform: iOS
+    # Atividade ao Vivo (ActivityKit/WidgetKit). Atributos e intents compartilhados com o app; os
+    # tokens do DesignSystem entram como fontes (sem componentes de vidro), §4.14 "Para quem implementa".
+    sources:
+      - FitJourneyWidgets
+      - Shared/LiveActivity
+      - FitJourney/DesignSystem/Tokens/FJColor.swift
+      - FitJourney/DesignSystem/Tokens/FJFont.swift
+      - FitJourney/DesignSystem/Tokens/FJFormat.swift
+      - FitJourney/DesignSystem/Tokens/FJLayout.swift
+    info:
+      path: FitJourneyWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: FitJourney
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: br.com.renatocorrea.fitjourney.widgets
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
   FitJourneyTests:
     type: bundle.unit-test
     platform: iOS
