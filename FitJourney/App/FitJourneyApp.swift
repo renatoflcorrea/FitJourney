@@ -84,6 +84,8 @@ struct FitJourneyApp: App {
                 .task(priority: .utility) {
                     // Limpeza de mídia órfã/temporária, fora do caminho crítico do launch.
                     _ = await MediaMaintenance.runAtLaunch(container: modelContainer)
+                    // Exportações temporárias com mais de 24 h (podem conter dados pessoais).
+                    _ = BackupMaintenance.runAtLaunch()
                 }
         }
         .modelContainer(modelContainer)
