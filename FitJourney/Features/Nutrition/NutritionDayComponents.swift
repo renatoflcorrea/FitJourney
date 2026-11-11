@@ -26,6 +26,7 @@ struct NutritionTotalsCard: View {
                             Text("kcal").font(.caption2).foregroundStyle(FJColor.textSecondary)
                         }
                         .padding(FJSpacing.xs)
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     }
                     .frame(width: FJSize.progressRing, height: FJSize.progressRing)
                     .accessibilityElement(children: .ignore)
@@ -92,12 +93,30 @@ struct WaterCard: View {
     var body: some View {
         FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.s) {
-                HStack {
+                FJAdaptiveStack(spacing: FJSpacing.xs) {
                     Label("Água", systemImage: "drop.fill")
                         .font(FJFont.cardTitle)
                         .foregroundStyle(FJColor.textPrimary)
-                    Spacer()
+                    Spacer(minLength: FJSpacing.s)
                     Text(litersText).font(FJFont.numberBody)
+                    if isEditable {
+                        HStack(spacing: 0) {
+                            Button(action: onRemove) {
+                                Image(systemName: "minus.circle")
+                                    .font(.title2)
+                                    .frame(minWidth: FJSize.minTap, minHeight: FJSize.minTap)
+                            }
+                            .disabled(total <= 0)
+                            .accessibilityLabel("Remover um copo")
+                            Button(action: onAdd) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(FJColor.nutrition)
+                                    .frame(minWidth: FJSize.minTap, minHeight: FJSize.minTap)
+                            }
+                            .accessibilityLabel("Adicionar um copo, \(Int(WaterCups.cupMilliliters)) mililitros")
+                        }
+                    }
                 }
                 HStack(alignment: .center, spacing: FJSpacing.s) {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 26), spacing: 6)], alignment: .leading, spacing: 6) {
@@ -107,22 +126,6 @@ struct WaterCard: View {
                         }
                     }
                     .accessibilityHidden(true)
-                    if isEditable {
-                        Button(action: onRemove) {
-                            Image(systemName: "minus.circle")
-                                .font(.title2)
-                                .frame(minWidth: FJSize.minTap, minHeight: FJSize.minTap)
-                        }
-                        .disabled(total <= 0)
-                        .accessibilityLabel("Remover um copo")
-                        Button(action: onAdd) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.title2)
-                                .foregroundStyle(FJColor.nutrition)
-                                .frame(minWidth: FJSize.minTap, minHeight: FJSize.minTap)
-                        }
-                        .accessibilityLabel("Adicionar um copo, \(Int(WaterCups.cupMilliliters)) mililitros")
-                    }
                 }
                 .contextMenu {
                     if isEditable {

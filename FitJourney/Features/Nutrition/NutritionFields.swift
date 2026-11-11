@@ -34,6 +34,7 @@ struct OptionalDoubleField: View {
         }
         .onAppear { text = Self.format(value) }
         .onChange(of: text) { _, new in
+            guard isFocused else { return } // só edição do usuário altera o valor
             let trimmed = new.trimmingCharacters(in: .whitespaces)
             value = trimmed.isEmpty ? nil : NumberStepperField.parse(trimmed, allowsSign: false).map { max(0, $0) }
         }
@@ -42,7 +43,7 @@ struct OptionalDoubleField: View {
     }
 
     static func format(_ value: Double?) -> String {
-        value.map { FJFormat.number($0, maxFractionDigits: 1) } ?? ""
+        value.map { $0.formatted(.number.grouping(.never).precision(.fractionLength(0...1))) } ?? ""
     }
 }
 
