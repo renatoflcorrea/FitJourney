@@ -1,0 +1,40 @@
+import SwiftUI
+
+/// Hápticos com significado (DESIGN_DIRECTION §2.4). Declarativos, via `sensoryFeedback`.
+enum FJHaptic: Sendable {
+    /// Série concluída.
+    case setCompleted
+    /// Descanso ou sustentação terminou.
+    case timerFinished
+    /// Passo de +/− em carga ou reps.
+    case stepUp, stepDown
+    /// Seleção (chip, RPE, segmento).
+    case selection
+    /// Exercício concluído.
+    case exerciseCompleted
+    /// Sessão finalizada / recorde pessoal.
+    case celebration
+    case warning
+    case error
+
+    var feedback: SensoryFeedback {
+        switch self {
+        case .setCompleted: .impact(weight: .medium)
+        case .timerFinished: .warning
+        case .stepUp: .increase
+        case .stepDown: .decrease
+        case .selection: .selection
+        case .exerciseCompleted: .impact(weight: .heavy)
+        case .celebration: .success
+        case .warning: .warning
+        case .error: .error
+        }
+    }
+}
+
+extension View {
+    /// Dispara o háptico quando `trigger` muda.
+    func fjHaptic<T: Equatable>(_ haptic: FJHaptic, trigger: T) -> some View {
+        sensoryFeedback(haptic.feedback, trigger: trigger)
+    }
+}
