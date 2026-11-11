@@ -84,7 +84,20 @@ extension BackupV1.MediaValue {
         }
     }
 
-    /// `nil` se faltar campo obrigatório do tipo ou o nome de arquivo for inseguro.
+    /// Para exportar: link externo com usuário/senha embutidos é descartado (nunca sai do aparelho).
+    init?(exporting value: MediaRef) {
+        if case .externalVideo(let url, _, _) = value, !Self.isSafeLink(url) { return nil }
+        self.init(value)
+    }
+
+    /// http(s), com host e sem credenciais na URL.
+    static func isSafeLink(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http",
+              let host = url.host(), !host.isEmpty else { return false }
+        return url.user == nil && url.password == nil
+    }
+
+    /// `nil` se faltar campo obrigatório do tipo, o nome de arquivo for inseguro ou o link tiver credenciais.
     var domain: MediaRef? {
         switch kind {
         case "image":
@@ -95,8 +108,7 @@ extension BackupV1.MediaValue {
             let thumb = thumbnailFileName.flatMap { MediaStore.isSafe(fileName: $0) ? $0 : nil }
             return .localVideo(fileName: fileName, thumbnailFileName: thumb)
         case "externalVideo":
-            guard let url = url.flatMap(URL.init(string:)), let scheme = url.scheme?.lowercased(),
-                  scheme == "https" || scheme == "http" else { return nil }
+            guard let url = url.flatMap(URL.init(string:)), Self.isSafeLink(url) else { return nil }
             return .externalVideo(url: url, provider: provider.flatMap(VideoProvider.init(rawValue:)) ?? .other,
                                   videoID: videoID)
         default:
@@ -137,7 +149,7 @@ extension BackupV1.Exercise {
         self.init(id: m.id, createdAt: m.createdAt, updatedAt: m.updatedAt, name: m.name,
                   primaryMuscles: m.primaryMuscles.map(\.rawValue), secondaryMuscles: m.secondaryMuscles.map(\.rawValue),
                   equipment: m.equipment.rawValue, laterality: m.laterality.rawValue,
-                  measurementKind: m.measurementKind.rawValue, media: m.media.map(BackupV1.MediaValue.init),
+                  measurementKind: m.measurementKind.rawValue, media: m.media.compactMap(BackupV1.MediaValue.init(exporting:)),
                   isBuiltIn: m.isBuiltIn, catalogKey: m.catalogKey, notes: m.notes,
                   defaultRestSeconds: m.defaultRestSeconds)
     }

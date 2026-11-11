@@ -46,8 +46,12 @@ final class BackupFixture {
         BackupImporter(modelContainer: container, mediaStore: media ?? self.media, defaults: Self.makeDefaults(suite))
     }
 
+    let notificationsCleared = Counter()
+
     func eraser() -> DataEraser {
-        DataEraser(modelContainer: container, mediaStore: media, defaults: Self.makeDefaults(suite), secretStore: secrets)
+        let counter = notificationsCleared
+        return DataEraser(modelContainer: container, mediaStore: media, defaults: Self.makeDefaults(suite), secretStore: secrets,
+                          clearNotifications: { counter.increment() }, temporaryDirectory: workDir)
     }
 
     /// Contagem por um contexto novo (não usa objetos em cache da main).
@@ -96,6 +100,13 @@ final class BackupFixture {
     }
 }
 
+final class Counter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0
+    func increment() { lock.withLock { value += 1 } }
+    var count: Int { lock.withLock { value } }
+}
+
 /// Documento comparável: sem `exportedAt` e com listas de topo ordenadas por `id`.
 private func normalized(_ document: BackupV1.Document) throws -> String {
     var d = document
@@ -112,6 +123,9 @@ private func normalized(_ document: BackupV1.Document) throws -> String {
     // Consentimento/compartilhamento do Coach nunca vêm do backup (decisão de privacidade): fora da comparação.
     d.coachProfile?.sharing = .init(profile: false, workouts: false, nutrition: false, health: false)
     d.coachProfile?.consentedAt = nil
+    // Provedor e URL do Coach nunca são importados (destino da chave): fora da comparação.
+    d.preferences.coachProvider?.provider = ""
+    d.preferences.coachProvider?.customBaseURL = nil
     let encoder = BackupV1.makeEncoder(timeZone: TimeZone(identifier: "UTC")!)
     return String(decoding: try encoder.encode(d), as: UTF8.self)
 }
@@ -611,9 +625,9 @@ struct ZipArchiveTests {
         let json = try #require(reader.entry(named: "data.json"))
         #expect(json.method == 8)
         #expect(json.compressedSize < json.size)
-        #expect(try reader.data(for: json) == text)
+        #expect(try reader.data(for: json, maxSize: 1 << 20) == text)
         let out = dir.appending(path: "out.mov")
-        try reader.extract(try #require(reader.entry(named: "media/video.mov")), to: out)
+        try reader.extract(try #require(reader.entry(named: "media/video.mov")), to: out, maxSize: 1 << 20)
         #expect(try Data(contentsOf: out) == binary)
     }
 

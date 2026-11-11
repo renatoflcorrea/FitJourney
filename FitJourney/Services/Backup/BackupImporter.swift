@@ -3,15 +3,20 @@ import SwiftData
 
 /// Leitura e validação de um `data.json` (sem tocar no banco).
 enum BackupDocumentLoader {
-    /// Ordem: JSON legível → `format` → `schemaVersion` (mais nova = "atualize o app") → schema → Codable.
+    /// Teto do `data.json` (JSON puro ou dentro do pacote).
+    static let maxDataBytes = 96 * 1024 * 1024
+
+    /// Ordem: tamanho → JSON legível → `format` → `schemaVersion` (mais nova = "atualize o app") → schema → Codable.
     static func load(_ data: Data) throws -> BackupV1.Document {
+        guard data.count <= maxDataBytes else { throw BackupError.dataTooLarge(limitMB: maxDataBytes / 1_048_576) }
         guard let object = try? JSONSerialization.jsonObject(with: data) else { throw BackupError.corruptedFile }
         let value = JSONValue.convert(object)
         guard case .object = value, value["format"]?.stringValue == BackupV1.format else { throw BackupError.notABackup }
-        guard case let .number(rawVersion)? = value["schemaVersion"], rawVersion.rounded() == rawVersion else {
+        // `Int(exactly:)` antes de converter: 1e300 ou 1.5 nunca viram trap.
+        guard case let .number(rawVersion)? = value["schemaVersion"], rawVersion.isFinite,
+              let version = Int(exactly: rawVersion), version <= Int(Int32.max) else {
             throw BackupError.notABackup
         }
-        let version = Int(rawVersion)
         if version > BackupV1.schemaVersion { throw BackupError.newerVersion(found: version, supported: BackupV1.schemaVersion) }
         if version < 1 { throw BackupError.unsupportedVersion(version) }
 
@@ -63,7 +68,16 @@ struct BackupImportOptions: Sendable, Equatable {
 /// da sessão e o relógio não as conhecem): com ao menos uma série feita viram `completed` com fim na
 /// última série concluída (exercícios em andamento → parcial); sem nenhuma série feita são
 /// descartadas (não importadas), como o descarte do app. Se já existir no aparelho uma sessão com o
-/// mesmo `id`, a local fica. Mensagens `streaming` viram `stopped`.
+/// mesmo `id`, a local fica; sessões descartadas no aparelho (tombstones) não voltam. Sessões
+/// `completed` são normalizadas (sem pausa/descanso pendente, `endedAt` preenchido). Mensagens
+/// `streaming` viram `stopped`. `createdAt`/`updatedAt` do backup ficam limitados a agora + 1 dia
+/// (relógio adiantado não "vence" toda mesclagem) e IDs repetidos no arquivo valem só na 1ª ocorrência.
+///
+/// **Preferências**: substituir mantém as preferências locais que o backup não trouxer. O provedor e a
+/// URL do Coach **nunca** são importados (o destino da chave de API não pode vir de um arquivo).
+///
+/// **Antes de chamar** (UI): pare o motor da sessão e volte à raiz — `replace` é recusado se houver
+/// treino em andamento, conferido no início e de novo logo antes do `save`.
 actor BackupImporter: ModelActor {
     nonisolated let modelExecutor: any ModelExecutor
     nonisolated let modelContainer: ModelContainer
@@ -79,9 +93,9 @@ actor BackupImporter: ModelActor {
         self.defaults = defaults
     }
 
-    /// Lê e valida sem importar (pré-visualização: contagens e data do backup).
+    /// Lê e valida sem importar (pré-visualização: contagens e data do backup). Ver `BackupImportReport.mergeSemantics`.
     func inspect(fileAt url: URL) throws -> (document: BackupV1.Document, counts: BackupCounts) {
-        let staging = try Staging(source: url, extractMedia: false)
+        let staging = try Staging(source: url)
         defer { staging.cleanUp() }
         let document = try BackupDocumentLoader.load(staging.json)
         return (document, BackupCounts(document))
@@ -90,11 +104,18 @@ actor BackupImporter: ModelActor {
     func importBackup(from url: URL, options: BackupImportOptions = .init(),
                       progress: BackupProgressHandler? = nil) async throws -> BackupImportReport {
         progress?(BackupProgress(phase: .extracting, fraction: 0))
-        let staging = try Staging(source: url, extractMedia: true)
+        var staging = try Staging(source: url)
         defer { staging.cleanUp() }
         try Task.checkCancellation()
-        progress?(BackupProgress(phase: .validating, fraction: 0.2))
+        progress?(BackupProgress(phase: .validating, fraction: 0.1))
         let document = try BackupDocumentLoader.load(staging.json)
+        try Task.checkCancellation()
+        // Só as mídias declaradas como incluídas no manifesto e referenciadas por algum exercício.
+        let referenced = Set(document.exercises.flatMap { $0.media.flatMap { [$0.fileName, $0.thumbnailFileName] } }
+            .compactMap { $0 })
+        let wanted = Set(document.media.filter { $0.included && referenced.contains($0.fileName) }.map(\.fileName))
+        progress?(BackupProgress(phase: .extracting, fraction: 0.2))
+        try staging.extractMedia(named: wanted, limits: mediaStore.limits)
         try Task.checkCancellation()
         return try apply(document, mediaDirectory: staging.mediaDirectory, options: options, progress: progress)
     }
@@ -103,12 +124,18 @@ actor BackupImporter: ModelActor {
     func apply(_ document: BackupV1.Document, mediaDirectory: URL? = nil, options: BackupImportOptions = .init(),
                progress: BackupProgressHandler? = nil) throws -> BackupImportReport {
         let context = modelContext
+        let tombstoned = Set(((defaults.data(forKey: BackupPreferenceKeys.sessionTombstones))
+            .flatMap { try? JSONDecoder().decode([SessionTombstone].self, from: $0) } ?? []).map(\.sessionID))
         var run = ImportRun(context: context, document: document, options: options, mediaStore: mediaStore,
-                            mediaDirectory: mediaDirectory)
+                            mediaDirectory: mediaDirectory, tombstonedSessionIDs: tombstoned)
         do {
             progress?(BackupProgress(phase: .importing, fraction: 0.4))
             try run.execute()
             try Task.checkCancellation()
+            // Um treino pode ter começado na main enquanto importávamos: substituir não pode apagá-lo.
+            if options.mode == .replace, try BackupWipe.hasSessionInProgress(in: context) {
+                throw BackupError.activeSessionInProgress
+            }
             progress?(BackupProgress(phase: .saving, fraction: 0.9))
             try context.save()
         } catch {
@@ -129,45 +156,69 @@ actor BackupImporter: ModelActor {
 
 // MARK: - Arquivo de entrada
 
-/// Abre `.fitjourney` (zip) ou JSON puro; extrai a mídia para uma pasta temporária.
+/// Abre `.fitjourney` (zip) ou JSON puro. A mídia só é extraída depois de validar o documento, e só a
+/// referenciada; cada arquivo vai para um temporário vizinho e é movido ao terminar.
 private struct Staging {
-    let json: Data
-    let mediaDirectory: URL?
-    private let root: URL?
+    static let mediaFolderPrefix = BackupV1.mediaFolder + "/"
+    /// Teto da mídia extraída somada (o zip sem Zip64 já limita a 4 GB).
+    static let maxTotalMediaBytes: Int64 = 3 * 1024 * 1024 * 1024
 
-    init(source: URL, extractMedia: Bool) throws {
+    let json: Data
+    private(set) var mediaDirectory: URL?
+    private var root: URL?
+    private let reader: ZipReader?
+
+    init(source: URL) throws {
         let scoped = source.startAccessingSecurityScopedResource()
         defer { if scoped { source.stopAccessingSecurityScopedResource() } }
+        let limitMB = BackupDocumentLoader.maxDataBytes / 1_048_576
 
         guard ZipReader.looksLikeZip(source) else {
+            if let size = try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+               size > BackupDocumentLoader.maxDataBytes {
+                throw BackupError.dataTooLarge(limitMB: limitMB)
+            }
             guard let data = try? Data(contentsOf: source) else { throw BackupError.corruptedFile }
             json = data
-            mediaDirectory = nil
-            root = nil
+            reader = nil
             return
         }
         let reader: ZipReader
         do { reader = try ZipReader(url: source) } catch { throw BackupError.corruptedFile }
         guard let dataEntry = reader.entry(named: BackupV1.dataFileName) else { throw BackupError.notABackup }
-        do { json = try reader.data(for: dataEntry) } catch { throw BackupError.corruptedFile }
-
-        let mediaEntries = reader.entries.filter { entry in
-            guard !entry.isDirectory, entry.name.hasPrefix(BackupV1.mediaFolder + "/") else { return false }
-            return MediaStore.isSafe(fileName: String(entry.name.dropFirst(BackupV1.mediaFolder.count + 1)))
+        do {
+            json = try reader.data(for: dataEntry, maxSize: BackupDocumentLoader.maxDataBytes)
+        } catch ZipError.tooLarge {
+            throw BackupError.dataTooLarge(limitMB: limitMB)
+        } catch {
+            throw BackupError.corruptedFile
         }
-        guard extractMedia, !mediaEntries.isEmpty else {
-            mediaDirectory = nil
-            root = nil
-            return
+        self.reader = reader
+    }
+
+    mutating func extractMedia(named names: Set<String>, limits: MediaLimits) throws {
+        guard let reader, !names.isEmpty else { return }
+        let entries = reader.entries.filter { entry in
+            guard !entry.isDirectory, entry.name.hasPrefix(Self.mediaFolderPrefix) else { return false }
+            let name = String(entry.name.dropFirst(Self.mediaFolderPrefix.count))
+            return MediaStore.isSafe(fileName: name) && names.contains(name)
+        }
+        guard !entries.isEmpty else { return }
+        // O exportador grava mídia *stored*; DEFLATE aqui só serviria para bomba de descompressão.
+        guard entries.allSatisfy({ $0.method == 0 }) else { throw BackupError.corruptedFile }
+        let perFile = max(limits.maxVideoBytes, 50 * 1024 * 1024)
+        guard entries.allSatisfy({ Int64($0.size) <= perFile }),
+              entries.reduce(Int64(0), { $0 + Int64($1.size) }) <= Self.maxTotalMediaBytes else {
+            throw BackupError.mediaTooLarge
         }
         let root = URL.temporaryDirectory.appending(path: "FJImport-\(UUID().uuidString)", directoryHint: .isDirectory)
         let media = root.appending(path: BackupV1.mediaFolder, directoryHint: .isDirectory)
         do {
             try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
-            for entry in mediaEntries {
+            for entry in entries {
                 try Task.checkCancellation()
-                let name = String(entry.name.dropFirst(BackupV1.mediaFolder.count + 1))
-                try reader.extract(entry, to: media.appending(path: name))
+                let name = String(entry.name.dropFirst(Self.mediaFolderPrefix.count))
+                try reader.extract(entry, to: media.appending(path: name), maxSize: perFile)
             }
         } catch {
             try? FileManager.default.removeItem(at: root)
@@ -203,10 +254,14 @@ private struct ImportRun {
     /// Exercícios gravados nesta importação e a mídia do backup a resolver no fim.
     private var pendingMedia: [(Exercise, [BackupV1.MediaValue])] = []
 
+    /// Sessões descartadas no aparelho (tombstones): não voltam por importação.
+    let tombstonedSessionIDs: Set<UUID>
+
     init(context: ModelContext, document: BackupV1.Document, options: BackupImportOptions, mediaStore: MediaStore,
-         mediaDirectory: URL?) {
+         mediaDirectory: URL?, tombstonedSessionIDs: Set<UUID> = [], now: Date = .now) {
         self.context = context
-        self.document = document
+        self.document = document.sanitizedForImport(now: now)
+        self.tombstonedSessionIDs = tombstonedSessionIDs
         self.options = options
         self.mediaStore = mediaStore
         self.mediaDirectory = mediaDirectory
@@ -372,7 +427,7 @@ private struct ImportRun {
 
     private mutating func importSessions() throws {
         let localByID = byID(try fetch(WorkoutSession.self), \.id)
-        for item in document.sessions {
+        for item in document.sessions where !tombstonedSessionIDs.contains(item.id) {
             let status = SessionStatus(rawValue: item.status) ?? .completed
             if let local = localByID[item.id] {
                 // Sessão em andamento no aparelho nunca é tocada; backup em andamento nunca sobrescreve.
@@ -384,6 +439,7 @@ private struct ImportRun {
                 local.exercises = []
                 local.apply(item)
                 insertSessionChildren(item, into: local)
+                Self.normalizeCompleted(local)
                 report.updated[.sessions] += 1
                 continue
             }
@@ -406,10 +462,27 @@ private struct ImportRun {
                 }
                 report.warnings.append(.inProgressSessionFinalized(routineName: item.routineName))
             case .completed:
-                insertSession(item)
+                Self.normalizeCompleted(insertSession(item))
             }
             report.inserted[.sessions] += 1
         }
+    }
+
+    /// Sessão concluída sem pausa/descanso pendentes e com `endedAt` (última série, atividade ou início).
+    private static func normalizeCompleted(_ session: WorkoutSession) {
+        var clock = session.clock
+        if clock.endedAt == nil {
+            let lastSet = (session.exercises ?? []).flatMap { $0.sets ?? [] }.compactMap(\.completedAt).max()
+            clock.finish(at: [lastSet, session.lastActivityAt, session.startedAt].compactMap { $0 }.max() ?? session.startedAt)
+        }
+        if let pausedAt = clock.pausedAt, let endedAt = clock.endedAt {
+            clock.accumulatedPauseSeconds += max(0, endedAt.timeIntervalSince(pausedAt))
+            clock.pausedAt = nil
+        }
+        clock.restEndsAt = nil
+        session.clock = clock
+        session.holdSetID = nil
+        session.holdStartedAt = nil
     }
 
     @discardableResult
@@ -552,12 +625,18 @@ private struct ImportRun {
     private mutating func enforceSingleActive() throws {
         let programs = try fetch(TrainingProgram.self).filter(\.isActive).sorted { $0.updatedAt > $1.updatedAt }
         if programs.count > 1 {
-            for program in programs.dropFirst() { program.isActive = false }
+            for program in programs.dropFirst() {
+                program.isActive = false
+                program.updatedAt = .now
+            }
             report.warnings.append(.extraActiveProgramsDeactivated(count: programs.count - 1))
         }
         let plans = try fetch(NutritionPlan.self).filter(\.isActive).sorted { $0.updatedAt > $1.updatedAt }
         if plans.count > 1 {
-            for plan in plans.dropFirst() { plan.isActive = false }
+            for plan in plans.dropFirst() {
+                plan.isActive = false
+                plan.updatedAt = .now
+            }
             report.warnings.append(.extraActiveNutritionPlansDeactivated(count: plans.count - 1))
         }
     }

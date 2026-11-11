@@ -370,6 +370,9 @@ final class MediaImageLoader: @unchecked Sendable {
         var cost: Int { image.bytesPerRow * image.height }
     }
 
+    /// Esvazia o cache ("apagar tudo").
+    func removeAll() { cache.removeAllObjects() }
+
     private func cached(_ key: String) -> CGImage? { cache.object(forKey: key as NSString)?.image }
 
     private func store(_ image: CGImage, key: String) {

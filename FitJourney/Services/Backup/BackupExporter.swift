@@ -116,13 +116,11 @@ actor BackupExporter: ModelActor {
     func export(options: BackupExportOptions = .init(), to directory: URL? = nil, now: Date = .now,
                 progress: BackupProgressHandler? = nil) async throws -> BackupExportResult {
         progress?(BackupProgress(phase: .reading, fraction: 0))
-        let document = try makeDocument(options: options, now: now)
-        try Task.checkCancellation()
-        progress?(BackupProgress(phase: .encoding, fraction: 0.2))
-        let json = try encode(document)
+        if directory == nil { BackupMaintenance.runAtLaunch() } // exportações antigas (> 24 h)
+        var document = try makeDocument(options: options, now: now)
         try Task.checkCancellation()
 
-        let folder = directory ?? URL.temporaryDirectory.appending(path: "FJExports", directoryHint: .isDirectory)
+        let folder = directory ?? BackupMaintenance.exportsDirectory
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let ext = options.format == .package ? BackupV1.packageExtension : "json"
         let url = folder.appending(path: Self.fileName(for: now, timeZone: timeZone, ext: ext))
@@ -130,30 +128,46 @@ actor BackupExporter: ModelActor {
 
         do {
             var included = 0
+            let json: Data
             switch options.format {
             case .json:
+                progress?(BackupProgress(phase: .encoding, fraction: 0.2))
+                json = try encode(document)
                 try json.write(to: url, options: .atomic)
             case .package:
+                // Mídia primeiro: um arquivo que sumir no meio vira `included: false` no manifesto,
+                // que só é escrito (em `data.json`) no fim.
                 let writer = try ZipWriter(url: url, date: now)
-                try writer.add(name: BackupV1.dataFileName, data: json, compress: true)
                 let files = document.media.filter(\.included)
                 let totalBytes = max(1, files.reduce(0) { $0 + ($1.byteCount ?? 0) })
                 var copied = 0
+                var written = Set<String>()
                 for file in files {
                     try Task.checkCancellation()
-                    guard let source = mediaStore.url(for: file.fileName) else { continue }
+                    guard let source = mediaStore.url(for: file.fileName), mediaStore.fileExists(named: file.fileName) else {
+                        continue
+                    }
                     try writer.add(name: "\(BackupV1.mediaFolder)/\(file.fileName)", contentsOf: source) { bytes in
                         copied += bytes
-                        progress?(BackupProgress(phase: .copyingMedia, fraction: 0.3 + 0.65 * Double(copied) / Double(totalBytes)))
+                        progress?(BackupProgress(phase: .copyingMedia, fraction: 0.1 + 0.8 * Double(copied) / Double(totalBytes)))
                     }
+                    written.insert(file.fileName)
                     included += 1
                 }
+                document.media = document.media.map { file in
+                    var f = file
+                    f.included = written.contains(file.fileName)
+                    return f
+                }
+                progress?(BackupProgress(phase: .encoding, fraction: 0.92))
+                json = try encode(document)
+                try writer.add(name: BackupV1.dataFileName, data: json, compress: true)
                 try writer.finish()
             }
             let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? json.count
             progress?(BackupProgress(phase: .finished, fraction: 1))
             return BackupExportResult(fileURL: url, counts: BackupCounts(document), mediaFilesIncluded: included,
-                                      mediaFilesMissing: document.media.filter { $0.byteCount == nil }.count,
+                                      mediaFilesMissing: document.media.filter { options.format == .package && !$0.included }.count,
                                       byteCount: size)
         } catch {
             try? FileManager.default.removeItem(at: url)

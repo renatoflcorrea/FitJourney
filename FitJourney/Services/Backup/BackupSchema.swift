@@ -8,7 +8,7 @@ enum BackupSchema {
       "$id": "https://fitjourney.app/contracts/fitjourney-export-v1.schema.json",
       "title": "FitJourneyExport",
       "description": "Exportação completa do FitJourney (v1): backup/restauração e interoperabilidade (HealthProject, ChatGPT, Android). Pacote .fitjourney = zip com data.json (este documento) + media/<arquivo>; ou só data.json. Datas ISO-8601 com fuso; decimais como número; enums como rawValue estável; opcional ausente ou null = não informado (nunca zero). IDs são UUIDs estáveis preservados na importação. Campos desconhecidos são ignorados (adições compatíveis na v1); mudança incompatível = schemaVersion 2. Nunca contém segredos (chaves de API).",
-      "$comment": "Mapeamento para o HealthProject (Especificacao.md §2.4/§2.5): programs → TrainingPlanVersion (routines → PlannedSession; routines[].exercises → PlannedExercise com repsMin/repsMax de repTarget e intendedLoad = currentLoad ?? initialLoad); sessions → WorkoutSession (exercises[].sets achatados → ExerciseSet; order = posição; exerciseId = exerciseID; kind warmup/feeder → warmup, demais → working; painLevel/painLocation → PainReport); load → Load (weight → convention total, bodyweight com value > 0 → added, < 0 → assistance); effort → Effort; nutritionPlans → NutritionPlanVersion; foodEntries → FoodEntry (estimation informed → informedTotal, estimated/ai → estimated). Ausente = não informado nos dois sistemas.",
+      "$comment": "Mapeamento para o HealthProject (Especificacao.md §2.4/§2.5): programs → TrainingPlanVersion (routines → PlannedSession; routines[].exercises → PlannedExercise com repsMin/repsMax de repTarget e intendedLoad = currentLoad ?? initialLoad); sessions → WorkoutSession (exercises[].sets achatados → ExerciseSet; order = posição; exerciseId = exerciseID; kind warmup/feeder → warmup, demais → working; painLevel/painLocation → PainReport); load → Load (weight → convention total, bodyweight com value > 0 → added, < 0 → assistance); effort → Effort; nutritionPlans → NutritionPlanVersion; foodEntries → FoodEntry (estimation informed → informedTotal, estimated/ai → estimated). Ausente = não informado nos dois sistemas. Importação: o provedor e a URL do Coach (preferences.coachProvider.provider/customBaseURL) nunca são aplicados — o destino da chave de API não pode vir de um arquivo; só modelos por provedor e customContextTokens. Links de vídeo com usuário/senha na URL são descartados na exportação e na importação. createdAt/updatedAt acima de agora + 1 dia são limitados na importação; IDs repetidos valem só na 1ª ocorrência.",
       "x-healthProjectMapping": {
         "programs": "TrainingPlanVersion",
         "programs[].routines": "PlannedSession",
@@ -49,7 +49,8 @@ enum BackupSchema {
         "schemaVersion": {
           "type": "integer",
           "minimum": 1,
-          "description": "Versão maior do contrato. Maior que a suportada → o app pede atualização."
+          "description": "Versão maior do contrato. Maior que a suportada → o app pede atualização.",
+          "maximum": 2147483647
         },
         "exportedAt": {
           "$ref": "#/$defs/dateTime"
@@ -64,43 +65,50 @@ enum BackupSchema {
           "type": "array",
           "items": {
             "$ref": "#/$defs/exercise"
-          }
+          },
+          "maxItems": 200000
         },
         "programs": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/program"
-          }
+          },
+          "maxItems": 200000
         },
         "sessions": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/session"
-          }
+          },
+          "maxItems": 200000
         },
         "nutritionPlans": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/nutritionPlan"
-          }
+          },
+          "maxItems": 200000
         },
         "foodEntries": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/foodEntry"
-          }
+          },
+          "maxItems": 200000
         },
         "waterLogs": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/waterLog"
-          }
+          },
+          "maxItems": 200000
         },
         "foods": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/food"
-          }
+          },
+          "maxItems": 200000
         },
         "coachConversations": {
           "anyOf": [
@@ -108,7 +116,8 @@ enum BackupSchema {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/conversation"
-              }
+              },
+              "maxItems": 1000
             },
             {
               "type": "null"
@@ -133,7 +142,8 @@ enum BackupSchema {
           "type": "array",
           "items": {
             "$ref": "#/$defs/mediaFile"
-          }
+          },
+          "maxItems": 200000
         }
       },
       "$defs": {
@@ -396,21 +406,24 @@ enum BackupSchema {
                 "integer",
                 "null"
               ],
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 10000
             },
             "min": {
               "type": [
                 "integer",
                 "null"
               ],
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 10000
             },
             "max": {
               "type": [
                 "integer",
                 "null"
               ],
-              "minimum": 1
+              "minimum": 1,
+              "maximum": 10000
             }
           }
         },
@@ -432,7 +445,9 @@ enum BackupSchema {
               "description": "weight = carga absoluta; bodyweight = peso corporal com value de lastro (+) ou assistência (−)."
             },
             "value": {
-              "type": "number"
+              "type": "number",
+              "minimum": -1000,
+              "maximum": 10000
             },
             "unit": {
               "$ref": "#/$defs/weightUnit"
@@ -470,33 +485,40 @@ enum BackupSchema {
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 604800
             },
             "distanceMeters": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 1000000
             },
             "level": {
               "type": [
                 "integer",
                 "null"
-              ]
+              ],
+              "minimum": 0,
+              "maximum": 1000
             },
             "speedKmh": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100
             },
             "inclinePercent": {
               "type": [
                 "number",
                 "null"
-              ]
+              ],
+              "minimum": -50,
+              "maximum": 100
             },
             "heartRateZone": {
               "type": [
@@ -527,19 +549,22 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "thumbnailFileName": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "url": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 2048
             },
             "provider": {
               "anyOf": [
@@ -555,7 +580,8 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             }
           }
         },
@@ -569,35 +595,40 @@ enum BackupSchema {
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100000
             },
             "protein": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             },
             "carbs": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             },
             "fat": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             },
             "fiber": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             }
           }
         },
@@ -630,19 +661,22 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "primaryMuscles": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/muscleGroup"
-              }
+              },
+              "maxItems": 18
             },
             "secondaryMuscles": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/muscleGroup"
-              }
+              },
+              "maxItems": 18
             },
             "equipment": {
               "$ref": "#/$defs/equipment"
@@ -657,7 +691,8 @@ enum BackupSchema {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/media"
-              }
+              },
+              "maxItems": 20
             },
             "isBuiltIn": {
               "type": "boolean"
@@ -667,14 +702,17 @@ enum BackupSchema {
                 "string",
                 "null"
               ],
-              "description": "Chave estável do catálogo embutido; na importação, embutidos são casados por ela (IDs mudam entre instalações)."
+              "description": "Chave estável do catálogo embutido; na importação, embutidos são casados por ela (IDs mudam entre instalações).",
+              "maxLength": 500
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "defaultRestSeconds": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 3600
             }
           }
         },
@@ -700,7 +738,9 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "kind": {
               "$ref": "#/$defs/setKind"
@@ -720,7 +760,8 @@ enum BackupSchema {
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 3600
             },
             "initialLoad": {
               "anyOf": [
@@ -747,13 +788,15 @@ enum BackupSchema {
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 3600
             },
             "tempo": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "effort": {
               "anyOf": [
@@ -776,7 +819,8 @@ enum BackupSchema {
               ]
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             }
           }
         },
@@ -812,7 +856,9 @@ enum BackupSchema {
               ]
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "groupID": {
               "anyOf": [
@@ -825,20 +871,23 @@ enum BackupSchema {
               ]
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "restSeconds": {
               "type": [
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 3600
             },
             "sets": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/setPrescription"
-              }
+              },
+              "maxItems": 100
             }
           }
         },
@@ -868,31 +917,39 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "symbol": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "colorName": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "weekdays": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/weekday"
-              }
+              },
+              "maxItems": 7
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "exercises": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/routineExercise"
-              }
+              },
+              "maxItems": 100
             }
           }
         },
@@ -925,13 +982,15 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "goal": {
               "$ref": "#/$defs/programGoal"
             },
             "goalText": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "scheduleMode": {
               "$ref": "#/$defs/scheduleMode"
@@ -950,7 +1009,8 @@ enum BackupSchema {
               ]
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "isActive": {
               "type": "boolean"
@@ -965,7 +1025,8 @@ enum BackupSchema {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/routine"
-              }
+              },
+              "maxItems": 50
             }
           }
         },
@@ -992,7 +1053,9 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "prescriptionID": {
               "anyOf": [
@@ -1032,14 +1095,16 @@ enum BackupSchema {
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 3600
             },
             "restSeconds": {
               "type": [
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 3600
             },
             "cardioTarget": {
               "anyOf": [
@@ -1056,7 +1121,8 @@ enum BackupSchema {
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             },
             "load": {
               "anyOf": [
@@ -1073,14 +1139,16 @@ enum BackupSchema {
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 604800
             },
             "distanceMeters": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 1000000
             },
             "isCompleted": {
               "type": "boolean"
@@ -1146,7 +1214,8 @@ enum BackupSchema {
               ]
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "measurementKind": {
               "$ref": "#/$defs/measurementKind"
@@ -1155,7 +1224,9 @@ enum BackupSchema {
               "$ref": "#/$defs/laterality"
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "groupID": {
               "anyOf": [
@@ -1172,7 +1243,8 @@ enum BackupSchema {
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 3600
             },
             "status": {
               "$ref": "#/$defs/sessionExerciseStatus"
@@ -1191,7 +1263,8 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 10000
             },
             "substitutedFromExerciseID": {
               "anyOf": [
@@ -1207,16 +1280,19 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "painLocation": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "painLevel": {
               "type": [
@@ -1230,7 +1306,8 @@ enum BackupSchema {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/performedSet"
-              }
+              },
+              "maxItems": 100
             }
           }
         },
@@ -1279,7 +1356,8 @@ enum BackupSchema {
               ]
             },
             "routineName": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "startedAt": {
               "$ref": "#/$defs/dateTime"
@@ -1314,7 +1392,8 @@ enum BackupSchema {
               "maximum": 5
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "healthKitWorkoutID": {
               "anyOf": [
@@ -1338,7 +1417,8 @@ enum BackupSchema {
             },
             "accumulatedPauseSeconds": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 604800
             },
             "restEndsAt": {
               "anyOf": [
@@ -1364,7 +1444,8 @@ enum BackupSchema {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/sessionExercise"
-              }
+              },
+              "maxItems": 100
             }
           }
         },
@@ -1383,11 +1464,13 @@ enum BackupSchema {
               "$ref": "#/$defs/uuid"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "quantity": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100000
             },
             "unit": {
               "$ref": "#/$defs/foodUnit"
@@ -1396,7 +1479,8 @@ enum BackupSchema {
               "$ref": "#/$defs/nutrients"
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             }
           }
         },
@@ -1425,11 +1509,13 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "quantity": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100000
             },
             "unit": {
               "$ref": "#/$defs/foodUnit"
@@ -1438,16 +1524,20 @@ enum BackupSchema {
               "$ref": "#/$defs/nutrients"
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "substitutions": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/substitution"
-              }
+              },
+              "maxItems": 30
             }
           }
         },
@@ -1475,7 +1565,8 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "minutesFromMidnight": {
               "type": "integer",
@@ -1487,16 +1578,20 @@ enum BackupSchema {
               "type": "boolean"
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "items": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/mealItem"
-              }
+              },
+              "maxItems": 100
             }
           }
         },
@@ -1522,23 +1617,28 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "weekdays": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/weekday"
               },
-              "description": "Vazio = todos os dias."
+              "description": "Vazio = todos os dias.",
+              "maxItems": 7
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "meals": {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/meal"
-              }
+              },
+              "maxItems": 30
             }
           }
         },
@@ -1551,42 +1651,48 @@ enum BackupSchema {
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100000
             },
             "protein": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             },
             "carbs": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             },
             "fat": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             },
             "fiber": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000
             },
             "waterMilliliters": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 20000
             }
           }
         },
@@ -1618,10 +1724,12 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "goal": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "startDate": {
               "$ref": "#/$defs/dateTime"
@@ -1646,7 +1754,8 @@ enum BackupSchema {
               "type": "boolean"
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "targets": {
               "$ref": "#/$defs/nutritionTargets"
@@ -1655,7 +1764,8 @@ enum BackupSchema {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/nutritionDay"
-              }
+              },
+              "maxItems": 14
             }
           }
         },
@@ -1685,11 +1795,13 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "servingQuantity": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100000
             },
             "unit": {
               "$ref": "#/$defs/foodUnit"
@@ -1712,7 +1824,8 @@ enum BackupSchema {
             },
             "useCount": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000000
             },
             "estimation": {
               "$ref": "#/$defs/estimationSource"
@@ -1761,14 +1874,17 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "quantity": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100000
             },
             "unit": {
               "$ref": "#/$defs/foodUnit"
@@ -1790,7 +1906,8 @@ enum BackupSchema {
               ]
             },
             "notes": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 10000
             },
             "plannedItemID": {
               "anyOf": [
@@ -1828,7 +1945,8 @@ enum BackupSchema {
             },
             "milliliters": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 20000
             }
           }
         },
@@ -1858,13 +1976,15 @@ enum BackupSchema {
               "$ref": "#/$defs/messageRole"
             },
             "content": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 200000
             },
             "reasoning": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 200000
             },
             "state": {
               "$ref": "#/$defs/messageState"
@@ -1873,30 +1993,36 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 10000
             },
             "sortIndex": {
-              "type": "integer"
+              "type": "integer",
+              "minimum": -100000,
+              "maximum": 100000
             },
             "modelID": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "promptTokens": {
               "type": [
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100000000
             },
             "completionTokens": {
               "type": [
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 100000000
             },
             "toolCalls": {
               "description": "JSON opaco do app ([ToolCall])."
@@ -1908,13 +2034,15 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "toolName": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "toolResultIsError": {
               "type": "boolean"
@@ -1946,7 +2074,8 @@ enum BackupSchema {
               "$ref": "#/$defs/dateTime"
             },
             "title": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "titleIsUserEdited": {
               "type": "boolean"
@@ -1955,13 +2084,15 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "modelID": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 500
             },
             "isArchived": {
               "type": "boolean"
@@ -1970,7 +2101,8 @@ enum BackupSchema {
               "type": "array",
               "items": {
                 "$ref": "#/$defs/message"
-              }
+              },
+              "maxItems": 5000
             }
           }
         },
@@ -2004,14 +2136,16 @@ enum BackupSchema {
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 300
             },
             "weightKg": {
               "type": [
                 "number",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 700
             },
             "level": {
               "anyOf": [
@@ -2027,19 +2161,22 @@ enum BackupSchema {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 10000
             },
             "restrictions": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 10000
             },
             "equipment": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 10000
             },
             "daysPerWeek": {
               "type": [
@@ -2054,13 +2191,15 @@ enum BackupSchema {
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 1440
             },
             "foodPreferences": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 10000
             },
             "sharing": {
               "type": "object",
@@ -2099,7 +2238,7 @@ enum BackupSchema {
         },
         "coachProvider": {
           "type": "object",
-          "description": "Configuração não secreta do Coach (a chave de API fica só no Keychain e nunca é exportada).",
+          "description": "Configuração não secreta do Coach (a chave de API fica só no Keychain e nunca é exportada). Na importação, provider e customBaseURL são ignorados (informativos); entram só models e customContextTokens.",
           "required": [
             "provider",
             "models"
@@ -2112,21 +2251,24 @@ enum BackupSchema {
               "type": "object",
               "description": "Modelo escolhido por provedor (chave = aiProvider).",
               "additionalProperties": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 500
               }
             },
             "customBaseURL": {
               "type": [
                 "string",
                 "null"
-              ]
+              ],
+              "maxLength": 2048
             },
             "customContextTokens": {
               "type": [
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 10000000
             }
           }
         },
@@ -2165,14 +2307,16 @@ enum BackupSchema {
           ],
           "properties": {
             "fileName": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "byteCount": {
               "type": [
                 "integer",
                 "null"
               ],
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 4294967295
             },
             "included": {
               "type": "boolean",
@@ -2192,23 +2336,29 @@ enum BackupSchema {
           ],
           "properties": {
             "name": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "version": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "build": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "platform": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             },
             "timeZone": {
               "type": "string",
-              "description": "Fuso do aparelho na exportação (IANA)."
+              "description": "Fuso do aparelho na exportação (IANA).",
+              "maxLength": 500
             },
             "locale": {
-              "type": "string"
+              "type": "string",
+              "maxLength": 500
             }
           }
         },

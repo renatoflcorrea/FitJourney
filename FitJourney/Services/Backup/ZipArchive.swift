@@ -1,3 +1,4 @@
+import Compression
 import Foundation
 
 /// Zip mínimo (PKWARE APPNOTE 6.3) para o pacote `.fitjourney`, sem dependências de terceiros.
@@ -57,6 +58,15 @@ final class ZipWriter {
         try write(payload)
         records.append(CentralRecord(name: Data(name.utf8), method: method, crc: crc,
                                      compressedSize: UInt32(payload.count), size: UInt32(data.count), offset: headerOffset))
+    }
+
+    /// Entrada com bytes e cabeçalho informados como estão (testes de arquivos malformados).
+    func addRaw(name: String, payload: Data, method: UInt16, crc: UInt32, size: UInt32) throws {
+        let headerOffset = try beginEntry(name: name, method: method, crc: crc,
+                                          compressedSize: UInt32(payload.count), size: size)
+        try write(payload)
+        records.append(CentralRecord(name: Data(name.utf8), method: method, crc: crc,
+                                     compressedSize: UInt32(payload.count), size: size, offset: headerOffset))
     }
 
     /// Entrada *stored* copiada de um arquivo em blocos (não carrega o arquivo inteiro na memória).
@@ -205,19 +215,17 @@ final class ZipReader {
 
     func entry(named name: String) -> Entry? { entries.first { $0.name == name } }
 
-    /// Conteúdo inteiro em memória (só para entradas pequenas, como `data.json`). Confere o CRC.
-    func data(for entry: Entry, maxSize: Int = 512 * 1024 * 1024) throws -> Data {
-        guard Int(entry.size) <= maxSize else { throw ZipError.tooLarge }
+    /// Conteúdo inteiro em memória (só para entradas pequenas, como `data.json`). Confere tamanho e CRC.
+    /// DEFLATE é inflado em blocos e abortado assim que passar de `entry.size` (bomba de descompressão).
+    func data(for entry: Entry, maxSize: Int) throws -> Data {
+        guard Int(entry.size) <= maxSize, Int(entry.compressedSize) <= maxSize else { throw ZipError.tooLarge }
         let raw = try readRaw(entry)
         let data: Data
         switch entry.method {
         case 0:
             data = raw
         case 8:
-            guard let inflated = try? (raw as NSData).decompressed(using: .zlib) as Data else {
-                throw ZipError.corrupted(entry.name)
-            }
-            data = inflated
+            data = try Self.inflate(raw, limit: Int(entry.size), name: entry.name)
         default:
             throw ZipError.unsupportedMethod(entry.method)
         }
@@ -225,18 +233,54 @@ final class ZipReader {
         return data
     }
 
-    /// Extrai para `destination` (blocos, sem carregar tudo, quando *stored*). Confere o CRC.
-    func extract(_ entry: Entry, to destination: URL) throws {
-        guard entry.method == 0 else {
-            try data(for: entry).write(to: destination, options: .atomic)
-            return
+    /// DEFLATE cru em blocos com `compression_stream`; passou de `limit` bytes → `corrupted`.
+    static func inflate(_ input: Data, limit: Int, name: String) throws -> Data {
+        var stream = compression_stream(dst_ptr: UnsafeMutablePointer<UInt8>(bitPattern: 1)!, dst_size: 0,
+                                        src_ptr: UnsafePointer<UInt8>(bitPattern: 1)!, src_size: 0, state: nil)
+        guard compression_stream_init(&stream, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB) == COMPRESSION_STATUS_OK else {
+            throw ZipError.corrupted(name)
         }
+        defer { compression_stream_destroy(&stream) }
+        let chunk = 64 * 1024
+        var output = Data()
+        let buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: chunk)
+        defer { buffer.deallocate() }
+        return try input.withUnsafeBytes { (source: UnsafeRawBufferPointer) -> Data in
+            guard let base = source.bindMemory(to: UInt8.self).baseAddress else { return Data() }
+            stream.src_ptr = base
+            stream.src_size = source.count
+            while true {
+                stream.dst_ptr = buffer
+                stream.dst_size = chunk
+                let status = compression_stream_process(&stream, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
+                let produced = chunk - stream.dst_size
+                if produced > 0 {
+                    guard output.count + produced <= limit else { throw ZipError.corrupted(name) }
+                    output.append(buffer, count: produced)
+                }
+                switch status {
+                case COMPRESSION_STATUS_END: return output
+                case COMPRESSION_STATUS_OK:
+                    if produced == 0 && stream.src_size == 0 { throw ZipError.corrupted(name) }
+                default: throw ZipError.corrupted(name)
+                }
+            }
+        }
+    }
+
+    /// Extrai uma entrada *stored* para `destination` em blocos (nunca infla: a mídia do pacote é sempre
+    /// *stored*). Grava num temporário vizinho e move no fim (atômico); confere tamanho e CRC.
+    func extract(_ entry: Entry, to destination: URL, maxSize: Int64) throws {
+        guard entry.method == 0 else { throw ZipError.unsupportedMethod(entry.method) }
+        guard entry.size == entry.compressedSize, Int64(entry.size) <= maxSize else { throw ZipError.tooLarge }
         let start = try dataOffset(of: entry)
         guard start + UInt64(entry.compressedSize) <= fileSize else { throw ZipError.corrupted(entry.name) }
-        guard FileManager.default.createFile(atPath: destination.path(percentEncoded: false), contents: nil) else {
+        let temporary = destination.deletingLastPathComponent()
+            .appending(path: ".partial-\(UUID().uuidString)", directoryHint: .notDirectory)
+        guard FileManager.default.createFile(atPath: temporary.path(percentEncoded: false), contents: nil) else {
             throw CocoaError(.fileWriteUnknown)
         }
-        let out = try FileHandle(forWritingTo: destination)
+        let out = try FileHandle(forWritingTo: temporary)
         var crc = CRC32()
         do {
             try handle.seek(toOffset: start)
@@ -252,20 +296,25 @@ final class ZipReader {
             }
             try out.close()
             guard crc.value == entry.crc else { throw ZipError.corrupted(entry.name) }
+            try FileManager.default.moveItem(at: temporary, to: destination)
         } catch {
             try? out.close()
-            try? FileManager.default.removeItem(at: destination)
+            try? FileManager.default.removeItem(at: temporary)
             throw error
         }
     }
 
+    /// Início dos dados da entrada. O nome do cabeçalho local tem de ser igual ao do diretório central.
     private func dataOffset(of entry: Entry) throws -> UInt64 {
         try handle.seek(toOffset: UInt64(entry.localHeaderOffset))
         guard let header = try handle.read(upToCount: 30), header.count == 30,
               header.readLE(UInt32.self, at: 0) == 0x0403_4B50 else { throw ZipError.corrupted(entry.name) }
-        let nameLength = UInt64(header.readLE(UInt16.self, at: 26))
+        let nameLength = Int(header.readLE(UInt16.self, at: 26))
         let extraLength = UInt64(header.readLE(UInt16.self, at: 28))
-        return UInt64(entry.localHeaderOffset) + 30 + nameLength + extraLength
+        guard let localName = try handle.read(upToCount: nameLength), localName == Data(entry.name.utf8) else {
+            throw ZipError.corrupted(entry.name)
+        }
+        return UInt64(entry.localHeaderOffset) + 30 + UInt64(nameLength) + extraLength
     }
 
     private func readRaw(_ entry: Entry) throws -> Data {
@@ -321,6 +370,8 @@ final class ZipReader {
                                  localHeaderOffset: offset))
             cursor = nameStart + nameLength + extraLength + commentLength
         }
+        // Nomes repetidos permitiriam trocar o conteúdo visto pela validação e pela extração.
+        guard Set(entries.map(\.name)).count == entries.count else { throw ZipError.corrupted("nomes repetidos") }
         return entries
     }
 }

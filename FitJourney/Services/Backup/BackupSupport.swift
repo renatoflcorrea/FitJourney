@@ -30,6 +30,10 @@ enum BackupError: LocalizedError, Equatable, Sendable {
     case activeSessionInProgress
     /// Pacote acima do limite do zip sem Zip64 (4 GB / 65.535 arquivos).
     case archiveTooLarge
+    /// `data.json` acima do teto (`BackupDocumentLoader.maxDataBytes`).
+    case dataTooLarge(limitMB: Int)
+    /// Mídia do pacote acima dos limites (por arquivo ou no total).
+    case mediaTooLarge
 
     var errorDescription: String? {
         switch self {
@@ -47,6 +51,10 @@ enum BackupError: LocalizedError, Equatable, Sendable {
             String(localized: "Há um treino em andamento. Finalize ou descarte o treino antes de substituir os dados.")
         case .archiveTooLarge:
             String(localized: "O backup ficou grande demais (limite de 4 GB). Exporte sem mídia.")
+        case .dataTooLarge(let limitMB):
+            String(localized: "Os dados do backup passam do limite de \(limitMB) MB e não podem ser importados.")
+        case .mediaTooLarge:
+            String(localized: "A mídia do backup passa do limite de tamanho e não pode ser importada.")
         }
     }
 }
@@ -129,6 +137,11 @@ struct BackupImportReport: Sendable, Equatable {
     var keptLocal = BackupCounts()
     var mediaFilesCopied = 0
     var warnings: [BackupImportWarning] = []
+
+    /// Texto para a pré-visualização e o relatório: como "mesclar" decide conflitos.
+    static var mergeSemantics: String {
+        String(localized: "Ao mesclar, registros com o mesmo identificador ficam com a versão alterada mais recentemente. Programas, planos alimentares, treinos e conversas são comparados inteiros: se a versão do backup for mais nova, ela substitui a do aparelho por completo (fichas, refeições e séries incluídas).")
+    }
 }
 
 // MARK: - Preferências e perfil (UserDefaults)
@@ -173,8 +186,11 @@ enum BackupPreferences {
         return BackupV1.CoachProfileInfo(store.load(), consentedAt: consentedAt)
     }
 
-    /// Mesclar: só preenche o que não existe no aparelho. Substituir: sobrescreve o que veio no backup.
-    /// O compartilhamento com o provedor de IA e o consentimento **nunca** vêm do backup.
+    /// Mesclar: só preenche o que não existe no aparelho. Substituir: sobrescreve o que veio no backup e
+    /// mantém as preferências locais que o backup não trouxer.
+    /// **Nunca** vêm do backup: o compartilhamento com o provedor de IA, o consentimento, o provedor e a
+    /// URL do Coach (o destino da chave de API não pode ser escolhido por um arquivo importado). Do Coach
+    /// só entram os modelos escolhidos por provedor e a janela de contexto do `custom`.
     static func apply(_ prefs: BackupV1.Preferences, profile: BackupV1.CoachProfileInfo?, mode: BackupImportMode,
                       to defaults: UserDefaults) {
         let overwrite = mode == .replace
@@ -182,15 +198,17 @@ enum BackupPreferences {
            overwrite || defaults.string(forKey: BackupPreferenceKeys.weightUnit) == nil {
             defaults.set(unit, forKey: BackupPreferenceKeys.weightUnit)
         }
-        if let provider = prefs.coachProvider, let id = AIProviderID(rawValue: provider.provider),
+        if let provider = prefs.coachProvider,
            overwrite || defaults.data(forKey: BackupPreferenceKeys.providerSettings) == nil {
-            let models = Dictionary(uniqueKeysWithValues: provider.models.compactMap { key, value in
-                AIProviderID(rawValue: key).map { ($0, value) }
-            })
-            let url = sanitized(provider.customBaseURL.flatMap(URL.init(string:)))
-            ProviderSettingsStore(defaults: defaults).save(
-                ProviderSettings(provider: id, models: models, customBaseURL: url,
-                                 customContextTokens: provider.customContextTokens))
+            let store = ProviderSettingsStore(defaults: defaults)
+            var settings = store.load() // provedor e URL locais ficam como estão
+            for (key, value) in provider.models {
+                guard let id = AIProviderID(rawValue: key) else { continue }
+                let model = String(value.trimmingCharacters(in: .whitespacesAndNewlines).prefix(200))
+                if !model.isEmpty { settings.models[id] = model }
+            }
+            if let tokens = provider.customContextTokens { settings.customContextTokens = tokens }
+            store.save(settings)
         }
         if let profile {
             let store = CoachProfileStore(defaults: defaults)
@@ -231,6 +249,13 @@ enum BackupCatalog {
 // MARK: - Apagar todos os modelos
 
 enum BackupWipe {
+    /// Há treino em andamento no banco (contando o que este contexto ainda não salvou).
+    static func hasSessionInProgress(in context: ModelContext) throws -> Bool {
+        let raw = SessionStatus.inProgress.rawValue
+        return try context.fetch(FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.statusRaw == raw }))
+            .contains { !$0.isDeleted && $0.status == .inProgress }
+    }
+
     /// Marca para exclusão todos os registros (não salva). `keepConversations` preserva o Coach.
     static func deleteAllModels(in context: ModelContext, keepConversations: Bool = false) throws {
         func wipe<T: PersistentModel>(_: T.Type) throws {
@@ -255,5 +280,45 @@ enum BackupWipe {
             try wipe(ChatMessage.self)
             try wipe(ChatConversation.self)
         }
+    }
+}
+
+// MARK: - Temporários
+
+/// Limpeza dos temporários do backup. **O App chama `runAtLaunch()` no lançamento** (não está ligado aqui).
+enum BackupMaintenance {
+    /// Pasta das exportações geradas (a UI compartilha daqui).
+    static var exportsDirectory: URL { URL.temporaryDirectory.appending(path: "FJExports", directoryHint: .isDirectory) }
+    static let importPrefix = "FJImport-"
+
+    /// Apaga exportações e pastas de importação com mais de `maxAge` (padrão 24 h). Devolve quantos itens apagou.
+    @discardableResult
+    static func runAtLaunch(maxAge: TimeInterval = 24 * 3600, now: Date = .now,
+                            temporaryDirectory: URL = URL.temporaryDirectory) -> Int {
+        var removed = MediaMaintenance.cleanTemporary(in: temporaryDirectory.appending(path: "FJExports"),
+                                                      olderThan: maxAge, now: now)
+        removed += removeImportDirectories(in: temporaryDirectory, olderThan: maxAge, now: now)
+        return removed
+    }
+
+    /// Apaga tudo: exportações e importações temporárias ("apagar tudo").
+    @discardableResult
+    static func removeAll(temporaryDirectory: URL = URL.temporaryDirectory) -> Int {
+        var removed = 0
+        if (try? FileManager.default.removeItem(at: temporaryDirectory.appending(path: "FJExports"))) != nil { removed += 1 }
+        removed += removeImportDirectories(in: temporaryDirectory, olderThan: -1, now: .distantFuture)
+        return removed
+    }
+
+    private static func removeImportDirectories(in directory: URL, olderThan maxAge: TimeInterval, now: Date) -> Int {
+        let keys: [URLResourceKey] = [.contentModificationDateKey]
+        guard let urls = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: keys) else { return 0 }
+        var removed = 0
+        for url in urls where url.lastPathComponent.hasPrefix(importPrefix) {
+            let modified = (try? url.resourceValues(forKeys: Set(keys)))?.contentModificationDate ?? .distantPast
+            guard now.timeIntervalSince(modified) > maxAge else { continue }
+            if (try? FileManager.default.removeItem(at: url)) != nil { removed += 1 }
+        }
+        return removed
     }
 }
