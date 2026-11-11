@@ -42,6 +42,9 @@ enum AppPreferenceKeys {
     /// Lembretes de refeição globais (padrão ligado). Consumidor: `MealReminderScheduler`
     /// (`MealReminderScheduler.enabledKey` tem o mesmo valor).
     static let mealReminders = "fj.mealReminders"
+    /// Ao iniciar um treino no iPhone, abrir o app do relógio já gravando (`HKHealthStore.startWatchApp`)
+    /// (padrão ligado; ausente = ligado). Consumidor: `WatchAutoStarter`.
+    static let autoStartWatchWorkout = "fj.autoStartWatchWorkout"
 
     static let defaultRestOptions = [30, 45, 60, 75, 90, 120, 150, 180, 240]
 }

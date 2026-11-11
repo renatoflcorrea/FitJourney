@@ -527,7 +527,9 @@ struct SessionSetEditSheet: View {
                                 .font(FJFont.label)
                                 .foregroundStyle(FJColor.textSecondary)
                             if exercise.measurementKind != .timeOrDistance {
-                                NumberStepperField(exercise.measurementKind == .repsOnly ? "Lastro" : "Carga", value: $load,
+                                NumberStepperField(exercise.measurementKind == .repsOnly ? "Lastro"
+                                                   : SessionPresentation.displayLoad(set) == nil ? "Definir carga" : "Carga",
+                                                   value: $load,
                                                    unit: unitText, step: LoadDisplay.step(forLoadIn: WeightUnit(rawValue: (SessionPresentation.displayLoad(set)?.unit ?? .kg).rawValue) ?? .kg),
                                                    range: exercise.measurementKind == .repsOnly ? -300...300 : 0...999,
                                                    fractionDigits: 2, showsSign: exercise.measurementKind == .repsOnly)
@@ -607,7 +609,9 @@ struct SessionSetEditSheet: View {
     private func save() {
         let unit = SessionPresentation.displayLoad(set)?.unit ?? .kg
         let isBodyweight = exercise.measurementKind == .repsOnly
-        let newLoad: WatchLoad? = exercise.measurementKind == .timeOrDistance ? nil
+        // Sem carga definida e o campo ficou em 0: continua sem carga (P2.8 — nunca grava "0 kg" inventado).
+        let keepsUnset = SessionPresentation.displayLoad(set) == nil && !isBodyweight && load == 0
+        let newLoad: WatchLoad? = exercise.measurementKind == .timeOrDistance || keepsUnset ? nil
             : WatchLoad(value: load, unit: unit, isBodyweight: isBodyweight)
         let duration: Double? = switch exercise.measurementKind {
         case .isometric, .timeOrDistance: seconds > 0 ? seconds : nil

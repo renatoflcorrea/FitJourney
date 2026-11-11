@@ -200,10 +200,24 @@ struct SessionFinishView: View {
                     FJSectionHeader("Atualizar carga atual",
                                     subtitle: "Usa a carga das séries concluídas como ponto de partida do próximo treino")
                     ForEach(summary.loadProposals) { proposal in
-                        Toggle(isOn: binding(for: proposal.id)) {
-                            Text(proposalText(proposal)).font(FJFont.body)
+                        if proposal.isFirstDefinition {
+                            // Ficha sem carga: a primeira carga definida é guardada sempre (P2.8).
+                            Label {
+                                VStack(alignment: .leading, spacing: FJSpacing.xxs) {
+                                    Text(proposalText(proposal)).font(FJFont.body)
+                                    Text("Primeira carga definida — salva automaticamente")
+                                        .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                                }
+                            } icon: {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(FJColor.training)
+                            }
+                            .frame(minHeight: FJSize.minTap, alignment: .leading)
+                        } else {
+                            Toggle(isOn: binding(for: proposal.id)) {
+                                Text(proposalText(proposal)).font(FJFont.body)
+                            }
+                            .frame(minHeight: FJSize.minTap)
                         }
-                        .frame(minHeight: FJSize.minTap)
                     }
                 }
             }
@@ -212,7 +226,7 @@ struct SessionFinishView: View {
 
     private func proposalText(_ proposal: LoadUpdateProposal) -> String {
         let to = SessionPresentation.loadText(WatchLoad(proposal.to)) ?? ""
-        guard let from = proposal.from, let fromText = SessionPresentation.loadText(WatchLoad(from)) else {
+        guard let from = Load.defined(proposal.from), let fromText = SessionPresentation.loadText(WatchLoad(from)) else {
             return "\(proposal.exerciseName): \(to)"
         }
         return "\(proposal.exerciseName): \(fromText) → \(to)"

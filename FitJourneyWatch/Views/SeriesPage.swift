@@ -39,10 +39,18 @@ struct SeriesPage: View {
 
 // MARK: - Carga pela Coroa
 
-/// Carga efetiva exibida de uma série (`nil` = o exercício não usa carga).
+/// Carga efetiva exibida de uma série (`nil` = o exercício não usa carga). Sem carga definida, a base da Coroa
+/// é 0 — mas a tela mostra "Definir carga" (`isLoadUnset`), nunca "0 kg" como se fosse prescrito (P2.8).
 func effectiveLoad(of set: SessionSnapshot.ExerciseSet, in exercise: SessionSnapshot.Exercise) -> WatchLoad? {
     if let load = set.load ?? set.plannedLoad { return load }
     return exercise.measurementKind == .repsAndLoad ? WatchLoad(value: 0) : nil
+}
+
+/// Série sem carga registrada nem planejada (peso 0 planejado conta como sem carga; peso corporal é carga).
+func isLoadUnset(_ set: SessionSnapshot.ExerciseSet) -> Bool {
+    guard set.load == nil else { return false }
+    guard let planned = set.plannedLoad else { return true }
+    return !planned.isBodyweight && planned.value == 0
 }
 
 /// A Digital Crown ajusta a carga em passos de 0,5 kg com háptico de detente (DESIGN §9.1, SPEC D3).
@@ -159,11 +167,16 @@ struct ActiveSetView: View {
         if let load {
             Button { showingLoadSheet = true } label: {
                 HStack(spacing: 6) {
-                    Text(WatchFormat.load(load).replacingOccurrences(of: " kg", with: "").replacingOccurrences(of: " lb", with: ""))
-                        .font(WF.number(WatchLayout.loadFontSize))
-                        .minimumScaleFactor(0.6).lineLimit(1)
-                        .contentTransition(reduceMotion ? .identity : .numericText())
-                    if !load.isBodyweight || load.value != 0 {
+                    if isLoadUnset(set) {
+                        Text("Definir carga").font(.headline).foregroundStyle(WF.training)
+                            .minimumScaleFactor(0.7).lineLimit(1)
+                    } else {
+                        Text(WatchFormat.load(load).replacingOccurrences(of: " kg", with: "").replacingOccurrences(of: " lb", with: ""))
+                            .font(WF.number(WatchLayout.loadFontSize))
+                            .minimumScaleFactor(0.6).lineLimit(1)
+                            .contentTransition(reduceMotion ? .identity : .numericText())
+                    }
+                    if !isLoadUnset(set), !load.isBodyweight || load.value != 0 {
                         Text(load.unit == .kg ? "kg" : "lb").font(.footnote.weight(.semibold)).foregroundStyle(WF.textSecondary)
                     }
                     Spacer(minLength: 0)
@@ -175,7 +188,7 @@ struct ActiveSetView: View {
             .buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Carga")
-            .accessibilityValue(WatchFormat.spokenLoad(load))
+            .accessibilityValue(isLoadUnset(set) ? String(localized: "Definir carga") : WatchFormat.spokenLoad(load))
             .accessibilityHint("Toque para ajustar. Deslize para cima ou para baixo para mudar meio quilo.")
             .accessibilityAdjustableAction { direction in
                 switch direction {
@@ -221,11 +234,13 @@ struct LoadSheet: View {
     let load: WatchLoad
 
     var body: some View {
-        let current = model.display?.exercises.flatMap(\.sets).first { $0.id == setID }?.load ?? load
+        let set = model.display?.exercises.flatMap(\.sets).first { $0.id == setID }
+        let current = set?.load ?? load
+        let unset = set.map(isLoadUnset) ?? false
         VStack(spacing: 6) {
-            Text("Carga").font(.footnote).foregroundStyle(WF.textSecondary)
-            Text(WatchFormat.load(current)).font(WF.number(34)).minimumScaleFactor(0.6).lineLimit(1)
-                .accessibilityValue(WatchFormat.spokenLoad(current))
+            Text(unset ? LocalizedStringKey("Definir carga") : LocalizedStringKey("Carga")).font(.footnote).foregroundStyle(WF.textSecondary)
+            Text(verbatim: unset ? "—" : WatchFormat.load(current)).font(WF.number(34)).minimumScaleFactor(0.6).lineLimit(1)
+                .accessibilityValue(unset ? String(localized: "Definir carga") : WatchFormat.spokenLoad(current))
             HStack(spacing: 8) {
                 Button { model.adjustLoad(setID: setID, by: -WatchLoadStepping.step) } label: {
                     Image(systemName: "minus").font(.title3).frame(maxWidth: .infinity, minHeight: 48)
@@ -273,7 +288,10 @@ struct RestView: View {
                 .minimumScaleFactor(0.6).lineLimit(1)
                 .accessibilityLabel("Descanso, \(Int(remaining.rounded(.up))) segundos restantes")
             progressBar
-            if let next, let load = effectiveLoad(of: next.set, in: next.exercise) {
+            if let next, isLoadUnset(next.set), effectiveLoad(of: next.set, in: next.exercise) != nil {
+                Text("Próxima: definir carga").font(.footnote).foregroundStyle(WF.textSecondary)
+                    .accessibilityLabel("Próxima série sem carga definida. Gire a Coroa para definir.")
+            } else if let next, let load = effectiveLoad(of: next.set, in: next.exercise) {
                 Text("Próxima: \(WatchFormat.load(load))").font(.footnote).foregroundStyle(WF.textSecondary)
                     .accessibilityLabel("Próxima série, \(WatchFormat.spokenLoad(load)). Gire a Coroa para ajustar.")
             }

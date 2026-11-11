@@ -14,6 +14,8 @@ struct PrescriptionEditorView: View {
     @State private var confirmingUniform = false
     @State private var pendingRemoval: PendingRemoval?
     @State private var errorMessage: String?
+    /// Última carga usada no exercício (histórico), para o valor inicial da carga (P2.8).
+    @State private var lastKnownLoad: Load?
 
     private enum PendingRemoval: Equatable {
         case set(Int)
@@ -75,6 +77,9 @@ struct PrescriptionEditorView: View {
         }
         .navigationTitle(item.displayName)
         .navigationBarTitleDisplayMode(.inline)
+        .task(id: item.exercise?.id) {
+            lastKnownLoad = try? SessionStore(context: context).lastUsedLoad(exerciseID: item.exercise?.id)
+        }
         .onChange(of: draft) { _, new in
             do { try new.apply(to: item, context: context) } catch { errorMessage = error.localizedDescription }
         }
@@ -165,6 +170,7 @@ struct PrescriptionEditorView: View {
                         for i in draft.sets.indices { draft.sets[i].restSeconds = nil }
                     }
                 ),
+                lastKnownLoad: lastKnownLoad,
                 useCurrent: {
                     draft.useCurrentAsInitial()
                     if !draft.isUniform { mode = .perSet }
@@ -287,6 +293,7 @@ struct PrescriptionEditorView: View {
                         get: { binding.wrappedValue.restSeconds },
                         set: { binding.wrappedValue.restSeconds = $0 }
                     ),
+                    lastKnownLoad: lastKnownLoad,
                     useCurrent: { binding.wrappedValue.useCurrentAsInitial() }
                 )
             }

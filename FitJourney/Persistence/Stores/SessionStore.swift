@@ -79,15 +79,55 @@ struct SessionStore {
         return try context.fetch(descriptor).first
     }
 
+    /// Última carga realmente usada num exercício (P2.8): a da série concluída mais recente com carga definida
+    /// (peso 0 não conta; peso corporal sim), de qualquer ficha ou treino livre — inclusive da sessão em
+    /// andamento. Separado por tipo: série válida só herda de série válida e aquecimento/preparatória só de
+    /// aquecimento/preparatória (a carga de aquecimento nunca vira a de trabalho). `nil` = nunca registrada.
+    func lastUsedLoad(exerciseID: UUID?, working: Bool = true) throws -> Load? {
+        guard let eid = exerciseID else { return nil }
+        let id: UUID? = eid
+        var descriptor = FetchDescriptor<SetLog>(
+            predicate: #Predicate { log in
+                log.isCompleted && log.loadData != nil && log.sessionExercise?.exerciseID == id
+            },
+            sortBy: [SortDescriptor(\.completedAt, order: .reverse)]
+        )
+        descriptor.fetchLimit = 60
+        return try context.fetch(descriptor).lazy
+            .filter { $0.kind.isWorking == working }
+            .compactMap { Load.defined($0.load) }
+            .first
+    }
+
+    /// Carga planejada de uma série (P2.8): a da ficha se definida (peso 0 = vazia), senão `fallback`
+    /// (última carga usada no exercício). Nunca inventa zero.
+    static func plannedLoad(prescribed: Load?, fallback: Load?) -> Load? {
+        Load.defined(prescribed) ?? fallback
+    }
+
     // MARK: Início
 
     /// Inicia a sessão copiando a prescrição da ficha (snapshot). `routine == nil` = treino livre.
-    /// Cada `SetLog` nasce com `plannedLoad` = carga atual (ou inicial) da série prescrita.
+    /// Cada `SetLog` nasce com `plannedLoad` = carga atual (ou inicial) da série prescrita; sem carga na ficha
+    /// (nil/peso 0), a última carga usada no exercício (`lastUsedLoad`); senão `nil` ("Definir carga").
     /// IDs de `SessionExercise`/`SetLog` determinísticos (`WatchLinkIDs`, protocolo v2): o relógio calcula os mesmos.
     /// - Parameter id: ID da sessão (o comando `start` do relógio já traz o seu); padrão: novo.
     @discardableResult
     func start(routine: Routine?, at date: Date = .now, id: UUID = UUID()) throws -> WorkoutSession {
         guard try inProgressSession() == nil else { throw SessionStoreError.sessionAlreadyInProgress }
+        // Consultas antes de inserir qualquer coisa (o histórico não inclui a sessão nova).
+        struct HistoryKey: Hashable { var exerciseID: UUID; var working: Bool }
+        var history: [HistoryKey: Load] = [:]
+        var looked: Set<HistoryKey> = []
+        for item in routine?.sortedExercises ?? [] {
+            // Cardio não tem carga: nem consulta.
+            guard let exercise = item.exercise, exercise.measurementKind != .timeOrDistance else { continue }
+            for set in item.sortedSets where Load.defined(set.effectiveLoad) == nil {
+                let key = HistoryKey(exerciseID: exercise.id, working: set.kind.isWorking)
+                guard looked.insert(key).inserted else { continue }
+                history[key] = try lastUsedLoad(exerciseID: exercise.id, working: key.working)
+            }
+        }
         let session = WorkoutSession(routineName: routine?.name ?? String(localized: "Treino livre"), startedAt: date)
         session.id = id
         session.lastActivityAt = date
@@ -112,8 +152,12 @@ struct SessionStore {
             snapshot.session = session
 
             for prescription in item.sortedSets {
+                let planned = Self.plannedLoad(prescribed: prescription.effectiveLoad,
+                                               fallback: exercise.flatMap {
+                                                   history[HistoryKey(exerciseID: $0.id, working: prescription.kind.isWorking)]
+                                               })
                 let log = SetLog(sortIndex: prescription.sortIndex, kind: prescription.kind,
-                                 repTarget: prescription.repTarget, plannedLoad: prescription.effectiveLoad,
+                                 repTarget: prescription.repTarget, plannedLoad: planned,
                                  prescriptionID: prescription.id)
                 log.id = WatchLinkIDs.setLogID(sessionID: id, prescriptionID: prescription.id)
                 log.targetHoldSeconds = prescription.holdSeconds
@@ -133,8 +177,10 @@ struct SessionStore {
     /// Reps são opcionais (SPEC D2): sem `reps`, a série fica "feita dentro do alvo" (`reps == nil`).
     func completeSet(_ log: SetLog, reps: Int? = nil, load: Load? = nil, durationSeconds: Double? = nil,
                      distanceMeters: Double? = nil, at date: Date = .now, startRest: Bool = true) throws {
+        let shown = displayedLoad(log)
         log.reps = reps ?? log.reps
-        log.load = load ?? log.load ?? log.plannedLoad
+        log.load = load ?? log.load ?? Load.defined(log.plannedLoad)
+        propagateLoad(from: log, previous: shown, at: date)
         if let durationSeconds { log.durationSeconds = durationSeconds }
         else if log.durationSeconds == nil, let hold = log.targetHoldSeconds { log.durationSeconds = Double(hold) }
         if let distanceMeters { log.distanceMeters = distanceMeters }
@@ -169,33 +215,44 @@ struct SessionStore {
     /// Edita valores realizados (antes ou depois de concluir). Em sessão encerrada marca "editado".
     func updateSet(_ log: SetLog, reps: Int?, load: Load?, durationSeconds: Double? = nil,
                    distanceMeters: Double? = nil, at date: Date = .now) throws {
+        let shown = displayedLoad(log)
         log.reps = reps
         log.load = load
+        propagateLoad(from: log, previous: shown, at: date)
         log.durationSeconds = durationSeconds
         log.distanceMeters = distanceMeters
         markEditedIfFinished(log, at: date)
         try save()
     }
 
-    /// Soma `delta` (na unidade da carga) à carga exibida da série: a registrada, senão a planejada,
-    /// senão zero (peso corporal em exercícios sem carga). Carga absoluta nunca fica negativa.
+    /// Soma `delta` (na unidade da carga) à carga exibida da série: a registrada, senão a planejada, senão a
+    /// última carga usada no exercício (P2.8), e só então zero (peso corporal em exercícios sem carga).
+    /// Carga absoluta nunca fica negativa. As séries seguintes pendentes acompanham (`propagateLoad`).
     func adjustLoad(_ log: SetLog, by delta: Double, at date: Date = .now) throws {
         let kind = log.sessionExercise?.measurementKind ?? .repsAndLoad
-        let base = log.load ?? log.plannedLoad ?? (kind == .repsOnly ? .bodyweight(delta: 0, unit: .kg) : .kg(0))
+        let shown = displayedLoad(log)
+        let base = try shown ?? lastUsedLoad(exerciseID: log.sessionExercise?.exerciseID, working: log.kind.isWorking)
+            ?? (kind == .repsOnly ? .bodyweight(delta: 0, unit: .kg) : .kg(0))
         var adjusted = base.adding(delta)
         if case .weight(let value, let unit) = adjusted, value < 0 { adjusted = .weight(value: 0, unit: unit) }
         log.load = adjusted
+        propagateLoad(from: log, previous: shown, at: date)
         markEditedIfFinished(log, at: date)
         try save()
     }
 
-    /// Série extra (copia alvo/carga da última). Sem `prescriptionID`: não atualiza a ficha.
+    /// Série extra (copia alvo/carga da última; sem carga, a última usada no exercício). Sem `prescriptionID`:
+    /// não atualiza a ficha.
     /// - Parameter id: o motor passa `WatchLinkIDs.extraSetID` (determinístico); padrão: novo.
     @discardableResult
     func addSet(to exercise: SessionExercise, kind: SetKind = .working, at date: Date = .now, id: UUID = UUID()) throws -> SetLog {
         let last = exercise.sortedSets.last
+        // Carga da última série só se for do mesmo tipo (aquecimento não alimenta válida, e vice-versa).
+        let sameKind = last.map { $0.kind.isWorking == kind.isWorking } ?? false
+        let carried = sameKind ? (Load.defined(last?.load) ?? Load.defined(last?.plannedLoad)) : nil
+        let planned = try carried ?? lastUsedLoad(exerciseID: exercise.exerciseID, working: kind.isWorking)
         let log = SetLog(sortIndex: (last?.sortIndex ?? -1) + 1, kind: kind,
-                         repTarget: last?.repTarget, plannedLoad: last?.load ?? last?.plannedLoad)
+                         repTarget: last?.repTarget, plannedLoad: planned)
         log.id = id
         log.restSeconds = last?.restSeconds ?? exercise.restSeconds
         log.targetHoldSeconds = last?.targetHoldSeconds
@@ -266,6 +323,7 @@ struct SessionStore {
     func addExercise(_ exercise: Exercise, to session: WorkoutSession, setCount: Int = 3,
                      repTarget: RepTarget = .fixed(reps: 10), after: SessionExercise? = nil,
                      commandID: UUID? = nil) throws -> SessionExercise {
+        let planned = exercise.measurementKind == .timeOrDistance ? nil : try lastUsedLoad(exerciseID: exercise.id)
         let snapshot = SessionExercise(name: exercise.name, measurementKind: exercise.measurementKind,
                                        sortIndex: (session.exercises ?? []).map(\.sortIndex).max().map { $0 + 1 } ?? 0)
         if let commandID { snapshot.id = WatchLinkIDs.addedExerciseID(sessionID: session.id, commandID: commandID) }
@@ -275,7 +333,7 @@ struct SessionStore {
         context.insert(snapshot)
         snapshot.session = session
         for index in 0..<max(0, setCount) {
-            let log = SetLog(sortIndex: index, kind: .working, repTarget: repTarget)
+            let log = SetLog(sortIndex: index, kind: .working, repTarget: repTarget, plannedLoad: planned)
             if let commandID { log.id = WatchLinkIDs.addedSetID(sessionID: session.id, commandID: commandID, index: index) }
             log.restSeconds = exercise.defaultRestSeconds
             context.insert(log)
@@ -305,8 +363,12 @@ struct SessionStore {
         for (index, item) in ordered.enumerated() where item.sortIndex != index { item.sortIndex = index }
     }
 
-    /// Troca o exercício na hora; a origem fica registrada e a série perde o vínculo com a ficha.
+    /// Troca o exercício na hora; a origem fica registrada e a série perde o vínculo com a ficha. As séries
+    /// pendentes passam a planejar a última carga usada no novo exercício (senão ficam sem carga).
     func substitute(_ sessionExercise: SessionExercise, with exercise: Exercise, at date: Date = .now) throws {
+        let hasLoad = exercise.measurementKind != .timeOrDistance
+        let plannedWorking = hasLoad ? try lastUsedLoad(exerciseID: exercise.id, working: true) : nil
+        let plannedWarmup = hasLoad ? try lastUsedLoad(exerciseID: exercise.id, working: false) : nil
         if sessionExercise.substitutedFromExerciseID == nil && sessionExercise.substitutedFromName == nil {
             sessionExercise.substitutedFromExerciseID = sessionExercise.exerciseID
             sessionExercise.substitutedFromName = sessionExercise.name
@@ -317,7 +379,10 @@ struct SessionStore {
         sessionExercise.laterality = exercise.laterality
         for log in sessionExercise.sets ?? [] {
             log.prescriptionID = nil
-            if !log.isCompleted { log.plannedLoad = nil }
+            if !log.isCompleted {
+                log.plannedLoad = log.kind.isWorking ? plannedWorking : plannedWarmup
+                log.load = nil
+            }
         }
         sessionExercise.updatedAt = date
         try save()
@@ -452,6 +517,34 @@ struct SessionStore {
 
 
     // MARK: Internos
+
+    /// Carga mostrada na série: a registrada, senão a planejada definida.
+    private func displayedLoad(_ log: SetLog) -> Load? {
+        log.load ?? Load.defined(log.plannedLoad)
+    }
+
+    /// Propaga a carga nova de uma série às **seguintes pendentes do mesmo exercício** que ainda mostram a carga
+    /// planejada que esta série mostrava (`previous`) e não foram editadas (sem `load` registrada), do mesmo
+    /// grupo (válida × aquecimento/preparatória). Pirâmides (cargas planejadas diferentes) ficam intactas.
+    /// Só com a sessão em andamento (corrigir uma sessão passada não mexe nas outras séries). Idempotente: mesma carga → nada muda.
+    private func propagateLoad(from log: SetLog, previous: Load?, at date: Date) {
+        guard let new = Load.defined(log.load), let exercise = log.sessionExercise,
+              exercise.session?.status == .inProgress else { return }
+        if let previous, previous.isEquivalent(to: new) { return }
+        let working = log.kind.isWorking
+        for other in exercise.sets ?? [] where other.sortIndex > log.sortIndex && !other.isCompleted
+            && other.load == nil && other.kind.isWorking == working {
+            let planned = Load.defined(other.plannedLoad)
+            let matches: Bool = switch (planned, previous) {
+            case (nil, nil): true
+            case let (planned?, previous?): planned.isEquivalent(to: previous)
+            default: false
+            }
+            guard matches else { continue }
+            other.plannedLoad = new
+            other.updatedAt = date
+        }
+    }
 
     private func mutateClock(_ session: WorkoutSession, _ change: (inout SessionClock) -> Void) throws {
         var clock = session.clock

@@ -239,7 +239,7 @@ enum ProgramDigestBuilder {
                                                                           holdSeconds: set.holdSeconds, cardio: set.cardio),
                                     repTarget: set.repTarget.map(WatchRepTarget.init),
                                     effort: set.effort.map(WatchEffort.init),
-                                    load: set.effectiveLoad.map(WatchLoad.init),
+                                    load: Load.defined(set.effectiveLoad).map(WatchLoad.init),
                                     holdSeconds: set.holdSeconds,
                                     restSeconds: set.restSeconds ?? rest,
                                     targetDurationSeconds: set.cardio?.durationSeconds,

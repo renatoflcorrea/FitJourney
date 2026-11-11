@@ -27,6 +27,8 @@ enum SessionReducer {
             resumeIfNeeded(&s, at: at)
             guard let location = locate(setID, in: s), !s.exercises[location.e].sets[location.s].isCompleted else { return s }
             let isIsometric = s.exercises[location.e].measurementKind == .isometric
+            let shownBefore = shownLoad(s.exercises[location.e].sets[location.s])
+            defer { if load != nil { propagateLoad(&s, from: location, previous: shownBefore) } }
             mutate(&s, location) {
                 $0.isCompleted = true
                 $0.completedAt = at
@@ -60,6 +62,8 @@ enum SessionReducer {
             reopen(&s, exerciseAt: location.e)
         case .updateSet(let setID, let reps, let load, let duration, let distance):
             guard let location = locate(setID, in: s) else { return s }
+            let shownBefore = shownLoad(s.exercises[location.e].sets[location.s])
+            defer { propagateLoad(&s, from: location, previous: shownBefore) }
             mutate(&s, location) {
                 $0.reps = reps
                 $0.load = load
@@ -68,8 +72,10 @@ enum SessionReducer {
             }
         case .adjustLoad(let setID, let delta):
             guard let location = locate(setID, in: s) else { return s }
+            let shownBefore = shownLoad(s.exercises[location.e].sets[location.s])
+            defer { propagateLoad(&s, from: location, previous: shownBefore) }
+            let base = loadBase(at: location, in: s)
             mutate(&s, location) { set in
-                let base = set.load ?? set.plannedLoad ?? WatchLoad(value: 0)
                 var adjusted = base
                 adjusted.value = WatchLoadStepping.clamp(base.value + delta, for: base)
                 set.load = adjusted
@@ -166,7 +172,12 @@ enum SessionReducer {
         case .addSet(let exerciseID, let kind):
             guard let index = s.exercises.firstIndex(where: { $0.id == exerciseID }), var copy = s.exercises[index].sets.last else { return s }
             copy.id = WatchLinkIDs.extraSetID(sessionID: s.sessionID, commandID: command.commandID)
-            copy.plannedLoad = copy.load ?? copy.plannedLoad
+            let lastWorking = isWorking(copy.kind)
+            if let kind { copy.kind = kind }
+            // Mesma regra do iPhone: carga da última só se for do mesmo tipo; senão a última conhecida no snapshot.
+            let carried = isWorking(copy.kind) == lastWorking ? (copy.load ?? definedLoad(copy.plannedLoad)) : nil
+            copy.plannedLoad = carried ?? lastKnownLoad(in: s, exerciseAt: index, working: isWorking(copy.kind))
+            copy.load = nil
             copy.level = nil
             copy.speedKmh = nil
             copy.inclinePercent = nil
@@ -175,7 +186,6 @@ enum SessionReducer {
             copy.reps = nil
             copy.durationSeconds = nil
             copy.distanceMeters = nil
-            if let kind { copy.kind = kind }
             s.exercises[index].sets.append(copy)
             refreshStatus(&s, exerciseAt: index)
             if s.currentExerciseID == exerciseID || s.currentExerciseID == nil { selectCurrent(&s) }
@@ -252,6 +262,64 @@ enum SessionReducer {
             if let index = exercise.sets.firstIndex(where: { $0.id == setID }) { return Location(e: e, s: index) }
         }
         return nil
+    }
+
+    /// Base de um ajuste de carga (Coroa/−/+), igual à do iPhone (`SessionStore.adjustLoad`): a registrada, senão a
+    /// planejada definida (peso 0 = vazia), senão a última carga usada no mesmo exercício nesta sessão (mesmo tipo
+    /// de série). Sem nada disso, 0: o relógio não conhece o histórico de sessões antigas — o iPhone pode partir
+    /// da última carga do histórico, e o snapshot confirmado corrige (raro: o início já planeja pelo histórico).
+    static func loadBase(setID: UUID, in s: SessionSnapshot) -> WatchLoad? {
+        locate(setID, in: s).map { loadBase(at: $0, in: s) }
+    }
+
+    private static func loadBase(at location: Location, in s: SessionSnapshot) -> WatchLoad {
+        let set = s.exercises[location.e].sets[location.s]
+        return shownLoad(set) ?? lastKnownLoad(in: s, exerciseAt: location.e, working: isWorking(set.kind)) ?? WatchLoad(value: 0)
+    }
+
+    /// Última carga definida registrada numa série concluída do mesmo exercício (mesmo `exerciseID`) nesta sessão.
+    private static func lastKnownLoad(in s: SessionSnapshot, exerciseAt index: Int, working: Bool) -> WatchLoad? {
+        let target = s.exercises[index]
+        let candidates = s.exercises.filter { $0.id == target.id || (target.exerciseID != nil && $0.exerciseID == target.exerciseID) }
+            .flatMap(\.sets)
+            .filter { $0.isCompleted && isWorking($0.kind) == working && definedLoad($0.load) != nil }
+        return candidates.max { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }?.load
+    }
+
+    /// Carga mostrada: a registrada, senão a planejada definida (peso 0 = sem carga).
+    private static func shownLoad(_ set: SessionSnapshot.ExerciseSet) -> WatchLoad? {
+        set.load ?? definedLoad(set.plannedLoad)
+    }
+
+    private static func definedLoad(_ load: WatchLoad?) -> WatchLoad? {
+        guard let load, load.isBodyweight || load.value != 0 else { return nil }
+        return load
+    }
+
+    private static func equivalent(_ a: WatchLoad, _ b: WatchLoad) -> Bool {
+        func kg(_ load: WatchLoad) -> Double { load.unit == .lb ? load.value * 0.453_592_37 : load.value }
+        return a.isBodyweight == b.isBodyweight && abs(kg(a) - kg(b)) < 0.01
+    }
+
+    private static func isWorking(_ kind: WatchSetKind) -> Bool { kind != .warmup && kind != .feeder }
+
+    /// Mesma regra do iPhone (`SessionStore.propagateLoad`, P2.8): a carga nova da série vai para as seguintes
+    /// pendentes do mesmo exercício que mostravam a mesma carga planejada e não foram editadas.
+    private static func propagateLoad(_ s: inout SessionSnapshot, from location: Location, previous: WatchLoad?) {
+        let source = s.exercises[location.e].sets[location.s]
+        guard let new = definedLoad(source.load) else { return }
+        if let previous, equivalent(previous, new) { return }
+        let working = isWorking(source.kind)
+        for index in s.exercises[location.e].sets.indices where index > location.s {
+            let other = s.exercises[location.e].sets[index]
+            guard !other.isCompleted, other.load == nil, isWorking(other.kind) == working else { continue }
+            let matches: Bool = switch (definedLoad(other.plannedLoad), previous) {
+            case (nil, nil): true
+            case let (planned?, previous?): equivalent(planned, previous)
+            default: false
+            }
+            if matches { s.exercises[location.e].sets[index].plannedLoad = new }
+        }
     }
 
     private static func mutate(_ s: inout SessionSnapshot, _ location: Location, _ body: (inout SessionSnapshot.ExerciseSet) -> Void) {

@@ -20,6 +20,8 @@ struct SettingsRootView: View {
     @AppStorage(AppPreferenceKeys.maxHeartRate) private var maxHeartRate = 0.0
     /// Atividade ao Vivo (padrão ligado; consumidor: `LiveActivityController`).
     @AppStorage(AppPreferenceKeys.liveActivity) private var liveActivity = true
+    /// Abrir o app do relógio gravando ao iniciar no iPhone (padrão ligado; consumidor: `WatchAutoStarter`).
+    @AppStorage(AppPreferenceKeys.autoStartWatchWorkout) private var autoStartWatchWorkout = true
     /// Atividades ao Vivo permitidas em Ajustes do iPhone › FitJourney (relido ao voltar ao app).
     @State private var systemLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled
     @Environment(\.scenePhase) private var scenePhase
@@ -181,6 +183,12 @@ struct SettingsRootView: View {
             Toggle("Som ao fim do descanso", isOn: $restSound)
             heartRateRows
             liveActivityRows
+            VStack(alignment: .leading, spacing: FJSpacing.xxs) {
+                Toggle("Iniciar no Apple Watch automaticamente", isOn: $autoStartWatchWorkout)
+                Text("Ao iniciar um treino no iPhone, o FitJourney abre no relógio já gravando (frequência cardíaca e calorias do relógio). Exige o app no Apple Watch e o Saúde conectado. O app Exercício da Apple não é aberto.")
+                    .font(FJFont.caption)
+                    .foregroundStyle(FJColor.textSecondary)
+            }
         } header: {
             Text("Treino")
         } footer: {

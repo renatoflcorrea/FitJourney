@@ -118,3 +118,11 @@ protocol HealthStoreProtocol: AnyObject {
     /// Massa corporal mais recente em kg (para estimar energia); `nil` = sem dados.
     func latestBodyMassKg() async -> Double?
 }
+
+/// Abre o app do FitJourney no Apple Watch já pronto para gravar (`HKHealthStore.startWatchApp(with:)`, P2.8).
+/// Apps de terceiros não iniciam o app Exercício: só o próprio app do relógio.
+@MainActor
+protocol WatchAppLaunching: AnyObject {
+    /// Lança se o relógio não estiver pareado/alcançável ou o sistema recusar.
+    func startWatchApp(type: HealthWorkoutType) async throws
+}

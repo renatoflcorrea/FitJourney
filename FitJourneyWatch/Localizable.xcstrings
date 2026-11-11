@@ -2140,6 +2140,36 @@
           }
         }
       }
+    },
+    "Definir carga" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set load"
+          }
+        }
+      }
+    },
+    "Próxima: definir carga" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next: set load"
+          }
+        }
+      }
+    },
+    "Próxima série sem carga definida. Gire a Coroa para definir." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next set has no load. Turn the Crown to set it."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

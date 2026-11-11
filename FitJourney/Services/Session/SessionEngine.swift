@@ -127,6 +127,9 @@ final class SessionEngine {
     @ObservationIgnored private let autoRestTimer: Bool
 
     @ObservationIgnored private var session: WorkoutSession?
+    /// Quem iniciou a última sessão criada por este motor (só memória): o início automático do relógio (P2.8)
+    /// só vale para sessões iniciadas no iPhone.
+    @ObservationIgnored private var lastStart: (sessionID: UUID, origin: WatchCommandOrigin)?
     @ObservationIgnored private var appliedCache: (sessionID: UUID, ids: [UUID], set: Set<UUID>)?
     @ObservationIgnored private var announcedRestEnd: Date?
     @ObservationIgnored private var scheduledRest: ScheduledRest?
@@ -175,6 +178,11 @@ final class SessionEngine {
     var activeSession: WorkoutSession? { session }
 
     var activeSessionID: UUID? { snapshot?.sessionID }
+
+    /// Origem do comando `start` que criou a sessão, se foi criada por este motor desde a abertura do app.
+    func startOrigin(of sessionID: UUID) -> WatchCommandOrigin? {
+        lastStart?.sessionID == sessionID ? lastStart?.origin : nil
+    }
 
     /// Resumo da sessão em andamento como se terminasse agora.
     func currentSummary() throws -> SessionSummary? {
@@ -412,6 +420,7 @@ final class SessionEngine {
         return commitOrHold(command.commandID, result: .applied(revision: session.revision, events: events)) { [weak self] in
             guard let self else { return }
             self.session = session
+            self.lastStart = (session.id, command.origin)
             self.staleSessionPrompt = nil
             self.announcedRestEnd = nil
             self.publish(session)
@@ -432,7 +441,11 @@ final class SessionEngine {
             if let notes { try validate(text: notes) }
             let store = store
             let ids = Set(proposalIDs)
-            let proposals = try store.loadProposals(for: session).filter { ids.contains($0.prescriptionID) }
+            // Confirmadas + primeiras definições (ficha sem carga: aplicadas sempre, P2.8) — vale para o iPhone,
+            // o relógio e o "finalizar na última série" do treino esquecido.
+            let proposals = try store.loadProposals(for: session).filter {
+                ids.contains($0.prescriptionID) || $0.isFirstDefinition
+            }
             // Mesmo resultado antes ou depois de `finish` (duração por datas; histórico exclui a sessão).
             summary = try store.summary(for: session, at: at)
             session.holdSetID = nil
