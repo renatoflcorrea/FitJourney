@@ -42,9 +42,10 @@
 - P6.5 preferências integradas (`f7d0cd3`): `AppCalendar` (início da semana), `RestPolicy` no domínio (descanso padrão dos Ajustes; catálogo com descanso opcional), som ao fim do descanso. `DraftApplier` sem 90 fixo (`4eaa08d`).
 - P5.5 ChatGPT (login) experimental integrado (`7c28328`): OAuth PKCE + listener loopback endurecido, Responses com ferramentas, refresh serializado.
 
-## Em andamento
-- P6.6 (Sonnet): inglês completo (app, relógio, extensão, textos de permissão) + QA de acessibilidade com evidências em `work/evidence/ciclo-6/qa/`.
+- P6.6 inglês completo + QA de acessibilidade integrado (`377f289`); evidências e pendências em `work/evidence/ciclo-6/qa/RELATORIO.md`.
+- `docs/CODEBASE_MAP.md` gerado pelo Cartographer.
 
 ## Próximo
-- `/cartographer:cartographer` → `docs/CODEBASE_MAP.md`.
+- Pendências do QA (RELATORIO.md): subtítulo de Hoje em AX, seletor kg/lb em AX, nome longo da ficha em AX, doca grande em AX4, botões do descanso no relógio em texto grande; dados de exemplo/catálogo em pt-BR no idioma en.
+- `get_health_summary` do Coach ainda é stub — ligar ao `HealthQueries` (com consentimento Saúde).
 - **Usuário**: teste em iPhone + Apple Watch (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações) via `make device TEAM=<TEAM> DEVICE_ID=<udid>`; chave de API ou login ChatGPT para o Coach.

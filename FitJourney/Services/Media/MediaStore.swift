@@ -314,7 +314,7 @@ struct MediaStore: Sendable {
 
 // MARK: - Manutenção
 
-/// Limpeza periódica de mídia. **Não está ligada ao App**: o integrador chama no lançamento.
+/// Limpeza periódica de mídia, chamada pelo `FitJourneyApp` no lançamento (tarefa de baixa prioridade).
 enum MediaMaintenance {
     /// Pasta dos arquivos temporários de vídeos escolhidos na galeria (`PickedMovie`).
     static var pickedMoviesDirectory: URL {
