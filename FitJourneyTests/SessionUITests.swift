@@ -82,7 +82,9 @@ struct SessionPresentationTests {
         let end = try #require(rested.restEndsAt)
         if case .rest = SessionPresentation.dockMode(snapshot: rested, now: end.addingTimeInterval(5)) {} else { Issue.record("deveria manter o descanso concluído") }
         if case .set = SessionPresentation.dockMode(snapshot: rested, now: end.addingTimeInterval(11)) {} else { Issue.record("deveria voltar à série") }
-        if case .set = SessionPresentation.dockMode(snapshot: rested, now: end.addingTimeInterval(-30), restDismissedFor: end) {} else { Issue.record("dispensado") }
+        // `skipRest` limpa o descanso no motor: a doca volta à série sem "dispensar local".
+        f.apply(.skipRest, at: 12, session: session)
+        if case .set = SessionPresentation.dockMode(snapshot: try f.snapshot, now: f.t0.addingTimeInterval(13)) {} else { Issue.record("skipRest deveria limpar o descanso") }
 
         // Pausa vence tudo.
         f.apply(.pause, at: 20, session: session)
@@ -108,12 +110,111 @@ struct SessionPresentationTests {
         #expect(target == 45)
 
         f.apply(.startHold(setID: plank), at: 100, session: session)
-        guard case .holding(let setID, _, let holdTarget, let isCardio) = SessionPresentation.dockMode(snapshot: try f.snapshot, now: f.t0.addingTimeInterval(101)) else {
+        guard case .holding(let setID, _, let holdTarget, let isCardio, _) = SessionPresentation.dockMode(snapshot: try f.snapshot, now: f.t0.addingTimeInterval(101)) else {
             Issue.record("esperava .holding"); return
         }
         #expect(setID == plank)
         #expect(holdTarget == 45)
         #expect(!isCardio)
+    }
+
+    @Test func restTotalComesFromTheSnapshot() throws {
+        let f = try EngineFixture()
+        let session = try f.start(try f.makeRoutine())
+        let first = try f.snapshot.currentSetID!
+        f.apply(.completeSet(setID: first, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil), at: 10, session: session)
+        f.apply(.adjustRest(seconds: 15), at: 12, session: session)
+        let snapshot = try f.snapshot
+        let end = try #require(snapshot.restEndsAt)
+        let total = try #require(snapshot.restTotalSeconds)
+        #expect(SessionPresentation.restTotal(snapshot, endsAt: end, now: f.t0.addingTimeInterval(13)) == total)
+        // Sem o campo (snapshot antigo), cai no restante.
+        var legacy = snapshot
+        legacy.restTotalSeconds = nil
+        let remaining = end.timeIntervalSince(f.t0.addingTimeInterval(13))
+        #expect(SessionPresentation.restTotal(legacy, endsAt: end, now: f.t0.addingTimeInterval(13)) == remaining)
+    }
+
+    @Test func holdElapsedFreezesOnPause() throws {
+        let f = try EngineFixture()
+        let session = try f.start(try f.makeRoutine())
+        var guardCount = 0
+        while try f.snapshot.currentExercise?.measurementKind != .isometric, guardCount < 30 {
+            let id = try #require(try f.snapshot.currentSetID)
+            f.apply(.completeSet(setID: id, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil),
+                    at: TimeInterval(10 + guardCount), session: session)
+            f.apply(.skipRest, at: TimeInterval(10 + guardCount), session: session)
+            guardCount += 1
+        }
+        let plank = try #require(try f.snapshot.currentSetID)
+        f.apply(.startHold(setID: plank), at: 100, session: session)
+        f.apply(.pause, at: 110, session: session)
+        let snapshot = try f.snapshot
+        #expect(snapshot.holdElapsed(at: f.t0.addingTimeInterval(500)) == 10)
+    }
+
+    @Test func kindNamesCoverSelectableKinds() {
+        #expect(SessionPresentation.selectableKinds.count == 7)
+        #expect(SessionPresentation.kindName(.working) == "Normal")
+        #expect(SessionPresentation.kindName(.unknown) == "Normal")
+        #expect(SessionPresentation.kindName(.dropSet) == "Drop set")
+        #expect(Set(SessionPresentation.selectableKinds.map(SessionPresentation.kindName)).count == 7)
+    }
+
+    @Test func painAndMoodTexts() {
+        #expect(SessionPresentation.painText(score: nil, location: nil) == nil)
+        #expect(SessionPresentation.painText(score: 4, location: nil) == "Dor 4/10")
+        #expect(SessionPresentation.painText(score: 4, location: "Ombro") == "Dor 4/10 · Ombro")
+        #expect(SessionPresentation.painText(score: nil, location: "Ombro") == "Desconforto · Ombro")
+        #expect(SessionPresentation.painText(score: 0, location: "") == "Dor 0/10")
+        #expect(SessionPresentation.spokenPain(score: 7, location: "joelho")?.contains("7 de 10") == true)
+        #expect(SessionPresentation.moodLabel(1) == "Muito baixo")
+        #expect(SessionPresentation.moodLabel(5) == "Ótimo")
+    }
+
+    @Test func cardioTextsOnlyShowWhatWasInformed() {
+        #expect(SessionPresentation.cardioDetailText(level: nil, speedKmh: nil, inclinePercent: nil) == nil)
+        let text = SessionPresentation.cardioDetailText(level: 6, speedKmh: 9.5, inclinePercent: 2)
+        #expect(text?.contains("nível 6") == true)
+        #expect(text?.contains("km/h") == true)
+        #expect(text?.contains("inclinação") == true)
+        #expect(SessionPresentation.cardioTargetText(durationSeconds: nil, distanceMeters: nil) == nil)
+        #expect(SessionPresentation.cardioTargetText(durationSeconds: 1_200, distanceMeters: 3_000) == "20:00 · 3 km")
+        #expect(SessionPresentation.cardioTargetText(durationSeconds: nil, distanceMeters: 500) == "500 m")
+    }
+
+    @Test func groupRoundHintFollowsTheEngine() throws {
+        let f = try EngineFixture()
+        let session = try f.start(try f.makeRoutine())
+        var guardCount = 0
+        // Avança até o bi-set (rosca + tríceps).
+        while try f.snapshot.currentGroup == nil, guardCount < 30 {
+            let id = try #require(try f.snapshot.currentSetID)
+            f.apply(.completeSet(setID: id, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil),
+                    at: TimeInterval(10 + guardCount), session: session)
+            f.apply(.skipRest, at: TimeInterval(10 + guardCount), session: session)
+            guardCount += 1
+        }
+        let snapshot = try f.snapshot
+        let round = try #require(snapshot.currentGroup)
+        let hint = try #require(SessionPresentation.groupRoundHint(snapshot))
+        if round.completesRound {
+            #expect(hint.contains("Fim da rodada"))
+        } else {
+            #expect(hint.contains("sem descanso"))
+        }
+    }
+
+    @Test func watchBadgeRules() {
+        let id = UUID()
+        let outdatedPeer = WatchLinkCompatibility(minimumVersion: 1, currentVersion: 0)
+        #expect(SessionPresentation.watchBadge(canRequest: false, recordingSessionID: nil, currentSessionID: id, incompatibility: nil) == .none)
+        #expect(SessionPresentation.watchBadge(canRequest: true, recordingSessionID: nil, currentSessionID: id, incompatibility: nil) == .offer)
+        #expect(SessionPresentation.watchBadge(canRequest: false, recordingSessionID: id, currentSessionID: id, incompatibility: nil) == .recording)
+        // Gravando outra sessão não é selo desta.
+        #expect(SessionPresentation.watchBadge(canRequest: false, recordingSessionID: UUID(), currentSessionID: id, incompatibility: nil) == .none)
+        #expect(SessionPresentation.watchBadge(canRequest: true, recordingSessionID: nil, currentSessionID: id,
+                                               incompatibility: outdatedPeer) == .incompatible(phoneIsOutdated: false))
     }
 
     @Test func dockEmptyAndFinish() throws {

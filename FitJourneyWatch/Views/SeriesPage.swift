@@ -364,9 +364,10 @@ struct HoldView: View {
     var body: some View {
         VStack(spacing: 4) {
             Text(exercise.name).font(WF.exerciseName).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
-            if isHolding, let started = model.display?.holdStartedAt {
+            if isHolding {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let elapsed = max(0, context.date.timeIntervalSince(started))
+                    // Tempo ativo do snapshot: congela na pausa e não conta o tempo parado.
+                    let elapsed = model.display?.holdElapsed(at: context.date) ?? 0
                     Spacer(minLength: 0)
                     Text(WatchFormat.clock(elapsed)).font(WF.number(WatchLayout.timerFontSize, weight: .semibold))
                         .accessibilityLabel("Sustentando \(Int(elapsed)) segundos")
@@ -433,35 +434,56 @@ struct HoldView: View {
     }
 }
 
-/// Cardio: cronômetro grande, FC/zona e Concluir (distância/nível ficam no iPhone).
+/// Cardio: "Iniciar" liga o cronômetro (o iPhone vê o mesmo); depois, tempo grande, FC/zona e Concluir
+/// (distância/nível ficam no iPhone).
 struct CardioView: View {
     @Environment(WatchSessionModel.self) private var model
     let exercise: SessionSnapshot.Exercise
     let set: SessionSnapshot.ExerciseSet
 
+    private var isRunning: Bool { model.display?.holdSetID == set.id }
+
     var body: some View {
         VStack(spacing: 4) {
             Text(exercise.name).font(WF.exerciseName).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
             Spacer(minLength: 0)
-            TimelineView(.periodic(from: .now, by: 1)) { context in
-                let elapsed = model.cardioElapsed(setID: set.id, at: context.date) // início no modelo; desconta pausas
-                Text(WatchFormat.clock(elapsed)).font(WF.number(WatchLayout.timerFontSize, weight: .semibold))
-                    .accessibilityLabel("Tempo \(WatchFormat.clock(elapsed))")
-            }
-            HStack(spacing: 6) {
-                Image(systemName: "heart.fill").foregroundStyle(WF.health.opacity(model.liveMetrics.heartRate == nil ? 0.4 : 1)).accessibilityHidden(true)
-                Text(model.liveMetrics.heartRate.map(String.init) ?? "—").font(WF.number(20, weight: .semibold))
-                if let zone = model.liveMetrics.heartRateZone {
-                    Text("Z\(zone)").font(.footnote.weight(.semibold)).foregroundStyle(WF.zone(zone))
+            if isRunning {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    let elapsed = model.display?.holdElapsed(at: context.date) ?? 0 // congela na pausa
+                    Text(WatchFormat.clock(elapsed)).font(WF.number(WatchLayout.timerFontSize, weight: .semibold))
+                        .accessibilityLabel("Tempo \(WatchFormat.clock(elapsed))")
+                        .accessibilityAddTraits(.updatesFrequently)
+                }
+                heartRate
+            } else {
+                Text("Cardio").font(.footnote).foregroundStyle(WF.textSecondary)
+                if let seconds = set.targetDurationSeconds {
+                    Text(WatchFormat.clock(Double(seconds))).font(WF.number(30, weight: .semibold))
                 }
             }
-            .accessibilityElement(children: .combine)
             Text(WatchFormat.target(text: set.targetText, effort: nil)).font(.footnote).foregroundStyle(WF.textSecondary)
             Spacer(minLength: 0)
-            WatchPrimaryButton(title: "Concluir", accessibilityLabel: "Concluir \(exercise.name)") {
-                model.completeCurrentSet() // duração = cronômetro do modelo
+            if isRunning {
+                WatchPrimaryButton(title: "Concluir", accessibilityLabel: "Concluir \(exercise.name)") {
+                    model.completeCurrentSet() // encerra o cronômetro; duração = tempo ativo
+                }
+            } else {
+                WatchPrimaryButton(title: "Iniciar", systemImage: "play.fill", accessibilityLabel: "Iniciar \(exercise.name)") {
+                    model.startCardio()
+                }
             }
         }
+    }
+
+    private var heartRate: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "heart.fill").foregroundStyle(WF.health.opacity(model.liveMetrics.heartRate == nil ? 0.4 : 1)).accessibilityHidden(true)
+            Text(model.liveMetrics.heartRate.map(String.init) ?? "—").font(WF.number(20, weight: .semibold))
+            if let zone = model.liveMetrics.heartRateZone {
+                Text("Z\(zone)").font(.footnote.weight(.semibold)).foregroundStyle(WF.zone(zone))
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

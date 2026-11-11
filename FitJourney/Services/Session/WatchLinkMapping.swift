@@ -244,7 +244,8 @@ enum ProgramDigestBuilder {
                                     targetDistanceMeters: set.cardio?.distanceMeters)
                             })
                     },
-                    workoutType: workoutType(of: routine).rawValue)
+                    workoutType: workoutType(of: routine).rawValue,
+                    colorName: routine.colorName.isEmpty ? nil : routine.colorName)
             })
     }
 

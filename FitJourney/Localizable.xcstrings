@@ -494,7 +494,16 @@
     "Apagar registro": {},
     "Apagar variação": {},
     "Aplicar a todas as séries": {},
-    "Aquecimento": {},
+    "Aquecimento": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warm-up"
+          }
+        }
+      }
+    },
     "Arquivado": {
       "localizations": {
         "en": {
@@ -624,7 +633,16 @@
         }
       }
     },
-    "Até a falha": {},
+    "Até a falha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To failure"
+          }
+        }
+      }
+    },
     "Autor": {},
     "Azul": {
       "localizations": {
@@ -660,7 +678,16 @@
         }
       }
     },
-    "Back-off": {},
+    "Back-off": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back-off"
+          }
+        }
+      }
+    },
     "Barra": {},
     "Bi-set": {},
     "Biblioteca": {
@@ -1470,7 +1497,16 @@
         }
       }
     },
-    "Inclinação": {},
+    "Inclinação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Incline"
+          }
+        }
+      }
+    },
     "Indisponível": {
       "localizations": {
         "en": {
@@ -1889,7 +1925,16 @@
     "Observações do exercício": {},
     "Ombros": {},
     "Ontem, %@": {},
-    "Opcional": {},
+    "Opcional": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional"
+          }
+        }
+      }
+    },
     "Opções": {},
     "Ordenadas por horário. Para mudar a ordem, altere o horário.": {},
     "Os exercícios e séries desta ficha serão apagados. Os treinos já feitos continuam no histórico.": {
@@ -1943,7 +1988,16 @@
     "Polia": {},
     "Por dia da semana": {},
     "Posteriores": {},
-    "Preparatória": {},
+    "Preparatória": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Feeder"
+          }
+        }
+      }
+    },
     "Programa de exemplo: ajuste exercícios, séries e cargas à vontade.": {},
     "Programas": {
       "localizations": {
@@ -2064,7 +2118,16 @@
     "Remover": {},
     "Remover %@": {},
     "Remover da ficha?": {},
-    "Remover série": {},
+    "Remover série": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove set"
+          }
+        }
+      }
+    },
     "Remover série com carga atual?": {},
     "Remover um copo": {},
     "Remover último copo": {},
@@ -2083,7 +2146,16 @@
         }
       }
     },
-    "Rest-pause": {},
+    "Rest-pause": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest-pause"
+          }
+        }
+      }
+    },
     "Rosa": {
       "localizations": {
         "en": {
@@ -2390,7 +2462,16 @@
     "Valores para a quantidade acima.": {},
     "Variação": {},
     "Variações": {},
-    "Velocidade": {},
+    "Velocidade": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed"
+          }
+        }
+      }
+    },
     "Ver exercício": {},
     "Ver plano": {},
     "Ver programas": {
@@ -3790,6 +3871,566 @@
           "stringUnit": {
             "state": "translated",
             "value": "The app is back to first use."
+          }
+        }
+      }
+    },
+    "Anotação do exercício": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exercise note"
+          }
+        }
+      }
+    },
+    "Ajuste do aparelho, sensação, o que lembrar…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Machine setup, how it felt, what to remember…"
+          }
+        }
+      }
+    },
+    "Anotação do treino": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout note"
+          }
+        }
+      }
+    },
+    "Como está o treino?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How is the workout going?"
+          }
+        }
+      }
+    },
+    "Anotação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note"
+          }
+        }
+      }
+    },
+    "Editar anotação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit note"
+          }
+        }
+      }
+    },
+    "Dor ou desconforto": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pain or discomfort"
+          }
+        }
+      }
+    },
+    "Editar dor ou desconforto": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit pain or discomfort"
+          }
+        }
+      }
+    },
+    "Edita a dor ou desconforto": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edits the pain or discomfort"
+          }
+        }
+      }
+    },
+    "Edita a anotação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edits the note"
+          }
+        }
+      }
+    },
+    "Anotação: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Note: %@"
+          }
+        }
+      }
+    },
+    "Intensidade": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensity"
+          }
+        }
+      }
+    },
+    "0 = nenhuma · 10 = a pior · toque de novo para desmarcar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "0 = none · 10 = worst · tap again to clear"
+          }
+        }
+      }
+    },
+    "Dor ou desconforto de 0 a 10": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pain or discomfort from 0 to 10"
+          }
+        }
+      }
+    },
+    "%lld de 10": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of 10"
+          }
+        }
+      }
+    },
+    "Onde": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where"
+          }
+        }
+      }
+    },
+    "Ex.: ombro direito": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "E.g., right shoulder"
+          }
+        }
+      }
+    },
+    "Limpar dor": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear pain"
+          }
+        }
+      }
+    },
+    "Gravar no relógio": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Record on Watch"
+          }
+        }
+      }
+    },
+    "Usa a frequência cardíaca e as calorias do Apple Watch neste treino": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uses the Apple Watch heart rate and calories for this workout"
+          }
+        }
+      }
+    },
+    "Gravando no Apple Watch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recording on Apple Watch"
+          }
+        }
+      }
+    },
+    "Atualize o FitJourney no iPhone": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update FitJourney on iPhone"
+          }
+        }
+      }
+    },
+    "Atualize o app no relógio": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update the app on your Watch"
+          }
+        }
+      }
+    },
+    "O app do relógio é mais novo que este. Atualize para voltar a sincronizar.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Watch app is newer than this one. Update to sync again."
+          }
+        }
+      }
+    },
+    "O app do Apple Watch é antigo demais para sincronizar este treino. Atualize-o no relógio.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Apple Watch app is too old to sync this workout. Update it on your Watch."
+          }
+        }
+      }
+    },
+    "Nível do aparelho": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Machine level"
+          }
+        }
+      }
+    },
+    "+ nível": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ level"
+          }
+        }
+      }
+    },
+    "Alvo da sustentação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hold target"
+          }
+        }
+      }
+    },
+    "Duração alvo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Target duration"
+          }
+        }
+      }
+    },
+    "Aparelho": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Equipment"
+          }
+        }
+      }
+    },
+    "Tipo da série": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set type"
+          }
+        }
+      }
+    },
+    "Remover esta série?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove this set?"
+          }
+        }
+      }
+    },
+    "A série já está concluída. Ela sai do treino e do volume.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This set is already completed. It will be removed from the workout and the volume."
+          }
+        }
+      }
+    },
+    "Editar série": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit set"
+          }
+        }
+      }
+    },
+    "Humor e energia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mood and energy"
+          }
+        }
+      }
+    },
+    "Opcional · 1 = muito baixo · 5 = ótimo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional · 1 = very low · 5 = great"
+          }
+        }
+      }
+    },
+    "Humor e energia de 1 a 5": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mood and energy from 1 to 5"
+          }
+        }
+      }
+    },
+    "Nota do treino": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout note"
+          }
+        }
+      }
+    },
+    "Como foi o treino?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How was the workout?"
+          }
+        }
+      }
+    },
+    "%lld de 5, %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld of 5, %@"
+          }
+        }
+      }
+    },
+    "Normal": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        }
+      }
+    },
+    "Drop set": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drop set"
+          }
+        }
+      }
+    },
+    "Dor %lld/10": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pain %lld/10"
+          }
+        }
+      }
+    },
+    "Dor %lld/10 · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pain %lld/10 · %@"
+          }
+        }
+      }
+    },
+    "Desconforto · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discomfort · %@"
+          }
+        }
+      }
+    },
+    "Dor ou desconforto %lld de 10, %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pain or discomfort %lld of 10, %@"
+          }
+        }
+      }
+    },
+    "Dor ou desconforto %lld de 10": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pain or discomfort %lld of 10"
+          }
+        }
+      }
+    },
+    "Desconforto em %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discomfort in %@"
+          }
+        }
+      }
+    },
+    "Muito baixo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Very low"
+          }
+        }
+      }
+    },
+    "Baixo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Low"
+          }
+        }
+      }
+    },
+    "Bom": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good"
+          }
+        }
+      }
+    },
+    "Ótimo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Great"
+          }
+        }
+      }
+    },
+    "nível %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "level %lld"
+          }
+        }
+      }
+    },
+    "inclinação %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "incline %@"
+          }
+        }
+      }
+    },
+    "Fim da rodada %lld de %lld: descanso em seguida": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End of round %lld of %lld: rest next"
+          }
+        }
+      }
+    },
+    "Em seguida, sem descanso: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next, no rest: %@"
           }
         }
       }

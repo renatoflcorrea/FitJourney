@@ -30,12 +30,6 @@ enum SessionPresentation {
         }
     }
 
-    /// Tempo da sustentação/cronômetro. Ponto único: quando o motor passar a descontar a pausa,
-    /// só este cálculo muda (a doca já troca para "Pausado" enquanto a sessão está pausada).
-    static func holdElapsed(startedAt: Date, now: Date) -> TimeInterval {
-        max(0, now.timeIntervalSince(startedAt))
-    }
-
     // MARK: Cargas
 
     /// "26 kg", "+10 kg" / "−20 kg" (peso corporal com lastro/assistência), "Peso corporal".
@@ -190,8 +184,9 @@ enum SessionPresentation {
         case empty
         case paused
         case rest(endsAt: Date, total: TimeInterval, nextUp: String?)
-        /// Sustentação (isométrico) ou cronômetro (cardio) em curso.
-        case holding(setID: UUID, startedAt: Date, targetSeconds: Int?, isCardio: Bool)
+        /// Sustentação (isométrico) ou cronômetro (cardio) em curso. O tempo vem de `SessionSnapshot.holdElapsed(at:)`;
+        /// `startedAt` só alinha o tique do relógio. Cardio: alvo de duração/distância da série.
+        case holding(setID: UUID, startedAt: Date, targetSeconds: Int?, isCardio: Bool, targetDistanceMeters: Double?)
         case set(setID: UUID, title: String, detail: String, measurement: WatchMeasurementKind, targetSeconds: Int?)
         case next(exerciseID: UUID, name: String)
         case finish
@@ -200,17 +195,20 @@ enum SessionPresentation {
     /// Janela em que "Descanso concluído" continua na doca depois de zerar (design §4.5).
     static let restFinishedLinger: TimeInterval = 10
 
-    static func dockMode(snapshot: SessionSnapshot, now: Date, restDismissedFor: Date? = nil,
-                         advanceTo: UUID? = nil) -> DockMode {
+    static func dockMode(snapshot: SessionSnapshot, now: Date, advanceTo: UUID? = nil) -> DockMode {
         if snapshot.exercises.isEmpty { return .empty }
         if snapshot.status == .paused { return .paused }
         if let setID = snapshot.holdSetID, let started = snapshot.holdStartedAt {
             let owner = snapshot.exercises.first { $0.sets.contains { $0.id == setID } }
             let set = owner?.sets.first { $0.id == setID }
-            return .holding(setID: setID, startedAt: started, targetSeconds: set?.targetHoldSeconds,
-                            isCardio: owner?.measurementKind == .timeOrDistance)
+            let isCardio = owner?.measurementKind == .timeOrDistance
+            return .holding(setID: setID, startedAt: started,
+                            targetSeconds: isCardio ? set?.targetDurationSeconds : set?.targetHoldSeconds,
+                            isCardio: isCardio, targetDistanceMeters: isCardio ? set?.targetDistanceMeters : nil)
         }
-        if let end = snapshot.restEndsAt, restDismissedFor != end, now.timeIntervalSince(end) <= restFinishedLinger {
+        // O descanso vencido some sozinho depois do `restFinishedLinger` (derivado da data) ou ao tocar em
+        // "Continuar" (`skipRest` limpa o descanso no motor).
+        if let end = snapshot.restEndsAt, now.timeIntervalSince(end) <= restFinishedLinger {
             return .rest(endsAt: end, total: restTotal(snapshot, endsAt: end, now: now), nextUp: nextUp(snapshot))
         }
         guard let exercise = snapshot.currentExercise else { return .finish }
@@ -227,7 +225,8 @@ enum SessionPresentation {
         default: title = String(localized: "Concluir série \(position.index)")
         }
         return .set(setID: setID, title: title, detail: setDetail(exercise: exercise, set: set),
-                    measurement: exercise.measurementKind, targetSeconds: set.targetHoldSeconds)
+                    measurement: exercise.measurementKind,
+                    targetSeconds: exercise.measurementKind == .timeOrDistance ? set.targetDurationSeconds : set.targetHoldSeconds)
     }
 
     /// "Supino inclinado · 26 kg · alvo 8–12" (em grupo: "Agora: …").
@@ -245,13 +244,11 @@ enum SessionPresentation {
         return join([exercise.groupID == nil ? nil : exercise.name, head, loadText(displayLoad(set)), targetPart(set)])
     }
 
-    /// Duração total do descanso em curso: do fim da última série concluída até `endsAt`
-    /// (ajustes de ±15 s entram no total). Nunca menor que o restante.
+    /// Duração total do descanso em curso (inclui os ajustes de ±15 s): `restTotalSeconds` do snapshot.
+    /// Nunca menor que o restante (snapshot antigo sem o campo cai no restante).
     static func restTotal(_ snapshot: SessionSnapshot, endsAt: Date, now: Date) -> TimeInterval {
-        let lastDone = snapshot.exercises.flatMap(\.sets).compactMap(\.completedAt).max()
         let remaining = max(1, endsAt.timeIntervalSince(snapshot.pausedAt ?? now))
-        guard let lastDone else { return remaining }
-        return max(remaining, endsAt.timeIntervalSince(lastDone))
+        return max(remaining, snapshot.restTotalSeconds ?? remaining)
     }
 
     static func progressFraction(_ snapshot: SessionSnapshot) -> Double {
@@ -272,5 +269,104 @@ enum SessionPresentation {
     /// Nome exibido da ficha ("Treino livre" quando vazio).
     static func routineTitle(_ snapshot: SessionSnapshot) -> String {
         snapshot.routineName.isEmpty ? String(localized: "Treino livre") : snapshot.routineName
+    }
+}
+
+// MARK: - Notas, dor, humor, cardio, grupos, relógio
+
+extension SessionPresentation {
+    /// Nomes dos tipos de série (menu e VoiceOver).
+    static func kindName(_ kind: WatchSetKind) -> String {
+        switch kind {
+        case .working, .unknown: String(localized: "Normal")
+        case .warmup: String(localized: "Aquecimento")
+        case .feeder: String(localized: "Preparatória")
+        case .dropSet: String(localized: "Drop set")
+        case .restPause: String(localized: "Rest-pause")
+        case .toFailure: String(localized: "Até a falha")
+        case .backOff: String(localized: "Back-off")
+        }
+    }
+
+    /// Tipos oferecidos no menu "Tipo da série".
+    static let selectableKinds: [WatchSetKind] = [.working, .warmup, .feeder, .dropSet, .restPause, .toFailure, .backOff]
+
+    /// "Dor 4/10 · Ombro direito" (VoiceOver incluso: "Dor ou desconforto 4 de 10, ombro direito").
+    static func painText(score: Int?, location: String?) -> String? {
+        let place = location.flatMap { $0.isEmpty ? nil : $0 }
+        switch (score, place) {
+        case (nil, nil): return nil
+        case (let score?, let place?): return String(localized: "Dor \(score)/10 · \(place)")
+        case (let score?, nil): return String(localized: "Dor \(score)/10")
+        case (nil, let place?): return String(localized: "Desconforto · \(place)")
+        }
+    }
+
+    static func spokenPain(score: Int?, location: String?) -> String? {
+        let place = location.flatMap { $0.isEmpty ? nil : $0 }
+        switch (score, place) {
+        case (nil, nil): return nil
+        case (let score?, let place?): return String(localized: "Dor ou desconforto \(score) de 10, \(place)")
+        case (let score?, nil): return String(localized: "Dor ou desconforto \(score) de 10")
+        case (nil, let place?): return String(localized: "Desconforto em \(place)")
+        }
+    }
+
+    /// Humor/energia 1–5: rótulo curto e falado.
+    static func moodLabel(_ value: Int) -> String {
+        switch value {
+        case 1: String(localized: "Muito baixo")
+        case 2: String(localized: "Baixo")
+        case 3: String(localized: "Normal")
+        case 4: String(localized: "Bom")
+        default: String(localized: "Ótimo")
+        }
+    }
+
+    /// "nível 6 · 9,5 km/h · inclinação 2 %" da série (campos opcionais; `nil` sem nada).
+    static func cardioDetailText(_ set: SessionSnapshot.ExerciseSet) -> String? {
+        cardioDetailText(level: set.level, speedKmh: set.speedKmh, inclinePercent: set.inclinePercent)
+    }
+
+    static func cardioDetailText(level: Int?, speedKmh: Double?, inclinePercent: Double?) -> String? {
+        var parts: [String] = []
+        if let level { parts.append(String(localized: "nível \(level)")) }
+        if let speedKmh { parts.append("\(FJFormat.number(speedKmh, maxFractionDigits: 1)) km/h") }
+        if let inclinePercent { parts.append(String(localized: "inclinação \(FJFormat.number(inclinePercent, maxFractionDigits: 1))") + " %") }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// Alvo do cardio: "20 min · 3 km" a partir de `targetDurationSeconds`/`targetDistanceMeters`.
+    static func cardioTargetText(durationSeconds: Int?, distanceMeters: Double?) -> String? {
+        var parts: [String] = []
+        if let durationSeconds, durationSeconds > 0 { parts.append(FJFormat.clock(durationSeconds)) }
+        if let text = distanceText(distanceMeters) { parts.append(text) }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    /// Indicação da rodada no bi-set/tri-set/circuito para o exercício atual: "Fim da rodada: descanso em seguida"
+    /// ou "Em seguida: Rosca direta" (sem descanso). `nil` fora de grupo.
+    static func groupRoundHint(_ snapshot: SessionSnapshot) -> String? {
+        guard let round = snapshot.currentGroup else { return nil }
+        if round.completesRound { return String(localized: "Fim da rodada \(round.round) de \(round.totalRounds): descanso em seguida") }
+        guard let next = snapshot.exercises.first(where: { $0.id == round.nextExerciseID }) else { return nil }
+        return String(localized: "Em seguida, sem descanso: \(next.name)")
+    }
+
+    /// Estado do botão/selo do Apple Watch na sessão.
+    enum WatchBadge: Equatable {
+        case none
+        /// Relógio alcançável e não gravando: oferecer "Gravar no relógio".
+        case offer
+        case recording
+        /// O relógio (ou o iPhone) não entende a versão do outro.
+        case incompatible(phoneIsOutdated: Bool)
+    }
+
+    static func watchBadge(canRequest: Bool, recordingSessionID: UUID?, currentSessionID: UUID?,
+                           incompatibility: WatchLinkCompatibility?) -> WatchBadge {
+        if let incompatibility { return .incompatible(phoneIsOutdated: !incompatibility.peerIsOutdated) }
+        if let currentSessionID, recordingSessionID == currentSessionID { return .recording }
+        return canRequest ? .offer : .none
     }
 }
