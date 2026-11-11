@@ -139,39 +139,52 @@ struct ActiveSetView: View {
     }
 
     @ViewBuilder private var loadRow: some View {
-        if let load {
-            HStack(spacing: 6) {
-                if isLargeText { stepButton("minus", delta: -WatchLoadStepping.step, label: "Diminuir carga") }
-                Button { showingLoadSheet = true } label: {
+        if load != nil {
+            if isLargeText {
+                // Texto grande: valor numa linha própria e − / + embaixo (lado a lado o número era cortado).
+                VStack(spacing: 4) {
+                    loadValueButton
                     HStack(spacing: 6) {
-                        Text(WatchFormat.load(load).replacingOccurrences(of: " kg", with: "").replacingOccurrences(of: " lb", with: ""))
-                            .font(WF.number(WatchLayout.loadFontSize))
-                            .minimumScaleFactor(0.6).lineLimit(1)
-                            .contentTransition(reduceMotion ? .identity : .numericText())
-                        if !load.isBodyweight || load.value != 0 {
-                            Text(load.unit == .kg ? "kg" : "lb").font(.footnote.weight(.semibold)).foregroundStyle(WF.textSecondary)
-                        }
-                        Spacer(minLength: 0)
-                        if !isLargeText {
-                            Capsule().fill(WF.training).frame(width: 4, height: 30).accessibilityHidden(true)
-                        }
+                        stepButton("minus", delta: -WatchLoadStepping.step, label: "Diminuir carga")
+                        stepButton("plus", delta: WatchLoadStepping.step, label: "Aumentar carga")
                     }
                 }
-                .buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Carga")
-                .accessibilityValue(WatchFormat.spokenLoad(load))
-                .accessibilityHint("Toque para ajustar. Deslize para cima ou para baixo para mudar meio quilo.")
-                .accessibilityAdjustableAction { direction in
-                    switch direction {
-                    case .increment: model.adjustLoad(setID: set.id, by: WatchLoadStepping.step)
-                    case .decrement: model.adjustLoad(setID: set.id, by: -WatchLoadStepping.step)
-                    @unknown default: break
-                    }
-                }
-                .accessibilitySortPriority(3)
-                if isLargeText { stepButton("plus", delta: WatchLoadStepping.step, label: "Aumentar carga") }
+            } else {
+                loadValueButton
             }
+        }
+    }
+
+    @ViewBuilder private var loadValueButton: some View {
+        if let load {
+            Button { showingLoadSheet = true } label: {
+                HStack(spacing: 6) {
+                    Text(WatchFormat.load(load).replacingOccurrences(of: " kg", with: "").replacingOccurrences(of: " lb", with: ""))
+                        .font(WF.number(WatchLayout.loadFontSize))
+                        .minimumScaleFactor(0.6).lineLimit(1)
+                        .contentTransition(reduceMotion ? .identity : .numericText())
+                    if !load.isBodyweight || load.value != 0 {
+                        Text(load.unit == .kg ? "kg" : "lb").font(.footnote.weight(.semibold)).foregroundStyle(WF.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                    if !isLargeText {
+                        Capsule().fill(WF.training).frame(width: 4, height: 30).accessibilityHidden(true)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Carga")
+            .accessibilityValue(WatchFormat.spokenLoad(load))
+            .accessibilityHint("Toque para ajustar. Deslize para cima ou para baixo para mudar meio quilo.")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: model.adjustLoad(setID: set.id, by: WatchLoadStepping.step)
+                case .decrement: model.adjustLoad(setID: set.id, by: -WatchLoadStepping.step)
+                @unknown default: break
+                }
+            }
+            .accessibilitySortPriority(3)
         }
     }
 

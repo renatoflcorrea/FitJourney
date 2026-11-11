@@ -21,6 +21,7 @@ struct AppRoot: View {
         case "training": return .training
         case "nutrition": return .nutrition
         case "coach": return .coach
+        case "health": return .health
         default: break
         }
         #endif

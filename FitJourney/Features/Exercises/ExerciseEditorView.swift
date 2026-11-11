@@ -34,6 +34,7 @@ struct ExerciseEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(\.openURL) private var openURL
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var name: String
     @State private var primary: [MuscleGroup]
@@ -236,7 +237,7 @@ struct ExerciseEditorView: View {
                 Label("Vídeo da galeria", systemImage: "video")
             }
             .disabled(importing != nil)
-            Button { withAnimation(FJMotion.value) { showLinkField.toggle() } } label: {
+            Button { withAnimation(FJMotion.resolve(FJMotion.value, reduceMotion: reduceMotion)) { showLinkField.toggle() } } label: {
                 Label("Link de vídeo (YouTube, Vimeo)", systemImage: "link")
             }
             if showLinkField { linkField }
@@ -316,7 +317,7 @@ struct ExerciseEditorView: View {
 
     private func append(_ item: MediaRef) {
         guard !media.contains(item) else { return }
-        withAnimation(FJMotion.structure) {
+        withAnimation(FJMotion.resolve(FJMotion.structure, reduceMotion: reduceMotion)) {
             items.append(MediaItem(item))
             added.append(item)
         }
@@ -325,7 +326,7 @@ struct ExerciseEditorView: View {
     private func move(_ index: Int, by delta: Int) {
         let target = index + delta
         guard items.indices.contains(target) else { return }
-        withAnimation(FJMotion.structure) { items.swapAt(index, target) }
+        withAnimation(FJMotion.resolve(FJMotion.structure, reduceMotion: reduceMotion)) { items.swapAt(index, target) }
     }
 
     private func remove(at index: Int) {
