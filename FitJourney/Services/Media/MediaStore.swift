@@ -267,6 +267,34 @@ struct MediaStore: Sendable {
         try? FileManager.default.removeItem(at: url)
     }
 
+    // MARK: Backup
+
+    /// Tamanho em bytes de um arquivo da pasta (`nil` se não existir ou o nome for inseguro).
+    func byteCount(of fileName: String) -> Int? {
+        guard let url = url(for: fileName),
+              let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+              values.isRegularFile == true else { return nil }
+        return values.fileSize
+    }
+
+    func fileExists(named fileName: String) -> Bool { byteCount(of: fileName) != nil }
+
+    /// Copia um arquivo de backup para a pasta **mantendo o nome** (o `MediaRef` importado aponta para ele).
+    /// Se já existir um arquivo com esse nome, não sobrescreve e devolve `false` (nomes são `<uuid>.<ext>`:
+    /// mesmo nome = mesmo arquivo de origem). Nome inseguro → erro.
+    @discardableResult
+    func importFile(at source: URL, named fileName: String) throws -> Bool {
+        guard let destination = url(for: fileName) else { throw CocoaError(.fileWriteInvalidFileName) }
+        if fileExists(named: fileName) { return false }
+        try ensureRoot()
+        try FileManager.default.copyItem(at: source, to: destination)
+        return true
+    }
+
+    /// Apaga todos os arquivos da pasta de mídia ("apagar tudo"). Devolve quantos apagou.
+    @discardableResult
+    func deleteAllFiles() -> Int { purgeOrphans(keeping: []) }
+
     /// Apaga arquivos regulares da pasta que ninguém referencia (ex.: app fechado no meio de uma edição).
     /// `referenced` = todos os nomes usados por todos os exercícios. Devolve quantos apagou.
     @discardableResult
@@ -341,6 +369,9 @@ final class MediaImageLoader: @unchecked Sendable {
         init(_ image: CGImage) { self.image = image }
         var cost: Int { image.bytesPerRow * image.height }
     }
+
+    /// Esvazia o cache ("apagar tudo").
+    func removeAll() { cache.removeAllObjects() }
 
     private func cached(_ key: String) -> CGImage? { cache.object(forKey: key as NSString)?.image }
 

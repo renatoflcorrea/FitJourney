@@ -28,7 +28,7 @@ struct WorkoutDetailView: View {
                 summaryCard
                 intensityCard
                 notesCard
-                FJBanner("Sem frequência cardíaca neste treino", tone: .neutral, systemImage: "heart.slash")
+                SessionHeartRateChart(session: session)
                 ForEach(exercises) { exercise in
                     exerciseCard(exercise)
                 }

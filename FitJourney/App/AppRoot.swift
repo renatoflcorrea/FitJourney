@@ -1,9 +1,9 @@
 import SwiftData
 import SwiftUI
 
-/// Raiz do app: abas principais (SPEC §10). Coach entra no ciclo 5.
+/// Raiz do app: abas principais (SPEC §10).
 struct AppRoot: View {
-    enum Tab: Hashable { case today, training, nutrition, health }
+    enum Tab: Hashable { case today, training, nutrition, health, coach }
 
     @State private var selection: Tab = Self.initialTab
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
@@ -14,6 +14,7 @@ struct AppRoot: View {
         switch UserDefaults.standard.string(forKey: "fj.startTab") {
         case "training": return .training
         case "nutrition": return .nutrition
+        case "coach": return .coach
         default: break
         }
         #endif
@@ -32,7 +33,10 @@ struct AppRoot: View {
                 NutritionRootView()
             }
             SwiftUI.Tab("Saúde", systemImage: "heart", value: Tab.health) {
-                PlaceholderScreen(title: "Saúde")
+                HealthRootView()
+            }
+            SwiftUI.Tab("Coach", systemImage: "sparkles", value: Tab.coach) {
+                CoachRootView()
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
@@ -50,15 +54,5 @@ private struct OptionalSessionHost: ViewModifier {
     }
 }
 
-private struct PlaceholderScreen: View {
-    let title: LocalizedStringKey
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(title, systemImage: "hammer", description: Text("Em construção"))
-                .navigationTitle(title)
-        }
-    }
-}
 
 #Preview { AppRoot().modelContainer(PersistenceController.preview) }
