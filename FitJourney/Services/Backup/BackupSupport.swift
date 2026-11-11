@@ -146,7 +146,7 @@ enum BackupPreferenceKeys {
     /// Tudo o que "apagar tudo" remove dos UserDefaults (exceto a versão do catálogo, tratada à parte).
     static let erasable = [weightUnit, providerSettings, coachProfile, coachConsent, sessionTombstones]
     /// Prefixos de chaves do app (novas preferências devem seguir um deles para serem apagadas).
-    static let erasablePrefixes = ["fj.", "coach.", "sessionEngine.", "backup."]
+    static let erasablePrefixes = ["fj.", "coach.", "sessionEngine.", "health.", "backup."]
 }
 
 enum BackupPreferences {

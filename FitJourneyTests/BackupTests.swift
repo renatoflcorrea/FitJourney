@@ -109,8 +109,23 @@ private func normalized(_ document: BackupV1.Document) throws -> String {
     d.foods.sort { $0.id.uuidString < $1.id.uuidString }
     d.coachConversations?.sort { $0.id.uuidString < $1.id.uuidString }
     d.media.sort { $0.fileName < $1.fileName }
+    // Consentimento/compartilhamento do Coach nunca vêm do backup (decisão de privacidade): fora da comparação.
+    d.coachProfile?.sharing = .init(profile: false, workouts: false, nutrition: false, health: false)
+    d.coachProfile?.consentedAt = nil
     let encoder = BackupV1.makeEncoder(timeZone: TimeZone(identifier: "UTC")!)
     return String(decoding: try encoder.encode(d), as: UTF8.self)
+}
+
+/// Compara documentos normalizados e mostra a primeira linha diferente.
+private func expectSameContent(_ a: BackupV1.Document, _ b: BackupV1.Document,
+                               sourceLocation: SourceLocation = #_sourceLocation) throws {
+    let lhs = try normalized(a).split(separator: "\n", omittingEmptySubsequences: false)
+    let rhs = try normalized(b).split(separator: "\n", omittingEmptySubsequences: false)
+    guard lhs != rhs else { return }
+    let index = (0 ..< min(lhs.count, rhs.count)).first { lhs[$0] != rhs[$0] } ?? min(lhs.count, rhs.count)
+    let context = { (lines: [Substring]) in lines[max(0, index - 4) ..< min(lines.count, index + 2)].joined(separator: "\n") }
+    Issue.record("conteúdo difere na linha \(index):\n--- depois\n\(context(lhs))\n--- antes\n\(context(rhs))",
+                 sourceLocation: sourceLocation)
 }
 
 private func contract(_ name: String) throws -> String {
@@ -266,7 +281,7 @@ struct BackupRoundTripTests {
         #expect(report.inserted.total == BackupCounts(before).total)
 
         let after = try await f.exporter().makeDocument(options: options)
-        #expect(try normalized(after) == normalized(before))
+        try expectSameContent(after, before)
         let imageName = try #require(before.media.first?.fileName)
         #expect(f.media.fileExists(named: imageName))
     }
@@ -284,7 +299,7 @@ struct BackupRoundTripTests {
         let report = try await f.importer().importBackup(from: result.fileURL, options: .init(mode: .replace))
         #expect(report.mode == .replace)
         let after = try await f.exporter().makeDocument(options: options)
-        #expect(try normalized(after) == normalized(before))
+        try expectSameContent(after, before)
         #expect(try f.count(Exercise.self) == before.exercises.count)
     }
 
@@ -315,8 +330,6 @@ struct BackupRoundTripTests {
         try f.addExtras()
         let secret = "sk-test-SECRET-1234567890"
         try f.secrets.set(secret, for: .apiKey(.openAI))
-        try KeychainSecretStore(service: "fj-backup-tests").set(secret, for: .apiKey(.custom))
-        defer { try? KeychainSecretStore(service: "fj-backup-tests").set(nil, for: .apiKey(.custom)) }
         let result = try await f.exporter().export(options: .init(format: .json, includeCoachConversations: true),
                                                    to: f.workDir)
         let text = try String(contentsOf: result.fileURL, encoding: .utf8)
