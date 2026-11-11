@@ -1,8 +1,8 @@
 # FitJourney — direção de design
 
 Data: 11 de novembro de 2026
-Status: **revisão 3** (pacote P6.1, `ios-design`): paleta oficial de fichas (§2.1.1), ícone do app (§2.6), aba Saúde detalhada (§4.11), Ajustes (§4.12), Coach (§4.13) e Atividade ao Vivo / Dynamic Island (§4.14). Revisão 2 (pacotes P0.1 + P0.4 + W0) — incorpora as decisões do usuário de 11/11 (SPEC §11 D1–D5): laranja como cor do treino, reps realizadas opcionais, passo de carga 0,5 kg, propostas P1/P3/P4/P5 aprovadas e "manter tela ligada" recusada, app do Apple Watch (§9).
-Protótipo: [design/prototype.html](design/prototype.html) (abrir no Safari/Chrome; claro e escuro lado a lado; seções 10–23 são da revisão 3).
+Status: **revisão 4** (pacote C7.1, `ios-design`): Copiloto de IA — importar e editar (§4.15), identidade visual da IA (gradiente "aurora"), componentes do copiloto (§8). Revisão 3 (pacote P6.1): paleta oficial de fichas (§2.1.1), ícone do app (§2.6), aba Saúde detalhada (§4.11), Ajustes (§4.12), Coach (§4.13) e Atividade ao Vivo / Dynamic Island (§4.14). Revisão 2 (pacotes P0.1 + P0.4 + W0) — incorpora as decisões do usuário de 11/11 (SPEC §11 D1–D5): laranja como cor do treino, reps realizadas opcionais, passo de carga 0,5 kg, propostas P1/P3/P4/P5 aprovadas e "manter tela ligada" recusada, app do Apple Watch (§9).
+Protótipo: [design/prototype.html](design/prototype.html) (abrir no Safari/Chrome; claro e escuro lado a lado; seções 10–23 são da revisão 3; 24–32, do copiloto de IA).
 Código: `FitJourney/DesignSystem/` (tokens e componentes; `DesignSystemGallery` mostra todos).
 Referências: [SPEC.md](SPEC.md) · [docs/PLANO.md](docs/PLANO.md) · Manylens e Health Product (`DESIGN_DIRECTION.md`: vidro só no que flutua, a forma diz o que o toque faz, nada corta, cor com significado, nunca falha em silêncio).
 
@@ -153,6 +153,7 @@ Formatos: carga com vírgula decimal local e sem zeros à direita ("32,5 kg"); t
 | Chip, RPE, segmento (`selection`) | seleção |
 | Sessão salva, recorde (`celebration`) | sucesso |
 | Erro ao salvar (`error`) | erro |
+| Alteração do copiloto aplicada, comida registrada pela conversa (`changeApplied`) | impacto médio |
 
 Desfazer um check não vibra (`fjHaptic(_:trigger:when:)`). Hápticos respeitam o ajuste do sistema; "Hápticos na sessão" em Ajustes desliga os da sessão.
 
@@ -165,7 +166,7 @@ Desfazer um check não vibra (`fjHaptic(_:trigger:when:)`). Hápticos respeitam 
 | `press` | `.easeOut(duration: 0.08)` | Resposta ao toque |
 | `reduced` | `.easeInOut(duration: 0.2)` | Substitui todas com Reduzir Movimento |
 
-Com Reduzir Movimento: sem zoom/matched geometry na transição sessão ↔ acessório (vira esmaecimento), sem contagem animada de dígitos nem troca animada de símbolo (`.fjNumericTransition()` e `.fjSymbolTransition()` viram identidade — nenhuma tela chama `contentTransition` direto), sem confete no recorde (fica o troféu estático). Nenhuma animação em laço em lugar nenhum.
+Com Reduzir Movimento: sem zoom/matched geometry na transição sessão ↔ acessório (vira esmaecimento), sem contagem animada de dígitos nem troca animada de símbolo (`.fjNumericTransition()` e `.fjSymbolTransition()` viram identidade — nenhuma tela chama `contentTransition` direto), sem confete no recorde (fica o troféu estático). Nenhuma animação em laço em lugar nenhum — com uma exceção de mesma natureza de um indicador de atividade: enquanto a IA está trabalhando, o "Pensando…" pulsa (§4.13.3) e o orbe do copiloto gira (§4.15.1); param no instante em que a etapa termina e não existem com Reduzir Movimento.
 
 ### 2.6 Ícone do app
 
@@ -950,6 +951,408 @@ A atividade vive num alvo de extensão de widget (`FitJourneyLiveActivity/`). El
 
 ---
 
+### 4.15 Copiloto de IA (ciclo 7)
+
+Comportamento: SPEC §7A. O copiloto é a feature mais especial do app e tem de parecer isso **sem deixar de parecer nativo**: a IA ganha uma identidade própria (gradiente "aurora" + `sparkles`), usada com parcimônia; todo o resto continua sólido, limpo e legível. Protótipo: seções 24–32. Código: `FJAI`, `FJAIOrb`, `FJAIBadge`, `FJAIButton`/`.fjAI`, `FJConfidenceBadge`, `FJChangeCard`, `FJQuickReplyChips`, `FJQuestionProgress`, `FJAttachmentThumb`, `FJAttachmentAddTile`, `FJSourceLabel`, `FJAnalysisProgress` (§8).
+
+Três ideias organizam tudo:
+
+1. **O gradiente marca onde a IA entra e o que ela propõe — e some quando a decisão é sua.** Botão "Importar com IA", orbe, contorno de um cartão que ainda espera você. Aplicou, salvou, desfez: o contorno sai e o cartão vira conteúdo comum.
+2. **A IA mostra o que entendeu antes de perguntar, e só pergunta o que falta.** Nada de formulário em branco: sempre um palpite pronto, com a confiança à vista.
+3. **Nada é gravado sem um toque seu, e todo toque tem volta.** "Criar programa", "Aplicar" → "Aplicado ✓" com **Desfazer**.
+
+#### 4.15.1 Identidade visual da IA
+
+| Token | Claro | Escuro | Uso |
+|---|---|---|---|
+| `FJColor.aiBlue` → `aiViolet` → `aiPink` | `#0A6FB8` → `#7C3AED` → `#C2256E` | `#5AC8FA` → `#A78BFA` → `#F472B6` | `FJAI.gradient`: símbolo `sparkles`, contorno de 1,5 pt, barra de progresso |
+| `aiBlueFill` → `aiVioletFill` → `aiPinkFill` | `#0A6FB8` → `#7C3AED` → `#C2256E` | `#0F78C4` → `#8349EE` → `#C92C75` | `FJAI.fillGradient`: preenchimento com texto branco (botão de IA em destaque) |
+| `FJAI.softGradient` | os três tons a 14% | idem | Fundo da etiqueta de IA e do orbe |
+
+- O gradiente começa no **azul do Coach** (a IA continua sendo a área Coach) e termina no rosa; o violeta e o rosa de preenchimento são os mesmos da paleta de fichas, já validados com branco.
+- Contraste (calculado ao longo de todo o gradiente): tons de texto ≥ 4,7:1 sobre `background` e ≥ 5,2:1 sobre `surface` no claro, ≥ 6,1:1 no escuro; branco sobre o preenchimento ≥ 5,2:1 (claro) e ≥ 4,6:1 (escuro).
+- **Onde pode**: símbolo `sparkles`; botão de IA; orbe; contorno de cartão proposto e ainda não decidido; barra da análise; segmentos do progresso da entrevista. **Onde não pode**: texto corrido, estado (sucesso/erro/atenção), gráficos, selo de ficha, fundo de tela, mais de um botão em destaque por tela. Nunca aparece sem `sparkles` ou rótulo ao lado ("Diferenciar sem cor").
+- **Marca** (`FJAIBadge`): `.symbol` (só o `sparkles` em gradiente, decorativo), `.tag` (etiqueta sólida "IA", "Importado com IA", "Sugestão da IA") e `.hero` (orbe de 72 pt).
+- **Orbe** (`FJAIOrb`): círculo com fundo suave, anel em gradiente e `sparkles` no centro. É a "cara" do copiloto no topo das folhas, nos estados vazios e na análise. Cresce com o Dynamic Type até 1,3×. Decorativo para o VoiceOver.
+- **Botão de IA** (`FJAIButton`, `.buttonStyle(.fjAI(_:))`):
+  - `.prominent` — cápsula de 56 pt no gradiente de preenchimento, texto branco, `sparkles` branco. **No máximo um por tela**, e só onde importar é o caminho principal (primeiro uso, estado vazio, folha do copiloto).
+  - `.subtle` — vidro neutro de 48 pt com contorno e `sparkles` em gradiente, texto primário. Convive com o botão principal da área ("Criar programa" laranja em cima, "Importar com IA" embaixo) e é a forma de "Editar com IA".
+  - Em toolbars e menus do sistema: `Label("Importar com IA", systemImage: "sparkles")` nativo, sem gradiente (o sistema não o aplica; o símbolo basta).
+- **Movimento** (única exceção ao "nenhuma animação em laço" do §2.5, nos mesmos termos do "Pensando…" do §4.13.3):
+  - **Brilho único** (`fjAISheen`): uma faixa de luz atravessa o botão em destaque **uma vez**, 0,45 s depois de aparecer, em 0,9 s. Não repete, não reage a rolagem.
+  - **Orbe ativo**: o anel gira devagar (uma volta a cada 6 s) e o símbolo pulsa **só enquanto a IA está trabalhando** — equivale a um indicador de atividade e para no instante em que a etapa termina.
+  - Com **Reduzir Movimento**: sem brilho, anel e símbolo parados; o progresso continua dito em texto e na barra.
+- **Reduzir Transparência**: o botão `.subtle` vira sólido (`surfaceElevated`) e mantém o contorno em gradiente; o `.prominent` já é opaco. **Aumentar Contraste**: o gradiente continua acima de 4,5:1; nada depende dele para ser lido.
+
+#### 4.15.2 Pontos de entrada
+
+| Onde | Como aparece | Abre |
+|---|---|---|
+| **Hoje — primeiro uso** (sem programa) | No cartão de convite, abaixo do texto: `FJAIButton("Importar com IA")` **em destaque** e, abaixo, "Criar do zero" e "Usar exemplo ABC" como secundários. Linha de apoio: "Tem a ficha do seu personal em PDF ou foto? Eu monto para você." | Importar treino |
+| **Treinos — sem programa** | `FJEmptyState` + dois botões: "Criar programa" (principal, laranja) e `FJAIButton("Importar com IA", prominence: .subtle)` | Importar treino → novo programa |
+| **Treinos — com programas** | Menu "+" da toolbar: Novo programa · **Importar com IA** (`sparkles`) | Importar treino → novo programa |
+| **Editor de programa** (lista de fichas) | Depois da última ficha, ao lado de "Adicionar ficha": `FJAIButton("Importar fichas com IA", prominence: .subtle)`; também no menu "…" | Importar treino → **adicionar ao programa X** |
+| **Dieta — sem plano** | `FJEmptyState` + "Criar plano" (principal, verde) e `FJAIButton("Importar com IA", prominence: .subtle)` | Importar dieta |
+| **Dieta — com plano** | Menu "…" da toolbar: Novo plano · **Importar com IA** | Importar dieta → novo plano |
+| **Ficha** (detalhe e editor) | Menu "…": **Editar com IA**; no detalhe, também um `FJAIButton("Editar com IA", prominence: .subtle, fillsWidth: false)` no fim da lista de exercícios | Conversa do Coach já com o escopo "Ficha A · Peito e tríceps" |
+| **Dieta — dia / plano** | Menu "…": **Editar com IA** | Conversa do Coach com o escopo "Dieta · plano ativo" |
+| **Coach** | Chips de sugestão na conversa vazia: "Importar um treino", "Importar uma dieta"; botão `+` (anexar) na composição | Importar, ou anexar arquivo à conversa |
+
+Regras:
+
+- O rótulo é sempre **"Importar com IA"** ou **"Editar com IA"** (verbo + "com IA"), nunca só "IA" ou "Mágica".
+- Nunca dois botões de IA em destaque na mesma tela; fora do primeiro uso e da folha do copiloto, o de IA é o `.subtle`.
+- Durante uma **sessão de treino** as entradas de importar continuam disponíveis (não alteram a sessão); "Editar com IA" da ficha em uso abre a conversa com o aviso do §4.15.8.
+- Importação interrompida: o ponto de entrada correspondente mostra, acima dos botões, o cartão **"Continuar importação"** (§4.15.9).
+
+#### 4.15.3 Folha do copiloto e seleção de arquivos
+
+A importação inteira vive numa **sheet `.large`** com `NavigationStack` próprio (título "Importar treino" / "Importar dieta"; "Cancelar" à esquerda). As etapas são telas empurradas dentro da folha: **Arquivos → Análise → Entrevista → Fichas encontradas → Revisão**. Arrastar para fechar com algo já selecionado pede confirmação ("Descartar importação?" · Continuar depois · Descartar).
+
+```
+┌──────────────────────────────────┐
+│ Cancelar    Importar treino       │
+├──────────────────────────────────┤
+│              (orbe)               │  FJAIBadge(.hero)
+│   Traga a ficha como ela está     │  title2
+│  PDF, foto ou texto. Eu leio,     │  label, secundário
+│  pergunto o que faltar e monto.   │
+│                                   │
+│ ┌─ PDF ou arquivo ─┐┌─ Fotos ───┐ │  4 fontes: grade 2×2 de
+│ └──────────────────┘└───────────┘ │  botões sólidos (FJCard)
+│ ┌─ Câmera ─────────┐┌─ Colar ───┐ │  com símbolo + rótulo
+│ └──────────────────┘└───────────┘ │
+│                                   │
+│ 3 de 10 arquivos                  │  numberCaption
+│ [pdf 4 pág.] [foto] [foto] [ + ]  │  FJAttachmentThumb / AddTile
+│                                   │
+│ 🔒 Os arquivos inteiros vão para  │  aviso de privacidade (sólido)
+│    a OpenAI para serem lidos.     │
+│    Não ficam guardados no app.    │
+├──────────────────────────────────┤
+│ [   ✦ Analisar 3 arquivos   ]     │  FJAIButton em destaque (fixo na base)
+└──────────────────────────────────┘
+```
+
+- **Fontes** (quatro botões sólidos em grade 2×2; 1 coluna em tamanhos de acessibilidade): **PDF ou arquivo** (`doc`, `fileImporter`: PDF, imagens, .txt/.md) · **Fotos** (`photo.on.rectangle`, `PhotosPicker` múltiplo) · **Câmera** (`camera`; várias fotos em sequência, "Tirar outra" / "Concluir") · **Colar texto** (`doc.on.clipboard`; abre um editor de texto com "Colar" e contador de caracteres). A permissão de câmera é pedida só ao tocar em Câmera.
+- **Miniaturas** (`FJAttachmentThumb`, 84 × 112 pt, proporção de página, em `FJFlowLayout`): prévia da primeira página ou da foto; selo "4 pág." quando há mais de uma página; nome (2 linhas, truncado no meio) e tamanho abaixo; **×** de 24 pt num alvo de 44 pt para remover. O último quadro é `FJAttachmentAddTile` (tracejado, "+ Adicionar", reabre as fontes num menu). Tocar na miniatura abre o Quick Look.
+- **Contador** "3 de 10 arquivos". No décimo o quadro "+" some e as fontes ficam desabilitadas com a legenda "Limite de 10 arquivos".
+- **Aviso de privacidade** (sempre visível antes de enviar; `FJBanner` neutro com `lock.fill`): "Os arquivos inteiros vão para **{provedor}** para serem lidos. Depois da importação eles não ficam guardados no FitJourney." O nome do provedor é o configurado. Fotos: "Localização e dados da câmera são removidos antes do envio." (linha em `caption`).
+- **Opção** "Manter os arquivos anexados à ficha" (toggle, desligado; SPEC §7A.1) fica na revisão final, não aqui.
+- **Botão principal** fixo na base: `FJAIButton("Analisar 3 arquivos")` (o número acompanha a seleção; desabilitado com zero arquivos e enquanto algum está em preparo).
+
+| Estado | O que aparece |
+|---|---|
+| Vazio | Orbe, título, as quatro fontes, aviso de privacidade; botão principal desabilitado ("Escolha um arquivo") |
+| Preparando um anexo | Miniatura com indicador pequeno e a prévia esmaecida (redimensionando a foto, contando páginas) |
+| Arquivo maior que 20 MB / tipo não aceito | Miniatura com contorno e símbolo de atenção + motivo no lugar do tamanho ("Maior que 20 MB", "Formato não aceito"); não conta no envio; o botão principal segue com os válidos |
+| PDF longo (> 20 páginas) | `FJBanner` de atenção: "Este PDF tem 48 páginas. Arquivos longos demoram mais e custam mais no seu provedor." · **Escolher páginas** (abre a grade de páginas, marcáveis) |
+| Limite atingido | Fontes desabilitadas + "Limite de 10 arquivos" |
+| **Sem provedor configurado** | No lugar do botão principal: `FJBanner` de atenção "Falta configurar a IA" · **Configurar** (empurra "Coach e IA", §4.13.5, dentro da folha); os arquivos escolhidos ficam |
+| **Sem consentimento do Coach** | Ao tocar em Analisar, sobe uma folha `.medium` com a etapa 1 do §4.13.1 resumida + o aviso específico em destaque: "**O arquivo inteiro vai ao provedor.** Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado." · `FJPrimaryButton("Concordar e analisar", area: .coach)` · "Agora não". Aceitar vale como consentimento do Coach (os quatro compartilhamentos continuam desligados: importar não lê seu histórico) |
+| Offline | `FJBanner` neutro com `wifi.slash`: "Sem conexão. Os arquivos ficam aqui; analise quando voltar." Botão principal desabilitado |
+| Câmera negada | Tocar em Câmera mostra alerta com "Abrir Ajustes"; as outras fontes seguem |
+
+#### 4.15.4 Análise
+
+Tela empurrada, sem barra de busca nem lista: só o que está acontecendo. Componente `FJAnalysisProgress`.
+
+```
+              (orbe girando)
+           Lendo 3 arquivos…
+   Enviados à OpenAI · menos de 1 minuto
+          ▓▓▓▓▓▓░░░░░░░░░
+
+  ✓  3 arquivos enviados
+     2 PDFs · 1 foto
+  ✦  Encontrei 4 fichas
+     Peito e tríceps · Ombro · Perna · Costas e bíceps
+  ⋯  Lendo exercícios e séries
+     Ficha 2 de 4
+  ○  Casar com a sua biblioteca
+
+            ( Cancelar )
+```
+
+- **Sem spinner genérico.** O título diz o que está sendo lido ("Lendo 3 arquivos…", "Lendo Treino João.pdf…", "Montando as fichas…"); a lista de etapas diz o que já foi feito e **o que foi encontrado** — os achados ("Encontrei 4 fichas", "Encontrei 6 refeições e as metas do dia") entram com `sparkles` em gradiente e em negrito, um a um, conforme a extração avança (se o provedor não transmite parciais, entram ao final de cada chamada).
+- **Barra** só quando há fração real (arquivos enviados, páginas convertidas, fichas lidas); nunca uma barra falsa por tempo. Sem fração, fica só o orbe girando.
+- **Etapas** (as que se aplicarem): Preparando os arquivos → Enviando ao provedor → Lendo (por arquivo) → Achados → Casando exercícios com a biblioteca / Conferindo calorias → Pronto.
+- **Conversão silenciosa**: provedor sem suporte a PDF → as páginas viram imagens no aparelho. Não há alerta nem escolha; aparece só como uma etapa comum "Preparando 4 páginas".
+- **Cancelar** (vidro secundário, na metade inferior): para o envio e volta à seleção com os arquivos intactos. Sem confirmação (nada foi criado).
+- A tela não bloqueia o app: fechar a folha durante a análise pergunta "Continuar em segundo plano?" · **Continuar** (a análise segue; ao terminar, o cartão "Continuar importação" aparece no ponto de entrada e uma notificação local avisa, se permitidas) · **Cancelar importação**.
+- Ao concluir: háptico de sucesso, o orbe para, o título vira "Leitura concluída" por 0,6 s e a folha avança sozinha para a entrevista (ou direto para a revisão se não houver nenhuma dúvida). Com Reduzir Movimento, avança sem a pausa animada.
+
+| Estado | O que aparece |
+|---|---|
+| Em andamento | Como acima |
+| Parcial (alguns arquivos falharam) | Etapa com símbolo de atenção "Foto 2 está ilegível" + "Vou perguntar o que faltou"; a importação segue com o resto |
+| **Arquivo ilegível / nada encontrado** | Orbe parado, título "Não encontrei um treino aqui", texto "O arquivo parece ser {o que a IA disse: 'uma nota fiscal', 'uma foto escura'}." · **Trocar arquivos** (principal) · "Tentar de novo" |
+| **Erro de leitura** (resposta inválida depois do reparo) | `FJBanner` destrutivo "A leitura veio incompleta" · **Tentar de novo** · "Trocar arquivos". Nada é perdido |
+| Erro do provedor (chave, limite, servidor, tamanho) | As mesmas mensagens do §4.13.3, com a saída de cada uma; limite do provedor mostra a contagem para tentar de novo |
+| **Offline no meio** | `FJBanner` neutro "Sem conexão. Continuo quando ela voltar." A análise retoma sozinha; **Cancelar** continua disponível |
+| Demorando (> 60 s) | Subtítulo vira "Está demorando mais que o normal. Pode fechar: eu aviso quando terminar." |
+
+#### 4.15.5 Entrevista (copiloto de montagem)
+
+Uma **conversa guiada dentro da folha**, com a mesma linguagem da conversa do Coach (§4.13.3: pergunta da IA em texto sem balão, resposta do usuário em balão azul), mas com trilho: a IA pergunta **uma coisa por vez** e só o que falta ou é incerto.
+
+```
+┌──────────────────────────────────┐
+│ ‹        Importar treino    Pular │
+│ ▬▬ ▬▬ ▬▬ ── ──   3 de 5 dúvidas   │  FJQuestionProgress
+├──────────────────────────────────┤
+│ ✦ Entendi um programa com 4      │  resumo do que entendeu
+│   fichas e 27 exercícios.        │  (primeira mensagem)
+│   Faltam 5 detalhes.             │
+│                                  │
+│ No supino reto está "3x12-10-8". │  pergunta
+│ Como devo ler?                   │
+│ ┌──────────────────────────────┐ │
+│ │ 📄 Treino João.pdf · p. 1     │ │  recorte da origem (FJSourceLabel
+│ │ [recorte da linha no arquivo] │ │  + imagem do trecho, se houver)
+│ └──────────────────────────────┘ │
+│ (✓ 3 séries: 12, 10 e 8) (3×12)  │  FJQuickReplyChips
+│ (Pirâmide até 8) (Não sei)       │
+│ (⌨ Outra resposta)               │
+├──────────────────────────────────┤
+│ ( Responder…                ) (↑)│  composição (vidro)
+└──────────────────────────────────┘
+```
+
+- **Abertura**: a primeira mensagem resume o que foi entendido ("Entendi um programa com **4 fichas** e **27 exercícios**. Faltam **5 detalhes**.") com o link "Ver tudo" (abre a revisão a qualquer momento).
+- **Progresso** (`FJQuestionProgress`): fixo sob a barra, "3 de 5 dúvidas" + um segmento por dúvida. O total pode crescer se uma resposta abrir outra dúvida; nunca passa de 12 — acima disso a IA agrupa ("Falta a carga de 9 exercícios" → uma pergunta com lista editável).
+- **Toda pergunta mostra de onde veio**: `FJSourceLabel` ("Treino João.pdf · p. 1") e, quando existir, o recorte do trecho do arquivo. O usuário responde olhando a ficha original, não de memória.
+- **Respostas rápidas** conforme o tipo de dúvida — a primeira opção é sempre o melhor palpite da IA:
+
+| Dúvida | Controle |
+|---|---|
+| Ambiguidade ("3×12 ou 12×3?", unidade, kg × lb) | `FJQuickReplyChips` (2 a 4 opções + "Não sei" + "Outra resposta") |
+| Carga ilegível ou ausente | `NumberStepperField` com o palpite (ou vazio), passo dos Ajustes, e chips "Peso corporal" · "Sem carga por enquanto" · **Confirmar** |
+| Descanso, repetições, tempo | `NumberStepperField` + chips com os valores comuns (60 s · 90 s · 120 s) |
+| Exercício sem casamento no catálogo | Cartão com o nome como escrito + até 3 sugestões do catálogo (linha com miniatura, nome e grupo muscular, selecionável) · **Buscar no catálogo** (abre a biblioteca em modo de escolha, §4.4) · **Criar "{nome}" como novo** |
+| Campo obrigatório ausente (nome do programa, dias por semana) | Campo de texto ou chips (2× · 3× · 4× · 5× · 6×) |
+| Várias dúvidas iguais | Uma pergunta com lista: cada linha tem o exercício e o controle; **Confirmar todas** |
+
+- **Texto livre** sempre disponível: o chip "Outra resposta" foca a composição; escrever ali responde à pergunta atual em linguagem natural ("as duas primeiras são aquecimento"). A IA interpreta, mostra o que entendeu numa linha ("Certo: 2 séries de aquecimento + 3 válidas") e segue.
+- **Depois de responder**: o chip escolhido vira o balão do usuário; a pergunta respondida recolhe numa linha com `checkmark` ("Supino reto: 3 séries — 12, 10 e 8"), tocável para mudar. A próxima pergunta entra com `FJMotion.structure`.
+- **Pular** (toolbar): "Pular esta" mantém o palpite da IA e marca o campo como "Conferir" na revisão; "Pular todas e revisar" vai direto à revisão. Nunca é obrigatório responder para avançar.
+- **"Não sei"** é resposta válida: o campo fica vazio (ou com o palpite) e sinalizado na revisão.
+- A entrevista **não usa** os compartilhamentos do Coach nem lê o histórico; a linha em `caption` no topo diz "Esta conversa usa só os arquivos que você enviou."
+- Hápticos: seleção ao tocar num chip; sem háptico quando a pergunta seguinte aparece.
+
+| Estado | O que aparece |
+|---|---|
+| Sem dúvidas | A entrevista é pulada; a revisão abre com `FJBanner` de sucesso "Li tudo com clareza. Confira e crie." |
+| IA interpretando a resposta livre | "✦ Pensando…" (§4.13.3); chips desabilitados |
+| Resposta não entendida | A IA repete a pergunta de outro jeito, com as opções; depois de 2 tentativas oferece "Deixar para a revisão" |
+| Erro / offline | `FJBanner` com **Tentar de novo**; as respostas já dadas ficam; "Ir para a revisão" sempre disponível |
+| Retomada | Reabre na primeira dúvida sem resposta, com as anteriores recolhidas |
+
+#### 4.15.6 Várias fichas detectadas
+
+Quando a extração encontra mais de uma ficha (ou mais de um treino/dieta diferentes nos arquivos), a folha mostra **um cartão por ficha** antes da revisão. Com uma ficha só, esta tela não aparece.
+
+```
+│ Encontrei 4 fichas                │  título grande
+│ Escolha as que quer importar.     │
+│ ┌──────────────────────────────┐ │
+│ │ ☑ [A] Peito e tríceps      ✎ │ │  check 44 pt · FJRoutineBadge(.md) · nome
+│ │      7 exercícios · p. 1      │ │  nº de exercícios · origem
+│ │      ▮▮▮ Confiança alta       │ │  FJConfidenceBadge(.full)
+│ └──────────────────────────────┘ │
+│ ┌──────────────────────────────┐ │
+│ │ ☑ [B] Ombro                 ✎ │ │
+│ │      6 exercícios · p. 2      │ │
+│ │      ▮▮▯ Confiança média      │ │
+│ │      2 itens para conferir    │ │
+│ └──────────────────────────────┘ │
+│ ┌──────────────────────────────┐ │
+│ │ ☐ [C] Perna                 ✎ │ │  desmarcada: cartão a 60%
+│ └──────────────────────────────┘ │
+│ [   Continuar com 3 fichas   ]    │  principal, fixo na base
+```
+
+- **Cartão** (`FJCard`, a linha inteira alterna a marcação): `FJCheckButton` à esquerda, `FJRoutineBadge(.md)` com a letra e a cor sugeridas (`FJRoutineColor.suggested(forIndex:)`, continuando a sequência do programa de destino), nome, "7 exercícios · ~55 min", `FJSourceLabel` e `FJConfidenceBadge(.full)` com a confiança **geral** da ficha (a menor entre as dos exercícios, se houver baixa; senão a média). Com itens incertos: "2 itens para conferir".
+- **Renomear e letra/cor**: o lápis (44 pt) abre uma folha `.medium` com nome, letra/símbolo e `FJRoutineColorPicker` — os mesmos campos do editor de ficha (§4.3). Sem edição inline no cartão, para o toque na linha continuar sendo "marcar".
+- Tocar em "7 exercícios" expande a lista (nome + prescrição resumida), só leitura.
+- Todas vêm **marcadas**, exceto as que a IA classificou como duplicata de outra ("Parece igual à ficha A" — desmarcada, com o motivo).
+- Treinos diferentes nos mesmos arquivos (ex.: dois programas): seções "Programa 1 · Hipertrofia" e "Programa 2 · Adaptação", cada uma com "Marcar todas"; a revisão cria um programa por seção marcada.
+- Botão principal: "Continuar com 3 fichas" (desabilitado com zero). Em "adicionar ao programa X", o subtítulo diz "Serão adicionadas a **Hipertrofia ABC**".
+- Ordem: arrastar pelo "grip" ou ações "Mover para cima/baixo" (VoiceOver e menu de contexto).
+
+#### 4.15.7 Revisão final
+
+A última tela da folha: **tudo o que será criado**, editável, com a confiança à vista. Nada foi salvo até aqui.
+
+```
+┌──────────────────────────────────┐
+│ ‹        Revisar            Editar│
+├──────────────────────────────────┤
+│ ✦ Importado de 3 arquivos         │  FJAIBadge(.tag)
+│ Hipertrofia ABCD            ✎     │  nome do programa (editável)
+│ [Hipertrofia] [Sequencial] [4×/sem]│
+│ ⚠ 3 itens para conferir   Ver ›   │  resumo de confiança (pula entre eles)
+│                                   │
+│ ┌──────────────────────────────┐ │
+│ │ [A] Peito e tríceps      ⌄   │ │  FJRoutineBadge + nome
+│ │ 7 exercícios · 📄 p. 1        │ │
+│ │ ──────────────────────────── │ │
+│ │ Supino reto                  │ │  exercício casado
+│ │ 4 × 8–12 · 32 kg · 90 s      │ │  prescrição (toque edita)
+│ │ ──────────────────────────── │ │
+│ │ Crucifixo inclinado  [novo]  │ │  sem casamento: será criado
+│ │ 3 × 12 · — kg · 60 s         │ │
+│ │ ▮▯▯ Revisar · carga ilegível │ │  FJConfidenceBadge(.compact) + motivo
+│ └──────────────────────────────┘ │
+│ ┌ [B] Ombro … ┐ ┌ [C] Perna … ┐  │
+│                                   │
+│ Ativar agora            ( ○ )     │  toggle
+│ Manter os arquivos na ficha ( ○ ) │
+├──────────────────────────────────┤
+│ [       Criar programa       ]    │  FJPrimaryButton(area: .training)
+└──────────────────────────────────┘
+```
+
+- **Cabeçalho**: `FJAIBadge("Importado de 3 arquivos")`, nome (toque edita no lugar), etiquetas de objetivo/agenda (toque abre o seletor), e o **resumo de confiança**: "3 itens para conferir" com "Ver" que rola até o primeiro e, a cada toque, ao próximo. Com zero: `FJTag("Tudo lido com clareza", tone: .success)`.
+- **Um cartão por ficha** (treino) ou **por refeição** (dieta), sólido, expansível; a primeira ficha e toda ficha com item a conferir vêm abertas.
+- **Linha de exercício**: nome (casado com o catálogo; `FJTag("novo")` se será criado) e a prescrição no formato de sempre ("4 × 8–12 · 32 kg · 90 s"). **Tocar na linha abre a edição inline**: a linha expande em `NumberStepperField`s (séries, reps, carga, descanso) + "Trocar exercício" + "Remover" — os mesmos controles do editor de ficha, sem sair da revisão. "Editar" na toolbar liga reordenar/remover em lote.
+- **Indicadores de confiança** (`FJConfidenceBadge`) — nunca só cor: três barras (3, 2 ou 1 cheias) + texto; a baixa ganha também o triângulo de atenção.
+  - **Alta**: sem selo na linha (silêncio é o padrão; selo em tudo vira ruído). Aparece só no cabeçalho do cartão quando a ficha inteira é alta.
+  - **Média**: `▮▮▯ Conferir` + o motivo da IA em `caption` ("li '32' mas pode ser '82'").
+  - **Baixa**: `⚠ ▮▯▯ Revisar` + motivo; o campo em dúvida aparece como "—" se não houver palpite. Campo **obrigatório** ausente bloqueia o botão principal e é dito: "Falta a carga de 2 exercícios" (ou marque "Sem carga por enquanto").
+  - Editar o campo **remove o selo** (virou decisão do usuário) e decrementa o resumo.
+- **Origem**: `FJSourceLabel` no cabeçalho de cada cartão ("Treino João.pdf · p. 1") e, na edição inline de um item a conferir, o recorte do trecho (o mesmo da entrevista). Tocar abre o arquivo na página.
+- **Opções** (linhas de formulário no fim): **Ativar agora** (toggle, desligado; ligado segue a regra do §5.5, inclusive o aviso com sessão em andamento) · **Manter os arquivos anexados à ficha** (desligado; rodapé "Desligado, os arquivos são apagados do app depois de criar.").
+- **Botão principal** fixo na base, na **cor da área de destino** (a decisão é do usuário; o gradiente já saiu de cena): **"Criar programa"** · **"Adicionar ao programa Hipertrofia ABC"** (nome truncado no meio) · **"Criar dieta"** (verde). Com "Ativar agora" ligado o rótulo vira "Criar e ativar".
+- **Depois de criar**: háptico de celebração; a folha fecha e o app mostra o programa/plano criado (inativo, origem "IA", "importado de 3 arquivos"), com um aviso `FJBanner` de sucesso "Programa criado" · **Desfazer** (apaga o que foi criado; disponível até sair da tela).
+
+**Importar dieta** — mesma estrutura, na cor da Dieta:
+
+- Cabeçalho: nome do plano, **metas** em `FJMetricGrid` (kcal · proteína · carboidrato · gordura; "—" se o arquivo não trouxer, com "Calcular pelas refeições"), dias/variações em chips ("Todos os dias", "Treino", "Descanso").
+- Um cartão por **refeição**: horário (editável) + nome + total ("420 kcal"), itens em linhas ("Aveia · 40 g · 152 kcal"), **substituições** recolhidas ("2 substituições" expande). Valores que a IA estimou (o arquivo não trazia kcal/macros) levam `FJTag("estimado")` e contam como confiança média; rodapé do cartão "Valores estimados pela IA".
+- Itens sem quantidade: "—" + `Revisar`.
+- Botão: **"Criar dieta"**; opção **"Ativar agora"** (troca o plano ativo, com a confirmação do §4.10).
+
+| Estado | O que aparece |
+|---|---|
+| Tudo com confiança alta | Etiqueta de sucesso no cabeçalho; cartões recolhidos (menos o primeiro) |
+| Itens a conferir | Resumo "n itens para conferir" + selos nas linhas; o botão principal continua habilitado (conferir é recomendado, não obrigatório) |
+| Obrigatório ausente | Botão principal desabilitado + linha de atenção acima dele dizendo o que falta, tocável (rola até o item) |
+| **Parcial** (arquivo ilegível, ficha incompleta) | `FJBanner` de atenção no topo: "Não consegui ler a Foto 2. O que veio dela ficou de fora." · **Enviar de novo** (volta à seleção mantendo o resto) |
+| Salvando | Botão principal com indicador; conteúdo desabilitado |
+| Erro ao salvar | `FJBanner` destrutivo "Não foi possível criar" · **Tentar de novo**; nada é perdido |
+| Nome já existe | Campo marcado + "Já existe um programa com este nome" (sugere "… (importado)") |
+| Sessão em andamento + "Ativar agora" | Aviso do §5.5: cria inativo e oferece ativar depois do treino |
+
+#### 4.15.8 Copiloto de edição — cartões de alteração
+
+Na conversa do Coach (§4.13.3), aberta pela aba ou por "Editar com IA". Quando a IA propõe mudar algo (`propose_routine_changes`, `propose_nutrition_changes`, `propose_food_log`), a proposta aparece dentro da resposta como um **cartão de alteração** (`FJChangeCard`). É a única coisa na conversa que altera dados — e só com toque.
+
+```
+┌──────────────────────────────────┐  contorno em gradiente (espera você)
+│ 🏋 Ficha A · Peito e tríceps  ✦ Sugestão da IA │
+│ Subir a carga do supino           │  cardTitle
+│                                   │
+│ Supino reto · carga atual         │  rótulo (caption)
+│ 3̶2̶ ̶k̶g̶  →  34 kg                    │  antes riscado → depois em destaque
+│ ───────────────────────────────── │
+│ Exercício                         │
+│ C̶r̶u̶c̶i̶f̶i̶x̶o̶  →  Voador              │
+│ ───────────────────────────────── │
+│ Tríceps corda                     │
+│ ⊕ 3 × 12–15 · 60 s                │  inclusão
+│                                   │
+│ A carga inicial não muda.         │  nota (regra aplicada)
+│ [          ✓ Aplicar          ]   │  na cor da área alterada
+│ [   Ajustar   ] [   Descartar   ] │
+└──────────────────────────────────┘
+```
+
+- **Escopo** na primeira linha, com o símbolo e a cor da área alterada: "Ficha A · Peito e tríceps", "Dieta · Lanche da tarde", "Hoje · 16:20 · fora da dieta". Aberta por "Editar com IA", a conversa mostra o escopo também sob o título ("Editando: Ficha A").
+- **Diff legível** — uma linha por mudança, sem jargão e **sem depender de cor**:
+  - **Alterado**: rótulo em cima ("Supino reto · carga atual"); embaixo o valor antigo **riscado** em tom secundário, uma **seta** e o novo em **negrito** primário. Em telas estreitas ou texto grande, o novo quebra para a linha de baixo (seta na frente).
+  - **Incluído**: `plus.circle.fill` + o que entra. **Removido**: `minus.circle.fill` + o que sai, riscado.
+  - Mais de 6 linhas: as 5 primeiras + "Ver mais 4 alterações".
+  - Números nos formatos de sempre (§2.2), carga na unidade dos Ajustes.
+- **Nota**: uma linha em `caption` com a regra aplicada ou a ressalva da IA — "A carga inicial não muda." (SPEC §7A.2: vira `currentLoad`), "Calorias estimadas.".
+- **Ações**: **Aplicar** (`FJPrimaryButton` na cor da área alterada — laranja para ficha, verde para dieta: a cor diz onde a mudança será gravada) · **Ajustar** (foca a composição com o cartão citado; a resposta gera um cartão novo e este recolhe como "Substituída") · **Descartar** (o cartão recolhe numa linha "Sugestão descartada · {título}").
+- **Aplicado**: o contorno em gradiente some, a etiqueta vira `Aplicado ✓` (sucesso), os botões dão lugar a **Desfazer** (vidro secundário). O diff continua legível. Háptico `changeApplied` (impacto médio). A mudança aparece no app na hora.
+- **Desfazer**: restaura o estado anterior, a etiqueta vira "Desfeito" (neutra), o "depois" perde o destaque e o botão vira **Aplicar de novo**. Sem háptico (regra do §2.4) e sem confirmação. Desfazer fica disponível enquanto o item não tiver sido editado por outro caminho; depois disso o botão some e fica "Aplicado ✓ · alterado depois".
+- **Registro rápido de comida** (`propose_food_log`): o mesmo cartão, na cor da Dieta, com uma linha de inclusão — "Açaí · ⊕ 300 ml · 210 kcal (estimado)" — e escopo "Hoje · 16:20 · fora da dieta" (ou a refeição do plano, se casar). **Aplicar** aqui se chama **Registrar**; aplicado: "Registrado ✓" + Desfazer. Valores estimados sempre dizem "(estimado)".
+- Várias propostas na mesma resposta: um cartão por escopo (ficha/refeição), na ordem; acima de 2, uma linha "Aplicar as 3" antes do primeiro.
+
+| Estado (`FJChangeCardState`) | O que aparece |
+|---|---|
+| `proposed` | Contorno em gradiente, etiqueta "Sugestão da IA", Aplicar · Ajustar · Descartar |
+| `applying` | Aplicar com indicador; os outros desabilitados |
+| `applied` | Sem contorno, "Aplicado ✓", **Desfazer** |
+| `undone` | "Desfeito", **Aplicar de novo** |
+| `discarded` | Uma linha "Sugestão descartada · {título}" |
+| `conflict` — **treino em andamento** | Etiqueta "Não aplicado" + `FJBanner` de atenção "Você está treinando esta ficha agora. Aplique depois de finalizar o treino." Sem Aplicar; Ajustar · Descartar. Quando a sessão termina, o cartão volta a `proposed` |
+| `conflict` — item mudou desde a proposta | "Esta ficha mudou depois da sugestão." · **Pedir de novo** (via Ajustar) |
+| `conflict` — item não existe mais | "Esta ficha foi apagada." · só Descartar |
+| `failed` | `FJBanner` destrutivo "Não foi possível aplicar" + motivo · **Tentar de novo** · Ajustar · Descartar; háptico de erro |
+| Proposta inválida (não passou na validação do editor) | No lugar do cartão, `FJBanner` de atenção "A sugestão veio incompleta" · **Pedir de novo** |
+| Substituída por um ajuste | Recolhida: "Sugestão anterior · {título}" (expansível, só leitura) |
+
+O cartão de **proposta** do §4.13.4 (rascunho de programa/dieta inteiro) continua existindo e passa a usar o mesmo contorno em gradiente enquanto não é salvo.
+
+#### 4.15.9 Estados gerais do copiloto
+
+| Situação | Onde | O que aparece |
+|---|---|---|
+| **Sem provedor** | Qualquer entrada | A folha abre normalmente (dá para escolher arquivos); o botão principal dá lugar ao aviso "Falta configurar a IA" · **Configurar** |
+| **Sem consentimento** | Ao analisar / ao abrir "Editar com IA" | Folha de consentimento com o aviso específico (§4.15.3); "Editar com IA" usa a tela de boas-vindas do §4.13.1 |
+| **Provedor sem imagem** (modelo só de texto) | Seleção | `FJBanner` de atenção "O modelo {nome} não lê fotos nem PDF." · **Trocar modelo** · "Colar o texto" |
+| **Provedor sem PDF** | — | Conversão silenciosa em imagens (§4.15.4); nenhum aviso |
+| **Offline** | Seleção, análise, entrevista, conversa | Aviso neutro com `wifi.slash`; nada se perde; retoma sozinho na análise |
+| **Erro de leitura / arquivo ilegível / parcial** | Análise e revisão | §4.15.4 e §4.15.7 |
+| **Retomar importação interrompida** | Ponto de entrada (Treinos, Dieta, Hoje) e aba Coach | Cartão sólido com contorno em gradiente: `sparkles` + "**Continuar importação**" + "Treino · 3 arquivos · parou na revisão · há 2 h" · **Continuar** (principal `.subtle`) · "Descartar" (confirmação). Reabre a folha na etapa em que parou, com respostas e edições preservadas. Só uma importação pendente por tipo; iniciar outra pergunta "Substituir a importação em andamento?" |
+| Importação pendente há mais de 7 dias | — | O cartão diz "Os arquivos desta importação serão apagados em 2 dias" (os anexos não ficam para sempre no aparelho) |
+| App fechado durante a análise | Reabertura | O cartão "Continuar importação" mostra "A leitura foi interrompida" · **Retomar leitura** (reenvia; avisa que conta de novo no provedor) |
+| Sessão de treino em andamento | Importar / editar | Importar funciona; ativar e editar a ficha em uso seguem os avisos de §4.15.7 e §4.15.8 |
+
+#### 4.15.10 Acessibilidade e hápticos do copiloto
+
+**VoiceOver**
+
+- **Botão de IA**: "Importar com IA, botão". O `sparkles` é decorativo; o gradiente não é mencionado.
+- **Miniatura de anexo**: um elemento — "Treino João.pdf, PDF, 4 páginas, 1,2 megabytes" — com a ação personalizada **Remover**; com erro: "…, Maior que 20 megabytes".
+- **Análise**: título + subtítulo + porcentagem num elemento com `.updatesFrequently` (não interrompe); **cada achado é anunciado** uma vez ("Encontrei 4 fichas"); cada etapa lê "título, detalhe" com o valor "Concluído / Em andamento / Aguardando / Falhou". Ao terminar: anúncio "Leitura concluída. 5 dúvidas."
+- **Entrevista**: o progresso lê "Dúvida 3 de 5"; ao entrar uma pergunta o foco vai para ela; os chips são botões com o traço "selecionado"; a origem lê "Origem: Treino João.pdf, página 1".
+- **Confiança**: o selo lê **"Confiança média"** (nunca "amarelo" nem só "Conferir") e vem **antes** do motivo; na linha da revisão a ordem é "Supino reto, 4 séries de 8 a 12 repetições, 32 quilos, descanso 90 segundos, confiança média, li 32 mas pode ser 82". Rotor personalizado **"Itens para conferir"** salta entre eles.
+- **Cartão de alteração**: contêiner "Alteração proposta: {título}"; cabeçalho = escopo + título; **cada linha do diff é um elemento** lido como frase: "Supino reto, carga atual: de 32 quilos para 34 quilos" · "Adicionar Tríceps corda: 3 séries de 12 a 15 repetições, descanso 60 segundos" · "Remover Mergulho no banco: …" (unidades por extenso via `FJChange.accessibilityLabel`; o riscado e a seta nunca são lidos como símbolos). Depois vêm a nota e os botões. Mudança de estado é anunciada: "Alteração aplicada", "Alteração desfeita", "Sugestão descartada", "Não foi possível aplicar".
+- **Várias fichas**: cada cartão é um elemento com valor "marcada/desmarcada" e ações "Renomear", "Mover para cima", "Mover para baixo", "Ver exercícios".
+
+**Dynamic Type até AX5**: a grade de fontes vira 1 coluna; miniaturas crescem até 1,3× e quebram linha; chips quebram linha e o texto do chip quebra em 2+ linhas; no diff o "depois" desce para a linha de baixo; os botões do cartão empilham (Aplicar, Ajustar, Descartar, um por linha); o selo de confiança desce para baixo da prescrição; o orbe cresce até 1,3×. Nada tem altura fixa com texto.
+
+**Reduzir Movimento**: §4.15.1 (sem brilho, sem giro, sem pulso); perguntas e cartões trocam por esmaecimento. **Reduzir Transparência**: chips e botões de vidro viram sólidos com contorno; a seleção continua com check + contorno. **Diferenciar sem cor / Aumentar Contraste**: confiança = barras + texto (+ triângulo na baixa); diff = riscado + seta + símbolos; estados dos cartões = etiqueta com símbolo e texto.
+
+**Alvos**: 44 pt em chips, × da miniatura, lápis e check das fichas; 56 pt no botão principal de cada etapa, sempre na metade inferior.
+
+**Hápticos**
+
+| Evento | Háptico |
+|---|---|
+| Tocar num chip de resposta, marcar/desmarcar ficha | `selection` |
+| +/− em carga, reps, descanso | `stepUp` / `stepDown` |
+| Análise concluída (com a folha aberta) | `celebration` (sucesso) |
+| Programa/dieta criado | `celebration` |
+| Alteração aplicada / comida registrada | `changeApplied` (impacto médio) |
+| Desfazer, descartar, pular pergunta | nenhum |
+| Erro de leitura, falha ao aplicar ou salvar | `error` |
+| Conflito (treino em andamento) | `warning` |
+| Durante a análise e o streaming | nenhum |
+
+#### Para quem implementa (C7.3)
+
+- Textos dinâmicos (nomes, valores, frases de etapa) entram nos componentes como `String` **já localizada** (`String(localized:)`); rótulos fixos dos componentes já estão no catálogo (pt-BR/en).
+- `FJChangeCard` é controlado: o estado vem de fora (`FJChangeCardState`); o componente cuida do háptico e do anúncio na troca de estado.
+- Contorno/selecionado em cima de vidro: desenhe **no conteúdo, antes de `.fjGlass`** — um `overlay` depois do vidro some dentro de `GlassEffectContainer` (é o que `.fjAI(.subtle)` e `FJQuickReplyChips` fazem).
+- Nenhuma tela usa o gradiente direto: só `FJAI.*`, `fjAIBorder`, `FJAIBadge`, `FJAIOrb`, `.fjAI`.
+
+---
+
 ## 5. Fluxos
 
 ### 5.1 Primeiro uso
@@ -1027,6 +1430,18 @@ A atividade vive num alvo de extensão de widget (`FitJourneyLiveActivity/`). El
 - **Exportar**: Ajustes › Dados › Exportar tudo → progresso na linha → folha de compartilhamento com o JSON.
 - **Importar**: Importar backup → escolher o arquivo → resumo (data, contagens) → Juntar (padrão) ou Substituir tudo → [Importar] → aviso de sucesso com as contagens.
 - **Apagar**: Apagar todos os dados → lista do que some + "Exportar antes" → [Apagar tudo…] → diálogo → alerta final → o app volta ao primeiro uso.
+
+### 5.12 Importar um treino com IA
+Treinos › "+" › Importar com IA (ou Hoje no primeiro uso) → folha: escolher PDF/fotos/câmera/texto (até 10) → [Analisar 3 arquivos] → (consentimento, se for a primeira vez) → análise com os achados → entrevista: só as dúvidas, com respostas rápidas → "Encontrei 4 fichas": marcar, renomear, letra/cor → revisão: conferir os itens sinalizados, editar no lugar → [Criar programa] (opção Ativar agora) → programa aberto, com "Desfazer". Caminho mínimo sem dúvidas: 4 toques depois de escolher os arquivos (Analisar · Continuar · Criar programa · pronto).
+
+### 5.13 Importar uma dieta com IA
+Dieta › Importar com IA → mesma folha → análise → entrevista (quantidades, horários, substituições) → revisão por refeição, com metas e valores estimados sinalizados → [Criar dieta] (opção Ativar agora).
+
+### 5.14 Editar pela conversa
+Ficha › "…" › Editar com IA (ou aba Coach) → "sobe o supino para 34 kg e troca o crucifixo por voador" → cartão de alteração com o antes → depois → [Aplicar] → "Aplicado ✓" · Desfazer. "Registrei um açaí de 300 ml" → cartão de registro → [Registrar].
+
+### 5.15 Retomar uma importação
+Fechar o app no meio da entrevista → reabrir → Treinos mostra "Continuar importação · parou na entrevista" → [Continuar] → mesma pergunta, respostas anteriores preservadas.
 
 ---
 
@@ -1112,6 +1527,22 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 28m. Cada erro do provedor (chave, limite, rede, tamanho, recusa) tem mensagem própria e uma saída; a mensagem do usuário nunca se perde.
 28n. A chave nunca aparece inteira depois de salva nem entra na exportação.
 
+**Copiloto de IA**
+28w. O gradiente de IA só aparece via `FJAI`/`fjAIBorder`/`FJAIBadge`/`FJAIOrb`/`.fjAI` (busca por `aiViolet`/`aiPink` fora de `DesignSystem/` não retorna nada); nenhuma tela tem dois botões de IA em destaque; todo uso vem com `sparkles` ou rótulo.
+28x. Com Reduzir Movimento não há brilho, giro nem pulso em nenhuma etapa; sem ele, o brilho do botão acontece uma única vez e o orbe só gira com a análise em curso.
+28y. Nenhum arquivo é enviado antes do aviso de privacidade (com o nome do provedor) e do consentimento; sem provedor, a folha oferece "Configurar" sem perder os arquivos escolhidos.
+28z. Seleção: 10 arquivos no máximo; arquivo > 20 MB ou de tipo não aceito aparece marcado com o motivo e não é enviado; cada miniatura mostra páginas, nome e tamanho e remove em um toque (alvo ≥ 44 pt).
+28aa. A análise nunca mostra só um indicador: há sempre uma frase do que está sendo lido e, ao surgir, cada achado ("Encontrei 4 fichas") aparece na lista e é anunciado pelo VoiceOver; Cancelar volta à seleção com os arquivos.
+28ab. A entrevista pergunta só campos obrigatórios ausentes, de confiança baixa/média ou sem casamento; toda pergunta tem resposta rápida, texto livre e origem (arquivo/página); "Pular" leva à revisão com o campo sinalizado; o progresso mostra "n de N dúvidas".
+28ac. Com 2+ fichas detectadas há um cartão por ficha com nome, nº de exercícios, confiança e origem; dá para marcar, renomear e trocar letra/cor antes de continuar.
+28ad. Na revisão, todo item de confiança média ou baixa tem selo com barras + texto (distinguível em escala de cinza) e o motivo; editar o item remove o selo; campo obrigatório ausente bloqueia o botão e diz o que falta.
+28ae. Nada é gravado antes de "Criar programa" / "Adicionar ao programa X" / "Criar dieta"; o resultado nasce inativo, com origem IA, salvo "Ativar agora".
+28af. Cartão de alteração: mostra escopo e o diff antes → depois (riscado + seta + símbolos, legível em escala de cinza); nada muda sem "Aplicar"; aplicado mostra "Aplicado" e "Desfazer", e desfazer restaura exatamente o estado anterior.
+28ag. Com treino em andamento na ficha alvo, o cartão não oferece Aplicar e explica por quê; ao terminar a sessão, volta a oferecer.
+28ah. VoiceOver lê cada linha do diff como frase ("…: de 32 quilos para 34 quilos") e a confiança como "Confiança alta/média/baixa"; mudanças de estado do cartão são anunciadas.
+28ai. Fechar o app em qualquer etapa e reabrir mostra "Continuar importação" no ponto de entrada e retoma na mesma etapa, com respostas e edições preservadas.
+28aj. AX5: fontes em 1 coluna, chips e botões do cartão empilhados, diff em duas linhas; nada cortado.
+
 **Ajustes e dados**
 28o. Trocar kg ↔ lb muda a exibição em todo o app na hora e não altera valores gravados (trocar e voltar mostra os mesmos números).
 28p. Importar mostra o resumo antes de alterar qualquer coisa; arquivo inválido não altera nada.
@@ -1148,6 +1579,13 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 | `FJRoutineColor` | `Tokens/FJRoutineColor.swift` | Paleta oficial das fichas (8 cores, `fill`/`onFill`, tons `light`/`dark`, `suggested(forIndex:)`) |
 | `FJRoutineBadge`, `FJRoutineColorPicker` | `Components/FJRoutineBadge.swift` | Selo da ficha (`.sm` 32 / `.md` 44 / `.lg` 56 pt); seletor de cor da ficha |
 | `FJFlowLayout` | `Modifiers/FJFlowLayout.swift` | Layout que quebra linha (etiquetas, chips, amostras, sugestões de prompt) |
+| `FJAI` (`gradient`, `fillGradient`, `softGradient`), `fjAIBorder(in:lineWidth:isVisible:)`, `fjAISheen(in:)`, `FJAIOrb` | `Tokens/FJAIStyle.swift` | Identidade da IA: gradiente "aurora", contorno de cartão proposto, brilho único, orbe (gira só com `isActive`) |
+| `FJAIBadge`, `FJAIButton`, `.buttonStyle(.fjAI(_:fillsWidth:))` | `Components/FJAIBadge.swift` | Marca de IA (`.symbol`/`.tag`/`.hero`); botão de IA em destaque (gradiente, 56 pt) ou sutil (vidro + contorno, 48 pt) |
+| `FJConfidence`, `FJConfidenceBadge` | `Components/FJConfidenceBadge.swift` | Confiança alta/média/baixa: barras + texto (`.full`, `.compact`, `.glyph`) |
+| `FJChange`, `FJChangeCardState`, `FJChangeCard` | `Components/FJChangeCard.swift` | Cartão de alteração: escopo, diff antes → depois, Aplicar/Ajustar/Descartar, Aplicado + Desfazer, conflito, falha |
+| `FJQuickReply`, `FJQuickReplyChips`, `FJQuestionProgress` | `Components/FJQuickReplyChips.swift` | Respostas rápidas da entrevista (com "Outra resposta"); "3 de 5 dúvidas" |
+| `FJAttachmentThumb`, `FJAttachmentAddTile`, `FJSourceLabel`, `FJAttachmentKind`, `FJAttachmentState` | `Components/FJAttachmentThumb.swift` | Miniatura de arquivo/página com remover; quadro "Adicionar"; origem "arquivo · p. n" |
+| `FJAnalysisStep`, `FJAnalysisProgress` | `Components/FJAnalysisProgress.swift` | Análise: orbe, frase, barra real, etapas e achados, Cancelar |
 | `DesignSystemGallery` | `DesignSystemGallery.swift` | Todos, para preview e QA |
 
 Componentes de tela (linha de série, cartão de exercício, linha do tempo da dieta, gráfico de FC) ficam em `Features/` e são montados com estes.
@@ -1349,8 +1787,25 @@ Decididas neste documento:
 22. **A tab bar some dentro da conversa** (a composição ocupa a base); a sessão em andamento continua a um "voltar" de distância e avisa pelo descanso (notificação/Atividade ao Vivo).
 23. **Ajustes em um `Form` com sub-telas** (Saúde, Notificações, Coach e IA, Dados, Perfil); a troca kg/lb é só de exibição.
 24. **`nutritionFill` escuro passou de `#1F8A40` para `#1C8540`**: o anterior dava 4,4:1 com branco.
+25. **A IA tem identidade própria: gradiente "aurora"** (azul do Coach → violeta → rosa) + `sparkles`. Marca onde a IA entra e o que ela propõe; some quando o usuário decide (cartão aplicado/salvo perde o contorno). Nunca é estado, texto corrido nem fundo (§4.15.1).
+26. **Um botão de IA em destaque por tela, no máximo**; ao lado do botão principal da área, o de IA é o sutil (vidro + contorno). O botão em destaque é a única cápsula com preenchimento próprio (gradiente) em vez de vidro tingido — o vidro não aceita gradiente como tint.
+27. **Brilho único e orbe girando só durante o trabalho da IA** — exceção documentada ao "sem laço" (§2.5); nada disso com Reduzir Movimento.
+28. **Importação numa folha `.large` com etapas empurradas**, não na conversa do Coach: a entrevista usa a linguagem da conversa, mas com trilho, progresso e saída para a revisão a qualquer momento.
+29. **Confiança alta é silenciosa**; selo só em média ("Conferir") e baixa ("Revisar"), sempre com barras + texto e o motivo. Baixa é amarela (atenção), nunca vermelha: não é erro.
+30. **A decisão final usa a cor da área de destino, não o gradiente**: "Criar programa" laranja, "Criar dieta" verde, "Aplicar" na cor do que será alterado.
+31. **Aplicar não pede confirmação; tem Desfazer.** Desfazer não vibra e não confirma.
+32. **Conversão de PDF em imagens é silenciosa** (uma etapa comum da análise), sem alerta nem escolha.
+33. **Consentimento para importar não liga nenhum compartilhamento do Coach**: a importação só envia os arquivos escolhidos.
 
 Perguntas em aberto:
+
+- Q-CP1. O botão de IA em destaque usa gradiente sólido (não vidro). Se preferir manter 100% vidro, a alternativa é o estilo sutil em todo lugar (vidro + contorno em gradiente). Qual?
+- Q-CP2. No primeiro uso (Hoje), "Importar com IA" é o botão em destaque e "Criar do zero"/"Exemplo ABC" são secundários. Confirma a prioridade?
+- Q-CP3. Fechar a folha durante a análise continua em segundo plano e avisa por notificação local. Ou deve cancelar?
+- Q-CP4. Importação pendente guarda os arquivos no aparelho por até 7 dias para poder retomar. Prazo aceitável?
+- Q-CP5. "Aplicar as 3" (aplicar várias alterações de uma vez) entra no C7.3 ou fica para depois?
+- Q-CP6. Aceitar o consentimento na importação vale como consentimento do Coach (com os quatro compartilhamentos desligados). Ou devem ser consentimentos separados?
+- Q-CP7. A confiança alta não mostra selo por item (só no cabeçalho). Prefere selo em todos os itens?
 
 - Q4. A doca volta sozinha de "Descanso concluído" para "Concluir série" após 10 s — ou deve ficar até um toque?
 - Q5. O laranja de preenchimento é queimado (`#D4450C`) para manter texto branco legível. Alternativa: laranja vivo (`#FF9500`) com texto **preto** nos botões. Qual prefere?

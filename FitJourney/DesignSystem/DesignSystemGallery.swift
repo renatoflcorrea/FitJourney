@@ -12,6 +12,8 @@ struct DesignSystemGallery: View {
     @State private var restEndsAt = Date.now.addingTimeInterval(75)
     @State private var restTotal: TimeInterval = 90
     @State private var routineColor: FJRoutineColor = .orange
+    @State private var changeState: FJChangeCardState = .proposed
+    @State private var quickReply: Set<String> = []
 
     private let sessionStart = Date.now.addingTimeInterval(-1934)
     private let groups = ["Peito", "Costas", "Pernas", "Ombros", "Braços"]
@@ -31,6 +33,7 @@ struct DesignSystemGallery: View {
                     session
                     heartRate
                     states
+                    copilot
                 }
                 .padding(.horizontal, FJSpacing.screenMargin)
                 .padding(.bottom, FJSpacing.xxl)
@@ -295,6 +298,79 @@ struct DesignSystemGallery: View {
     private var zoneBadges: some View {
         ForEach(FJHeartRateZone.allCases, id: \.self) { zone in
             FJHeartRateZoneBadge(zone, showsName: false)
+        }
+    }
+
+    private var copilot: some View {
+        section("Copiloto de IA") {
+            VStack(alignment: .leading, spacing: FJSpacing.cardGap) {
+                HStack(spacing: FJSpacing.m) {
+                    FJAIBadge(style: .hero)
+                    VStack(alignment: .leading, spacing: FJSpacing.s) {
+                        HStack(spacing: FJSpacing.s) {
+                            FJAIBadge(style: .symbol)
+                            FJAIBadge()
+                        }
+                        FJAIBadge("Importado com IA")
+                    }
+                }
+                FJAIButton("Importar com IA") {}
+                FJAIButton("Editar com IA", prominence: .subtle) {}
+                FJCard {
+                    VStack(alignment: .leading, spacing: FJSpacing.m) {
+                        ForEach(FJConfidence.allCases.reversed(), id: \.self) { confidence in
+                            FJFlowLayout(spacing: FJSpacing.s) {
+                                FJConfidenceBadge(confidence)
+                                FJConfidenceBadge(confidence, style: .compact)
+                                FJConfidenceBadge(confidence, style: .glyph)
+                            }
+                        }
+                        FJSourceLabel(file: "Treino João.pdf", page: 2)
+                    }
+                }
+                FJFlowLayout(spacing: FJSpacing.m) {
+                    FJAttachmentThumb(name: "Treino João.pdf", kind: .pdf, detail: "1,2 MB", pageCount: 4) {}
+                    FJAttachmentThumb(name: "Foto 1", kind: .image, detail: "820 KB") {}
+                    FJAttachmentThumb(name: "Dieta.pdf", kind: .pdf, state: .failed("Maior que 20 MB")) {}
+                    FJAttachmentAddTile {}
+                }
+                FJCard {
+                    FJAnalysisProgress(
+                        title: "Lendo 3 arquivos…",
+                        subtitle: "Enviados à OpenAI",
+                        steps: [
+                            FJAnalysisStep(id: "send", title: "3 arquivos enviados", state: .done),
+                            FJAnalysisStep(id: "found", title: "Encontrei 4 fichas",
+                                           detail: "Peito e tríceps · Ombro · Perna · Costas e bíceps",
+                                           state: .done, isFinding: true),
+                            FJAnalysisStep(id: "read", title: "Lendo exercícios e séries", detail: "Ficha 2 de 4", state: .active),
+                            FJAnalysisStep(id: "match", title: "Casar com a sua biblioteca", state: .pending),
+                        ],
+                        progress: 0.45
+                    ) {}
+                }
+                FJQuestionProgress(current: 3, total: 5)
+                FJQuickReplyChips(
+                    [FJQuickReply("3 séries de 12"), FJQuickReply("3 séries de 8 a 12"), FJQuickReply("Não sei")],
+                    selected: quickReply,
+                    onFreeText: {}
+                ) { quickReply = [$0.id] }
+                FJChangeCard(
+                    title: "Subir a carga do supino",
+                    scope: "Ficha A · Peito e tríceps",
+                    changes: [
+                        FJChange(id: "load", label: "Supino reto · carga atual", before: "32 kg", after: "34 kg"),
+                        FJChange(id: "swap", label: "Exercício", before: "Crucifixo com halteres", after: "Voador"),
+                        FJChange(id: "add", label: "Tríceps corda", before: nil, after: "3 × 12–15 · 60 s"),
+                    ],
+                    state: changeState,
+                    note: "A carga inicial não muda.",
+                    onApply: { changeState = .applied },
+                    onAdjust: {},
+                    onDiscard: { changeState = .proposed },
+                    onUndo: { changeState = .undone }
+                )
+            }
         }
     }
 

@@ -394,6 +394,89 @@ svg.g{width:1em;height:1em;flex:none;vertical-align:-.12em}
 .lock .la{background:rgba(255,255,255,.86)}.phone.dark.lock .la{background:rgba(34,34,38,.82)}
 .cl .h{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:700px){.board{justify-content:center}}
+
+/* ---------- revisão 4: copiloto de IA (§4.15) ---------- */
+.phone{--ai1:#0A6FB8;--ai2:#7C3AED;--ai3:#C2256E;--ai1f:#0A6FB8;--ai2f:#7C3AED;--ai3f:#C2256E}
+.phone.dark{--ai1:#5AC8FA;--ai2:#A78BFA;--ai3:#F472B6;--ai1f:#0F78C4;--ai2f:#8349EE;--ai3f:#C92C75}
+.phone{--aig:linear-gradient(135deg,var(--ai1),var(--ai2) 52%,var(--ai3));--aif:linear-gradient(90deg,var(--ai1f),var(--ai2f) 52%,var(--ai3f));
+  --ais:linear-gradient(135deg,color-mix(in srgb,var(--ai1) 14%,transparent),color-mix(in srgb,var(--ai2) 14%,transparent),color-mix(in srgb,var(--ai3) 14%,transparent))}
+.aisym{color:var(--ai2)}
+.aisym.g{background:var(--aig);-webkit-background-clip:text;background-clip:text}
+.aibtn{height:56px;border-radius:28px;background:var(--aif);color:#fff;font-weight:600;font-size:17px;display:flex;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden;
+  box-shadow:0 8px 22px color-mix(in srgb,var(--ai2f) 38%,transparent), inset 0 1px 0 rgba(255,255,255,.35)}
+.aibtn::after{content:"";position:absolute;top:-20%;bottom:-20%;left:58%;width:26%;transform:skewX(-18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.34),transparent)}
+.aibtn.off{opacity:.5}
+.aisub{height:48px;border-radius:24px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:600;font-size:15px;position:relative;flex:1}
+.aisub::before,.aiborder::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.5px;background:var(--aig);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);pointer-events:none}
+.aiborder{position:relative}
+.aitag{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:4px 8px;border-radius:10px;background:var(--ais);white-space:nowrap}
+.orb{width:72px;height:72px;border-radius:50%;margin:0 auto;display:grid;place-items:center;font-size:30px;position:relative;background:var(--ais)}
+.orb.lg{width:88px;height:88px;font-size:37px}
+.orb::before{content:"";position:absolute;inset:0;border-radius:50%;padding:3.5px;background:conic-gradient(from 40deg,var(--ai1),var(--ai2),var(--ai3),var(--ai2),var(--ai1));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.srcgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0 14px}
+.srcgrid div{background:var(--surface);border-radius:16px;padding:12px;display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;min-height:52px}
+.srcgrid svg{font-size:20px;color:var(--coach)}
+.thumbs{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 14px}
+.th{width:62px}
+.th .pg{width:62px;height:82px;border-radius:12px;background:var(--surface);border:1px solid var(--sep);position:relative;display:grid;place-items:center;color:var(--text2);font-size:22px;overflow:hidden}
+.th .pg.doc{align-content:start;padding:12px 9px 0;gap:5px;display:grid}
+.th .pg.doc i{display:block;height:3px;border-radius:2px;background:var(--fill2)}
+.th .pg.doc i:nth-child(1){width:60%;height:5px;background:var(--text3)}.th .pg.doc i:nth-child(4){width:75%}.th .pg.doc i:nth-child(6){width:50%}
+.th .pg.ph{background:linear-gradient(160deg,#8b7f74,#3f3a36)}
+.th .pg.bad{border:1.5px solid var(--attention);color:var(--attention)}
+.th .pg.add{border:1.5px dashed var(--coach);background:color-mix(in srgb,var(--coach) 8%,transparent);color:var(--coach);font-size:11px;font-weight:600;gap:2px;align-content:center}
+.th .pg.add svg{font-size:20px;margin:0 auto}
+.th .x{position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:var(--elev);border:1px solid var(--sep);display:grid;place-items:center;font-size:11px;color:var(--text)}
+.th .pp{position:absolute;left:5px;bottom:5px;font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:9px;background:var(--elev);border:1px solid var(--sep);color:var(--text)}
+.th b{display:block;font-size:12px;font-weight:500;margin-top:4px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.th small{font-size:11px;color:var(--text2)}
+.aibar{height:6px;border-radius:3px;background:var(--fill2);width:220px;margin:14px auto 0;overflow:hidden}
+.aibar i{display:block;height:100%;border-radius:3px;background:var(--aig)}
+.steps2{margin-top:22px}
+.st{display:flex;gap:12px;margin-bottom:13px;font-size:15px;line-height:1.3}
+.st>svg{font-size:18px;width:24px;margin-top:1px;color:var(--text2)}
+.st.pend{color:var(--text2)}.st.pend>svg{color:var(--text3)}
+.st b{font-weight:600}.st small{display:block;font-size:13px;color:var(--text2)}
+.qp{display:flex;align-items:center;gap:12px;margin:0 0 14px}
+.qp div{display:flex;gap:4px;align-items:center}
+.qp i{width:26px;height:4px;border-radius:2px;background:var(--fill2)}
+.qp i.on{background:var(--aig)}.qp i.cur{height:6px;border-radius:3px}
+.qp span{font-size:13px;color:var(--text2);font-weight:500}
+.srcbox{background:var(--surface);border-radius:14px;padding:10px 12px;margin:0 0 12px;font-size:13px;color:var(--text2)}
+.srcbox .scan{margin-top:8px;border-radius:8px;background:var(--fill);padding:9px 10px;font:italic 15px/1.3 "Bradley Hand","Segoe Print",cursive;color:var(--text)}
+.chip.sel{font-weight:600;outline:1.5px solid var(--coach);outline-offset:-1.5px}
+.chip svg{margin-right:5px;color:var(--text2)}.chip.sel svg{color:var(--coach)}
+.answered{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--text2);margin-bottom:10px}
+.conf{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:4px 8px;border-radius:10px;background:var(--fill);white-space:nowrap}
+.conf .bars{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+.conf .bars i{width:3.5px;border-radius:1.2px;border:1px solid var(--text3)}
+.conf .bars i:nth-child(1){height:6px}.conf .bars i:nth-child(2){height:9px}.conf .bars i:nth-child(3){height:12px}
+.conf .bars i.f{background:var(--text2);border-color:var(--text2)}
+.conf.hi{background:color-mix(in srgb,var(--success) 14%,transparent)}.conf.hi .bars i.f{background:var(--success);border-color:var(--success)}
+.conf.lo{background:color-mix(in srgb,var(--attention) 14%,transparent)}.conf.lo .bars i.f{background:var(--attention);border-color:var(--attention)}
+.conf.lo>svg{color:var(--attention);font-size:13px}
+.pick{display:flex;gap:12px;align-items:flex-start}
+.pick .chk.sm{margin-top:8px}
+.pick.off{opacity:.6}
+.rvx{padding:9px 0;border-top:1px solid var(--sep);font-size:15px}
+.rvx .p{font-size:14px;color:var(--text2)}
+.rvx .why{font-size:12.5px;color:var(--text2);margin-top:5px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.chg{padding:9px 0;border-top:1px solid var(--sep)}
+.chg:first-of-type{border-top:0}
+.chg .cap{margin-bottom:2px}
+.chg .d{font-size:16px;font-weight:500;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.chg .d s{color:var(--text2)}.chg .d b{font-weight:600}
+.chg .d>svg{font-size:13px;color:var(--text2)}
+.chg .d .pl{font-size:18px;color:var(--success)}.chg .d .mi{font-size:18px;color:var(--text2)}
+.ccard .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
+.ccard .hd .over{display:flex;align-items:center;gap:5px}
+.ccard .hd .over svg{color:var(--training)}.ccard.nu .hd .over svg{color:var(--nutrition)}
+.ccard .primary{height:52px;margin-top:10px;background:var(--training-fill);box-shadow:none}
+.ccard.nu .primary{background:var(--nutrition-fill)}
+.phone.xtall{height:1180px}.phone-wrap.xtall{height:calc(1180px*var(--s))}
+.opt{display:flex;align-items:center;justify-content:space-between;font-size:16px;padding:6px 4px}
 </style>
 </head>
 <body>
@@ -439,6 +522,17 @@ svg.g{width:1em;height:1em;flex:none;vertical-align:-.12em}
   <symbol id="trash" viewBox="0 0 24 24"><path d="M5 7h14M9.500 7V4.500h5V7M7 7l1 13h8l1-13"/></symbol>
   <symbol id="bell" viewBox="0 0 24 24"><path d="M6 16.500V11a6 6 0 0112 0v5.500l1.500 2h-15zM10 20.500a2 2 0 004 0"/></symbol>
   <symbol id="warn" viewBox="0 0 24 24"><path d="M12 4l9 16H3zM12 10v4.500M12 17.400v.2"/></symbol>
+  <symbol id="doc" viewBox="0 0 24 24"><path d="M7 3.500h7l4 4V19a1.500 1.500 0 01-1.500 1.500h-9.500A1.500 1.500 0 015.500 19V5A1.500 1.500 0 017 3.500zM14 3.500V8h4M9 12.500h6M9 16h4"/></symbol>
+  <symbol id="photo" viewBox="0 0 24 24"><rect x="3.500" y="5" width="17" height="14" rx="3"/><circle cx="9" cy="10" r="1.600"/><path d="M4 17l4.500-4 3.500 3 3-2.500 5 4"/></symbol>
+  <symbol id="camera" viewBox="0 0 24 24"><path d="M4 8.500h3l1.500-2.500h7L17 8.500h3v10.500H4z"/><circle cx="12" cy="13.500" r="3.200"/></symbol>
+  <symbol id="clip" viewBox="0 0 24 24"><rect x="5.500" y="5" width="13" height="16" rx="2.500"/><path d="M9 5V3.500h6V5M9 11h6M9 15h4"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></symbol>
+  <symbol id="kbd" viewBox="0 0 24 24"><rect x="2.500" y="6" width="19" height="12" rx="2.500"/><path d="M6.500 10h.1M10 10h.1M13.500 10h.1M17 10h.1M8 14.500h8"/></symbol>
+  <symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+  <symbol id="pluscirc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="undo" viewBox="0 0 24 24"><path d="M9 14L4.500 9.500 9 5M5 9.500h9a5.500 5.500 0 010 11h-3"/></symbol>
+  <symbol id="nowifi" viewBox="0 0 24 24"><path d="M3 9a14 14 0 0118 0M6.500 13a9 9 0 0111 0M12 18.200v.2M4 4l16 16"/></symbol>
   <symbol id="steps" viewBox="150 170 724 700"><path d="M238 770H420V600H602V430H786" fill="none" stroke="currentColor" stroke-width="92" stroke-linecap="round" stroke-linejoin="round"/><circle cx="706" cy="284" r="66" fill="currentColor"/></symbol>
 </svg>
 
@@ -1137,6 +1231,226 @@ svg.g{width:1em;height:1em;flex:none;vertical-align:-.12em}
     <div class="fh">Alimentação</div>
     <div class="form"><div class="fr">Preferências e alergias<span class="v">Sem lactose</span></div></div>
   </div>
+</template>
+
+<!-- ===== 24–32 · COPILOTO DE IA (§4.15) ===== -->
+
+<!-- 24. COPILOTO — ENTRADAS -->
+<template data-late data-class="tall" data-title="24 · Copiloto — pontos de entrada" data-note="Primeiro uso em Hoje: “Importar com IA” é o único botão em destaque, no gradiente da IA (azul do Coach → violeta → rosa) com o símbolo sparkles; um brilho atravessa o botão uma única vez ao aparecer (nada com Reduzir Movimento). Abaixo, como o mesmo convite aparece em Treinos sem programa: o botão principal da área continua laranja e o de IA é o sutil — vidro com contorno em gradiente. Em menus e toolbars é um item nativo com sparkles.">
+  <div class="scroll">
+    <div class="large"><h3>Hoje<small>quarta, 11 de novembro</small></h3><div class="acts"><div class="gbtn glass av">RC</div></div></div>
+    <div class="card">
+      <div class="orb" style="margin:6px auto 12px"><svg class="i f aisym"><use href="#sparkles"/></svg></div>
+      <div class="h" style="text-align:center;font-size:20px">Comece pelo seu treino</div>
+      <div class="sub" style="text-align:center;margin:6px 0 16px">Tem a ficha do seu personal em PDF ou foto? Eu leio, pergunto o que faltar e monto para você.</div>
+      <div class="aibtn"><svg class="i f"><use href="#sparkles"/></svg>Importar com IA</div>
+      <div class="row" style="margin-top:10px;gap:8px"><div class="secondary glass">Criar do zero</div><div class="secondary glass">Usar exemplo ABC</div></div>
+    </div>
+    <div class="over" style="margin:18px 4px 8px">EM TREINOS, SEM PROGRAMA</div>
+    <div class="card">
+      <div class="ctrx" style="padding:8px 12px 14px"><svg class="i" style="color:var(--text2)"><use href="#dumbbell"/></svg><h4>Nenhum programa ainda</h4><p>Crie as fichas da semana ou traga as que você já tem.</p></div>
+      <div class="primary" style="background:var(--training-fill)"><svg class="i"><use href="#plus"/></svg>Criar programa</div>
+      <div class="row" style="margin-top:8px"><div class="aisub glass"><svg class="i f aisym"><use href="#sparkles"/></svg>Importar com IA</div></div>
+    </div>
+    <div class="over" style="margin:18px 4px 8px">NA FICHA</div>
+    <div class="row"><div class="aisub glass" style="flex:none;padding:0 18px"><svg class="i f aisym"><use href="#sparkles"/></svg>Editar com IA</div><span class="aitag"><svg class="i f aisym"><use href="#sparkles"/></svg>Importado com IA</span></div>
+  </div>
+</template>
+
+<!-- 25. COPILOTO — SELEÇÃO DE ARQUIVOS -->
+<template data-late data-theme="t-coach" data-title="25 · Copiloto — seleção de arquivos" data-note="Folha grande com as etapas da importação. Quatro fontes (PDF ou arquivo, Fotos, Câmera, Colar texto), até 10 arquivos; cada miniatura mostra a prévia, o número de páginas, nome e tamanho, e remove em um toque. Arquivo que não pode ir (maior que 20 MB) fica marcado com o motivo. O aviso de privacidade diz o nome do provedor e que o arquivo inteiro será enviado; o consentimento do Coach é pedido aqui se ainda não existir. O botão principal diz quantos arquivos serão analisados.">
+  <div class="nav"><div class="pill glass">Cancelar</div><div class="ttl">Importar treino</div><div style="width:86px"></div></div>
+  <div class="scroll below-nav">
+    <div class="orb"><svg class="i f aisym"><use href="#sparkles"/></svg></div>
+    <div class="h" style="text-align:center;font-size:22px;font-weight:700;margin-top:12px">Traga a ficha como ela está</div>
+    <div class="sub" style="text-align:center;margin-top:4px">PDF, foto ou texto. Eu leio, pergunto o que faltar e monto.</div>
+    <div class="srcgrid">
+      <div><svg class="i"><use href="#doc"/></svg>PDF ou arquivo</div><div><svg class="i"><use href="#photo"/></svg>Fotos</div>
+      <div><svg class="i"><use href="#camera"/></svg>Câmera</div><div><svg class="i"><use href="#clip"/></svg>Colar texto</div>
+    </div>
+    <div class="cap num" style="margin-left:4px">3 de 10 arquivos</div>
+    <div class="thumbs">
+      <div class="th"><div class="pg doc"><i></i><i></i><i></i><i></i><i></i><i></i><span class="x"><svg class="i"><use href="#x"/></svg></span><span class="pp num">4 pág.</span></div><b>Treino João.pdf</b><small>1,2 MB</small></div>
+      <div class="th"><div class="pg ph"><span class="x"><svg class="i"><use href="#x"/></svg></span></div><b>Foto 1</b><small>820 KB</small></div>
+      <div class="th"><div class="pg ph" style="background:linear-gradient(200deg,#6d7a86,#2c333a)"><span class="x"><svg class="i"><use href="#x"/></svg></span></div><b>Foto 2</b><small>760 KB</small></div>
+      <div class="th"><div class="pg bad"><svg class="i"><use href="#warn"/></svg><span class="x"><svg class="i"><use href="#x"/></svg></span></div><b>Antigo.pdf</b><small style="color:var(--text);font-weight:600">Maior que 20 MB</small></div>
+      <div class="th"><div class="pg add"><svg class="i"><use href="#plus"/></svg>Adicionar</div></div>
+    </div>
+    <div class="banner"><svg class="i"><use href="#lock"/></svg><div><b>Os arquivos inteiros vão para a OpenAI</b>Tudo o que estiver escrito neles será enviado para ser lido. Depois da importação, eles não ficam guardados no FitJourney.</div></div>
+  </div>
+  <div class="fade"></div>
+  <div class="bottom"><div class="aibtn"><svg class="i f"><use href="#sparkles"/></svg>Analisar 3 arquivos</div></div>
+</template>
+
+<!-- 26. COPILOTO — ANÁLISE -->
+<template data-late data-theme="t-coach" data-title="26 · Copiloto — análise" data-note="Sem spinner genérico: o orbe da IA gira só enquanto ela trabalha (parado com Reduzir Movimento), o título diz o que está sendo lido e a lista mostra o que já foi feito e o que foi encontrado — cada achado entra com o sparkles e é anunciado ao VoiceOver. A barra só existe quando há fração real. PDF em provedor sem suporte vira imagem em silêncio, como uma etapa comum. Cancelar volta à seleção com os arquivos intactos.">
+  <div class="nav"><div class="pill glass">Cancelar</div><div class="ttl">Importar treino</div><div style="width:86px"></div></div>
+  <div class="scroll below-nav" style="padding-top:150px">
+    <div class="orb lg"><svg class="i f aisym"><use href="#sparkles"/></svg></div>
+    <div class="h" style="text-align:center;font-size:20px;margin-top:14px">Lendo 3 arquivos…</div>
+    <div class="sub" style="text-align:center;margin-top:2px">Enviados à OpenAI · menos de 1 minuto</div>
+    <div class="aibar"><i style="width:45%"></i></div>
+    <div class="steps2">
+      <div class="st"><svg class="i"><use href="#check"/></svg><div>3 arquivos enviados<small>1 PDF (4 páginas) · 2 fotos</small></div></div>
+      <div class="st"><svg class="i f aisym"><use href="#sparkles"/></svg><div><b>Encontrei 4 fichas</b><small>Peito e tríceps · Ombro · Perna · Costas e bíceps</small></div></div>
+      <div class="st"><svg class="i aisym"><use href="#dots"/></svg><div><b>Lendo exercícios e séries</b><small>Ficha 2 de 4</small></div></div>
+      <div class="st pend"><svg class="i"><use href="#ring"/></svg><div>Casar com a sua biblioteca</div></div>
+    </div>
+    <div style="display:flex;justify-content:center;margin-top:18px"><div class="secondary glass" style="flex:none;padding:0 26px">Cancelar</div></div>
+  </div>
+</template>
+
+<!-- 27. COPILOTO — ENTREVISTA -->
+<template data-late data-theme="t-coach" data-title="27 · Copiloto — entrevista" data-note="Conversa guiada: a IA mostra o que entendeu e pergunta só o que falta ou é incerto, uma coisa por vez. Cada pergunta traz a origem (arquivo e página, com o recorte do trecho) e respostas rápidas — o primeiro chip é o melhor palpite; “Outra resposta” leva ao texto livre. O progresso diz “3 de 5 dúvidas”. Perguntas respondidas recolhem numa linha. “Pular” leva à revisão com o campo sinalizado.">
+  <div class="nav"><div class="gbtn glass"><svg class="i"><use href="#left"/></svg></div><div class="ttl">Importar treino</div><div class="pill glass">Pular</div></div>
+  <div class="scroll below-nav">
+    <div class="qp"><div><i class="on"></i><i class="on"></i><i class="on cur"></i><i></i><i></i></div><span class="num">3 de 5 dúvidas</span></div>
+    <div class="ai"><svg class="i f aisym"><use href="#sparkles"/></svg> Entendi um programa com <b>4 fichas</b> e <b>27 exercícios</b>. Faltam 5 detalhes. <span style="color:var(--coach);font-weight:600">Ver tudo</span></div>
+    <div class="answered"><svg class="i"><use href="#check"/></svg>Programa: 4× por semana, em sequência</div>
+    <div class="answered"><svg class="i"><use href="#check"/></svg>Rosca direta: barra W</div>
+    <div class="ai" style="margin-top:14px">No <b>supino reto</b> está escrito “3x12-10-8”. Como devo ler?</div>
+    <div class="srcbox"><svg class="i"><use href="#doc"/></svg> Treino João.pdf · p. 1<div class="scan">Supino reto — 3x12-10-8 · 32k</div></div>
+    <div class="chips">
+      <span class="chip glass sel"><svg class="i"><use href="#check"/></svg>3 séries: 12, 10 e 8</span>
+      <span class="chip glass">3 séries de 12</span>
+      <span class="chip glass">Pirâmide até 8</span>
+      <span class="chip glass">Não sei</span>
+      <span class="chip glass"><svg class="i"><use href="#kbd"/></svg>Outra resposta</span>
+    </div>
+    <div class="ai" style="margin-top:18px;color:var(--text2);font-size:14px">A seguir: carga do crucifixo (ilegível) · um exercício que não achei na biblioteca</div>
+    <div class="card" style="padding:12px 14px">
+      <div class="cap">Crucifixo inclinado · carga</div>
+      <div class="stp" style="margin-top:4px"><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num">14<small>kg</small></b><span><svg class="i"><use href="#plus"/></svg></span></div></div>
+      <div class="chips" style="margin-top:10px"><span class="lnk2 sm">Peso corporal</span><span class="lnk2 sm">Sem carga por enquanto</span></div>
+    </div>
+  </div>
+  <div class="composer glass">Responder…<div class="send" style="opacity:.4"><svg class="i"><use href="#up"/></svg></div></div>
+</template>
+
+<!-- 28. COPILOTO — VÁRIAS FICHAS -->
+<template data-late data-theme="t-coach" data-title="28 · Copiloto — várias fichas detectadas" data-note="Um cartão por ficha encontrada: selo com a letra e a cor sugeridas, nome, número de exercícios, origem e a confiança geral — sempre barras + texto, nunca só cor. Todas vêm marcadas, menos a que parece duplicada. O lápis renomeia e troca letra/cor. O botão diz quantas fichas seguem para a revisão.">
+  <div class="nav"><div class="gbtn glass"><svg class="i"><use href="#left"/></svg></div><div class="ttl">Importar treino</div><div style="width:44px"></div></div>
+  <div class="scroll below-nav">
+    <div class="h" style="font-size:26px;font-weight:700;margin:0 4px">Encontrei 4 fichas</div>
+    <div class="sub" style="margin:2px 4px 14px">Escolha as que quer importar.</div>
+    <div class="card pick"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div class="badge">A</div><div style="flex:1"><div class="h">Peito e tríceps</div><div class="cap">7 exercícios · PDF · p. 1</div><div style="margin-top:6px"><span class="conf hi"><span class="bars"><i class="f"></i><i class="f"></i><i class="f"></i></span>Confiança alta</span></div></div><svg class="i" style="color:var(--text2);margin-top:10px"><use href="#pencil"/></svg></div>
+    <div class="card pick"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div class="badge rb">B</div><div style="flex:1"><div class="h">Ombro</div><div class="cap">6 exercícios · PDF · p. 2</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="conf"><span class="bars"><i class="f"></i><i class="f"></i><i></i></span>Confiança média</span><span class="cap">2 itens para conferir</span></div></div><svg class="i" style="color:var(--text2);margin-top:10px"><use href="#pencil"/></svg></div>
+    <div class="card pick"><div class="chk sm done"><svg class="i"><use href="#check"/></svg></div><div class="badge rg">C</div><div style="flex:1"><div class="h">Perna</div><div class="cap">8 exercícios · Foto 1</div><div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="conf lo"><svg class="i"><use href="#warn"/></svg><span class="bars"><i class="f"></i><i></i><i></i></span>Confiança baixa</span><span class="cap">foto escura</span></div></div><svg class="i" style="color:var(--text2);margin-top:10px"><use href="#pencil"/></svg></div>
+    <div class="card pick off"><div class="chk sm"></div><div class="badge rp">D</div><div style="flex:1"><div class="h">Peito e tríceps (2)</div><div class="cap">7 exercícios · Foto 2</div><div class="cap" style="margin-top:4px">Parece igual à ficha A</div></div><svg class="i" style="color:var(--text2);margin-top:10px"><use href="#pencil"/></svg></div>
+  </div>
+  <div class="fade"></div>
+  <div class="bottom"><div class="primary" style="background:var(--coach-fill)">Continuar com 3 fichas</div></div>
+</template>
+
+<!-- 29. COPILOTO — REVISÃO -->
+<template data-late data-class="xtall" data-theme="t-coach" data-title="29 · Copiloto — revisão final" data-note="Tudo o que será criado, editável no lugar. Confiança alta é silenciosa; média (“Conferir”) e baixa (“Revisar”) têm selo com barras, texto e o motivo da IA — e “3 itens para conferir” salta entre eles. Cada cartão diz de onde veio (arquivo e página). Exercício sem casamento leva “novo”. A decisão final usa a cor da área de destino, não o gradiente: “Criar programa” (ou “Adicionar ao programa X”), com “Ativar agora”. Nada foi salvo até aqui.">
+  <div class="nav"><div class="gbtn glass"><svg class="i"><use href="#left"/></svg></div><div class="ttl">Revisar</div><div class="pill glass">Editar</div></div>
+  <div class="scroll below-nav">
+    <span class="aitag"><svg class="i f aisym"><use href="#sparkles"/></svg>Importado de 3 arquivos</span>
+    <div class="row" style="margin-top:8px"><div class="h" style="font-size:24px;font-weight:700">Hipertrofia ABC</div><svg class="i" style="color:var(--text2)"><use href="#pencil"/></svg></div>
+    <div class="tags"><span class="tag">Hipertrofia</span><span class="tag">Sequencial</span><span class="tag">4× por semana</span></div>
+    <div class="banner at" style="margin-top:12px;align-items:center"><svg class="i"><use href="#warn"/></svg><div style="flex:1"><b>3 itens para conferir</b></div><span style="color:var(--coach);font-weight:600">Ver</span></div>
+    <div class="card">
+      <div class="row"><div class="badge">A</div><div><div class="h">Peito e tríceps</div><div class="cap"><svg class="i"><use href="#doc"/></svg> 7 exercícios · Treino João.pdf · p. 1</div></div><svg class="i chev sp"><use href="#down"/></svg></div>
+      <div class="rvx" style="margin-top:10px">Supino reto<div class="p num">3 × 12 · 10 · 8 · 32 kg · 90 s</div></div>
+      <div class="rvx">Supino inclinado com halteres<div class="p num">3 × 10–12 · 18 kg · 90 s</div><div class="why"><span class="conf"><span class="bars"><i class="f"></i><i class="f"></i><i></i></span>Conferir</span>li “18” mas pode ser “16”</div></div>
+      <div class="rvx">Crucifixo inclinado <span class="tag co">novo</span>
+        <div class="steps" style="margin-top:8px"><div class="stp"><div class="cap">Séries</div><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num" style="font-size:22px">3</b><span><svg class="i"><use href="#plus"/></svg></span></div></div><div class="stp"><div class="cap">Carga</div><div class="ctl"><span><svg class="i"><use href="#minus"/></svg></span><b class="num" style="font-size:22px">—<small>kg</small></b><span><svg class="i"><use href="#plus"/></svg></span></div></div></div>
+        <div class="why"><span class="conf lo"><svg class="i"><use href="#warn"/></svg><span class="bars"><i class="f"></i><i></i><i></i></span>Revisar</span>carga ilegível na foto</div>
+      </div>
+      <div class="rvx">Tríceps corda<div class="p num">3 × 12–15 · 25 kg · 60 s</div></div>
+      <div class="rvx cap" style="color:var(--coach);font-weight:600">Ver mais 3 exercícios</div>
+    </div>
+    <div class="card"><div class="row"><div class="badge rb">B</div><div><div class="h">Ombro</div><div class="cap">6 exercícios · p. 2 · 1 item para conferir</div></div><svg class="i chev sp"><use href="#right"/></svg></div></div>
+    <div class="card"><div class="row"><div class="badge rg">C</div><div><div class="h">Perna</div><div class="cap">8 exercícios · Foto 1 · 1 para conferir</div></div><svg class="i chev sp"><use href="#right"/></svg></div></div>
+    <div class="form"><div class="fr">Ativar agora<div class="tog off sp"></div></div><div class="fr">Manter os arquivos na ficha<div class="tog off sp"></div></div></div>
+  </div>
+  <div class="fade"></div>
+  <div class="bottom"><div class="primary" style="background:var(--training-fill)">Criar programa</div></div>
+</template>
+
+<!-- 30. COPILOTO — CARTÕES DE ALTERAÇÃO -->
+<template data-late data-class="xtall" data-theme="t-coach" data-title="30 · Copiloto de edição — cartões de alteração" data-note="Na conversa, cada mudança proposta é um cartão com o escopo e um diff legível: valor antigo riscado, seta, valor novo em destaque; inclusão e remoção têm símbolo próprio (nada depende só de cor). O contorno em gradiente existe enquanto a sugestão espera você. “Aplicar” usa a cor da área que será alterada. Depois de aplicado: “Aplicado ✓” com Desfazer — o contorno some e o cartão vira conteúdo comum. Registro rápido de comida é o mesmo cartão, em verde.">
+  <div class="nav"><div class="pill glass"><svg class="i"><use href="#left"/></svg>Coach</div><div class="ttl">Ajustes na ficha A<small>Editando: Ficha A · Peito e tríceps</small></div><div class="gbtn glass"><svg class="i"><use href="#dots"/></svg></div></div>
+  <div class="scroll below-nav">
+    <div class="me">Sobe o supino para 34 kg e troca o crucifixo por voador</div>
+    <div class="tool" style="margin-bottom:8px"><svg class="i"><use href="#check"/></svg>Leu a ficha A</div>
+    <div class="card ccard aiborder">
+      <div class="hd"><span class="over"><svg class="i"><use href="#dumbbell"/></svg>Ficha A · Peito e tríceps</span><span class="aitag"><svg class="i f aisym"><use href="#sparkles"/></svg>Sugestão da IA</span></div>
+      <div class="h">Subir a carga e trocar um exercício</div>
+      <div style="margin-top:8px">
+        <div class="chg"><div class="cap">Supino reto · carga atual</div><div class="d num"><s>32 kg</s><svg class="i"><use href="#arrow"/></svg><b>34 kg</b></div></div>
+        <div class="chg"><div class="cap">Exercício</div><div class="d"><s>Crucifixo com halteres</s><svg class="i"><use href="#arrow"/></svg><b>Voador</b></div></div>
+        <div class="chg"><div class="cap">Tríceps corda</div><div class="d num"><svg class="i pl"><use href="#pluscirc"/></svg><b>3 × 12–15 · 60 s</b></div></div>
+      </div>
+      <div class="cap" style="margin-top:4px">A carga inicial não muda.</div>
+      <div class="primary"><svg class="i"><use href="#check"/></svg>Aplicar</div>
+      <div class="row" style="margin-top:8px;gap:8px"><div class="secondary glass">Ajustar</div><div class="secondary glass">Descartar</div></div>
+    </div>
+    <div class="me">Registrei um açaí de 300 ml agora</div>
+    <div class="card ccard nu">
+      <div class="hd"><span class="over"><svg class="i"><use href="#fork"/></svg>Hoje · 16:20 · fora da dieta</span><span class="tag ok"><svg class="i"><use href="#check"/></svg>Registrado</span></div>
+      <div class="h">Registrar açaí</div>
+      <div style="margin-top:8px"><div class="chg"><div class="cap">Açaí</div><div class="d num"><svg class="i pl"><use href="#pluscirc"/></svg><b>300 ml · 210 kcal (estimado)</b></div></div></div>
+      <div class="row" style="margin-top:8px"><div class="secondary glass"><svg class="i"><use href="#undo"/></svg>Desfazer</div></div>
+    </div>
+    <div class="card ccard aiborder">
+      <div class="hd"><span class="over"><svg class="i"><use href="#dumbbell"/></svg>Ficha C · Perna</span><span class="tag at"><svg class="i"><use href="#warn"/></svg>Não aplicado</span></div>
+      <div class="h">Trocar o agachamento</div>
+      <div style="margin-top:8px"><div class="chg"><div class="cap">Exercício</div><div class="d"><s>Agachamento livre</s><svg class="i"><use href="#arrow"/></svg><b>Leg press 45°</b></div></div></div>
+      <div class="banner at" style="margin:8px 0 0"><svg class="i"><use href="#warn"/></svg><div>Você está treinando esta ficha agora. Aplique depois de finalizar o treino.</div></div>
+      <div class="row" style="margin-top:8px;gap:8px"><div class="secondary glass">Ajustar</div><div class="secondary glass">Descartar</div></div>
+    </div>
+  </div>
+  <div class="composer glass">Pergunte ao Coach<div class="send" style="opacity:.4"><svg class="i"><use href="#up"/></svg></div></div>
+</template>
+
+<!-- 31. COPILOTO — IMPORTAR DIETA -->
+<template data-late data-class="xtall" data-theme="t-coach" data-title="31 · Copiloto — importar dieta" data-note="A mesma revisão, na cor da Dieta: metas do plano, um cartão por refeição com horário, itens, quantidades e substituições. Valor que o arquivo não trazia e a IA estimou leva “estimado” e conta como confiança média; quantidade ausente aparece como “—” com “Revisar”. Botão “Criar dieta”, com “Ativar agora”.">
+  <div class="nav"><div class="gbtn glass"><svg class="i"><use href="#left"/></svg></div><div class="ttl">Revisar</div><div class="pill glass">Editar</div></div>
+  <div class="scroll below-nav">
+    <span class="aitag"><svg class="i f aisym"><use href="#sparkles"/></svg>Importado de 1 arquivo</span>
+    <div class="row" style="margin-top:8px"><div class="h" style="font-size:24px;font-weight:700">Dieta — Dra. Marina</div><svg class="i" style="color:var(--text2)"><use href="#pencil"/></svg></div>
+    <div class="tags"><span class="tag">Todos os dias</span><span class="tag">6 refeições</span></div>
+    <div class="card" style="margin-top:12px"><div class="metrics" style="grid-template-columns:repeat(4,1fr)">
+      <div class="metric"><div class="cap">kcal</div><b class="num">2.250</b></div><div class="metric"><div class="cap">Proteína</div><b class="num">160<small>g</small></b></div>
+      <div class="metric"><div class="cap">Carbo</div><b class="num">240<small>g</small></b></div><div class="metric"><div class="cap">Gordura</div><b class="num">—</b></div></div>
+      <div class="why cap" style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="conf"><span class="bars"><i class="f"></i><i class="f"></i><i></i></span>Conferir</span>gordura não estava no arquivo · <span style="color:var(--nutrition);font-weight:600">Calcular pelas refeições</span></div>
+    </div>
+    <div class="card">
+      <div class="row"><div class="num" style="font-weight:600;color:var(--text2)">07:30</div><div><div class="h">Café da manhã</div><div class="cap"><svg class="i"><use href="#doc"/></svg> Dieta.pdf · p. 1</div></div><div class="num sp" style="font-weight:600">420 kcal</div></div>
+      <div class="rvx" style="margin-top:10px;display:flex;justify-content:space-between"><span>Aveia em flocos</span><span class="p num">40 g · 152 kcal</span></div>
+      <div class="rvx" style="display:flex;justify-content:space-between"><span>Ovos mexidos</span><span class="p num">3 un · 210 kcal</span></div>
+      <div class="rvx"><div style="display:flex;justify-content:space-between"><span>Banana</span><span class="p num">1 un · 58 kcal <span class="tag">estimado</span></span></div></div>
+      <div class="rvx cap" style="color:var(--nutrition);font-weight:600">2 substituições</div>
+    </div>
+    <div class="card">
+      <div class="row"><div class="num" style="font-weight:600;color:var(--text2)">16:00</div><div><div class="h">Lanche da tarde</div><div class="cap"><svg class="i"><use href="#doc"/></svg> Dieta.pdf · p. 2</div></div><div class="num sp" style="font-weight:600;color:var(--text2)">—</div></div>
+      <div class="rvx" style="margin-top:10px;display:flex;justify-content:space-between"><span>Whey protein</span><span class="p num">30 g · 120 kcal</span></div>
+      <div class="rvx"><div style="display:flex;justify-content:space-between"><span>Pasta de amendoim</span><span class="p num">— · —</span></div><div class="why"><span class="conf lo"><svg class="i"><use href="#warn"/></svg><span class="bars"><i class="f"></i><i></i><i></i></span>Revisar</span>quantidade ilegível</div></div>
+    </div>
+    <div class="card"><div class="row"><div class="num" style="font-weight:600;color:var(--text2)">12:30</div><div><div class="h">Almoço</div><div class="cap">5 itens · 680 kcal</div></div><svg class="i chev sp"><use href="#right"/></svg></div></div>
+    <div class="form"><div class="fr">Ativar agora<div class="tog off sp"></div></div></div>
+  </div>
+  <div class="fade"></div>
+  <div class="bottom"><div class="primary" style="background:var(--nutrition-fill)">Criar dieta</div></div>
+</template>
+
+<!-- 32. COPILOTO — ESTADOS -->
+<template data-late data-class="tall" data-theme="t-coach" data-title="32 · Copiloto — retomar, sem provedor, ilegível, offline" data-note="Estados do copiloto reunidos num quadro. Importação interrompida reaparece no ponto de entrada como “Continuar importação”, na etapa em que parou. Sem provedor configurado, a folha continua aberta e oferece “Configurar” sem perder os arquivos. Arquivo ilegível e leitura parcial dizem o que houve e oferecem a saída. Offline não perde nada.">
+  <div class="scroll">
+    <div class="large"><h3>Treinos</h3><div class="acts"><div class="gbtn glass"><svg class="i"><use href="#plus"/></svg></div></div></div>
+    <div class="card aiborder">
+      <div class="row"><div class="orb" style="width:44px;height:44px;font-size:19px;margin:0"><svg class="i f aisym"><use href="#sparkles"/></svg></div><div><div class="h">Continuar importação</div><div class="cap">Treino · 3 arquivos · parou na revisão · há 2 h</div></div></div>
+      <div class="row" style="margin-top:12px;gap:8px"><div class="aisub glass">Continuar</div><div class="secondary glass">Descartar</div></div>
+    </div>
+    <div class="over" style="margin:16px 4px 8px">NA FOLHA DO COPILOTO</div>
+    <div class="banner at"><svg class="i"><use href="#warn"/></svg><div><b>Falta configurar a IA</b>Escolha um provedor e informe a chave. Seus arquivos ficam aqui.<div class="ba"><span class="p">Configurar</span></div></div></div>
+    <div class="banner at"><svg class="i"><use href="#warn"/></svg><div><b>Não consegui ler a Foto 2</b>O que veio dela ficou de fora. As outras 3 fichas estão prontas.<div class="ba"><span>Enviar de novo</span></div></div></div>
+    <div class="banner de"><svg class="i"><use href="#warn"/></svg><div><b>A leitura veio incompleta</b>Nada foi perdido.<div class="ba"><span class="p">Tentar de novo</span><span>Trocar arquivos</span></div></div></div>
+    <div class="banner"><svg class="i"><use href="#nowifi"/></svg><div><b>Sem conexão</b>Os arquivos ficam aqui. Continuo quando ela voltar.</div></div>
+  </div>
+  <div class="tabbar glass five" data-on="1"></div>
 </template>
 
 <script>
