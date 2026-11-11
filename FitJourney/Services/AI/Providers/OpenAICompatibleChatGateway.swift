@@ -223,9 +223,34 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
                        })
         case .tool:
             OAIMessage(role: "tool", content: message.content, toolCallID: message.toolCallID)
+        case .user where !message.parts.isEmpty:
+            OAIMessage(role: "user", content: message.content, contentParts: contentParts(message))
         default:
             OAIMessage(role: message.role.rawValue, content: message.content)
         }
+    }
+
+    /// Anexos antes do texto: imagem → `image_url` (data URL), PDF → `file` (`file_data` data URL),
+    /// arquivo de texto → `text`. Quem decide se o modelo aceita PDF é `AttachmentCapabilities`
+    /// (sem suporte, o PDF chega aqui já rasterizado em imagens).
+    static func contentParts(_ message: LLMMessage) -> [JSONValue] {
+        var parts: [JSONValue] = message.parts.map { part in
+            switch part {
+            case let .text(text):
+                .object(["type": .string("text"), "text": .string(text)])
+            case .image:
+                .object(["type": .string("image_url"), "image_url": .object(["url": .string(part.dataURL ?? "")])])
+            case let .pdf(filename, _):
+                .object(["type": .string("file"),
+                         "file": .object(["filename": .string(filename), "file_data": .string(part.dataURL ?? "")])])
+            case let .fileText(filename, text):
+                .object(["type": .string("text"), "text": .string(LLMContentPart.fileTextBody(filename: filename, text: text))])
+            }
+        }
+        if !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append(.object(["type": .string("text"), "text": .string(message.content)]))
+        }
+        return parts
     }
 
     private static func toolChoice(_ choice: ToolChoice) -> JSONValue {

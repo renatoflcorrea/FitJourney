@@ -320,7 +320,9 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
                 continue
             case .user:
                 let text = message.content.trimmingCharacters(in: .whitespacesAndNewlines)
-                append("user", text.isEmpty ? [] : [.object(["type": .string("text"), "text": .string(text)])])
+                // Anexos antes do texto (skill claude-api): `image`/`document` com fonte base64.
+                append("user", message.parts.compactMap(attachmentBlock)
+                    + (text.isEmpty ? [] : [.object(["type": .string("text"), "text": .string(text)])]))
             case .tool:
                 var block: [String: JSONValue] = [
                     "type": .string("tool_result"),
@@ -356,6 +358,28 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
             }
         }
         return result.map { .object(["role": .string($0.role), "content": .array($0.blocks)]) }
+    }
+
+    /// Bloco de anexo: imagem → `image` (base64 + `media_type`), PDF → `document` (base64,
+    /// `application/pdf`, título = nome do arquivo), arquivo de texto → `text`. Limites da API: 32 MB por
+    /// pedido e 600 páginas de PDF — o `AttachmentPreparer` mantém o total bem abaixo.
+    static func attachmentBlock(_ part: LLMContentPart) -> JSONValue? {
+        switch part {
+        case let .text(text):
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : .object(["type": .string("text"), "text": .string(trimmed)])
+        case let .image(mime, base64):
+            return .object(["type": .string("image"), "source": .object([
+                "type": .string("base64"), "media_type": .string(mime), "data": .string(base64),
+            ])])
+        case let .pdf(filename, base64):
+            return .object(["type": .string("document"), "title": .string(filename), "source": .object([
+                "type": .string("base64"), "media_type": .string("application/pdf"), "data": .string(base64),
+            ])])
+        case let .fileText(filename, text):
+            return .object(["type": .string("text"),
+                            "text": .string(LLMContentPart.fileTextBody(filename: filename, text: text))])
+        }
     }
 
     /// Um 400 de assinatura de thinking (verificação de edição de histórico) é recuperado uma vez,

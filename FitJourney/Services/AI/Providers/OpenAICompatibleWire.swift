@@ -35,6 +35,8 @@ struct OAIMessage: Encodable {
     var content: String?
     var toolCalls: [OAIToolCall]?
     var toolCallID: String?
+    /// Conteúdo multimodal (`text`/`image_url`/`file`); quando presente, substitui `content` no fio.
+    var contentParts: [JSONValue]?
 
     enum CodingKeys: String, CodingKey {
         case role, content
@@ -46,7 +48,9 @@ struct OAIMessage: Encodable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(role, forKey: .role)
         // Assistente só com ferramentas manda `content: null` (alguns servidores recusam a chave ausente).
-        if let content { try container.encode(content, forKey: .content) } else { try container.encodeNil(forKey: .content) }
+        if let contentParts, !contentParts.isEmpty {
+            try container.encode(contentParts, forKey: .content)
+        } else if let content { try container.encode(content, forKey: .content) } else { try container.encodeNil(forKey: .content) }
         if let toolCalls, !toolCalls.isEmpty { try container.encode(toolCalls, forKey: .toolCalls) }
         if let toolCallID { try container.encode(toolCallID, forKey: .toolCallID) }
     }
