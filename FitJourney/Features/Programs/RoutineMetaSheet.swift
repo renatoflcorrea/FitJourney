@@ -11,9 +11,15 @@ struct RoutineMetaSheet: View {
 
     @State private var name = ""
     @State private var symbol = ""
-    @State private var color: RoutineColor = .orange
+    @State private var color: FJRoutineColor
     @State private var weekdays: Set<Weekday> = []
     @State private var error: String?
+
+    init(program: TrainingProgram, onAdded: @escaping (Routine) -> Void = { _ in }) {
+        self.program = program
+        self.onAdded = onAdded
+        _color = State(initialValue: FJRoutineColor.suggested(forIndex: program.sortedRoutines.count))
+    }
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
 
@@ -45,29 +51,7 @@ struct RoutineMetaSheet: View {
                 }
 
                 Section("Cor") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: FJSpacing.m) {
-                            ForEach(RoutineColor.allCases, id: \.self) { option in
-                                Button { color = option } label: {
-                                    Circle()
-                                        .fill(option.fill)
-                                        .frame(width: 32, height: 32)
-                                        .overlay {
-                                            if color == option {
-                                                Image(systemName: "checkmark")
-                                                    .font(.caption.weight(.bold))
-                                                    .foregroundStyle(option.onFill)
-                                            }
-                                        }
-                                        .frame(width: FJSize.minTap, height: FJSize.minTap)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(Text(verbatim: option.localizedName))
-                                .accessibilityAddTraits(color == option ? .isSelected : [])
-                            }
-                        }
-                    }
+                    FJRoutineColorPicker(selection: $color)
                 }
 
                 if program.scheduleMode == .weekly {

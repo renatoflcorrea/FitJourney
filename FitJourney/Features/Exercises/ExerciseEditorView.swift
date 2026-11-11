@@ -411,7 +411,7 @@ private struct MuscleChips: View {
 
     var body: some View {
         GlassEffectContainer(spacing: FJSpacing.s) {
-            FlowLayout(spacing: FJSpacing.s) {
+            FJFlowLayout(spacing: FJSpacing.s) {
                 ForEach(MuscleGroup.allCases, id: \.self) { group in
                     let isOn = selection.contains(group)
                     FJFilterChip(LocalizedStringKey(group.localizedName), isSelected: isOn) {

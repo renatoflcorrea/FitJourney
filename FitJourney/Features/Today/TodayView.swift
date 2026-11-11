@@ -16,6 +16,15 @@ struct TodayView: View {
     /// "Agora" da tela: atualizado ao voltar ao primeiro plano e na virada do dia (a sugestão depende da data).
     @State private var now = Date.now
     @State private var showPicker = false
+    @State private var showSettings = Self.opensSettingsAtLaunch
+
+    private static var opensSettingsAtLaunch: Bool {
+        #if DEBUG
+        UserDefaults.standard.string(forKey: "fj.openSettings") != nil // QA/evidências
+        #else
+        false
+        #endif
+    }
     @State private var createFromScratch = false
     @State private var errorMessage: String?
 
@@ -46,6 +55,15 @@ struct TodayView: View {
             .fjScreenBackground()
             .navigationTitle("Hoje")
             .navigationSubtitle(Text(now, format: .dateTime.weekday(.wide).day().month(.wide)))
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showSettings = true } label: {
+                        Image(systemName: "person.crop.circle")
+                    }
+                    .accessibilityLabel(Text("Ajustes"))
+                }
+            }
+            .sheet(isPresented: $showSettings) { SettingsRootView() }
             .sheet(isPresented: $showPicker) {
                 if case .program(let program, let suggestion, _) = content {
                     RoutinePickerSheet(program: program, suggestedIDs: suggestion.routineIDs) { routine in

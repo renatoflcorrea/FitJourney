@@ -13,7 +13,13 @@ enum PrescriptionFormat {
 
     /// "32,5 kg", "PC", "PC +10 kg", "PC −20 kg".
     static func loadText(_ load: Load) -> String {
-        switch load {
+        loadText(load, displayUnit: WeightUnitPreference.current)
+    }
+
+    /// Mostra na unidade preferida (conversão só na exibição; mesma unidade = valor como digitado).
+    static func loadText(_ load: Load, displayUnit: WeightUnit, step: Double? = nil) -> String {
+        let shown = LoadDisplay.load(load, in: displayUnit, step: step ?? LoadDisplay.step(for: displayUnit))
+        switch shown {
         case .weight(let value, let unit):
             return "\(FJFormat.number(value, maxFractionDigits: 2)) \(unitText(unit))"
         case .bodyweight(let delta, let unit):

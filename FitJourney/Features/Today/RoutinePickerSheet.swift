@@ -20,7 +20,7 @@ struct RoutinePickerSheet: View {
                 ForEach(program.sortedRoutines) { routine in
                     Button { onPick(routine) } label: {
                         HStack(spacing: FJSpacing.m) {
-                            RoutineBadge(routine: routine, size: 40)
+                            FJRoutineBadge(symbol: routine.symbol, name: routine.name, colorName: routine.colorName)
                             VStack(alignment: .leading, spacing: FJSpacing.xxs) {
                                 Text(verbatim: routine.name)
                                     .font(FJFont.cardTitle)

@@ -22,7 +22,7 @@ struct TodayWorkoutCard: View {
                     .foregroundStyle(FJColor.textSecondary)
 
                 HStack(alignment: .center, spacing: FJSpacing.m) {
-                    RoutineBadge(routine: routine, size: 52)
+                    FJRoutineBadge(symbol: routine.symbol, name: routine.name, colorName: routine.colorName)
                     VStack(alignment: .leading, spacing: FJSpacing.xs) {
                         Text(verbatim: routine.name).font(FJFont.cardTitle)
                         FJTag(badge, systemImage: "arrow.forward.circle.fill")

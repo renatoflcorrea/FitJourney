@@ -76,9 +76,13 @@ struct FitJourneyApp: App {
                     healthController.attach(to: sessionEngine)
                 }
                 .task {
-                    // FC ao vivo na tela da sessão (zona exige FC máx configurada — entra com os Ajustes).
+                    // FC ao vivo na tela da sessão; a zona usa a FC máxima de Ajustes (ou 220 − idade do perfil).
                     for await sample in healthController.heartRateUpdates() {
-                        sessionCoordinator.heartRate = SessionHeartRate(bpm: Int(sample.bpm.rounded()), zone: nil)
+                        let stored = UserDefaults.standard.double(forKey: AppPreferenceKeys.maxHeartRate)
+                        let age = CoachProfileStore().load().age
+                        let zone = HeartRateZones.resolve(configuredMax: stored > 0 ? stored : nil, age: age)
+                            .zones?.zone(for: sample.bpm).map(HealthPresentation.designZone)
+                        sessionCoordinator.heartRate = SessionHeartRate(bpm: Int(sample.bpm.rounded()), zone: zone)
                     }
                 }
                 .task(priority: .utility) {

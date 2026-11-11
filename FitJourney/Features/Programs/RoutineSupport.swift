@@ -41,7 +41,7 @@ extension Weekday {
 }
 
 extension Routine {
-    var routineColor: RoutineColor { RoutineColor(name: colorName) }
+    var routineColor: FJRoutineColor { FJRoutineColor(name: colorName) }
 
     var exerciseCount: Int { (exercises ?? []).count }
 
@@ -129,7 +129,7 @@ extension TrainingProgram {
 /// Sete círculos S T Q Q S S D; os dias ativos ficam preenchidos.
 struct WeekdayDots: View {
     let weekdays: Set<Weekday>
-    var color: RoutineColor = .orange
+    var color: FJRoutineColor = .orange
 
     var body: some View {
         HStack(spacing: FJSpacing.xs) {

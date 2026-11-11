@@ -76,7 +76,7 @@ struct ProgramDetailView: View {
                     if !program.goalText.isEmpty {
                         Text(verbatim: program.goalText).font(FJFont.label).foregroundStyle(FJColor.textSecondary)
                     }
-                    FlowLayout(spacing: FJSpacing.s) {
+                    FJFlowLayout(spacing: FJSpacing.s) {
                         FJTag(LocalizedStringKey(program.goal.localizedName), area: .training)
                         FJTag(LocalizedStringKey(program.scheduleMode.localizedName), systemImage: program.scheduleMode.systemImage)
                         FJTag(LocalizedStringKey(program.originText))
@@ -98,7 +98,7 @@ struct ProgramDetailView: View {
                 ForEach(program.sortedRoutines) { routine in
                     VStack(alignment: .leading, spacing: FJSpacing.xs) {
                         HStack(spacing: FJSpacing.m) {
-                            RoutineBadge(routine: routine, size: 36)
+                            FJRoutineBadge(symbol: routine.symbol, name: routine.name, colorName: routine.colorName)
                             VStack(alignment: .leading) {
                                 Text(verbatim: routine.name).font(FJFont.cardTitle)
                                 Text(verbatim: routine.summaryText).font(FJFont.caption).foregroundStyle(FJColor.textSecondary)

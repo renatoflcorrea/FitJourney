@@ -6,6 +6,8 @@ struct AppRoot: View {
     enum Tab: Hashable { case today, training, nutrition, health, coach }
 
     @State private var selection: Tab = Self.initialTab
+    /// Muda depois de substituir/apagar tudo: recria as abas (os modelos antigos deixaram de existir).
+    @State private var resetGeneration = 0
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
 
     private static var initialTab: Tab {
@@ -42,6 +44,13 @@ struct AppRoot: View {
         .tabBarMinimizeBehavior(.onScrollDown)
         .modifier(OptionalSessionHost(coordinator: sessionCoordinator))
         .tint(FJColor.training)
+        .id(resetGeneration)
+        .onReceive(NotificationCenter.default.publisher(for: .fjDataDidReset)) { _ in
+            sessionCoordinator?.isPresented = false
+            sessionCoordinator?.engine.restore()
+            selection = .today
+            resetGeneration += 1
+        }
     }
 }
 

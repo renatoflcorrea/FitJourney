@@ -166,7 +166,7 @@ private struct FlowTags: View {
     let secondary: [MuscleGroup]
 
     var body: some View {
-        FlowLayout(spacing: FJSpacing.xs) {
+        FJFlowLayout(spacing: FJSpacing.xs) {
             ForEach(primary, id: \.self) { FJTag(LocalizedStringKey($0.localizedName), area: .training) }
             ForEach(secondary, id: \.self) { FJTag(LocalizedStringKey($0.localizedName), tone: .neutral) }
         }

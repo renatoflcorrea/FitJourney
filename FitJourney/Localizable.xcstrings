@@ -370,7 +370,16 @@
     "Abre a prescrição": {},
     "Abre no Safari": {},
     "Abre o calendário": {},
-    "Abrir Ajustes": {},
+    "Abrir Ajustes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        }
+      }
+    },
     "Abrir Treinos": {
       "localizations": {
         "en": {
@@ -729,7 +738,16 @@
     },
     "Carboidrato": {},
     "Cardio": {},
-    "Carga": {},
+    "Carga": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load"
+          }
+        }
+      }
+    },
     "Carga e repetições": {},
     "Carga por lado": {},
     "Carregando": {},
@@ -893,7 +911,16 @@
     "Descanso ao fim da rodada: %lld s": {},
     "Descanso concluído": {},
     "Descanso encerrado": {},
-    "Descanso padrão": {},
+    "Descanso padrão": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default rest"
+          }
+        }
+      }
+    },
     "Descanso restante": {},
     "Descanso só ao fim da rodada: defina no último exercício do grupo.": {},
     "Descanso, %@ restantes": {},
@@ -1444,7 +1471,16 @@
       }
     },
     "Inclinação": {},
-    "Indisponível": {},
+    "Indisponível": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unavailable"
+          }
+        }
+      }
+    },
     "Indisponível: a refeição não tem itens. Use Ajustar para registrar o que comeu.": {},
     "Informado": {},
     "Iniciar": {
@@ -1588,7 +1624,16 @@
     "Minimizar treino": {},
     "Moderada": {},
     "Moderado": {},
-    "Modo": {},
+    "Modo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mode"
+          }
+        }
+      }
+    },
     "Modo de agenda": {
       "localizations": {
         "en": {
@@ -2481,8 +2526,26 @@
       }
     },
     "kcal": {},
-    "kg": {},
-    "lb": {},
+    "kg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kg"
+          }
+        }
+      }
+    },
+    "lb": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "lb"
+          }
+        }
+      }
+    },
     "libras": {},
     "nenhum": {
       "localizations": {
@@ -2640,7 +2703,1057 @@
       }
     },
     "—": {},
-    "−15 s": {}
+    "−15 s": {},
+    "%lld anos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld years old"
+          }
+        }
+      }
+    },
+    "iniciante": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "beginner"
+          }
+        }
+      }
+    },
+    "intermediário": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "intermediate"
+          }
+        }
+      }
+    },
+    "avançado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "advanced"
+          }
+        }
+      }
+    },
+    "Permitidas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed"
+          }
+        }
+      }
+    },
+    "Ainda não solicitadas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not requested yet"
+          }
+        }
+      }
+    },
+    "Desativadas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off"
+          }
+        }
+      }
+    },
+    "Não conectado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not connected"
+          }
+        }
+      }
+    },
+    "Conectado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected"
+          }
+        }
+      }
+    },
+    "Não configurado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not configured"
+          }
+        }
+      }
+    },
+    "Manual (%lld bpm)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manual (%lld bpm)"
+          }
+        }
+      }
+    },
+    "Pela idade (%lld bpm)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From age (%lld bpm)"
+          }
+        }
+      }
+    },
+    "Informe sua idade no Perfil ou digite um valor": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter your age in Profile or type a value"
+          }
+        }
+      }
+    },
+    "%lld programas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld programs"
+          }
+        }
+      }
+    },
+    "%lld treinos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld workouts"
+          }
+        }
+      }
+    },
+    "%lld dietas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld diets"
+          }
+        }
+      }
+    },
+    "%lld registros alimentares": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld food entries"
+          }
+        }
+      }
+    },
+    "%lld registros de água": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld water entries"
+          }
+        }
+      }
+    },
+    "%lld alimentos salvos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld saved foods"
+          }
+        }
+      }
+    },
+    "%lld conversas do Coach": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld Coach conversations"
+          }
+        }
+      }
+    },
+    "Nada novo: o aparelho já tinha tudo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing new: this device already had everything."
+          }
+        }
+      }
+    },
+    "Importado: %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Imported: %@."
+          }
+        }
+      }
+    },
+    "Preparando…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preparing…"
+          }
+        }
+      }
+    },
+    "Lendo o arquivo…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reading file…"
+          }
+        }
+      }
+    },
+    "Importando…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importing…"
+          }
+        }
+      }
+    },
+    "Apagando…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erasing…"
+          }
+        }
+      }
+    },
+    "Concluído": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "Ajustes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
+          }
+        }
+      }
+    },
+    "Seu perfil": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your profile"
+          }
+        }
+      }
+    },
+    "Opcional — ajuda o Coach a conhecer você": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional — helps the Coach get to know you"
+          }
+        }
+      }
+    },
+    "Unidade de carga": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load unit"
+          }
+        }
+      }
+    },
+    "Passo de carga": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load step"
+          }
+        }
+      }
+    },
+    "Semana começa em": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Week starts on"
+          }
+        }
+      }
+    },
+    "Segunda": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monday"
+          }
+        }
+      }
+    },
+    "Domingo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sunday"
+          }
+        }
+      }
+    },
+    "Unidades": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Units"
+          }
+        }
+      }
+    },
+    "Mudar a unidade muda só a exibição. O histórico não é alterado.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changing the unit only changes how values are shown. History is not changed."
+          }
+        }
+      }
+    },
+    "Som ao fim do descanso": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sound when rest ends"
+          }
+        }
+      }
+    },
+    "Atividade ao Vivo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live Activity"
+          }
+        }
+      }
+    },
+    "Treino": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout"
+          }
+        }
+      }
+    },
+    "A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada (em breve).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max heart rate defines your heart rate zones. Without a manual value we use 220 minus the age in your profile. Live Activity shows the workout and rest on the Lock Screen (coming soon)."
+          }
+        }
+      }
+    },
+    "Definir FC máxima manualmente": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set max heart rate manually"
+          }
+        }
+      }
+    },
+    "FC máxima": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max heart rate"
+          }
+        }
+      }
+    },
+    "Integrações": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Integrations"
+          }
+        }
+      }
+    },
+    "Notificações": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications"
+          }
+        }
+      }
+    },
+    "Coach e IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach & AI"
+          }
+        }
+      }
+    },
+    "Dados": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data"
+          }
+        }
+      }
+    },
+    "Exportar, importar e apagar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export, import and erase"
+          }
+        }
+      }
+    },
+    "Sobre": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About"
+          }
+        }
+      }
+    },
+    "Desativadas nos Ajustes do iPhone": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turned off in iPhone Settings"
+          }
+        }
+      }
+    },
+    "Sem permissão, nenhum aviso chega. Suas escolhas abaixo ficam salvas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Without permission no alerts arrive. Your choices below are kept."
+          }
+        }
+      }
+    },
+    "Estado do sistema": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System status"
+          }
+        }
+      }
+    },
+    "O pedido de permissão aparece ao ligar o primeiro lembrete.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The permission request appears when you turn on the first reminder."
+          }
+        }
+      }
+    },
+    "Lembretes de refeição": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meal reminders"
+          }
+        }
+      }
+    },
+    "Edite os horários no plano alimentar. O aviso de fim de descanso é ligado pelo próprio treino, na primeira vez que você descansa.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit times in the meal plan. The rest-end alert is set up by the workout itself the first time you rest."
+          }
+        }
+      }
+    },
+    "Versão": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        }
+      }
+    },
+    "Privacidade": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy"
+          }
+        }
+      }
+    },
+    "Seus treinos, dieta e dados de saúde ficam neste iPhone. Nada é enviado a servidores do FitJourney. Só o Coach envia texto ao provedor de IA que você escolher, e apenas o que você permitir em Coach e IA.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your workouts, diet and health data stay on this iPhone. Nothing is sent to FitJourney servers. Only the Coach sends text to the AI provider you choose, and only what you allow in Coach & AI."
+          }
+        }
+      }
+    },
+    "Apagar todos os dados": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erase all data"
+          }
+        }
+      }
+    },
+    "Armazenamento": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Storage"
+          }
+        }
+      }
+    },
+    "Mídia dos exercícios": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exercise media"
+          }
+        }
+      }
+    },
+    "Finalize o treino em andamento primeiro. Exportar continua disponível.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish the workout in progress first. Exporting is still available."
+          }
+        }
+      }
+    },
+    "Formato": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Format"
+          }
+        }
+      }
+    },
+    "Pacote com mídia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package with media"
+          }
+        }
+      }
+    },
+    "Só JSON": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JSON only"
+          }
+        }
+      }
+    },
+    "Incluir conversas do Coach": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Include Coach conversations"
+          }
+        }
+      }
+    },
+    "Exportar tudo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export everything"
+          }
+        }
+      }
+    },
+    "Exportar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export"
+          }
+        }
+      }
+    },
+    "Ainda não há dados.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is no data yet."
+          }
+        }
+      }
+    },
+    "Inclui programas, treinos, dieta, registros e ajustes. Chaves de IA nunca entram no arquivo. As conversas do Coach podem ter dados pessoais de saúde. O pacote leva as mídias dos exercícios; o JSON não.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Includes programs, workouts, diet, entries and settings. AI keys never go in the file. Coach conversations may contain personal health data. The package carries exercise media; the JSON does not."
+          }
+        }
+      }
+    },
+    "Importar backup": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import backup"
+          }
+        }
+      }
+    },
+    "Importar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import"
+          }
+        }
+      }
+    },
+    "Mostramos um resumo antes de mudar qualquer coisa. Se algo falhar no meio, nada é aplicado.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We show a summary before changing anything. If something fails midway, nothing is applied."
+          }
+        }
+      }
+    },
+    "Backup importado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup imported"
+          }
+        }
+      }
+    },
+    "%lld itens do aparelho eram mais recentes e foram mantidos.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld items on this device were newer and were kept."
+          }
+        }
+      }
+    },
+    "Nada foi alterado.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was changed."
+          }
+        }
+      }
+    },
+    "Backup de %@ · formato v%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup from %@ · format v%lld"
+          }
+        }
+      }
+    },
+    "Este backup está vazio.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This backup is empty."
+          }
+        }
+      }
+    },
+    "Sem mídia: as fotos e vídeos dos exercícios não estão neste arquivo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No media: exercise photos and videos are not in this file."
+          }
+        }
+      }
+    },
+    "Resumo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summary"
+          }
+        }
+      }
+    },
+    "Juntar com o que já existe": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Merge with existing data"
+          }
+        }
+      }
+    },
+    "Substituir tudo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace everything"
+          }
+        }
+      }
+    },
+    "Importar conversas do Coach": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import Coach conversations"
+          }
+        }
+      }
+    },
+    "Como importar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How to import"
+          }
+        }
+      }
+    },
+    "Finalize o treino em andamento primeiro.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish the workout in progress first."
+          }
+        }
+      }
+    },
+    "Apaga os dados deste aparelho e coloca os do backup no lugar. Não dá para desfazer.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erases this device's data and puts the backup's in its place. This can't be undone."
+          }
+        }
+      }
+    },
+    "Substituir todos os dados deste aparelho?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace all data on this device?"
+          }
+        }
+      }
+    },
+    "Continuar…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue…"
+          }
+        }
+      }
+    },
+    "Programas, treinos, dieta e registros atuais serão apagados e trocados pelos do backup.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current programs, workouts, diet and entries will be erased and replaced by the backup's."
+          }
+        }
+      }
+    },
+    "Isso não pode ser desfeito.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This can't be undone."
+          }
+        }
+      }
+    },
+    "Substituir definitivamente": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Replace permanently"
+          }
+        }
+      }
+    },
+    "Programas e fichas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programs and routines"
+          }
+        }
+      }
+    },
+    "Dieta e registros": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diet and entries"
+          }
+        }
+      }
+    },
+    "Conversas do Coach": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach conversations"
+          }
+        }
+      }
+    },
+    "Perfil": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profile"
+          }
+        }
+      }
+    },
+    "O que será apagado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What will be erased"
+          }
+        }
+      }
+    },
+    "Treinos já gravados no app Saúde continuam lá.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workouts already saved in the Health app stay there."
+          }
+        }
+      }
+    },
+    "Manter o catálogo de exercícios": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep the exercise catalog"
+          }
+        }
+      }
+    },
+    "Apagar também as chaves de IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Also erase AI keys"
+          }
+        }
+      }
+    },
+    "O catálogo embutido volta pronto para usar. As chaves de IA ficam no Chaveiro e, por padrão, são mantidas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The built-in catalog comes back ready to use. AI keys live in the Keychain and are kept by default."
+          }
+        }
+      }
+    },
+    "Exportar antes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export first"
+          }
+        }
+      }
+    },
+    "Apagar tudo…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erase everything…"
+          }
+        }
+      }
+    },
+    "Apagar todos os dados do FitJourney?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erase all FitJourney data?"
+          }
+        }
+      }
+    },
+    "Apagar definitivamente": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erase permanently"
+          }
+        }
+      }
+    },
+    "O app volta ao primeiro uso.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The app returns to first use."
+          }
+        }
+      }
+    }
   },
   "version": "1.0"
 }
