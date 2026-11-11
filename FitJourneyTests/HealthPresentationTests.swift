@@ -30,8 +30,9 @@ struct HealthReadingDisplayTests {
     @Test func bpmRangeAndMinutes() {
         #expect(HealthPresentation.bpmRange(HeartRateStats(average: 100, minimum: 58.2, maximum: 163.6, sampleCount: 3)) == "58–164")
         #expect(HealthPresentation.bpmRange(HeartRateStats(average: 72, minimum: 72, maximum: 72, sampleCount: 1)) == "72")
-        #expect(HealthPresentation.minutes(52) == "52 min")
-        #expect(HealthPresentation.minutes(65) == "1 h 05")
+        #expect(HealthPresentation.minutes(52).contains("52"))
+        let long = HealthPresentation.minutes(65)
+        #expect(long.contains("1") && long.contains("5"))
     }
 }
 
@@ -187,10 +188,22 @@ struct HealthDayRowsTests {
             (.strength, DateInterval(start: start.addingTimeInterval(1_800), duration: 3_600)), // sobrepõe 30 min
             (.aerobic, DateInterval(start: start.addingTimeInterval(7_200), duration: 1_800)),
         ]
-        let result = HealthPresentation.dailyMinutes(intervals, days: [day, day.addingTimeInterval(86_400)], calendar: calendar)
+        let days = [day, day.addingTimeInterval(86_400)]
+        let result = HealthPresentation.dailyMinutes(intervals, days: days, calendar: calendar)
         #expect(result[0][.strength] == 90)
         #expect(result[0][.aerobic] == 30)
         #expect(result[1].isEmpty)
+        // Total do dia pela união geral: 10:00–11:30 (força) + 12:00–12:30 (aeróbico) = 120 min.
+        #expect(HealthPresentation.dailyTotals(intervals, days: days, calendar: calendar) == [120, 0])
+    }
+
+    @Test func otherCategoriesCountAsOthersAndWeekAverageUsesElapsedDays() {
+        #expect(HealthPresentation.minutesKind(.mixed) == .other)
+        #expect(HealthPresentation.minutesKind(.mobility) == .other)
+        let days = (0..<7).map { t0.addingTimeInterval(Double($0) * 86_400) }
+        // Só os 3 primeiros dias decorridos: média de 60+0+30 / 3.
+        let average = HealthPresentation.weekAverage(totals: [60, 0, 30, 0, 0, 0, 0], days: days, now: days[2])
+        #expect(average == 30)
     }
 
     @Test func movingAverageUsesAvailableDaysOnly() {

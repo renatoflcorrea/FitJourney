@@ -123,8 +123,12 @@ struct HealthExternalWorkoutView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             let reader: any HealthDataReading = injectedReader ?? HealthQueries.live
-            if let samples = try? await reader.heartRateSamples(in: record.interval) {
+            do {
+                let samples = try await reader.heartRateSamples(in: record.interval)
                 stats = samples.map { HeartRateAnalysis.stats($0) }.flattenedStats
+            } catch {
+                // Só `CancellationError` chega aqui (a tela saiu): não marca como carregado.
+                return
             }
             isLoading = false
         }
@@ -141,6 +145,7 @@ private extension HealthReading where Value == HeartRateStats? {
     }
 }
 
+#if DEBUG
 #Preview("Saúde — dia") {
     let container = PersistenceController.preview
     let now = Date()
@@ -156,3 +161,4 @@ private extension HealthReading where Value == HeartRateStats? {
         .modelContainer(container)
         .environment(HealthPreviewFixtures.connectedAuthorization(suite: "preview-day"))
 }
+#endif

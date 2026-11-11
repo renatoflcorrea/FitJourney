@@ -2,21 +2,36 @@ import Charts
 import SwiftData
 import SwiftUI
 
-/// Carregamento da FC de uma sessão (amostras + pausas) e análise com as zonas atuais.
+/// Carregamento da FC de uma sessão (amostras + pausas) e análise com as zonas atuais. Tudo o que o
+/// gráfico desenha (segmentos, marcadores, eixo Y, faixas) é pré-calculado aqui, uma vez por análise.
 @MainActor
 @Observable
 final class SessionHeartRateModel {
     enum Phase: Equatable { case loading, loaded, noData, unavailable }
+
+    struct SetMarker: Identifiable, Equatable {
+        var id: UUID
+        var date: Date
+        var bpm: Double
+    }
+
+    /// Limite de pontos desenhados (a análise usa todas as amostras).
+    static let drawLimit = 2_000
 
     private(set) var phase: Phase = .loading
     private(set) var timeline: HealthSessionTimeline?
     private(set) var samples: [HeartRateSample] = []
     private(set) var pauses: [DateInterval] = []
     private(set) var analysis: SessionHeartRateAnalysis?
+    private(set) var bands: [HealthPresentation.ExerciseBand] = []
+    private(set) var segments: [[HeartRateSample]] = []
+    private(set) var setMarkers: [SetMarker] = []
+    private(set) var yDomain: ClosedRange<Double> = 40...200
 
     func load(session: WorkoutSession, context: ModelContext, reader: any HealthDataReading, zones: HeartRateZones?) async {
         let timeline = session.healthTimeline(context: context)
         self.timeline = timeline
+        bands = HealthPresentation.bands(timeline)
         phase = .loading
         let interval = timeline.interval()
         do {
@@ -29,31 +44,53 @@ final class SessionHeartRateModel {
             switch reading {
             case .available(let samples):
                 self.samples = HeartRateAnalysis.valid(samples)
+                segments = HealthPresentation.segments(HealthPresentation.downsample(self.samples, to: Self.drawLimit))
                 phase = .loaded
                 reanalyze(zones: zones)
             case .noData:
-                samples = []
-                analysis = nil
-                phase = .noData
+                clear(.noData)
             case .unavailable:
-                samples = []
-                analysis = nil
-                phase = .unavailable
+                clear(.unavailable)
             }
         } catch {
             // Cancelamento (a tela saiu): mantém o estado atual.
         }
     }
 
+    private func clear(_ phase: Phase) {
+        samples = []
+        segments = []
+        setMarkers = []
+        analysis = nil
+        self.phase = phase
+    }
+
     func reanalyze(zones: HeartRateZones?) {
         guard var timeline, phase == .loaded else { return }
         timeline.pauses = pauses
-        analysis = SessionHeartRateAnalyzer.analyze(timeline, samples: samples, zones: zones, now: timeline.interval().end)
+        let analysis = SessionHeartRateAnalyzer.analyze(timeline, samples: samples, zones: zones, now: timeline.interval().end)
+        self.analysis = analysis
+        setMarkers = analysis.exercises.flatMap(\.sets).compactMap { set in
+            bpm(near: set.completedAt).map { SetMarker(id: set.setID, date: set.completedAt, bpm: $0) }
+        }
+        var low = (samples.map(\.bpm).min() ?? 60) - 10
+        var high = (samples.map(\.bpm).max() ?? 180) + 10
+        if let zones { high = max(high, zones.range(for: .zone5).lowerBound + 10) }
+        low = max(30, (low / 10).rounded(.down) * 10)
+        high = max((high / 10).rounded(.up) * 10, low + 40)
+        yDomain = low...high
     }
 
-    /// FC da amostra mais próxima de uma data (até 30 s) — posição dos marcadores de série.
+    /// FC da amostra mais próxima de uma data (até 30 s), por busca binária.
     func bpm(near date: Date) -> Double? {
-        guard let nearest = samples.min(by: { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }),
+        guard !samples.isEmpty else { return nil }
+        var low = 0, high = samples.count
+        while low < high {
+            let mid = (low + high) / 2
+            if samples[mid].date < date { low = mid + 1 } else { high = mid }
+        }
+        let candidates = [low - 1, low].filter { samples.indices.contains($0) }.map { samples[$0] }
+        guard let nearest = candidates.min(by: { abs($0.date.timeIntervalSince(date)) < abs($1.date.timeIntervalSince(date)) }),
               abs(nearest.date.timeIntervalSince(date)) <= 30 else { return nil }
         return nearest.bpm
     }
@@ -119,7 +156,7 @@ struct SessionHeartRateChart: View {
                          tone: .neutral, systemImage: "heart.slash", actionTitle: "Abrir Ajustes") { HealthSettings.open(openURL) }
             case .loaded:
                 if let analysis = model.analysis, let timeline = model.timeline {
-                    chartCard(analysis, timeline)
+                    chartCard(analysis)
                     zoneSection(analysis)
                     exerciseList(analysis, timeline)
                 }
@@ -140,63 +177,10 @@ struct SessionHeartRateChart: View {
 
     // MARK: Gráfico
 
-    private func chartCard(_ analysis: SessionHeartRateAnalysis, _ timeline: HealthSessionTimeline) -> some View {
-        let bands = HealthPresentation.bands(timeline)
-        let numbers = Dictionary(uniqueKeysWithValues: bands.map { ($0.id, $0.number) })
-        return FJCard {
-            VStack(alignment: .leading, spacing: FJSpacing.m) {
-                header(analysis, numbers: numbers)
-                HeartRateChartBody(model: model, analysis: analysis, bands: bands, selection: $selection,
-                                   highlighted: selectedExerciseID)
-                    .frame(height: 240)
-                    .accessibilityChartDescriptor(HeartRateChartDescriptor(samples: model.samples, start: analysis.interval.start))
-                if analysis.zones == nil { Text("Sem as zonas: defina a FC máxima abaixo.").font(FJFont.caption).foregroundStyle(FJColor.textSecondary) }
-            }
+    private func chartCard(_ analysis: SessionHeartRateAnalysis) -> some View {
+        FJCard {
+            HeartRateChartCard(model: model, analysis: analysis, highlighted: selectedExerciseID, clearHighlight: { selectedExerciseID = nil })
         }
-    }
-
-    private func header(_ analysis: SessionHeartRateAnalysis, numbers: [UUID: Int]) -> some View {
-        let heading: String
-        var stats = analysis.overall
-        var title = String(localized: "Treino inteiro")
-        if let selection {
-            if let found = analysis.lookup(at: selection) {
-                title = HealthPresentation.selectionTitle(number: numbers[found.exercise.exerciseID], exercise: found.exercise.name,
-                                                          setNumber: found.set?.number, stats: nil)
-                stats = found.set?.stats ?? found.exercise.stats
-            } else {
-                title = (selection.timeIntervalSince(analysis.interval.start) / 60).formatted(.number.precision(.fractionLength(0)))
-                title = String(localized: "min \(title)")
-            }
-        } else if let id = selectedExerciseID, let exercise = analysis.exercises.first(where: { $0.exerciseID == id }) {
-            title = HealthPresentation.selectionTitle(number: numbers[id], exercise: exercise.name, setNumber: nil, stats: nil)
-            stats = exercise.stats
-        }
-        heading = title
-        return VStack(alignment: .leading, spacing: FJSpacing.xs) {
-            Text(verbatim: heading)
-                .font(FJFont.overline)
-                .foregroundStyle(FJColor.textSecondary)
-                .lineLimit(2)
-            HStack(alignment: .firstTextBaseline, spacing: FJSpacing.s) {
-                if let stats {
-                    Text(verbatim: HealthPresentation.bpm(stats.average)).font(FJFont.numberLarge)
-                    Text("média").font(FJFont.unit).foregroundStyle(FJColor.textSecondary)
-                    Text(verbatim: "· " + HealthPresentation.bpm(stats.maximum)).font(FJFont.numberLarge)
-                    Text("máx bpm").font(FJFont.unit).foregroundStyle(FJColor.textSecondary)
-                } else {
-                    Text(verbatim: "—").font(FJFont.numberLarge).foregroundStyle(FJColor.textSecondary)
-                    Text("Sem leituras neste trecho").font(FJFont.label).foregroundStyle(FJColor.textSecondary)
-                }
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(verbatim: summaryText(title: heading, stats: stats)))
-    }
-
-    private func summaryText(title: String, stats: HeartRateStats?) -> String {
-        guard let stats else { return title + ". " + String(localized: "Sem leituras neste trecho") }
-        return title + ". " + String(localized: "Frequência cardíaca média \(HealthPresentation.bpm(stats.average)), máxima \(HealthPresentation.bpm(stats.maximum)) batimentos por minuto")
     }
 
     // MARK: Zonas
@@ -295,28 +279,106 @@ struct SessionHeartRateChart: View {
     }
 }
 
+// MARK: - Cartão do gráfico (a seleção vive aqui para não reavaliar a tela inteira)
+
+private struct HeartRateChartCard: View {
+    let model: SessionHeartRateModel
+    let analysis: SessionHeartRateAnalysis
+    let highlighted: UUID?
+    let clearHighlight: () -> Void
+
+    @State private var selection: Date?
+
+    private enum HeaderValue {
+        case stats(HeartRateStats), point(Double), none
+    }
+
+    private var numbers: [UUID: Int] { Dictionary(uniqueKeysWithValues: model.bands.map { ($0.id, $0.number) }) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: FJSpacing.m) {
+            header
+            HeartRateChartBody(model: model, analysis: analysis, selection: $selection, highlighted: highlighted)
+                .frame(height: 240)
+                .accessibilityChartDescriptor(HeartRateChartDescriptor(samples: model.samples, start: analysis.interval.start))
+            if analysis.zones == nil {
+                Text("Sem as zonas: defina a FC máxima abaixo.").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+            }
+        }
+        .onChange(of: selection) { _, new in if new != nil { clearHighlight() } }
+    }
+
+    private var content: (title: String, value: HeaderValue) {
+        if let selection {
+            if let found = analysis.lookup(at: selection) {
+                let title = HealthPresentation.selectionTitle(number: numbers[found.exercise.exerciseID], exercise: found.exercise.name,
+                                                              setNumber: found.set?.number, stats: nil)
+                let stats = found.set?.stats ?? found.exercise.stats
+                return (title, stats.map { .stats($0) } ?? .none)
+            }
+            // Fora de qualquer série/exercício: só o ponto mais próximo, nunca a média geral.
+            let minute = Int(selection.timeIntervalSince(analysis.interval.start) / 60)
+            return (String(localized: "min \(minute)"), model.bpm(near: selection).map { .point($0) } ?? .none)
+        }
+        if let id = highlighted, let exercise = analysis.exercises.first(where: { $0.exerciseID == id }) {
+            let title = HealthPresentation.selectionTitle(number: numbers[id], exercise: exercise.name, setNumber: nil, stats: nil)
+            return (title, exercise.stats.map { .stats($0) } ?? .none)
+        }
+        return (String(localized: "Treino inteiro"), analysis.overall.map { .stats($0) } ?? .none)
+    }
+
+    private var header: some View {
+        let content = content
+        return VStack(alignment: .leading, spacing: FJSpacing.xs) {
+            Text(verbatim: content.title)
+                .font(FJFont.overline)
+                .foregroundStyle(FJColor.textSecondary)
+                .lineLimit(2)
+            HStack(alignment: .firstTextBaseline, spacing: FJSpacing.s) {
+                switch content.value {
+                case .stats(let stats):
+                    Text(verbatim: HealthPresentation.bpm(stats.average)).font(FJFont.numberLarge)
+                    Text("média").font(FJFont.unit).foregroundStyle(FJColor.textSecondary)
+                    Text(verbatim: "· " + HealthPresentation.bpm(stats.maximum)).font(FJFont.numberLarge)
+                    Text("máx bpm").font(FJFont.unit).foregroundStyle(FJColor.textSecondary)
+                case .point(let bpm):
+                    Text(verbatim: HealthPresentation.bpm(bpm)).font(FJFont.numberLarge)
+                    Text("bpm").font(FJFont.unit).foregroundStyle(FJColor.textSecondary)
+                case .none:
+                    Text(verbatim: "—").font(FJFont.numberLarge).foregroundStyle(FJColor.textSecondary)
+                    Text("Sem leituras neste trecho").font(FJFont.label).foregroundStyle(FJColor.textSecondary)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(verbatim: spoken(content)))
+    }
+
+    private func spoken(_ content: (title: String, value: HeaderValue)) -> String {
+        switch content.value {
+        case .stats(let stats):
+            content.title + ". " + String(localized: "Frequência cardíaca média \(HealthPresentation.bpm(stats.average)), máxima \(HealthPresentation.bpm(stats.maximum)) batimentos por minuto")
+        case .point(let bpm):
+            content.title + ". " + String(localized: "\(HealthPresentation.bpm(bpm)) batimentos por minuto")
+        case .none:
+            content.title + ". " + String(localized: "Sem leituras neste trecho")
+        }
+    }
+}
+
 // MARK: - Corpo do gráfico
 
 private struct HeartRateChartBody: View {
     let model: SessionHeartRateModel
     let analysis: SessionHeartRateAnalysis
-    let bands: [HealthPresentation.ExerciseBand]
     @Binding var selection: Date?
     let highlighted: UUID?
+
+    @ScaledMetric(relativeTo: .caption) private var badge: CGFloat = 16
 
     private var interval: DateInterval { analysis.interval }
     private var isScrollable: Bool { interval.duration > 90 * 60 }
     private var visibleSeconds: TimeInterval { isScrollable ? 3_600 : interval.duration }
-
-    private var yDomain: ClosedRange<Double> {
-        let values = model.samples.map(\.bpm)
-        var low = (values.min() ?? 60) - 10
-        var high = (values.max() ?? 180) + 10
-        if let zones = analysis.zones { high = max(high, zones.range(for: .zone5).lowerBound + 10) }
-        low = (low / 10).rounded(.down) * 10
-        high = (high / 10).rounded(.up) * 10
-        return max(30, low)...max(high, low + 40)
-    }
 
     private var zoneLines: [(zone: HeartRateZone, bpm: Double)] {
         analysis.zones.map(HealthPresentation.zoneLines) ?? []
@@ -329,7 +391,7 @@ private struct HeartRateChartBody: View {
     }
 
     private func chart(plotWidth: CGFloat) -> some View {
-        let domain = yDomain
+        let domain = model.yDomain
         let chart = Chart {
             ForEach(Array(model.pauses.enumerated()), id: \.offset) { _, pause in
                 RectangleMark(xStart: .value("Pausa", pause.start), xEnd: .value("Retomada", pause.end),
@@ -340,7 +402,7 @@ private struct HeartRateChartBody: View {
                             .accessibilityLabel(Text("Pausa"))
                     }
             }
-            ForEach(Array(bands.enumerated()), id: \.element.id) { index, band in
+            ForEach(Array(model.bands.enumerated()), id: \.offset) { index, band in
                 RectangleMark(xStart: .value("Início", band.interval.start), xEnd: .value("Fim", band.interval.end),
                               yStart: .value("min", domain.lowerBound), yEnd: .value("max", domain.upperBound))
                     .foregroundStyle(bandFill(index: index, band: band))
@@ -350,28 +412,23 @@ private struct HeartRateChartBody: View {
                             Text(verbatim: "\(band.number)")
                                 .font(FJFont.numberCaption.weight(.bold))
                                 .foregroundStyle(FJColor.textPrimary)
-                                .frame(minWidth: 16, minHeight: 16)
+                                .frame(minWidth: badge, minHeight: badge)
                                 .background(FJColor.fillStrong, in: Circle())
                                 .accessibilityHidden(true)
                         }
                     }
             }
-            ForEach(Array(HealthPresentation.segments(model.samples).enumerated()), id: \.offset) { index, segment in
-                ForEach(segment, id: \.date) { sample in
-                    LineMark(x: .value("Tempo", sample.date), y: .value("bpm", sample.bpm),
-                             series: .value("Trecho", index))
+            ForEach(Array(model.segments.enumerated()), id: \.offset) { index, segment in
+                ForEach(Array(segment.enumerated()), id: \.offset) { _, sample in
+                    LineMark(x: .value("Tempo", sample.date), y: .value("bpm", sample.bpm), series: .value("Trecho", index))
                         .foregroundStyle(FJColor.health)
                         .lineStyle(StrokeStyle(lineWidth: 2, lineJoin: .round))
                 }
             }
-            ForEach(analysis.exercises) { exercise in
-                ForEach(exercise.sets) { set in
-                    if let bpm = model.bpm(near: set.completedAt) {
-                        PointMark(x: .value("Série", set.completedAt), y: .value("bpm", bpm))
-                            .symbolSize(36)
-                            .foregroundStyle(FJColor.textPrimary)
-                    }
-                }
+            ForEach(model.setMarkers) { marker in
+                PointMark(x: .value("Série", marker.date), y: .value("bpm", marker.bpm))
+                    .symbolSize(36)
+                    .foregroundStyle(FJColor.textPrimary)
             }
             if let selection {
                 RuleMark(x: .value("Seleção", selection))
@@ -410,7 +467,10 @@ private struct HeartRateChartBody: View {
         }
         return Group {
             if isScrollable {
-                chart.chartScrollableAxes(.horizontal).chartXVisibleDomain(length: 3_600)
+                // Abre no fim do treino, mostrando a última hora.
+                chart.chartScrollableAxes(.horizontal)
+                    .chartXVisibleDomain(length: 3_600)
+                    .chartScrollPosition(initialX: interval.end.addingTimeInterval(-3_600))
             } else {
                 chart
             }
@@ -470,11 +530,13 @@ private struct ExerciseHeartRateRow: View {
     let result: ExerciseHeartRate?
     let isSelected: Bool
 
+    @ScaledMetric(relativeTo: .footnote) private var circle: CGFloat = 26
+
     var body: some View {
         HStack(alignment: .top, spacing: FJSpacing.m) {
             Text(verbatim: "\(number)")
                 .font(FJFont.numberCaption.weight(.bold))
-                .frame(width: 26, height: 26)
+                .frame(width: circle, height: circle)
                 .background(isSelected ? FJColor.fillStrong : FJColor.fill, in: Circle())
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: FJSpacing.xxs) {
@@ -521,10 +583,10 @@ struct HeartRateChartDescriptor: AXChartDescriptorRepresentable {
         let minutes = points.map { $0.date.timeIntervalSince(start) / 60 }
         let values = points.map(\.bpm)
         let x = AXNumericDataAxisDescriptor(title: String(localized: "Tempo (min)"), range: 0...max(1, minutes.max() ?? 1),
-                                            gridlinePositions: []) { String(format: "%.0f", $0) }
+                                            gridlinePositions: []) { $0.formatted(.number.precision(.fractionLength(0))) }
         let y = AXNumericDataAxisDescriptor(title: String(localized: "Batimentos por minuto"),
                                             range: (values.min() ?? 0)...max((values.max() ?? 1), (values.min() ?? 0) + 1),
-                                            gridlinePositions: []) { String(format: "%.0f", $0) }
+                                            gridlinePositions: []) { $0.formatted(.number.precision(.fractionLength(0))) }
         let series = AXDataSeriesDescriptor(name: String(localized: "Frequência cardíaca"), isContinuous: true,
                                             dataPoints: zip(minutes, values).map { AXDataPoint(x: $0, y: $1) })
         let average = values.isEmpty ? 0 : values.reduce(0, +) / Double(values.count)
@@ -537,6 +599,7 @@ struct HeartRateChartDescriptor: AXChartDescriptorRepresentable {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("FC da sessão") {
     let container = PersistenceController.preview
     let session = try? SessionStore(context: container.mainContext).completedSessions(limit: 1).first
@@ -554,3 +617,4 @@ struct HeartRateChartDescriptor: AXChartDescriptorRepresentable {
     .environment(HealthPreviewFixtures.connectedAuthorization(suite: "preview-chart"))
     .tint(FJColor.health)
 }
+#endif

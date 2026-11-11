@@ -29,7 +29,9 @@ final class HealthTrendsModel {
 
     struct TrendData {
         var weekStarts: [Date]
-        var weeklyMinutes: [[FJWorkoutKind: Double]]
+        var weeklyMinutes: [[HealthMinutesKind: Double]]
+        /// Semana que contém hoje (parcial).
+        var currentWeekStart: Date
         var workoutPoints: [WorkoutPoint]
         var resting: HealthReading<[HealthDailyValue]>
         var restingAverage: [HealthDailyValue]
@@ -83,8 +85,9 @@ final class HealthTrendsModel {
             let values = resting.value ?? []
             let earliest = (intervals.map(\.interval.start) + values.map(\.day)).min()
             phase = .loaded(TrendData(
-                weekStarts: weekStarts, weeklyMinutes: weekly, workoutPoints: points, resting: resting,
-                restingAverage: HealthPresentation.movingAverage(values), restingDirection: HealthTrend.direction(values),
+                weekStarts: weekStarts, weeklyMinutes: weekly, currentWeekStart: calendar.dateInterval(of: .weekOfYear, for: now)?.start ?? today,
+                workoutPoints: points, resting: resting,
+                restingAverage: HealthPresentation.movingAverage(values, calendar: calendar), restingDirection: HealthTrend.direction(values),
                 workoutsStatus: workouts.status, hasTwoWeeks: earliest.map { now.timeIntervalSince($0) >= 14 * 86_400 } ?? false))
         } catch {
             if !(error is CancellationError) { phase = .failed }
@@ -140,32 +143,44 @@ struct HealthTrendsView: View {
         await model.load(reader: injectedReader ?? HealthQueries.live, context: context)
     }
 
-    private func total(_ week: [FJWorkoutKind: Double]) -> Double { week.values.reduce(0, +) }
+    private func total(_ week: [HealthMinutesKind: Double]) -> Double { week.values.reduce(0, +) }
 
     private func minutesCard(_ data: HealthTrendsModel.TrendData) -> some View {
         let totals = data.weeklyMinutes.map(total)
-        let current = totals.last(where: { $0 > 0 })
-        let previous = totals.dropLast().last(where: { $0 > 0 })
+        // Só semanas completas entram no valor e na comparação; a semana atual é parcial.
+        let complete = zip(data.weekStarts, totals).filter { $0.0 != data.currentWeekStart }.map(\.1)
+        let current = complete.last(where: { $0 > 0 })
+        let previous = complete.dropLast().last(where: { $0 > 0 })
         return FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.m) {
-                FJSectionHeader("Minutos por tipo", subtitle: "Por semana")
+                FJSectionHeader("Minutos por tipo", subtitle: "Por semana, a partir do dia indicado")
+                if data.workoutsStatus == .unavailable { healthNotRead }
                 if totals.contains(where: { $0 > 0 }) {
                     if let current {
                         TrendHeadline(value: HealthPresentation.minutes(current), comparison: previous.map { comparisonText(current: current, previous: $0) })
                     }
                     Chart {
                         ForEach(Array(data.weekStarts.enumerated()), id: \.offset) { index, week in
-                            ForEach(FJWorkoutKind.allCases, id: \.self) { kind in
+                            ForEach(HealthMinutesKind.allCases, id: \.self) { kind in
                                 if let minutes = data.weeklyMinutes[index][kind] {
                                     BarMark(x: .value("Semana", week, unit: .weekOfYear), y: .value("Minutos", minutes))
                                         .foregroundStyle(by: .value("Tipo", kind.rawValue))
+                                        .opacity(week == data.currentWeekStart ? 0.5 : 1)
                                 }
                             }
                         }
                     }
-                    .chartForegroundStyleScale([FJWorkoutKind.strength.rawValue: FJWorkoutKind.strength.color,
-                                                FJWorkoutKind.aerobic.rawValue: FJWorkoutKind.aerobic.color])
+                    .chartForegroundStyleScale(domain: HealthMinutesKind.allCases.map(\.rawValue), range: HealthMinutesKind.allCases.map(\.color))
                     .chartLegend(.hidden)
+                    .chartXAxis {
+                        AxisMarks(values: data.weekStarts) { value in
+                            AxisValueLabel {
+                                if let date = value.as(Date.self), shouldLabel(date, in: data.weekStarts) {
+                                    Text(date.formatted(.dateTime.day().month(.defaultDigits))).font(.caption2)
+                                }
+                            }
+                        }
+                    }
                     .chartYAxis { AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) }
                     .frame(height: 160)
                     .accessibilityLabel(Text("Minutos de treino por semana"))
@@ -173,11 +188,12 @@ struct HealthTrendsView: View {
                         "\($0.formatted(.dateTime.day().month(.abbreviated))): \(HealthPresentation.minutes($1))"
                     }.joined(separator: ", ")))
                     HStack(spacing: FJSpacing.l) {
-                        ForEach(FJWorkoutKind.allCases, id: \.self) { kind in
+                        ForEach(HealthMinutesKind.allCases, id: \.self) { kind in
                             Label { Text(kind.title) } icon: { Image(systemName: kind.systemImage).foregroundStyle(kind.color) }
                                 .font(FJFont.caption)
                         }
                     }
+                    Text("A semana atual (mais clara) ainda está em andamento.").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                     if !data.hasTwoWeeks { keepRecording }
                 } else {
                     emptyNote(status: data.workoutsStatus)
@@ -186,17 +202,29 @@ struct HealthTrendsView: View {
         }
     }
 
+    /// Rótulo de semana em semana quando há muitas barras (evita sobreposição).
+    private func shouldLabel(_ date: Date, in weeks: [Date]) -> Bool {
+        guard weeks.count > 8, let index = weeks.firstIndex(of: date) else { return true }
+        return index.isMultiple(of: 2)
+    }
+
+    private var healthNotRead: some View {
+        Text("Os treinos do Saúde não foram lidos; só os do FitJourney aparecem.")
+            .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+    }
+
     private func comparisonText(current: Double, previous: Double) -> String {
         let delta = Int((current - previous).rounded())
         guard previous > 0, abs(current - previous) / previous >= 0.02 else { return String(localized: "na média das semanas anteriores") }
-        return delta > 0 ? "↑ \(delta) min " + String(localized: "acima da semana anterior")
-            : "↓ \(abs(delta)) min " + String(localized: "abaixo da semana anterior")
+        return delta > 0 ? String(localized: "↑ \(delta) min acima da semana anterior")
+            : String(localized: "↓ \(abs(delta)) min abaixo da semana anterior")
     }
 
     private func workoutHeartRateCard(_ data: HealthTrendsModel.TrendData) -> some View {
         FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.m) {
                 FJSectionHeader("FC média por treino")
+                if data.workoutsStatus == .unavailable { healthNotRead }
                 if data.workoutPoints.count >= 2 {
                     Chart(data.workoutPoints) { point in
                         PointMark(x: .value("Dia", point.date), y: .value("bpm", point.bpm))

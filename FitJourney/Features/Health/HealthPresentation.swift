@@ -41,11 +41,10 @@ enum HealthPresentation {
         return low == high ? "\(low)" : "\(low)–\(high)"
     }
 
-    /// "52 min" ou "1 h 05".
+    /// "52 min" ou "1 h 5 min" (formatação do sistema, na língua do aparelho).
     static func minutes(_ value: Double) -> String {
-        let total = Int(value.rounded())
-        guard total >= 60 else { return String(localized: "\(total) min") }
-        return String(localized: "\(total / 60) h \(String(format: "%02d", total % 60))")
+        Duration.seconds(Int(value.rounded()) * 60)
+            .formatted(.units(allowed: [.hours, .minutes], width: .abbreviated))
     }
 
     static func minutes(seconds: TimeInterval) -> String { minutes(seconds / 60) }
@@ -75,18 +74,27 @@ enum HealthPresentation {
         }
         let mean = previousDays.reduce(0, +) / Double(previousDays.count)
         let delta = today - mean
-        let suffix = partialDay ? String(localized: " (até agora)") : ""
-        guard mean > 0, abs(delta) / mean >= 0.02 else {
-            let text = String(localized: "na média") + suffix
-            return Comparison(kind: .onAverage, text: text, spokenText: String(localized: "Na média dos 7 dias anteriores") + suffix)
-        }
         let amount = Int(abs(delta).rounded())
-        if delta > 0 {
-            return Comparison(kind: .above, text: "↑ \(amount) \(unit.short) " + String(localized: "acima da sua média") + suffix,
-                              spokenText: "\(amount) \(unit.spoken) " + String(localized: "acima da sua média de 7 dias") + suffix)
+        guard mean > 0, abs(delta) / mean >= 0.02 else {
+            let text = partialDay ? String(localized: "na média (até agora)") : String(localized: "na média")
+            return Comparison(kind: .onAverage, text: text,
+                              spokenText: partialDay ? String(localized: "Na média dos 7 dias anteriores (até agora)")
+                                  : String(localized: "Na média dos 7 dias anteriores"))
         }
-        return Comparison(kind: .below, text: "↓ \(amount) \(unit.short) " + String(localized: "abaixo da sua média") + suffix,
-                          spokenText: "\(amount) \(unit.spoken) " + String(localized: "abaixo da sua média de 7 dias") + suffix)
+        let unitName = unit.short
+        let spoken = unit.spoken
+        if delta > 0 {
+            return partialDay
+                ? Comparison(kind: .above, text: String(localized: "↑ \(amount) \(unitName) acima da sua média (até agora)"),
+                             spokenText: String(localized: "\(amount) \(spoken) acima da sua média de 7 dias (até agora)"))
+                : Comparison(kind: .above, text: String(localized: "↑ \(amount) \(unitName) acima da sua média"),
+                             spokenText: String(localized: "\(amount) \(spoken) acima da sua média de 7 dias"))
+        }
+        return partialDay
+            ? Comparison(kind: .below, text: String(localized: "↓ \(amount) \(unitName) abaixo da sua média (até agora)"),
+                         spokenText: String(localized: "\(amount) \(spoken) abaixo da sua média de 7 dias (até agora)"))
+            : Comparison(kind: .below, text: String(localized: "↓ \(amount) \(unitName) abaixo da sua média"),
+                         spokenText: String(localized: "\(amount) \(spoken) abaixo da sua média de 7 dias"))
     }
 
     // MARK: Zonas
@@ -141,10 +149,8 @@ enum HealthPresentation {
 
     /// Cabeçalho do cartão do gráfico: "2 · Supino inclinado — série 3 · média 131 · máx 142 bpm".
     static func selectionTitle(number: Int?, exercise: String, setNumber: Int?, stats: HeartRateStats?) -> String {
-        var parts: [String] = []
-        var name = number.map { "\($0) · \(exercise)" } ?? exercise
-        if let setNumber { name += " — " + String(localized: "série \(setNumber)") }
-        parts.append(name)
+        let label = number.map { "\($0) · \(exercise)" } ?? exercise
+        var parts = [setNumber.map { String(localized: "\(label) — série \($0)") } ?? label]
         if let stats {
             parts.append(String(localized: "média \(bpm(stats.average))"))
             parts.append(String(localized: "máx \(bpm(stats.maximum)) bpm"))
@@ -264,13 +270,12 @@ enum HealthPresentation {
 
     /// Minutos por tipo e por dia (união dentro de cada tipo); `days` = início de cada dia.
     static func dailyMinutes(_ intervals: [CategorizedInterval], days: [Date],
-                             calendar: Calendar = .current) -> [[FJWorkoutKind: Double]] {
+                             calendar: Calendar = .current) -> [[HealthMinutesKind: Double]] {
         days.map { day in
-            let end = calendar.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
-            let clip = DateInterval(start: day, end: end)
-            var result: [FJWorkoutKind: Double] = [:]
-            for kind in FJWorkoutKind.allCases {
-                let ofKind = intervals.filter { Self.kind($0.category) == kind }.map(\.interval)
+            let clip = dayInterval(day, calendar: calendar)
+            var result: [HealthMinutesKind: Double] = [:]
+            for kind in HealthMinutesKind.allCases {
+                let ofKind = intervals.filter { minutesKind($0.category) == kind }.map(\.interval)
                 let minutes = DateIntervalMath.unionDuration(ofKind, clippedTo: clip) / 60
                 if minutes > 0 { result[kind] = minutes }
             }
@@ -278,16 +283,40 @@ enum HealthPresentation {
         }
     }
 
+    /// Minutos de treino por dia pela união geral (sobreposição entre tipos não soma duas vezes).
+    static func dailyTotals(_ intervals: [CategorizedInterval], days: [Date], calendar: Calendar = .current) -> [Double] {
+        days.map { DateIntervalMath.unionDuration(intervals.map(\.interval), clippedTo: dayInterval($0, calendar: calendar)) / 60 }
+    }
+
+    /// Média diária da semana pelos dias decorridos (dias futuros não entram).
+    static func weekAverage(totals: [Double], days: [Date], now: Date) -> Double {
+        let elapsed = zip(totals, days).filter { $0.1 <= now }.map(\.0)
+        return elapsed.isEmpty ? 0 : elapsed.reduce(0, +) / Double(elapsed.count)
+    }
+
+    private static func dayInterval(_ day: Date, calendar: Calendar) -> DateInterval {
+        let end = calendar.date(byAdding: .day, value: 1, to: day) ?? day.addingTimeInterval(86_400)
+        return DateInterval(start: day, end: end)
+    }
+
     /// Minutos por semana (início de cada semana) e tipo.
     static func weeklyMinutes(_ intervals: [CategorizedInterval], weekStarts: [Date],
-                              calendar: Calendar = .current) -> [[FJWorkoutKind: Double]] {
+                              calendar: Calendar = .current) -> [[HealthMinutesKind: Double]] {
         weekStarts.map { start in
             let days = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
-            var total: [FJWorkoutKind: Double] = [:]
+            var total: [HealthMinutesKind: Double] = [:]
             for day in dailyMinutes(intervals, days: days, calendar: calendar) {
                 for (kind, value) in day { total[kind, default: 0] += value }
             }
             return total
+        }
+    }
+
+    static func minutesKind(_ category: HealthWorkoutCategory) -> HealthMinutesKind {
+        switch category {
+        case .strength: .strength
+        case .aerobic: .aerobic
+        case .mixed, .mobility, .other: .other
         }
     }
 
@@ -300,30 +329,62 @@ enum HealthPresentation {
         }
     }
 
-    /// Média móvel de `window` valores (só dias com dado).
-    static func movingAverage(_ values: [HealthDailyValue], window: Int = 7) -> [HealthDailyValue] {
+    /// Média móvel pela janela de `window` dias corridos (só dias com dado).
+    static func movingAverage(_ values: [HealthDailyValue], window: Int = 7, calendar: Calendar = .current) -> [HealthDailyValue] {
         let sorted = values.sorted { $0.day < $1.day }
-        return sorted.indices.map { index in
-            let slice = sorted[max(0, index - window + 1)...index]
-            return HealthDailyValue(day: sorted[index].day, value: slice.map(\.value).reduce(0, +) / Double(slice.count))
+        return sorted.map { current in
+            let from = calendar.date(byAdding: .day, value: -(window - 1), to: current.day) ?? current.day
+            let slice = sorted.filter { $0.day >= from && $0.day <= current.day }
+            return HealthDailyValue(day: current.day, value: slice.map(\.value).reduce(0, +) / Double(slice.count))
+        }
+    }
+}
+
+/// Tipos na barra de minutos: Força, Aeróbico e Outros (misto, mobilidade, demais).
+enum HealthMinutesKind: String, CaseIterable, Hashable, Sendable {
+    case strength, aerobic, other
+
+    var color: Color {
+        switch self {
+        case .strength: FJWorkoutKind.strength.color
+        case .aerobic: FJWorkoutKind.aerobic.color
+        case .other: FJColor.textSecondary
+        }
+    }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .strength: "Força"
+        case .aerobic: "Aeróbico"
+        case .other: "Outros"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .strength: FJWorkoutKind.strength.systemImage
+        case .aerobic: FJWorkoutKind.aerobic.systemImage
+        case .other: "figure.mixed.cardio"
         }
     }
 }
 
 // MARK: - Preferências locais
 
-/// "Não é o mesmo": guardado localmente (UserDefaults) até o núcleo ter campo.
+/// "Não é o mesmo": guardado localmente (UserDefaults) até o núcleo ter campo. Guarda os 100 mais recentes.
 enum HealthDismissedLinks {
     static let key = "fj.health.dismissedLinks"
+    static let limit = 100
 
     static func load(_ defaults: UserDefaults = .standard) -> Set<String> {
         Set(defaults.stringArray(forKey: key) ?? [])
     }
 
     static func add(sessionID: UUID, workoutID: UUID, defaults: UserDefaults = .standard) {
-        var all = load(defaults)
-        all.insert(HealthPresentation.pairKey(sessionID: sessionID, workoutID: workoutID))
-        defaults.set(Array(all), forKey: key)
+        let pair = HealthPresentation.pairKey(sessionID: sessionID, workoutID: workoutID)
+        var all = (defaults.stringArray(forKey: key) ?? []).filter { $0 != pair }
+        all.append(pair)
+        defaults.set(Array(all.suffix(limit)), forKey: key)
     }
 }
 

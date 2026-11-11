@@ -31,7 +31,11 @@ struct HealthDayView: View {
                 FJBanner("Não foi possível ler o Saúde", message: "Os outros dados do dia continuam disponíveis.", tone: .destructive,
                          systemImage: "exclamationmark.triangle.fill", actionTitle: "Tentar de novo") { reloadToken += 1 }
             case .loaded(let data):
-                loaded(data)
+                if data.day == model.date {
+                    loaded(data)
+                } else {
+                    FJCard { FJLoadingState("Lendo dados do Saúde…") }
+                }
             }
         }
         .task(id: LoadKey(date: model.date, token: reloadToken, connected: authorization?.isConnectionEnabled,
@@ -39,6 +43,7 @@ struct HealthDayView: View {
             await load()
         }
         .fjHaptic(.celebration, trigger: linkTick)
+        .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in reloadToken += 1 }
         .sheet(isPresented: $showsCalendar) {
             HealthDayPickerSheet(date: model.date) { model.jump(to: $0) }
         }
@@ -102,7 +107,7 @@ struct HealthDayView: View {
     private func weekStrip(_ data: HealthDayModel.DayData) -> some View {
         HStack(spacing: 0) {
             ForEach(data.weekDays, id: \.self) { day in
-                let isSelected = Calendar.current.isDate(day, inSameDayAs: model.date)
+                let isSelected = model.calendar.isDate(day, inSameDayAs: model.date)
                 let isFuture = day > Date()
                 Button { model.jump(to: day) } label: {
                     VStack(spacing: FJSpacing.xs) {
@@ -132,7 +137,7 @@ struct HealthDayView: View {
     @ViewBuilder private func heartRateSection(_ data: HealthDayModel.DayData) -> some View {
         switch data.summary.heartRate {
         case .available(let stats):
-            DayHeartRateCard(data: data, stats: stats)
+            DayHeartRateCard(data: data, stats: stats, isToday: model.isToday, calendar: model.calendar)
         case .noData:
             if data.hasRecentHeartRate == false {
                 FJBanner("Sem dados de frequência cardíaca",
@@ -162,7 +167,8 @@ struct HealthDayView: View {
             VStack(alignment: .leading, spacing: FJSpacing.s) {
                 FJSectionHeader("Treinos")
                 if data.rows.isEmpty {
-                    Text("Nenhum treino neste dia").font(FJFont.label).foregroundStyle(FJColor.textSecondary)
+                    Text(data.summary.healthWorkouts == .unavailable ? "Treinos do Saúde indisponíveis" : "Nenhum treino neste dia")
+                        .font(FJFont.label).foregroundStyle(FJColor.textSecondary)
                         .frame(minHeight: FJSize.minTap, alignment: .leading)
                 } else {
                     ForEach(data.rows) { row in
@@ -191,41 +197,51 @@ struct HealthDayView: View {
     }
 
     private func link(_ workoutID: UUID, to sessionID: UUID) {
-        model.link(workoutID: workoutID, to: sessionID, controller: controller)
-        linkTick += 1
+        if model.link(workoutID: workoutID, to: sessionID, controller: controller) { linkTick += 1 }
         reloadToken += 1
     }
 
     // MARK: Força x aeróbico
 
     private func strengthAerobicCard(_ data: HealthDayModel.DayData) -> some View {
-        let todayMinutes = data.summary.minutesByCategory
-        let strength = todayMinutes[.strength] ?? 0
-        let aerobic = todayMinutes[.aerobic] ?? 0
-        let selectedIndex = data.weekDays.firstIndex { Calendar.current.isDate($0, inSameDayAs: data.summary.day.start) }
-        let weekTotals = data.weekMinutes.map { $0.values.reduce(0, +) }
-        let weekAverage = weekTotals.reduce(0, +) / 7
+        let byKind = Dictionary(grouping: data.summary.minutesByCategory.map { ($0.key, $0.value) },
+                                by: { HealthPresentation.minutesKind($0.0) }).mapValues { $0.map(\.1).reduce(0, +) }
+        let selectedIndex = data.weekDays.firstIndex { model.calendar.isDate($0, inSameDayAs: data.summary.day.start) }
+        let average = HealthPresentation.weekAverage(totals: data.weekTotals, days: data.weekDays, now: data.now)
+        let weekHasData = data.weekTotals.contains { $0 > 0 }
         return FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.m) {
                 FJSectionHeader("Força x aeróbico")
-                if strength + aerobic > 0 {
-                    StackedMinutesBar(strength: strength, aerobic: aerobic)
+                switch data.summary.totalWorkoutMinutes {
+                case .available(let total):
+                    StackedMinutesBar(minutes: byKind)
                     FJAdaptiveStack {
-                        FJMetricCell("Força", value: HealthPresentation.minutes(strength), systemImage: FJWorkoutKind.strength.systemImage,
-                                     tint: FJWorkoutKind.strength.color)
-                        FJMetricCell("Aeróbico", value: HealthPresentation.minutes(aerobic), systemImage: FJWorkoutKind.aerobic.systemImage,
-                                     tint: FJWorkoutKind.aerobic.color)
+                        ForEach(HealthMinutesKind.allCases.filter { byKind[$0] != nil }, id: \.self) { kind in
+                            FJMetricCell(kind.title, value: HealthPresentation.minutes(byKind[kind] ?? 0), systemImage: kind.systemImage,
+                                         tint: kind.color)
+                        }
                     }
-                } else {
+                    Text("Total do dia: \(HealthPresentation.minutes(total))").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                case .noData:
                     Text("Nenhum treino neste dia").font(FJFont.label).foregroundStyle(FJColor.textSecondary)
+                case .unavailable:
+                    Text(HealthReadingDisplay.unavailableNote).font(FJFont.label).foregroundStyle(FJColor.textSecondary)
                 }
-                WeekMinutesChart(days: data.weekDays, minutes: data.weekMinutes, selectedIndex: selectedIndex, average: weekAverage,
-                                 onSelect: { model.jump(to: $0) })
-                    .frame(height: 140)
-                if weekTotals.reduce(0, +) > 0 {
-                    let today = selectedIndex.map { weekTotals[$0] } ?? 0
-                    Text("\(model.isToday ? String(localized: "Hoje") : String(localized: "Dia")) \(HealthPresentation.minutes(today)) · média da semana \(HealthPresentation.minutes(weekAverage)) por dia")
-                        .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                if weekHasData {
+                    WeekMinutesChart(days: data.weekDays, minutes: data.weekMinutes, totals: data.weekTotals, selectedIndex: selectedIndex,
+                                     average: average, calendar: model.calendar, onSelect: { model.jump(to: $0) })
+                        .frame(height: 140)
+                    let today = selectedIndex.map { data.weekTotals[$0] } ?? 0
+                    Group {
+                        if model.isToday {
+                            Text("Hoje \(HealthPresentation.minutes(today)) · média da semana \(HealthPresentation.minutes(average)) por dia")
+                        } else {
+                            Text("Dia \(HealthPresentation.minutes(today)) · média da semana \(HealthPresentation.minutes(average)) por dia")
+                        }
+                    }
+                    .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                } else if data.weekWorkoutsStatus == .unavailable {
+                    Text("Semana: Saúde indisponível, só treinos do FitJourney").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 } else {
                     Text("Sem treinos nesta semana").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 }
@@ -238,7 +254,7 @@ struct HealthDayView: View {
     private func energyCard(_ data: HealthDayModel.DayData) -> some View {
         let display = HealthPresentation.display(data.summary.activeEnergyKcal, format: HealthPresentation.wholeNumber)
         let comparison = data.summary.activeEnergyKcal.value.map {
-            HealthPresentation.compare(today: $0, previousDays: data.energyPrevious, unit: .kcal, partialDay: data.isToday)
+            HealthPresentation.compare(today: $0, previousDays: data.energyPrevious, unit: .kcal, partialDay: model.isToday)
         }
         return MetricTrendCard(title: "Energia ativa", systemImage: "flame.fill", tint: FJColor.training, display: display, unit: "kcal",
                                comparison: comparison, extra: data.energyFromWorkouts.map { "\(HealthPresentation.wholeNumber($0)) kcal em treinos" },
@@ -283,8 +299,11 @@ struct HealthDayView: View {
 private struct DayHeartRateCard: View {
     let data: HealthDayModel.DayData
     let stats: HeartRateStats
+    let isToday: Bool
+    let calendar: Calendar
 
     @State private var selection: Date?
+    @ScaledMetric(relativeTo: .caption) private var seal: CGFloat = 20
 
     private var buckets: [HeartRateBucket] { data.buckets.value ?? [] }
     private var day: DateInterval { data.summary.day }
@@ -300,13 +319,13 @@ private struct DayHeartRateCard: View {
     }
 
     private var hoursWithReadings: Int {
-        Set(buckets.map { Calendar.current.component(.hour, from: $0.interval.start) }).count
+        Set(buckets.map { calendar.component(.hour, from: $0.interval.start) }).count
     }
 
     var body: some View {
         FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.m) {
-                Text(data.isToday ? "FREQUÊNCIA CARDÍACA · ATÉ AGORA" : "FREQUÊNCIA CARDÍACA")
+                Text(isToday ? "FREQUÊNCIA CARDÍACA · ATÉ AGORA" : "FREQUÊNCIA CARDÍACA")
                     .font(FJFont.overline).foregroundStyle(FJColor.textSecondary)
                 header
                 chart.frame(height: 180)
@@ -356,12 +375,12 @@ private struct DayHeartRateCard: View {
                         Image(systemName: kind?.systemImage ?? "figure.mixed.cardio")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(kind?.color ?? FJColor.textSecondary)
-                            .frame(width: 20, height: 20)
+                            .frame(width: seal, height: seal)
                             .background(FJColor.surface, in: Circle())
                             .accessibilityHidden(true)
                     }
             }
-            ForEach(buckets, id: \.interval.start) { bucket in
+            ForEach(Array(buckets.enumerated()), id: \.offset) { _, bucket in
                 RectangleMark(xStart: .value("Início", bucket.interval.start), xEnd: .value("Fim", bucket.interval.end.addingTimeInterval(-20)),
                               yStart: .value("Mínimo", bucket.minimum), yEnd: .value("Máximo", max(bucket.maximum, bucket.minimum + 2)))
                     .foregroundStyle(FJColor.health)
@@ -383,18 +402,18 @@ private struct DayHeartRateCard: View {
         .chartYScale(domain: lower...upper)
         .chartXSelection(value: $selection)
         .chartXAxis {
-            AxisMarks(values: [0, 6, 12, 18].compactMap { Calendar.current.date(byAdding: .hour, value: $0, to: day.start) }) { value in
+            AxisMarks(values: [0, 6, 12, 18].compactMap { calendar.date(byAdding: .hour, value: $0, to: day.start) }) { value in
                 AxisGridLine()
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
-                        Text(verbatim: "\(Calendar.current.component(.hour, from: date))h").font(.caption2)
+                        Text("\(calendar.component(.hour, from: date)) h").font(.caption2)
                     }
                 }
             }
         }
         .chartYAxis { AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) }
         return chart.accessibilityChartDescriptor(DayHeartRateDescriptor(buckets: buckets, day: day, stats: stats,
-                                                                          resting: resting, workoutCount: data.rows.count))
+                                                                          resting: resting, workoutCount: data.rows.count, calendar: calendar))
     }
 }
 
@@ -404,19 +423,24 @@ struct DayHeartRateDescriptor: AXChartDescriptorRepresentable {
     let stats: HeartRateStats
     let resting: Double?
     let workoutCount: Int
+    var calendar: Calendar = .current
 
     func makeChartDescriptor() -> AXChartDescriptor {
-        let hours = buckets.map { $0.interval.start.timeIntervalSince(day.start) / 3_600 }
+        // Hora do relógio (não segundos desde a meia-noite: dias com horário de verão têm 23/25 h).
+        let hours = buckets.map { bucket -> Double in
+            let parts = calendar.dateComponents([.hour, .minute], from: bucket.interval.start)
+            return Double(parts.hour ?? 0) + Double(parts.minute ?? 0) / 60
+        }
         let values = buckets.map(\.average)
-        let x = AXNumericDataAxisDescriptor(title: String(localized: "Hora do dia"), range: 0...24, gridlinePositions: []) { String(format: "%.0f h", $0) }
+        let x = AXNumericDataAxisDescriptor(title: String(localized: "Hora do dia"), range: 0...24, gridlinePositions: []) { String(localized: "\(Int($0)) h") }
         let y = AXNumericDataAxisDescriptor(title: String(localized: "Batimentos por minuto"),
                                             range: (values.min() ?? 0)...max(values.max() ?? 1, (values.min() ?? 0) + 1),
-                                            gridlinePositions: []) { String(format: "%.0f", $0) }
+                                            gridlinePositions: []) { $0.formatted(.number.precision(.fractionLength(0))) }
         let series = AXDataSeriesDescriptor(name: String(localized: "Frequência cardíaca"), isContinuous: false,
                                             dataPoints: zip(hours, values).map { AXDataPoint(x: $0, y: $1) })
-        var summary = String(localized: "Frequência cardíaca entre \(Int(stats.minimum.rounded())) e \(Int(stats.maximum.rounded()))")
-        if let resting { summary += String(localized: ", repouso \(Int(resting.rounded()))") }
-        summary += String(localized: "; \(workoutCount) treinos")
+        let low = Int(stats.minimum.rounded()), high = Int(stats.maximum.rounded())
+        let summary = resting.map { String(localized: "Frequência cardíaca entre \(low) e \(high), repouso \(Int($0.rounded())); \(workoutCount) treinos") }
+            ?? String(localized: "Frequência cardíaca entre \(low) e \(high); \(workoutCount) treinos")
         return AXChartDescriptor(title: String(localized: "Frequência cardíaca do dia"), summary: summary, xAxis: x, yAxis: y,
                                  additionalAxes: [], series: [series])
     }
@@ -435,8 +459,13 @@ private struct WorkoutRowView: View {
         VStack(alignment: .leading, spacing: FJSpacing.s) {
             main
             if let linked = row.linkedSuggestion?.workout ?? linkedWatch, let sessionID = row.sessionID {
-                FJBanner("Vinculado ao treino do Apple Watch (\(range(linked.interval))).",
-                         tone: .neutral, systemImage: "link", actionTitle: "Desfazer") { onUndo(sessionID, linked.id) }
+                if linked.sessionID == sessionID {
+                    // Treino do relógio gravado para esta sessão (ExternalUUID): vínculo exato, sem "Desfazer".
+                    FJBanner("Vinculado ao treino do Apple Watch (\(range(linked.interval))).", tone: .neutral, systemImage: "link")
+                } else {
+                    FJBanner("Vinculado ao treino do Apple Watch (\(range(linked.interval))).",
+                             tone: .neutral, systemImage: "link", actionTitle: "Desfazer") { onUndo(sessionID, linked.id) }
+                }
             }
             if let suggestion = row.pendingSuggestion {
                 PendingSuggestionCard(row: row, suggestion: suggestion,
@@ -544,15 +573,15 @@ private struct PendingSuggestionCard: View {
 // MARK: - Força x aeróbico
 
 private struct StackedMinutesBar: View {
-    let strength: Double
-    let aerobic: Double
+    let minutes: [HealthMinutesKind: Double]
 
     var body: some View {
         GeometryReader { geometry in
-            let total = max(strength + aerobic, 1)
+            let total = max(minutes.values.reduce(0, +), 1)
             HStack(spacing: 2) {
-                if strength > 0 { Capsule().fill(FJWorkoutKind.strength.color).frame(width: geometry.size.width * strength / total) }
-                if aerobic > 0 { Capsule().fill(FJWorkoutKind.aerobic.color).frame(width: geometry.size.width * aerobic / total) }
+                ForEach(HealthMinutesKind.allCases.filter { (minutes[$0] ?? 0) > 0 }, id: \.self) { kind in
+                    Capsule().fill(kind.color).frame(width: geometry.size.width * (minutes[kind] ?? 0) / total)
+                }
             }
         }
         .frame(height: 12)
@@ -562,24 +591,24 @@ private struct StackedMinutesBar: View {
 
 private struct WeekMinutesChart: View {
     let days: [Date]
-    let minutes: [[FJWorkoutKind: Double]]
+    let minutes: [[HealthMinutesKind: Double]]
+    let totals: [Double]
     let selectedIndex: Int?
     let average: Double
+    let calendar: Calendar
     let onSelect: (Date) -> Void
-
-    @State private var tapped: Date?
 
     private struct Item: Identifiable {
         var id: String { "\(index)-\(kind.rawValue)" }
         var index: Int
         var day: Date
-        var kind: FJWorkoutKind
+        var kind: HealthMinutesKind
         var minutes: Double
     }
 
     private var items: [Item] {
         days.enumerated().flatMap { index, day in
-            FJWorkoutKind.allCases.compactMap { kind in
+            HealthMinutesKind.allCases.compactMap { kind in
                 minutes[index][kind].map { Item(index: index, day: day, kind: kind, minutes: $0) }
             }
         }
@@ -598,24 +627,31 @@ private struct WeekMinutesChart: View {
                     .foregroundStyle(FJColor.textSecondary)
             }
         }
-        .chartForegroundStyleScale([FJWorkoutKind.strength.rawValue: FJWorkoutKind.strength.color,
-                                    FJWorkoutKind.aerobic.rawValue: FJWorkoutKind.aerobic.color])
+        .chartForegroundStyleScale(domain: HealthMinutesKind.allCases.map(\.rawValue), range: HealthMinutesKind.allCases.map(\.color))
         .chartLegend(.hidden)
         .chartXAxis {
             AxisMarks(values: days) { value in
                 AxisValueLabel {
                     if let date = value.as(Date.self) {
-                        let isSelected = Calendar.current.isDate(date, inSameDayAs: days[selectedIndex ?? 0]) && selectedIndex != nil
+                        let isSelected = selectedIndex.map { calendar.isDate(date, inSameDayAs: days[$0]) } ?? false
                         Text(date.formatted(.dateTime.weekday(.narrow))).font(.caption.weight(isSelected ? .bold : .regular))
                     }
                 }
             }
         }
         .chartYAxis { AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) }
-        .chartXSelection(value: $tapped)
-        .onChange(of: tapped) { _, day in
-            guard let day, let match = days.first(where: { Calendar.current.isDate($0, inSameDayAs: day) }), day <= Date() else { return }
-            onSelect(match)
+        // Toque (ao soltar), não arrasto: arrastar sobre o gráfico não troca de dia.
+        .chartOverlay { proxy in
+            GeometryReader { geometry in
+                Rectangle().fill(Color.clear).contentShape(Rectangle())
+                    .onTapGesture { location in
+                        guard let plot = proxy.plotFrame else { return }
+                        let x = location.x - geometry[plot].origin.x
+                        guard let date: Date = proxy.value(atX: x),
+                              let match = days.first(where: { calendar.isDate($0, inSameDayAs: date) }), match <= Date() else { return }
+                        onSelect(match)
+                    }
+            }
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("Minutos de treino por dia da semana"))
@@ -624,9 +660,8 @@ private struct WeekMinutesChart: View {
 
     private var spoken: String {
         days.enumerated().map { index, day in
-            let total = minutes[index].values.reduce(0, +)
             let label = day.formatted(.dateTime.weekday(.wide))
-            return total > 0 ? "\(label) \(HealthPresentation.minutes(total))" : String(localized: "\(label) sem treino")
+            return totals[index] > 0 ? "\(label) \(HealthPresentation.minutes(totals[index]))" : String(localized: "\(label) sem treino")
         }.joined(separator: ", ")
     }
 }

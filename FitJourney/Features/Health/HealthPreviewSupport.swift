@@ -1,6 +1,8 @@
 import Foundation
 import SwiftData
 
+#if DEBUG
+
 // Fakes para previews, testes e o harness de screenshots: o simulador não tem Saúde real.
 
 /// Leitor do Saúde com resultados fixos.
@@ -160,3 +162,4 @@ enum HealthPreviewFixtures {
         return FakeHealthReader(samples: .available(HealthSampleData.sessionSamples(start: timeline.startedAt, end: end, setDates: setDates)))
     }
 }
+#endif

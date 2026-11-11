@@ -165,8 +165,10 @@ struct HealthConnectCard: View {
     }
 }
 
+#if DEBUG
 #Preview("Conectar") {
     NavigationStack { HealthConnectView() }
         .environment(HealthPreviewFixtures.disconnectedAuthorization(suite: "preview-connect"))
         .tint(FJColor.health)
 }
+#endif
