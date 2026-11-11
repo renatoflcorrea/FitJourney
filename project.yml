@@ -21,6 +21,8 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        # HKWorkoutSession no iPhone (iOS 26+) segue gravando com o app em segundo plano.
+        UIBackgroundModes: [workout-processing]
     entitlements:
       path: FitJourney/App/FitJourney.entitlements
       properties:
