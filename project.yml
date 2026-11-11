@@ -1,5 +1,6 @@
 name: FitJourney
 options:
+  developmentLanguage: pt-BR
   bundleIdPrefix: br.com.renatocorrea
   deploymentTarget:
     iOS: "26.0"
