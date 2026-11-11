@@ -20,7 +20,7 @@ struct FitJourneyWatchApp: App {
             }
                 .environment(model)
                 .preferredColorScheme(.dark)
-                .task { await model.start() }
+                .task { model.start() }
         }
     }
 }
