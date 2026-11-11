@@ -131,9 +131,10 @@ struct LoadField: View {
         Binding(
             get: { unit },
             set: { new in
-                guard new != unit else { return }
+                let old = unit
+                guard new != old else { return }
                 func convert(_ v: Double) -> Double {
-                    ((new.fromKilograms(unit.toKilograms(v))) * 10).rounded() / 10
+                    ((new.fromKilograms(old.toKilograms(v))) * 10).rounded() / 10
                 }
                 switch load {
                 case .some(.weight(let v, _)): load = .weight(value: convert(v), unit: new)
