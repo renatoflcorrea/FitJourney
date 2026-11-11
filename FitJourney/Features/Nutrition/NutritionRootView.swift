@@ -34,6 +34,8 @@ struct NutritionDayView: View {
     @State private var model = NutritionDayModel()
     @State private var sheet: DaySheet?
     @State private var showPlans = false
+    @State private var showHistory = false
+    @State private var showFavorites = false
     @State private var toggledMeals: Set<UUID> = []
     @State private var entryToDelete: FoodEntry?
 
@@ -41,6 +43,7 @@ struct NutritionDayView: View {
         ScrollView {
             LazyVStack(spacing: FJSpacing.cardGap) {
                 dayNavigator
+                WeekStrip(cells: model.weekStrip) { model.jump(to: $0) }
                 if let message = model.errorMessage {
                     FJBanner("Algo deu errado", message: LocalizedStringKey(message), tone: .destructive,
                              systemImage: "exclamationmark.triangle", actionTitle: "Fechar") { model.errorMessage = nil }
@@ -63,8 +66,16 @@ struct NutritionDayView: View {
             ToolbarItem(placement: .secondaryAction) {
                 Button("Plano", systemImage: "list.bullet.clipboard") { showPlans = true }
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button("Histórico", systemImage: "calendar") { showHistory = true }
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                Button("Favoritos", systemImage: "star") { showFavorites = true }
+            }
         }
         .navigationDestination(isPresented: $showPlans) { NutritionPlanListView() }
+        .navigationDestination(isPresented: $showHistory) { NutritionHistoryView { model.jump(to: $0) } }
+        .navigationDestination(isPresented: $showFavorites) { NutritionFavoritesView(day: model.registrationDate) }
         .sheet(item: $sheet, onDismiss: model.reload) { sheet in
             switch sheet {
             case .log(let entry):
@@ -84,6 +95,7 @@ struct NutritionDayView: View {
                             titleVisibility: .visible, presenting: entryToDelete) { entry in
             Button("Apagar", role: .destructive) { model.delete(entry) }
         }
+        .refreshesMealReminders()
         .task { model.attach(context) }
         .onAppear { model.reload() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.reload() } }

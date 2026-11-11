@@ -26,6 +26,7 @@ final class NutritionDayModel {
     private(set) var totals = DayNutritionTotals()
     private(set) var waterTotal: Double = 0
     private(set) var estimatedCount = 0
+    private(set) var weekStrip: [WeekCell] = []
     var errorMessage: String?
 
     private var store: NutritionStore?
@@ -63,6 +64,7 @@ final class NutritionDayModel {
             totals = state.totals
             waterTotal = state.waterTotal
             estimatedCount = NutritionEstimates.count(in: state.entries)
+            weekStrip = try store.weekStrip(containing: date, now: now)
         } catch {
             fail()
         }
