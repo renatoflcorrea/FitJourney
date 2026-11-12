@@ -23,6 +23,8 @@ struct AddRoutinesSheet: View {
     @State private var selectionTrigger = 0
     @State private var blockTrigger = 0
     @State private var errorTrigger = 0
+    /// "Ver treino": a sessão só abre depois que esta folha termina de fechar (`onDisappear`).
+    @State private var presentSessionOnClose = false
 
     private var sources: [TrainingProgram] {
         RoutineCopyLogic.orderedPrograms(allPrograms, excluding: destination)
@@ -70,6 +72,15 @@ struct AddRoutinesSheet: View {
                 .navigationDestination(isPresented: $showingDays) { daysStep }
         }
         .presentationDetents([.large])
+        .onDisappear {
+            guard presentSessionOnClose else { return }
+            presentSessionOnClose = false
+            sessionCoordinator?.present()
+        }
+        // Treino que termina: some o bloqueio forçado (o da consulta some sozinho).
+        .onChange(of: openSessions.isEmpty) { _, isEmpty in if isEmpty { forcedBlock = false } }
+        // Destino que ficou indisponível (treino começou): o passo de dias não faz mais sentido.
+        .onChange(of: isBlocked) { _, blocked in if blocked { showingDays = false } }
         .alert("Não foi possível copiar", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK", role: .cancel) {}
         } message: { Text(errorMessage ?? "") }
@@ -114,8 +125,8 @@ struct AddRoutinesSheet: View {
                     FJBanner("Há um treino em andamento",
                              message: "Finalize ou descarte o treino em andamento antes de adicionar fichas a \(destination.name).",
                              tone: .attention, actionTitle: "Ver treino") {
+                        presentSessionOnClose = true
                         dismiss()
-                        sessionCoordinator?.present()
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)

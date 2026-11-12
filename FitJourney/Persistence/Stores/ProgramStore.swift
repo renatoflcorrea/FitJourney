@@ -443,11 +443,16 @@ extension ProgramStore {
             try commit(context)
             return copies
         } catch {
-            // Sem cópia parcial. `rollback()` descarta o que foi inserido, mas o SwiftData deixa o programa
-            // (já carregado) com as cópias na relação e o `updatedAt` novo: desfaz à mão.
-            context.rollback()
+            // Sem cópia parcial. `rollback()` descarta o que foi inserido, mas o SwiftData deixa nos objetos
+            // já carregados os inversos novos (o destino com as cópias em `routines`, o `updatedAt` novo e
+            // cada `Exercise` do catálogo com os itens clonados em `routineExercises`): desfaz à mão antes.
+            for copy in copies {
+                for item in copy.exercises ?? [] { item.exercise = nil }
+                copy.program = nil
+            }
             program.routines?.removeAll { routine in copies.contains { $0 === routine } }
             program.updatedAt = updatedAt
+            context.rollback()
             throw error
         }
     }

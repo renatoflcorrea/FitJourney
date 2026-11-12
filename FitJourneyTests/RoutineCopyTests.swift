@@ -271,6 +271,13 @@ struct RoutineCopyTests {
         #expect(RoutineNaming.uniqueName("Peito (2) ", among: ["Peito (2)"]) == "Peito (3)")
     }
 
+    @Test func hugeNumericSuffixNeverOverflows() {
+        let max = "Peito (\(Int.max))"
+        #expect(RoutineNaming.uniqueName(max, among: [max]) == "\(max) (2)")
+        #expect(RoutineNaming.uniqueName("Peito (999999999)", among: ["Peito (999999999)"]) == "Peito (1000000000)")
+        #expect(RoutineNaming.uniqueName("Peito (1234567890)", among: ["Peito (1234567890)"]) == "Peito (1234567890) (2)")
+    }
+
     @Test func namingRuleCountsPreviousNamesOfTheSameBatch() {
         #expect(RoutineNaming.uniqueNames(["Peito", "Peito", "Costas", "Peito"], among: ["Peito"])
                 == ["Peito (2)", "Peito (3)", "Costas", "Peito (4)"])
@@ -323,6 +330,10 @@ struct RoutineCopyTests {
         try f.programs.addRoutine(to: target, name: "A", symbol: "A", weekdays: [.monday])
         let before = try counts(f)
         let targetUpdatedAt = target.updatedAt
+        let bench = try f.exercise("bench-press")
+        let linksBefore = bench.routineExercises?.count ?? 0
+        try f.context.save()
+        #expect(!f.context.hasChanges)
 
         #expect(throws: Boom.self) {
             try f.programs.copyRoutines([routine, other], to: target) { _ in throw Boom() }
@@ -334,6 +345,10 @@ struct RoutineCopyTests {
         #expect(after.sets == before.sets)
         #expect(target.sortedRoutines.map(\.name) == ["A"])
         #expect(target.updatedAt == targetUpdatedAt)
+        // O catálogo não guarda itens fantasmas, e o contexto não fica sujo.
+        #expect(bench.routineExercises?.count == linksBefore)
+        #expect(bench.routineExercises?.allSatisfy { $0.routine != nil } == true)
+        #expect(!f.context.hasChanges)
         // E uma nova tentativa funciona normalmente.
         #expect(try f.programs.copyRoutines([routine, other], to: target).count == 2)
         #expect(target.sortedRoutines.count == 3)

@@ -6,11 +6,9 @@ import SwiftUI
 // escolha do que mostrar nas folhas.
 
 /// Navegação "Ver programa": a raiz de Treinos (programa ativo) ou o detalhe do programa. Quem hospeda a
-/// pilha de Treinos injeta a ação; fora dela (ex.: editor aberto pelo Coach) a ação não faz nada.
+/// pilha de Treinos injeta a ação; fora dela (ex.: editor aberto pelo Coach) ela é `nil` e "Ver programa" não aparece.
 struct OpenProgramAction: Sendable {
     let run: @MainActor @Sendable (TrainingProgram) -> Void
-
-    static let none = OpenProgramAction { _ in }
 
     init(_ run: @escaping @MainActor @Sendable (TrainingProgram) -> Void) { self.run = run }
 
@@ -18,7 +16,7 @@ struct OpenProgramAction: Sendable {
 }
 
 extension EnvironmentValues {
-    @Entry var openProgram: OpenProgramAction = .none
+    @Entry var openProgram: OpenProgramAction?
 }
 
 enum RoutineCopyLogic {

@@ -25,6 +25,8 @@ struct CopyRoutineSheet: View {
     @State private var doneTrigger = 0
     @State private var blockTrigger = 0
     @State private var errorTrigger = 0
+    /// "Ver treino": a sessão só abre depois que esta folha termina de fechar (`onDisappear`).
+    @State private var presentSessionOnClose = false
     @AccessibilityFocusState private var resultFocused: Bool
 
     private struct CopyResult {
@@ -68,6 +70,15 @@ struct CopyRoutineSheet: View {
             .navigationDestination(isPresented: $showingDays) { daysStep }
         }
         .presentationDetents([.medium, .large])
+        .onDisappear {
+            guard presentSessionOnClose else { return }
+            presentSessionOnClose = false
+            sessionCoordinator?.present()
+        }
+        // Treino que termina: some o bloqueio forçado (o da consulta some sozinho).
+        .onChange(of: openSessions.isEmpty) { _, isEmpty in if isEmpty { forcedBlockedID = nil } }
+        // Destino que ficou indisponível (treino começou): o passo de dias não faz mais sentido.
+        .onChange(of: destination == nil) { _, unavailable in if unavailable { showingDays = false } }
         .sheet(isPresented: $creatingProgram) {
             ProgramEditorSheet(program: nil) { created in destinationID = created.id }
                 .tint(FJColor.training)
@@ -108,8 +119,8 @@ struct CopyRoutineSheet: View {
                     FJBanner("Há um treino em andamento em \(blocked.name)",
                              message: "Finalize ou descarte o treino para copiar fichas para esse programa.",
                              tone: .attention, actionTitle: "Ver treino") {
+                        presentSessionOnClose = true
                         dismiss()
-                        sessionCoordinator?.present()
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -213,10 +224,10 @@ struct CopyRoutineSheet: View {
                      message: result.renamed
                         ? "Entrou em \(result.destination.name) como \(result.name). A original não mudou."
                         : "\(result.name) agora também está em \(result.destination.name). A original não mudou.",
-                     actionTitle: "Ver programa") {
+                     actionTitle: openProgram == nil ? nil : "Ver programa") {
             let target = result.destination
             dismiss()
-            openProgram(target)
+            openProgram?(target)
         }
         .accessibilityFocused($resultFocused)
         .task {

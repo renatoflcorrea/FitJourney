@@ -40,7 +40,8 @@ enum RoutineNaming {
         guard trimmed.hasSuffix(")"), let open = trimmed.lastIndex(of: "(") else { return (trimmed, nil) }
         let digits = trimmed[trimmed.index(after: open)..<trimmed.index(before: trimmed.endIndex)]
         let base = trimmed[..<open].trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !base.isEmpty, !digits.isEmpty, digits.allSatisfy({ $0.isASCII && $0.isNumber }),
+        // Até 9 dígitos: o incremento nunca estoura; mais que isso é texto, não um contador.
+        guard !base.isEmpty, !digits.isEmpty, digits.count <= 9, digits.allSatisfy({ $0.isASCII && $0.isNumber }),
               let number = Int(digits) else { return (trimmed, nil) }
         return (base, number)
     }
