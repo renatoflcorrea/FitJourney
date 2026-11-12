@@ -4,7 +4,8 @@ import SwiftUI
 /// Harness de screenshots/QA no simulador (só DEBUG): `-FJWScene <nome>` abre o app já num estado de teste.
 /// Cenas: never, noprogram, list, offline, detail, series, series-last, rest, rest-done (aviso de 2 s, alerta insistente
 /// desligado), rest-alert (alerta vibrando), rest-alert-quiet (alerta silenciado), hold, hold-running, cardio, paused,
-/// controls, metrics, routine, finish, summary, intro, unreachable.
+/// controls, metrics, routine, finish, summary, intro, unreachable, load-editor (editor de carga, W4), load-editor-bw
+/// (peso corporal com lastro), load-editor-unset (série sem carga), series-bw (Série com peso corporal + lastro).
 struct WatchHarnessScene {
     let name: String
 
@@ -28,7 +29,8 @@ struct WatchHarnessScene {
         case "never": reachable = false
         case "noprogram": break
         case "list", "detail", "offline": break
-        case "series", "controls", "metrics", "routine", "finish", "summary", "saving", "unreachable":
+        case "series", "controls", "metrics", "routine", "finish", "summary", "saving", "unreachable",
+             "load-editor", "load-editor-bw", "load-editor-unset", "series-bw":
             snapshot = WatchFixtures.snapshot(completed: 1, now: now)
         case "series-last": snapshot = WatchFixtures.snapshot(completed: 3, now: now)
         case "rest", "rest-done", "rest-alert", "rest-alert-quiet": snapshot = WatchFixtures.snapshot(completed: 1, now: now)
@@ -51,6 +53,12 @@ struct WatchHarnessScene {
         }
         if name == "paused" { snapshot?.status = .paused; snapshot?.pausedAt = now.addingTimeInterval(-30) }
         if name == "intro" { healthAccess = .authorized }
+        if name == "load-editor-bw" || name == "series-bw" || name == "load-editor-unset", let setID = snapshot?.currentSetID,
+           let e = snapshot?.exercises.firstIndex(where: { $0.sets.contains { $0.id == setID } }),
+           let s = snapshot?.exercises[e].sets.firstIndex(where: { $0.id == setID }) {
+            snapshot?.exercises[e].sets[s].load = nil
+            snapshot?.exercises[e].sets[s].plannedLoad = name == "load-editor-unset" ? nil : WatchLoad(value: 10, isBodyweight: true)
+        }
 
         let transport = MockWatchTransport(digest: name == "never" || name == "noprogram" ? nil : digest, snapshot: snapshot, reachable: reachable)
         if name == "saving" { transport.autoRespond = false }
@@ -81,6 +89,10 @@ struct WatchHarnessScene {
             override = { AnyView(NavigationStack { RoutineDetailView(routine: digest.routines[0]) }) }
         case "finish":
             override = { AnyView(FinishView()) }
+        case "load-editor", "load-editor-bw", "load-editor-unset":
+            if let setID = snapshot?.currentSetID, let draft = model.loadDraft(setID: setID) {
+                override = { AnyView(LoadEditorView(draft: draft)) }
+            }
         default: break
         }
         return .init(model: model, initialPage: page, rootOverride: override)

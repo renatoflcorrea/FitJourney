@@ -72,6 +72,10 @@ enum WatchLayout {
     static var isLargeCase: Bool { WKInterfaceDevice.current().screenBounds.width >= 198 }
     static var primaryButtonHeight: CGFloat { isLargeCase ? 52 : 46 }
     static var loadFontSize: CGFloat { isLargeCase ? 42 : 36 }
+    /// Número do editor de carga (W4): um degrau acima da Série — é a única coisa na tela além dos botões.
+    static var loadEditorFontSize: CGFloat { isLargeCase ? 48 : 42 }
+    /// Quanto a área de toque do chip "Próxima: 26 kg" do descanso sobe além do que se vê (até ≈ 44 pt).
+    static let chipTouchExtension: CGFloat = 20
     static var timerFontSize: CGFloat { isLargeCase ? 54 : 48 }
 }
 

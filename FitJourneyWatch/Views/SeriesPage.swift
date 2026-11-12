@@ -1,8 +1,14 @@
 import SwiftUI
 
 /// Página Série (inicial): muda de conteúdo conforme o estado — série → descanso → sustentação/cardio → próximo exercício.
+///
+/// W4: nesta página a Coroa **não altera nada** (o pulso dobrado na série girava a carga sem querer). A carga é um
+/// botão que abre o editor (`LoadEditorView`); com texto grande a página rola e a Coroa só rola.
 struct SeriesPage: View {
     @Environment(WatchSessionModel.self) private var model
+    /// Editor de carga aberto. Fica aqui, e não na série/descanso, para não fechar quando o descanso termina e a
+    /// página troca de conteúdo por baixo da folha.
+    @State private var loadDraft: WatchLoadDraft?
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -10,14 +16,17 @@ struct SeriesPage: View {
                 .transition(.opacity)
         }
         .accessibilityLabel("Série")
+        .sheet(item: $loadDraft) { draft in LoadEditorView(draft: draft) }
     }
+
+    private func editLoad(_ setID: UUID) { loadDraft = model.loadDraft(setID: setID) }
 
     @ViewBuilder private func content(at date: Date) -> some View {
         if let display = model.display {
             if display.status == .paused {
                 PausedView(display: display)
             } else if let remaining = display.restRemaining(at: date) {
-                RestView(remaining: remaining)
+                RestView(remaining: remaining, editLoad: editLoad)
             } else if let finished = model.restFinishedAt, date.timeIntervalSince(finished) < 2 {
                 RestDoneView()
             } else if let set = model.currentSet, let exercise = model.currentExercise {
@@ -27,7 +36,7 @@ struct SeriesPage: View {
                     switch exercise.measurementKind {
                     case .isometric: HoldView(exercise: exercise, set: set)
                     case .timeOrDistance: CardioView(exercise: exercise, set: set)
-                    default: ActiveSetView(exercise: exercise, set: set)
+                    default: ActiveSetView(exercise: exercise, set: set, editLoad: editLoad)
                     }
                 }
             } else {
@@ -37,69 +46,15 @@ struct SeriesPage: View {
     }
 }
 
-// MARK: - Carga pela Coroa
-
-/// Carga efetiva exibida de uma série (`nil` = o exercício não usa carga). Sem carga definida, a base da Coroa
-/// é 0 — mas a tela mostra "Definir carga" (`isLoadUnset`), nunca "0 kg" como se fosse prescrito (P2.8).
-func effectiveLoad(of set: SessionSnapshot.ExerciseSet, in exercise: SessionSnapshot.Exercise) -> WatchLoad? {
-    if let load = set.load ?? set.plannedLoad { return load }
-    return exercise.measurementKind == .repsAndLoad ? WatchLoad(value: 0) : nil
-}
-
-/// Série sem carga registrada nem planejada (peso 0 planejado conta como sem carga; peso corporal é carga).
-func isLoadUnset(_ set: SessionSnapshot.ExerciseSet) -> Bool {
-    guard set.load == nil else { return false }
-    guard let planned = set.plannedLoad else { return true }
-    return !planned.isBodyweight && planned.value == 0
-}
-
-/// A Digital Crown ajusta a carga em passos de 0,5 kg com háptico de detente (DESIGN §9.1, SPEC D3).
-struct LoadCrownModifier: ViewModifier {
-    @Environment(WatchSessionModel.self) private var model
-    let setID: UUID
-    let load: WatchLoad
-    @State private var crown: Double = 0
-
-    func body(content: Content) -> some View {
-        let range = WatchLoadStepping.range(for: load)
-        content
-            .focusable()
-            .digitalCrownRotation($crown, from: range.lowerBound, through: range.upperBound, by: WatchLoadStepping.step,
-                                  sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
-            .onChange(of: crown) { _, new in
-                let clamped = WatchLoadStepping.clamp(new, for: load)
-                model.setLoad(setID: setID, to: clamped)
-                if clamped != new { crown = clamped }
-            }
-            .onChange(of: load.value) { _, new in if abs(crown - new) > 0.01 { crown = new } }
-            .onChange(of: setID) { _, _ in crown = load.value }
-            .onAppear { crown = load.value }
-    }
-}
-
-extension View {
-    func loadCrown(setID: UUID?, load: WatchLoad?) -> some View {
-        modifier(OptionalLoadCrown(setID: setID, load: load))
-    }
-}
-
-private struct OptionalLoadCrown: ViewModifier {
-    let setID: UUID?
-    let load: WatchLoad?
-    func body(content: Content) -> some View {
-        if let load, let setID { content.modifier(LoadCrownModifier(setID: setID, load: load)) } else { content }
-    }
-}
-
 // MARK: - Série ativa
 
 struct ActiveSetView: View {
     @Environment(WatchSessionModel.self) private var model
     @Environment(\.dynamicTypeSize) private var typeSize
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let exercise: SessionSnapshot.Exercise
     let set: SessionSnapshot.ExerciseSet
-    @State private var showingLoadSheet = false
+    /// Abre o editor de carga da série.
+    var editLoad: (UUID) -> Void = { _ in }
 
     private var isLargeText: Bool { typeSize >= .accessibility1 }
     private var load: WatchLoad? { effectiveLoad(of: set, in: exercise) }
@@ -111,22 +66,19 @@ struct ActiveSetView: View {
     var body: some View {
         Group {
             if isLargeText {
-                ScrollView { VStack(spacing: 6) { header; loadRow; target } }
+                // Texto grande: a página rola (a Coroa só rola — nada nesta página reage a ela).
+                ScrollView { VStack(spacing: 6) { header; loadButton; target } }
                     .safeAreaInset(edge: .bottom) { completeButton }
             } else {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     header
                     Spacer(minLength: 0)
-                    loadRow
+                    loadButton
                     target
                     Spacer(minLength: 0)
                     completeButton
                 }
-                .loadCrown(setID: set.id, load: load)
             }
-        }
-        .sheet(isPresented: $showingLoadSheet) {
-            if let load { LoadSheet(setID: set.id, load: load) }
         }
         .accessibilityElement(children: .contain)
     }
@@ -146,67 +98,22 @@ struct ActiveSetView: View {
         .accessibilitySortPriority(4)
     }
 
-    @ViewBuilder private var loadRow: some View {
-        if load != nil {
-            if isLargeText {
-                // Texto grande: valor numa linha própria e − / + embaixo (lado a lado o número era cortado).
-                VStack(spacing: 4) {
-                    loadValueButton
-                    HStack(spacing: 6) {
-                        stepButton("minus", delta: -WatchLoadStepping.step, label: "Diminuir carga")
-                        stepButton("plus", delta: WatchLoadStepping.step, label: "Aumentar carga")
-                    }
-                }
-            } else {
-                loadValueButton
-            }
-        }
-    }
-
-    @ViewBuilder private var loadValueButton: some View {
+    /// Carga como botão de vidro (W4): número grande como antes + "±" laranja de afordância. Toque abre o editor.
+    @ViewBuilder private var loadButton: some View {
         if let load {
-            Button { showingLoadSheet = true } label: {
-                HStack(spacing: 6) {
-                    if isLoadUnset(set) {
-                        Text("Definir carga").font(.headline).foregroundStyle(WF.training)
-                            .minimumScaleFactor(0.7).lineLimit(1)
-                    } else {
-                        Text(WatchFormat.load(load).replacingOccurrences(of: " kg", with: "").replacingOccurrences(of: " lb", with: ""))
-                            .font(WF.number(WatchLayout.loadFontSize))
-                            .minimumScaleFactor(0.6).lineLimit(1)
-                            .contentTransition(reduceMotion ? .identity : .numericText())
-                    }
-                    if !isLoadUnset(set), !load.isBodyweight || load.value != 0 {
-                        Text(load.unit == .kg ? "kg" : "lb").font(.footnote.weight(.semibold)).foregroundStyle(WF.textSecondary)
-                    }
-                    Spacer(minLength: 0)
-                    if !isLargeText {
-                        Capsule().fill(WF.training).frame(width: 4, height: 30).accessibilityHidden(true)
-                    }
-                }
+            let unset = isLoadUnset(set)
+            Button { editLoad(set.id) } label: {
+                LoadButtonLabel(load: load, isUnset: unset, fontSize: WatchLayout.loadFontSize)
             }
             .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 18))
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Carga")
-            .accessibilityValue(isLoadUnset(set) ? String(localized: "Definir carga") : WatchFormat.spokenLoad(load))
-            .accessibilityHint("Toque para ajustar. Deslize para cima ou para baixo para mudar meio quilo.")
-            .accessibilityAdjustableAction { direction in
-                switch direction {
-                case .increment: model.adjustLoad(setID: set.id, by: WatchLoadStepping.step)
-                case .decrement: model.adjustLoad(setID: set.id, by: -WatchLoadStepping.step)
-                @unknown default: break
-                }
-            }
+            .accessibilityValue(unset ? String(localized: "sem carga definida") : WatchFormat.spokenLoad(load))
+            .accessibilityHint(unset ? Text("Toque para definir") : Text("Toque para ajustar"))
+            .accessibilityAddTraits(.isButton)
             .accessibilitySortPriority(3)
         }
-    }
-
-    private func stepButton(_ symbol: String, delta: Double, label: LocalizedStringResource) -> some View {
-        Button { model.adjustLoad(setID: set.id, by: delta) } label: {
-            Image(systemName: symbol).frame(minWidth: 44, minHeight: 44)
-        }
-        .buttonStyle(.glass)
-        .accessibilityLabel(Text(label))
     }
 
     private var target: some View {
@@ -226,34 +133,47 @@ struct ActiveSetView: View {
     }
 }
 
-/// Folha "Carga": − / + grandes (alternativa sem Coroa).
-struct LoadSheet: View {
-    @Environment(WatchSessionModel.self) private var model
-    @Environment(\.dismiss) private var dismiss
-    let setID: UUID
+/// Rótulo do botão de carga da Série: "26,0 kg" · "PC +10 kg" · "Definir carga", com o "±" de afordância.
+struct LoadButtonLabel: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let load: WatchLoad
+    let isUnset: Bool
+    let fontSize: CGFloat
 
     var body: some View {
-        let set = model.display?.exercises.flatMap(\.sets).first { $0.id == setID }
-        let current = set?.load ?? load
-        let unset = set.map(isLoadUnset) ?? false
-        VStack(spacing: 6) {
-            Text(unset ? LocalizedStringKey("Definir carga") : LocalizedStringKey("Carga")).font(.footnote).foregroundStyle(WF.textSecondary)
-            Text(verbatim: unset ? "—" : WatchFormat.load(current)).font(WF.number(34)).minimumScaleFactor(0.6).lineLimit(1)
-                .accessibilityValue(unset ? String(localized: "Definir carga") : WatchFormat.spokenLoad(current))
-            HStack(spacing: 8) {
-                Button { model.adjustLoad(setID: setID, by: -WatchLoadStepping.step) } label: {
-                    Image(systemName: "minus").font(.title3).frame(maxWidth: .infinity, minHeight: 48)
+        HStack(alignment: .center, spacing: 6) {
+            if isUnset {
+                Text("Definir carga").font(.headline).foregroundStyle(WF.training)
+                    .minimumScaleFactor(0.7).lineLimit(1)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(verbatim: number)
+                        .font(WF.number(fontSize))
+                        .minimumScaleFactor(0.6).lineLimit(1)
+                        .contentTransition(reduceMotion ? .identity : .numericText(value: load.value))
+                    if let unit {
+                        Text(verbatim: unit).font(.footnote.weight(.semibold)).foregroundStyle(WF.textSecondary)
+                    }
                 }
-                .accessibilityLabel("Diminuir carga")
-                Button { model.adjustLoad(setID: setID, by: WatchLoadStepping.step) } label: {
-                    Image(systemName: "plus").font(.title3).frame(maxWidth: .infinity, minHeight: 48)
-                }
-                .accessibilityLabel("Aumentar carga")
             }
-            .buttonStyle(.glass)
-            WatchPrimaryButton(title: "OK") { dismiss() }
+            Spacer(minLength: 0)
+            Image(systemName: "plusminus")
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(WF.training)
+                .accessibilityHidden(true)
         }
+        .padding(.leading, 10).padding(.trailing, 12)
+        .frame(maxWidth: .infinity, minHeight: 48)
+        .contentShape(.rect(cornerRadius: 18))
+    }
+
+    /// "26,0" · "PC +10" · "PC".
+    private var number: String {
+        WatchFormat.load(load).replacingOccurrences(of: " kg", with: "").replacingOccurrences(of: " lb", with: "")
+    }
+
+    private var unit: String? {
+        load.isBodyweight && load.value == 0 ? nil : (load.unit == .kg ? "kg" : "lb")
     }
 }
 
@@ -263,6 +183,8 @@ struct RestView: View {
     @Environment(WatchSessionModel.self) private var model
     @Environment(\.dynamicTypeSize) private var typeSize
     let remaining: TimeInterval
+    /// Abre o editor de carga da próxima série.
+    var editLoad: (UUID) -> Void = { _ in }
     @State private var showingReps = false
 
     private var next: (set: SessionSnapshot.ExerciseSet, exercise: SessionSnapshot.Exercise)? {
@@ -273,11 +195,10 @@ struct RestView: View {
     var body: some View {
         Group {
             // Texto grande: tudo rola numa coluna só, com "Pular" logo após o tempo e "+ reps"/"+15 s" abaixo,
-            // sem botão fixo cobrindo as secundárias.
+            // sem botão fixo cobrindo as secundárias. A Coroa só rola.
             if typeSize >= .accessibility1 { ScrollView { column(skipFirst: true) } }
             else { VStack(spacing: 4) { column(skipFirst: false); Spacer(minLength: 0); skipButton } }
         }
-        .loadCrown(setID: next?.set.id, load: next.flatMap { effectiveLoad(of: $0.set, in: $0.exercise) })
         .sheet(isPresented: $showingReps) { RepsSheet() }
     }
 
@@ -288,13 +209,7 @@ struct RestView: View {
                 .minimumScaleFactor(0.6).lineLimit(1)
                 .accessibilityLabel("Descanso, \(Int(remaining.rounded(.up))) segundos restantes")
             progressBar
-            if let next, isLoadUnset(next.set), effectiveLoad(of: next.set, in: next.exercise) != nil {
-                Text("Próxima: definir carga").font(.footnote).foregroundStyle(WF.textSecondary)
-                    .accessibilityLabel("Próxima série sem carga definida. Gire a Coroa para definir.")
-            } else if let next, let load = effectiveLoad(of: next.set, in: next.exercise) {
-                Text("Próxima: \(WatchFormat.load(load))").font(.footnote).foregroundStyle(WF.textSecondary)
-                    .accessibilityLabel("Próxima série, \(WatchFormat.spokenLoad(load)). Gire a Coroa para ajustar.")
-            }
+            nextLoadChip
             if skipFirst { skipButton }
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 5) { secondaryButtons }
@@ -302,6 +217,33 @@ struct RestView: View {
             }
             .buttonStyle(.glass)
             .font(.footnote.weight(.semibold))
+        }
+    }
+
+    /// "Próxima: 26,0 kg ±" — chip de vidro fino que abre o editor da próxima série (W4). Visível com a altura de
+    /// uma linha (o descanso é a tela mais apertada); a área de toque cresce para cima, sobre o tempo e a barra, que
+    /// não são tocáveis, até 44 pt.
+    @ViewBuilder private var nextLoadChip: some View {
+        if let next, let load = effectiveLoad(of: next.set, in: next.exercise) {
+            let unset = isLoadUnset(next.set)
+            Button { editLoad(next.set.id) } label: {
+                HStack(spacing: 5) {
+                    Text(unset ? "Próxima: definir carga" : "Próxima: \(WatchFormat.load(load))")
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                    Image(systemName: "plusminus").font(.caption2.weight(.bold)).foregroundStyle(WF.training)
+                }
+                .font(.footnote.weight(.medium))
+                .padding(.horizontal, 10).padding(.vertical, 3)
+                .padding(.top, WatchLayout.chipTouchExtension)
+                .contentShape(.rect)
+                .padding(.top, -WatchLayout.chipTouchExtension)
+            }
+            .buttonStyle(.plain)
+            .glassEffect(.regular.interactive(), in: .capsule)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(unset ? Text("Próxima série sem carga definida") : Text("Próxima série, \(WatchFormat.spokenLoad(load))"))
+            .accessibilityHint(unset ? Text("Toque para definir") : Text("Toque para ajustar"))
+            .accessibilityAddTraits(.isButton)
         }
     }
 

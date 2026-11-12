@@ -65,9 +65,10 @@ struct WatchSessionSummary: Equatable, Sendable {
 /// comandos seguintes saem na hora, sem reter nem remapear. Pendentes que citam série/exercício que o snapshot
 /// confirmado não tem são descartados com aviso (`pruneCommandsWithUnknownIDs`).
 ///
-/// Coalescência da Coroa: `adjustLoad` fica `loadCoalesceInterval` sem enviar; outro `adjustLoad` da mesma série
-/// nesse intervalo soma no mesmo comando (mesmo `commandID`, nunca enviado — seguro). Qualquer outro comando
-/// envia antes o que estiver esperando (ordem preservada).
+/// Coalescência de `adjustLoad` em rajada: fica `loadCoalesceInterval` sem enviar; outro `adjustLoad` da mesma
+/// série nesse intervalo soma no mesmo comando (mesmo `commandID`, nunca enviado — seguro). Qualquer outro comando
+/// envia antes o que estiver esperando (ordem preservada). Desde o W4 a Coroa não mexe mais na carga fora do
+/// editor, que envia um único comando ao salvar (`saveLoad`, sem esperar a janela).
 ///
 /// Quem grava o treino no Saúde (`WatchWorkoutStatus`): sessão iniciada aqui → o relógio grava; sessão iniciada
 /// no iPhone → o relógio só controla, e oferece "gravar no relógio" (`canOfferWatchRecording`,
@@ -123,6 +124,8 @@ final class WatchSessionModel {
     var restFinishedAt: Date?
     /// Alerta insistente de fim de descanso em curso (`nil` = sem alerta).
     private(set) var restAlert: WatchRestAlert?
+    /// O editor de carga está aberto (W4): o fim do descanso não abre a tela cheia por cima dele.
+    @ObservationIgnored var isEditingLoad = false
     var liveMetrics = WatchLiveMetrics.empty
     var healthAccess: WatchHealthAccess
     /// Sessão cujo treino o relógio está gravando no Saúde (`nil` = só controle).
@@ -137,7 +140,7 @@ final class WatchSessionModel {
     /// Espera por resposta antes de reenviar um comando; espera máxima por um snapshot pedido.
     @ObservationIgnored var resendInterval: TimeInterval = 5
     @ObservationIgnored var snapshotTimeout: TimeInterval = 10
-    /// Janela de coalescência dos `adjustLoad` da Coroa (0 = envia cada um na hora).
+    /// Janela de coalescência dos `adjustLoad` em rajada (0 = envia cada um na hora).
     @ObservationIgnored var loadCoalesceInterval: TimeInterval = 0.35
     /// Intervalo mínimo entre envios de métricas ao iPhone.
     @ObservationIgnored var metricsInterval: TimeInterval = 2
@@ -621,10 +624,42 @@ final class WatchSessionModel {
         send(.adjustLoad(setID: setID, delta: effective))
     }
 
-    /// Valor absoluto vindo da Coroa: converte em `adjustLoad`.
+    /// Valor absoluto: converte em `adjustLoad`.
     func setLoad(setID: UUID, to value: Double) {
         guard let display, let base = SessionReducer.loadBase(setID: setID, in: display) else { return }
         adjustLoad(setID: setID, by: value - base.value)
+    }
+
+    // MARK: Editor de carga (W4)
+
+    /// Abre o editor de carga da série: o rascunho parte da carga mostrada. `nil` se a série não existe ou o
+    /// exercício não usa carga.
+    func loadDraft(setID: UUID) -> WatchLoadDraft? {
+        guard let display, let base = SessionReducer.loadBase(setID: setID, in: display),
+              let exercise = display.exercises.first(where: { $0.sets.contains { $0.id == setID } }),
+              let set = exercise.sets.first(where: { $0.id == setID }),
+              effectiveLoad(of: set, in: exercise) != nil else { return nil }
+        return WatchLoadDraft(setID: setID, base: base, wasUnset: isLoadUnset(set))
+    }
+
+    /// "Salvar" do editor: **um** `adjustLoad` até o valor escolhido, com a mesma propagação às séries seguintes
+    /// de sempre, enviado na hora (sem esperar a coalescência). A diferença é calculada sobre a carga atual: se o
+    /// iPhone mudou a carga com o editor aberto, vale o número que o usuário viu e salvou. Sem mudança não envia
+    /// nada — exceto numa série sem carga ("Definir carga"): aí delta 0 grava a carga mostrada (o iPhone trata
+    /// delta 0 do mesmo jeito). "Cancelar" não chama nada: o rascunho só é descartado.
+    func saveLoad(_ draft: WatchLoadDraft) {
+        guard let display, let base = SessionReducer.loadBase(setID: draft.setID, in: display),
+              let set = display.exercises.flatMap(\.sets).first(where: { $0.id == draft.setID }) else { return }
+        let target = WatchLoadStepping.clamp(draft.value, for: base)
+        let delta = target - base.value
+        if abs(delta) >= WatchLoadStepping.step / 2 {
+            send(.adjustLoad(setID: draft.setID, delta: delta))
+        } else if isLoadUnset(set), base.isBodyweight || target != 0 {
+            send(.adjustLoad(setID: draft.setID, delta: 0))
+        } else {
+            return
+        }
+        flushCoalescedCommands()
     }
 
     func skipRest() { send(.skipRest) }
@@ -863,7 +898,9 @@ final class WatchSessionModel {
     func restDidEnd(at end: Date) {
         guard let display, display.status == .active, display.restEndsAt == end, announcedRestEnd != end else { return }
         announcedRestEnd = end
-        guard restAlertRepeats else {
+        // Editor de carga aberto (W4): o usuário já está com o relógio na mão. Vibra uma vez, como com o alerta
+        // desligado, e o editor fica — a tela cheia fecharia a folha e descartaria a carga em ajuste.
+        guard restAlertRepeats, !isEditingLoad else {
             restFinishedAt = now
             haptics.play(.restEnded)
             return
