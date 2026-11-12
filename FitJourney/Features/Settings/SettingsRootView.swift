@@ -10,6 +10,8 @@ struct SettingsRootView: View {
     private let secrets: any SecretStore
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
     @Environment(HealthAuthorization.self) private var healthAuthorization: HealthAuthorization?
 
     @AppStorage(AppPreferenceKeys.weightUnit) private var weightUnitRaw = WeightUnit.kg.rawValue
@@ -153,10 +155,20 @@ struct SettingsRootView: View {
         }
         .alert("Reinicie o FitJourney para aplicar", isPresented: $showsRestartAlert) {
             // Encerra o app de forma limpa; o iOS não reabre sozinho, o usuário abre de novo.
-            Button("Reiniciar agora") { exit(0) }
+            // Sem sessão de treino ativa; antes de sair, grava o contexto principal.
+            if AppLanguagePreference.canRestartNow(sessionActive: sessionCoordinator?.engine.snapshot != nil) {
+                Button("Reiniciar agora") {
+                    try? modelContext.save()
+                    exit(0)
+                }
+            }
             Button("Depois", role: .cancel) {}
         } message: {
-            Text("O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitJourney fecha e você o abre de novo pela tela de início.")
+            if AppLanguagePreference.canRestartNow(sessionActive: sessionCoordinator?.engine.snapshot != nil) {
+                Text("O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitJourney fecha e você o abre de novo pela tela de início.")
+            } else {
+                Text("Reabra o app depois do treino para aplicar")
+            }
         }
     }
 

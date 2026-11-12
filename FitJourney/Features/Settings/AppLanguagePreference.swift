@@ -37,6 +37,9 @@ enum AppLanguagePreference: String, CaseIterable, Sendable {
         }
     }
 
+    /// "Reiniciar agora" só sem sessão de treino ativa (não encerrar o app no meio do treino).
+    static func canRestartNow(sessionActive: Bool) -> Bool { !sessionActive }
+
     /// Texto do seletor (cada idioma no próprio nome; Sistema localizado pelo catálogo).
     var title: String {
         switch self {

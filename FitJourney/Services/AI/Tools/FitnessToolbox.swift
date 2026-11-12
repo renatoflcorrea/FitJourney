@@ -262,7 +262,7 @@ final class FitnessToolbox {
                 "exercises": .array(routine.sortedExercises.map { item in
                     .object([
                         "id": .string(item.id.uuidString),
-                        "name": .string(item.displayName),
+                        "name": .string(item.displayName.exerciseDisplayName),
                         "catalogKey": item.exercise?.catalogKey.map(JSONValue.string) ?? .null,
                         "grouped": .bool(item.groupID != nil),
                         "notes": Self.text(item.notes),

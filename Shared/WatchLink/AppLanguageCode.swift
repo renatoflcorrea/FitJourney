@@ -30,18 +30,25 @@ enum AppLanguageCode {
         return nil
     }
 
-    /// Relógio: aplica o idioma recebido do iPhone em `AppleLanguages` do app. Devolve `true` quando o idioma
-    /// em uso difere do recebido e a gravação mudou (vale no próximo lançamento). Código ausente/inválido =
-    /// nada muda.
+    /// Relógio: só grava `AppleLanguages` quando o código recebido difere do idioma em uso (não fixa à toa na
+    /// primeira recepção). Devolve `true` quando gravou algo novo (vale no próximo lançamento). Ausente/inválido = nada.
     @discardableResult
     static func applyReceived(_ code: String?, running: String = AppLanguageCode.current,
                               defaults: UserDefaults = .standard) -> Bool {
         guard let code = normalized(code) else { return false }
-        let previous = defaults.string(forKey: preferenceKey)
-        if previous != code {
-            defaults.set(code, forKey: preferenceKey)
-            defaults.set([code], forKey: "AppleLanguages")
+        let stored = defaults.string(forKey: preferenceKey)
+        if code == running {
+            // Já em uso: só desfaz uma gravação anterior pendente (iPhone voltou atrás), sem avisar.
+            if let stored, stored != code { write(code, defaults) }
+            return false
         }
-        return previous != code && running != code
+        guard stored != code else { return false }
+        write(code, defaults)
+        return true
+    }
+
+    private static func write(_ code: String, _ defaults: UserDefaults) {
+        defaults.set(code, forKey: preferenceKey)
+        defaults.set([code], forKey: "AppleLanguages")
     }
 }

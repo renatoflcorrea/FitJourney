@@ -33,8 +33,8 @@ struct WatchLanguageTests {
         var digest = WatchFixtures.digest(now: t0)
         digest.language = "en"
         model.receive(digest: digest)
-        #expect(defaults.string(forKey: "fj.appLanguage") == "en")
-        #expect(model.notice == nil) // já está em inglês
+        #expect(defaults.string(forKey: "fj.appLanguage") == nil) // já em uso: nada é gravado
+        #expect(model.notice == nil)
         model.receive(digest: digest)
         #expect(model.notice == nil)
     }

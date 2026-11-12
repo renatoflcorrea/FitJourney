@@ -28,6 +28,11 @@ struct AppLanguageTests {
         #expect(AppLanguagePreference.current(d) == .system)
     }
 
+    @Test func reinicioSoSemSessaoAtiva() {
+        #expect(AppLanguagePreference.canRestartNow(sessionActive: false))
+        #expect(!AppLanguagePreference.canRestartNow(sessionActive: true))
+    }
+
     @Test func codigosNormalizadosEEfetivos() {
         #expect(AppLanguageCode.normalized("pt") == "pt-BR")
         #expect(AppLanguageCode.normalized("pt_BR") == "pt-BR")
