@@ -56,7 +56,7 @@
 
 ## Pendente de integração
 - Alerta de descanso: branch `worktree-agent-a2fe7130676f895a9` (2918c33, revisado e corrigido). Merge em main conflita em DESIGN_DIRECTION.md, prototype.html, WatchSessionModel.swift (com P2.8) e Localizable.xcstrings (usar scratchpad xcmerge/união de chaves). Resolver, rodar build/test/watch-test.
-- C7.3 telas copiloto: branch `worktree-agent-a0ba68a10cf8c6fac` (d5ce728 + correções da revisão B1/I1–I4 em andamento quando o limite de uso chegou). Conferir commit final, revisar, integrar.
+- C7.3 telas copiloto: INTEGRADO (49cc655). Pedidos: índice por messageID no CopilotChangeStore, canUndo no FJChangeCard, API de edição no ImportSession.
 - Depois: `make device TEAM=<TEAM> DEVICE_ID=<iphone-udid> WATCH_ID=<watch-udid>`; Cartographer.
 
 ## Fila
