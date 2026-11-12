@@ -13914,6 +13914,16 @@
         }
       }
     },
+    "Reabra o app depois do treino para aplicar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopen the app after your workout to apply"
+          }
+        }
+      }
+    },
     "Reativar" : {
       "localizations" : {
         "en" : {
