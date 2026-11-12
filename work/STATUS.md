@@ -53,6 +53,8 @@
 - P6.8 (9cf642e + b985bac): idioma do app (Ajustes › Geral › Idioma: Sistema/Português/English, "Reiniciar agora" escondido durante treino); relógio segue o iPhone; nomes de exercícios harmonizados (iPhone, relógio, VoiceOver, Live Activity, Coach).
 - Último estado (ecac268): testes iOS e watch verdes; `make device TEAM=<TEAM> DEVICE_ID=<iphone-udid> WATCH_ID=<watch-udid>` instalou no iPhone 18 Pro Max e no Apple Watch Ultra 2.
 
+- C7.4 (12/11): exercício novo no import sem loop — decisões de exercício guardadas por `asWritten` normalizado e reaplicadas após `reviseWithAI` (com fallback por nome/posição se a IA reescrever `asWritten`); "Criar como novo" com nome digitado (limite 80); IA instruída a não abrir dúvida só por exercício fora do catálogo; exercício da biblioteca fixado por id ao gravar. Integrado, testes verdes, instalado no iPhone e no relógio.
+
 ## Retomar aqui (nova sessão)
 - **Nenhum pedido do usuário pendente.** Aguardando retorno dos testes em aparelho.
 - Não verificado em aparelho: `startWatchApp`/adoção da gravação remota; intensidade da vibração e alerta com pulso abaixado; chamadas reais aos provedores no copiloto; reinício por `exit(0)` e troca de `AppleLanguages` no relógio.
