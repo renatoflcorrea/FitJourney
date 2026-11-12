@@ -31,6 +31,11 @@ struct ImportCompletion: Identifiable, Equatable {
     /// `false` quando as fichas foram acrescentadas a um programa existente (sem "Desfazer").
     let createdNew: Bool
     let name: String
+    /// Foi ativado ao criar (trocou o ativo): sem "Desfazer", que não saberia reativar o anterior.
+    var wasActivated = false
+    /// Aviso quando criou mas não conseguiu aplicar os ajustes de nome/cor.
+    var warning: String?
+    var canUndo: Bool { createdNew && !wasActivated }
 }
 
 /// Dona das importações: mantém as sessões vivas (fechar a folha não cancela — Q-CP3), apresenta a folha única
@@ -47,6 +52,8 @@ final class ImportCoordinator {
     /// Aviso global "Programa criado" · Desfazer.
     var banner: ImportCompletion?
 
+    /// Um monitor de rede para todas as telas da importação.
+    let network = ImportNetworkMonitor()
     @ObservationIgnored let context: ModelContext
     @ObservationIgnored let defaults: UserDefaults
     @ObservationIgnored let secrets: any SecretStore
@@ -65,6 +72,8 @@ final class ImportCoordinator {
     }
 
     // MARK: Composição
+
+    func providerInfo() -> ImportProviderInfo { ImportProviderInfo(defaults: defaults, secrets: secrets) }
 
     /// Mesma resolução do Coach: provedor das preferências + chave do Keychain.
     func makeSession(kind: ImportSession.Kind, id: UUID = UUID()) -> ImportSession {
@@ -110,6 +119,11 @@ final class ImportCoordinator {
 
     /// Fecha a folha sem cancelar nada.
     func closeSheet() {
+        // Folha vazia fechada por gesto não deixa "Continuar importação" para trás.
+        if let session = presented, session.phase == .selecting, session.attachments.isEmpty, !session.needsReattach {
+            discard(session.id)
+            return
+        }
         presented = nil
         refreshStored()
     }
@@ -153,8 +167,10 @@ final class ImportCoordinator {
     // MARK: Conclusão
 
     /// Importação aplicada: fecha a folha, abre o resultado e mostra o aviso.
-    func complete(_ session: ImportSession, resultID: UUID, createdNew: Bool, name: String) {
-        let completion = ImportCompletion(kind: session.kind, resultID: resultID, createdNew: createdNew, name: name)
+    func complete(_ session: ImportSession, resultID: UUID, createdNew: Bool, name: String, wasActivated: Bool = false,
+                  warning: String? = nil) {
+        let completion = ImportCompletion(kind: session.kind, resultID: resultID, createdNew: createdNew, name: name,
+                                          wasActivated: wasActivated, warning: warning)
         sessions[session.id] = nil
         uiStates[session.id] = nil
         removeTarget(for: session.id)
@@ -211,4 +227,9 @@ final class ImportUIState {
     var history: [InterviewHistoryItem] = []
 
     init(target: ImportSession.Target) { self.target = target }
+}
+
+extension Notification.Name {
+    /// "Desfazer" da importação: as abas largam o programa/plano criado antes de ele ser apagado.
+    static let fjImportWillUndo = Notification.Name("fj.import.willUndo")
 }

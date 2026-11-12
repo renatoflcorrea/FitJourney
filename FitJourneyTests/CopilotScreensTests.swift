@@ -310,10 +310,30 @@ struct CopilotScreensTests {
         let session = coordinator.start(kind: .program)
         #expect(coordinator.presented?.id == session.id)
         #expect(coordinator.pending(kind: .program).isEmpty) // aberta na folha: não é "continuar"
+        try session.addPastedText("Supino 4x10")
         coordinator.closeSheet()
         #expect(coordinator.pending(kind: .program).map(\.id) == [session.id])
         #expect(coordinator.pending(kind: .nutrition).isEmpty)
         coordinator.discard(session.id)
         #expect(coordinator.pending(kind: .program).isEmpty)
+    }
+
+    @Test("folha vazia fechada por gesto descarta a sessão")
+    func emptySheetDiscards() throws {
+        let fixture = try ImportFixture()
+        let coordinator = ImportCoordinator(context: fixture.context, defaults: UserDefaults(suiteName: "cs-\(UUID())")!,
+                                            secrets: InMemorySecretStore(), store: fixture.store)
+        let session = coordinator.start(kind: .nutrition)
+        coordinator.closeSheet()
+        #expect(coordinator.pending(kind: .nutrition).isEmpty)
+        #expect(coordinator.sessions[session.id] == nil)
+    }
+
+    @Test("Desfazer só quando criou e não ativou")
+    func undoOffered() {
+        let id = UUID()
+        #expect(ImportCompletion(kind: .program, resultID: id, createdNew: true, name: "x").canUndo)
+        #expect(!ImportCompletion(kind: .program, resultID: id, createdNew: true, name: "x", wasActivated: true).canUndo)
+        #expect(!ImportCompletion(kind: .program, resultID: id, createdNew: false, name: "x").canUndo)
     }
 }

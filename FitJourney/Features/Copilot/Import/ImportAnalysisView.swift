@@ -6,19 +6,18 @@ struct ImportAnalysisView: View {
     let session: ImportSession
 
     @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
-    @State private var network = ImportNetworkMonitor()
+    @State private var providerName = ""
     @State private var slow = false
 
     var body: some View {
-        let provider = ImportProviderInfo(defaults: coordinator?.defaults ?? .standard, secrets: coordinator?.secrets ?? KeychainSecretStore())
         let output = ImportAnalysisPresentation.make(
-            kind: session.kind, attachments: session.attachments, providerName: provider.name,
+            kind: session.kind, attachments: session.attachments, providerName: providerName,
             programImport: session.programImport, nutritionImport: session.nutritionImport, slow: slow)
         ScrollView {
             VStack(spacing: FJSpacing.l) {
                 FJAnalysisProgress(title: output.title, subtitle: output.subtitle, steps: output.steps, isActive: true,
                                    onCancel: { session.cancel() })
-                if !network.isOnline {
+                if !(coordinator?.network.isOnline ?? true) {
                     FJBanner("Sem conexão", message: "Continuo quando ela voltar.", tone: .neutral, systemImage: "wifi.slash")
                 }
                 ForEach(session.warnings, id: \.self) { warning in
@@ -28,6 +27,7 @@ struct ImportAnalysisView: View {
             .padding(FJSpacing.screenMargin)
         }
         .task {
+            providerName = (coordinator?.providerInfo() ?? ImportProviderInfo()).name
             try? await Task.sleep(for: .seconds(60))
             slow = true
         }

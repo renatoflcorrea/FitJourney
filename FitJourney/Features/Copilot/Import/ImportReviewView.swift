@@ -42,6 +42,8 @@ struct ImportReviewView: View {
         } message: {
             Text(activateMessage)
         }
+        .onAppear(perform: resetInvalidTarget)
+        .onChange(of: programs.map(\.id)) { resetInvalidTarget() }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("Voltar às perguntas") { session.backToInterview() }
@@ -366,14 +368,28 @@ struct ImportReviewView: View {
 
     // MARK: Ações
 
+    /// Programa de destino arquivado ou apagado: volta para "Novo programa" e avisa.
+    private func resetInvalidTarget() {
+        guard case let .existingProgram(id) = ui.target, !programs.contains(where: { $0.id == id }) else { return }
+        ui.target = .newProgram
+        errorMessage = String(localized: "O programa de destino não está mais disponível. Escolha outro destino ou crie um novo programa.")
+    }
+
     private func apply() {
         errorMessage = nil
         do {
-            let result = try session.apply(target: ui.target, activate: wantsActivation)
-            let name = (try? ImportOverrides.apply(ui: ui, session: session, resultID: result, context: context)) ?? ui.name ?? ""
+            let activated = wantsActivation
+            let result = try session.apply(target: ui.target, activate: activated)
+            var name = ui.name ?? ""
+            var warning: String?
+            do {
+                name = try ImportOverrides.apply(ui: ui, session: session, resultID: result, context: context)
+            } catch {
+                warning = String(localized: "Criado, mas os ajustes de nome e cor não foram aplicados. Edite no programa.")
+            }
             var createdNew = true
             if case .existingProgram = ui.target { createdNew = false }
-            coordinator?.complete(session, resultID: result, createdNew: createdNew, name: name)
+            coordinator?.complete(session, resultID: result, createdNew: createdNew, name: name, wasActivated: activated, warning: warning)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -392,6 +408,8 @@ struct ImportReviewView: View {
 }
 
 // MARK: - Mudanças de tela aplicadas ao resultado
+
+enum ImportOverridesError: Error { case routineMismatch }
 
 /// Nome, letra e cor escolhidos na tela são aplicados ao programa/plano logo depois de gravar (o núcleo ainda não
 /// tem API para editar a extração). Também dá a cor padrão de cada ficha (sequência da paleta).
@@ -419,6 +437,11 @@ enum ImportOverrides {
             let routines = program.sortedRoutines
             let selected = session.selected.sorted()
             let start = max(0, routines.count - selected.count)
+            // As fichas novas são as últimas; confere os nomes do rascunho antes de mexer (nada de mapa frágil).
+            let draftNames = try session.programDraft().routines.map(\.name)
+            guard draftNames.count == selected.count, draftNames.indices.allSatisfy({ routines[start + $0].name == draftNames[$0] }) else {
+                throw ImportOverridesError.routineMismatch
+            }
             let letters = Array("ABCDEFGHIJKL")
             for (position, index) in selected.enumerated() where start + position < routines.count {
                 let routine = routines[start + position]

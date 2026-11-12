@@ -85,12 +85,12 @@ struct ImportResultBanner: View {
 
     var body: some View {
         FJBanner(completion.kind == .program ? "Programa criado" : "Dieta criada",
-                 message: LocalizedStringKey(completion.createdNew
+                 message: LocalizedStringKey(completion.warning ?? (completion.createdNew
                     ? String(localized: "\(completion.name) foi criado a partir dos seus arquivos.")
-                    : String(localized: "As fichas foram adicionadas a \(completion.name).")),
-                 tone: .success,
-                 actionTitle: completion.createdNew ? "Desfazer" : "Fechar",
-                 action: completion.createdNew ? onUndo : onDismiss)
+                    : String(localized: "As fichas foram adicionadas a \(completion.name)."))),
+                 tone: completion.warning == nil ? .success : .attention,
+                 actionTitle: completion.canUndo ? "Desfazer" : "Fechar",
+                 action: completion.canUndo ? onUndo : onDismiss)
             .padding(.horizontal, FJSpacing.screenMargin)
             .padding(.top, FJSpacing.s)
             .task {

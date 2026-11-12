@@ -33,6 +33,7 @@ struct NutritionDayView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.mealReminderScheduler) private var scheduler
     @Environment(ImportCoordinator.self) private var importCoordinator: ImportCoordinator?
+    @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
     @State private var model = NutritionDayModel()
     @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @State private var sheet: DaySheet?
@@ -113,6 +114,8 @@ struct NutritionDayView: View {
         .onChange(of: weekStartRaw) { _, _ in model.reload() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.reload() } }
         .onChange(of: importCoordinator?.route) { openImportedPlan() }
+        .onReceive(NotificationCenter.default.publisher(for: .fjImportWillUndo)) { _ in showPlans = false }
+        .onChange(of: coachHandoff?.request) { _, request in if request != nil { sheet = nil } }
         .task { openImportedPlan() }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in model.dayChanged() }
     }

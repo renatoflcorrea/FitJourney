@@ -11,8 +11,7 @@ struct ImportFilesView: View {
     @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.openURL) private var openURL
-    @State private var network = ImportNetworkMonitor()
-    @State private var provider = ImportProviderInfo()
+    @State private var providerInfo: ImportProviderInfo?
     @State private var showFileImporter = false
     @State private var showPhotos = false
     @State private var photoItems: [PhotosPickerItem] = []
@@ -24,10 +23,14 @@ struct ImportFilesView: View {
     @State private var preparing = 0
     @State private var errorMessage: String?
 
+    private var isOnline: Bool { coordinator?.network.isOnline ?? true }
+    private var providerName: String { providerInfo?.name ?? "" }
+    private var needsSetup: Bool { providerInfo?.readiness == .needsSetup }
+    private var providerReady: Bool { providerInfo?.readiness == .ready }
     private var maxFiles: Int { AttachmentPreparer.maxFiles }
     private var count: Int { session.attachments.count }
     private var isFull: Bool { count + preparing >= maxFiles }
-    private var canAnalyze: Bool { count > 0 && preparing == 0 && network.isOnline && provider.readiness == .ready }
+    private var canAnalyze: Bool { count > 0 && preparing == 0 && isOnline && providerReady }
 
     var body: some View {
         ScrollView {
@@ -47,7 +50,7 @@ struct ImportFilesView: View {
                 sources
                 attachmentsSection
                 privacy
-                if !network.isOnline {
+                if !isOnline {
                     FJBanner("Sem conexão", message: "Os arquivos ficam aqui; analise quando voltar.", tone: .neutral, systemImage: "wifi.slash")
                 }
             }
@@ -71,7 +74,7 @@ struct ImportFilesView: View {
             }
         }
         .sheet(isPresented: $showConsent) {
-            ImportConsentSheet(providerName: provider.name) {
+            ImportConsentSheet(providerName: providerName) {
                 CoachProfileStore(defaults: coordinator?.defaults ?? .standard).grantConsent(sharing: CoachProfile.Sharing())
                 NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
                 analyze()
@@ -88,7 +91,7 @@ struct ImportFilesView: View {
         } message: {
             Text("Libere a câmera em Ajustes para fotografar a ficha. As outras fontes continuam disponíveis.")
         }
-        .onAppear { provider = ImportProviderInfo(defaults: coordinator?.defaults ?? .standard, secrets: coordinator?.secrets ?? KeychainSecretStore()) }
+        .onAppear { providerInfo = coordinator?.providerInfo() ?? ImportProviderInfo() }
     }
 
     static let fileTypes: [UTType] = {
@@ -179,7 +182,7 @@ struct ImportFilesView: View {
 
     private var privacy: some View {
         VStack(alignment: .leading, spacing: FJSpacing.xs) {
-            FJBanner("Os arquivos inteiros vão para \(provider.name) para serem lidos",
+            FJBanner("Os arquivos inteiros vão para \(providerName) para serem lidos",
                      message: "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitJourney.",
                      tone: .neutral, systemImage: "lock.fill")
             Text("Localização e dados da câmera são removidos das fotos antes do envio.")
@@ -191,7 +194,7 @@ struct ImportFilesView: View {
     @ViewBuilder
     private var bottomBar: some View {
         VStack(spacing: FJSpacing.s) {
-            if provider.readiness == .needsSetup {
+            if needsSetup {
                 FJBanner("Falta configurar a IA", message: "Escolha o provedor e informe a chave. Os arquivos escolhidos ficam aqui.",
                          tone: .attention, actionTitle: "Configurar") { showSettings = true }
             } else {
@@ -221,9 +224,9 @@ struct ImportFilesView: View {
         }
     }
 
-    private func add(_ raws: [RawAttachment]) {
+    private func add(_ raws: [RawAttachment], priorError: String? = nil) {
         preparing += raws.count
-        errorMessage = nil
+        errorMessage = priorError
         Task {
             defer { preparing = max(0, preparing - raws.count) }
             do { try await session.add(raws) } catch { errorMessage = error.localizedDescription }
@@ -235,19 +238,48 @@ struct ImportFilesView: View {
         case let .failure(error):
             errorMessage = error.localizedDescription
         case let .success(urls):
-            var raws: [RawAttachment] = []
-            for url in urls {
-                let scoped = url.startAccessingSecurityScopedResource()
-                defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-                guard let data = try? Data(contentsOf: url) else {
-                    errorMessage = AttachmentError.unreadable(filename: url.lastPathComponent).localizedDescription
-                    continue
-                }
-                raws.append(RawAttachment(filename: url.lastPathComponent, data: data,
-                                          typeHint: UTType(filenameExtension: url.pathExtension)?.identifier))
+            let room = max(0, maxFiles - count - preparing)
+            var problems: [String] = []
+            var accepted = urls
+            if urls.count > room {
+                problems.append(AttachmentError.tooManyFiles(max: maxFiles).localizedDescription)
+                accepted = Array(urls.prefix(room))
             }
-            if !raws.isEmpty { add(raws) }
+            guard !accepted.isEmpty else { errorMessage = problems.first; return }
+            let urlsToRead = accepted
+            preparing += urlsToRead.count
+            errorMessage = nil
+            Task {
+                defer { preparing = max(0, preparing - urlsToRead.count) }
+                // Lê fora da main; confere o tamanho antes de ler.
+                let outcome = await Task.detached(priority: .userInitiated) { Self.read(urlsToRead) }.value
+                problems.append(contentsOf: outcome.problems)
+                if !outcome.raws.isEmpty {
+                    do { try await session.add(outcome.raws) } catch { problems.append(error.localizedDescription) }
+                }
+                errorMessage = problems.isEmpty ? nil : problems.joined(separator: "\n")
+            }
         }
+    }
+
+    nonisolated private static func read(_ urls: [URL]) -> (raws: [RawAttachment], problems: [String]) {
+        var raws: [RawAttachment] = []
+        var problems: [String] = []
+        for url in urls {
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            let name = url.lastPathComponent
+            if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > AttachmentPreparer.maxFileBytes {
+                problems.append(AttachmentError.fileTooLarge(filename: name, maxMegabytes: AttachmentPreparer.maxFileBytes / 1_048_576).localizedDescription)
+                continue
+            }
+            guard let data = try? Data(contentsOf: url) else {
+                problems.append(AttachmentError.unreadable(filename: name).localizedDescription)
+                continue
+            }
+            raws.append(RawAttachment(filename: name, data: data, typeHint: UTType(filenameExtension: url.pathExtension)?.identifier))
+        }
+        return (raws, problems)
     }
 
     private func loadPhotos(_ items: [PhotosPickerItem]) {

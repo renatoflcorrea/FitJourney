@@ -91,6 +91,8 @@ struct TrainingRootView: View {
             .onChange(of: scenePhase) { _, phase in if phase == .active { now = .now } }
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in now = .now }
             .onChange(of: importCoordinator?.route) { openImportedProgram() }
+            .onReceive(NotificationCenter.default.publisher(for: .fjImportWillUndo)) { _ in path = NavigationPath() }
+            .onChange(of: coachHandoff?.request) { _, request in if request != nil { sheet = nil } }
             .task { openImportedProgram() }
             .sheet(item: $sheet) { sheet in
                 switch sheet {

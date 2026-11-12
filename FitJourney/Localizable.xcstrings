@@ -18843,6 +18843,56 @@
           }
         }
       }
+    },
+    "Criado, mas os ajustes de nome e cor não foram aplicados. Edite no programa." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Created, but the name and color adjustments were not applied. Edit them in the program."
+          }
+        }
+      }
+    },
+    "O programa de destino não está mais disponível. Escolha outro destino ou crie um novo programa." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The destination program is no longer available. Choose another destination or create a new program."
+          }
+        }
+      }
+    },
+    "Quantidade/unidade não informada; no arquivo: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quantity/unit not given; in the file: %@"
+          }
+        }
+      }
+    },
+    "Quantidade/unidade não informada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quantity/unit not given"
+          }
+        }
+      }
+    },
+    "%@ tem %lld páginas, acima do limite de %lld para envio direto; as primeiras %lld foram enviadas como imagens." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has %lld pages, above the limit of %lld for direct sending; the first %lld were sent as images."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

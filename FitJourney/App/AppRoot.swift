@@ -10,6 +10,7 @@ struct AppRoot: View {
     @State private var resetGeneration = 0
     /// Entre `fjDataWillReset` e `fjDataDidReset` as abas não existem.
     @State private var isResetting = false
+    @State private var undoError: String?
     /// Modelo de Dados de nível superior: guarda o resultado de substituir/apagar para mostrar após o reset.
     @Environment(DataTransferModel.self) private var transfer: DataTransferModel?
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
@@ -71,14 +72,25 @@ struct AppRoot: View {
         .onChange(of: coachHandoff?.request) { _, request in
             if request != nil { selection = .coach }
         }
+        .alert("Não foi possível desfazer", isPresented: Binding(get: { undoError != nil }, set: { if !$0 { undoError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(undoError ?? "") }
+        .fjAnimation(FJMotion.structure, value: importCoordinator?.banner)
         .alert(item: Binding(get: { transfer?.announcement }, set: { transfer?.announcement = $0 })) { item in
             Alert(title: Text(verbatim: item.title), message: Text(verbatim: item.message))
         }
     }
 
+    /// Desfaz a importação: primeiro as abas largam o programa/plano (pop), depois apaga. Erro (ex.: treino em andamento) é mostrado.
     private func undoImport(_ completion: ImportCompletion) {
         importCoordinator?.banner = nil
-        try? ImportOverrides.undo(completion, context: context)
+        NotificationCenter.default.post(name: .fjImportWillUndo, object: nil)
+        Task {
+            try? await Task.sleep(for: .milliseconds(400))
+            do { try ImportOverrides.undo(completion, context: context) } catch {
+                undoError = error.localizedDescription
+            }
+        }
     }
 
     private var tabs: some View {
