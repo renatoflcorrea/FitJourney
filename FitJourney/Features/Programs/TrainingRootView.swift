@@ -10,6 +10,8 @@ struct TrainingRootView: View {
     @Query(filter: #Predicate<TrainingProgram> { $0.isArchived }) private var archivedPrograms: [TrainingProgram]
     @Environment(\.scenePhase) private var scenePhase
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
+    @Environment(ImportCoordinator.self) private var importCoordinator: ImportCoordinator?
+    @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
 
     /// "Agora" da tela: atualizado ao aparecer, ao voltar ao primeiro plano e na virada do dia.
     @State private var now = Date.now
@@ -42,6 +44,9 @@ struct TrainingRootView: View {
             List {
                 if blockedBySession {
                     Section { SessionBlockBanner().listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
+                }
+                if importCoordinator?.pending(kind: .program).isEmpty == false {
+                    Section { ImportContinueCard(kind: .program).listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
                 }
                 if !hasAnyProgram {
                     firstUseSection
@@ -85,6 +90,10 @@ struct TrainingRootView: View {
             }
             .onChange(of: scenePhase) { _, phase in if phase == .active { now = .now } }
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in now = .now }
+            .onChange(of: importCoordinator?.route) { openImportedProgram() }
+            .onReceive(NotificationCenter.default.publisher(for: .fjImportWillUndo)) { _ in path = NavigationPath() }
+            .onChange(of: coachHandoff?.request) { _, request in if request != nil { sheet = nil } }
+            .task { openImportedProgram() }
             .sheet(item: $sheet) { sheet in
                 switch sheet {
                 case .newProgram: ProgramEditorSheet(program: nil)
@@ -136,6 +145,11 @@ struct TrainingRootView: View {
                         sheet = .addRoutine(active)
                     }
                 }
+                Divider()
+                ImportWithAIMenuItem(kind: .program)
+                if let active {
+                    ImportWithAIMenuItem(kind: .program, target: .existingProgram(active.id), title: "Adicionar fichas com IA")
+                }
             } label: {
                 Label("Novo", systemImage: "plus")
             }
@@ -150,6 +164,9 @@ struct TrainingRootView: View {
                          message: "Crie seu primeiro programa com as fichas da semana.",
                          actionTitle: "Criar programa") { sheet = .newProgram }
                 .listRowBackground(Color.clear)
+            ImportWithAIButton(kind: .program)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             Button("Começar com um exemplo (ABC)") {
                 perform { try SampleProgramFactory.makeStarterABC(in: context, activate: true) }
             }
@@ -234,6 +251,12 @@ struct TrainingRootView: View {
                         Button("Duplicar", systemImage: "plus.square.on.square") {
                             perform { try RoutineActions(context: context).duplicate(routine) }
                         }
+                        if let coachHandoff {
+                            Button("Editar com IA", systemImage: "sparkles") {
+                                let scope = CoachHandoff.routineDraft(routineName: routine.name, programName: program.name)
+                                coachHandoff.open(title: scope.title, draft: scope.draft)
+                            }
+                        }
                         Button("Excluir", systemImage: "trash", role: .destructive) { routineToDelete = routine }
                     }
                     .swipeActions(edge: .trailing) {
@@ -248,6 +271,9 @@ struct TrainingRootView: View {
                     perform { try RoutineActions(context: context).move(in: program, from: source, to: destination) }
                 }
             }
+            ImportWithAIButton(kind: .program, target: .existingProgram(program.id), title: "Adicionar fichas com IA",
+                               fillsWidth: false)
+                .listRowBackground(Color.clear)
         } header: {
             FJSectionHeader("Fichas", subtitle: program.scheduleMode == .sequential ? "A ordem define a sequência." : nil,
                             actionTitle: "Adicionar") { sheet = .addRoutine(program) }
@@ -273,6 +299,19 @@ struct TrainingRootView: View {
     }
 
     // MARK: Ações
+
+    /// Depois de importar com IA: abre o programa criado (ou o que recebeu as fichas).
+    private func openImportedProgram() {
+        guard let route = importCoordinator?.route, route.kind == .program else { return }
+        let id = route.resultID
+        var descriptor = FetchDescriptor<TrainingProgram>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        importCoordinator?.consumeRoute()
+        if let program = try? context.fetch(descriptor).first {
+            path = NavigationPath()
+            path.append(program)
+        }
+    }
 
     enum Shortcut: Hashable { case library, history, programs }
 

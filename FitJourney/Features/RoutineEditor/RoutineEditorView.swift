@@ -9,6 +9,7 @@ struct RoutineEditorView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
 
     @State private var isSelecting = false
     @State private var selection: Set<UUID> = []
@@ -45,6 +46,14 @@ struct RoutineEditorView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("OK") { dismiss() }
+            }
+            if let coachHandoff, !routine.name.isEmpty {
+                ToolbarItem(placement: .secondaryAction) {
+                    Button("Editar com IA", systemImage: "sparkles") {
+                        let scope = CoachHandoff.routineDraft(routineName: routine.name, programName: routine.program?.name)
+                        coachHandoff.open(title: scope.title, draft: scope.draft)
+                    }
+                }
             }
             if !items.isEmpty {
                 ToolbarItem(placement: .cancellationAction) {

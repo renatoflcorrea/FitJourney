@@ -32,6 +32,8 @@ struct NutritionDayView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.mealReminderScheduler) private var scheduler
+    @Environment(ImportCoordinator.self) private var importCoordinator: ImportCoordinator?
+    @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
     @State private var model = NutritionDayModel()
     @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @State private var sheet: DaySheet?
@@ -44,6 +46,9 @@ struct NutritionDayView: View {
     var body: some View {
         ScrollView {
             LazyVStack(spacing: FJSpacing.cardGap) {
+                if importCoordinator?.pending(kind: .nutrition).isEmpty == false {
+                    ImportContinueCard(kind: .nutrition)
+                }
                 dayNavigator
                 WeekStrip(cells: model.weekStrip) { model.jump(to: $0) }
                 if let message = model.errorMessage {
@@ -67,6 +72,9 @@ struct NutritionDayView: View {
             }
             ToolbarItem(placement: .secondaryAction) {
                 Button("Plano", systemImage: "list.bullet.clipboard") { showPlans = true }
+            }
+            ToolbarItem(placement: .secondaryAction) {
+                ImportWithAIMenuItem(kind: .nutrition)
             }
             ToolbarItem(placement: .secondaryAction) {
                 Button("Histórico", systemImage: "calendar") { showHistory = true }
@@ -105,7 +113,18 @@ struct NutritionDayView: View {
         .onAppear { model.reload() }
         .onChange(of: weekStartRaw) { _, _ in model.reload() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.reload() } }
+        .onChange(of: importCoordinator?.route) { openImportedPlan() }
+        .onReceive(NotificationCenter.default.publisher(for: .fjImportWillUndo)) { _ in showPlans = false }
+        .onChange(of: coachHandoff?.request) { _, request in if request != nil { sheet = nil } }
+        .task { openImportedPlan() }
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in model.dayChanged() }
+    }
+
+    /// Depois de importar a dieta com IA: abre Plano, onde o plano criado aparece (inativo, a menos que tenha sido ativado).
+    private func openImportedPlan() {
+        guard let route = importCoordinator?.route, route.kind == .nutrition else { return }
+        importCoordinator?.consumeRoute()
+        showPlans = true
     }
 
     // MARK: Navegação de dia
@@ -141,6 +160,7 @@ struct NutritionDayView: View {
                 FJEmptyState("Cadastre sua dieta", systemImage: "fork.knife",
                              message: "Monte refeições e metas para marcar como feitas com 1 toque. Você pode registrar comidas avulsas mesmo sem plano.",
                              actionTitle: "Criar dieta", area: .nutrition) { sheet = .newPlan }
+                ImportWithAIButton(kind: .nutrition)
             }
         case .outsideVigency(let name):
             FJBanner("Fora da vigência do plano", message: "\(name) não cobre este dia. Registros avulsos continuam funcionando.",
