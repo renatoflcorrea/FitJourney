@@ -57,6 +57,8 @@
 
 - W4 (12/11): carga no relógio por editor — Coroa não altera mais a carga na Série/Descanso; carga é botão que abre folha com Coroa (detentes relativos), −/+, Salvar/Cancelar; um `adjustLoad` ao salvar; editor fecha se a série muda; fim do descanso com editor aberto só vibra. DESIGN decisão 35. Integrado, testes iOS e watch verdes. **Instalação pendente**: iPhone e relógio estavam "unavailable" no devicectl — rodar `make device TEAM=<TEAM> DEVICE_ID=<iphone-udid> WATCH_ID=<watch-udid>` com o iPhone desbloqueado e na mesma rede/cabo. Conferir no aparelho: foco da Coroa ao abrir a folha, háptico, toque no chip "Próxima", layout em texto grande.
 
+- P1.5 (12/11): copiar fichas para outro programa (só cópia) — DESIGN §4.2.1; folhas "Copiar ficha" e "Adicionar fichas", dias no semanal, nome "(2)", bloqueio por treino no destino, `ProgramStore.copyRoutines` atômico, `cloneRoutine` compartilhado com Duplicar. Integrado, testes verdes. **Instalação pendente** (aparelhos "unavailable"). Pendências: título "Adicionar fichas" trunca com o botão "Adicionar (n)"; Q-CF2 (excluir ficha no detalhe do programa/desfazer), Q-CF3 (marcar todas).
+
 ## Retomar aqui (nova sessão)
 - **Nenhum pedido do usuário pendente.** Aguardando retorno dos testes em aparelho.
 - Não verificado em aparelho: `startWatchApp`/adoção da gravação remota; intensidade da vibração e alerta com pulso abaixado; chamadas reais aos provedores no copiloto; reinício por `exit(0)` e troca de `AppleLanguages` no relógio.
