@@ -503,6 +503,19 @@ svg.g{width:1em;height:1em;flex:none;vertical-align:-.12em}
 .ccard.nu .primary{background:var(--nutrition-fill)}
 .phone.xtall{height:1180px}.phone-wrap.xtall{height:calc(1180px*var(--s))}
 .opt{display:flex;align-items:center;justify-content:space-between;font-size:16px;padding:6px 4px}
+/* P1.5 — copiar ficha para outro programa (linhas sólidas; vidro só na toolbar) */
+.form .fr.tall{align-items:flex-start;padding:10px 0}
+.form .fr.tall .tag{margin-top:6px}
+.form .fr.off{opacity:.55}
+.sel{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--text3);flex:none;display:grid;place-items:center;font-size:13px;color:#fff;margin-top:10px}
+.sel.on{background:var(--tint-fill);border-color:transparent}
+.wpick{display:flex;gap:4px;padding:8px 0;width:100%}
+.wpick i{flex:1;height:44px;border-radius:22px;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:15px;background:var(--fill);color:var(--text);position:relative}
+.wpick i.on{background:var(--training-fill);color:#fff}
+.wpick i.used::after{content:"";position:absolute;top:1px;right:1px;width:8px;height:8px;border-radius:50%;background:var(--attention);box-shadow:0 0 0 2px var(--surface)}
+.fhr{display:flex;align-items:center;gap:8px;margin:16px 4px 8px;font-weight:600;font-size:15px}
+.intro{font-size:15px;line-height:1.35;color:var(--text2);margin:0 4px 4px}
+.intro b{color:var(--text);font-weight:600}
 </style>
 </head>
 <body>
@@ -1542,6 +1555,59 @@ svg.g{width:1em;height:1em;flex:none;vertical-align:-.12em}
     <div class="sub num">Série 3 de 3 · 26 kg · alvo 8–12</div>
     <div class="primary">Começar série</div>
   </div></div>
+</template>
+
+<!-- 35. COPIAR FICHA — ESCOLHER O DESTINO (P1.5, fluxo A) -->
+<template data-late data-title="35 · Copiar ficha — escolher o destino" data-note="“Copiar para outro programa…” no menu da ficha abre esta folha nativa: a ficha no topo, os outros programas (ativo, anteriores, arquivados) com seleção única e “Novo programa…” no fim. O rodapé diz onde a cópia entra e, se o nome se repete, como ela vai se chamar. Programa com treino em andamento fica indisponível, com o aviso e “Ver treino”; os outros destinos continuam. Depois de “Copiar”, a folha mostra “Ficha copiada” com “Ver programa”. Linhas sólidas; vidro só na folha e na toolbar.">
+  <div class="nav"><div class="pill glass">Cancelar</div><div class="ttl">Copiar ficha</div><div class="pill glass" style="color:var(--tint)">Copiar</div></div>
+  <div class="scroll below-nav">
+    <div class="banner at"><svg class="i"><use href="#warn"/></svg><div><b>Há um treino em andamento em Hipertrofia ABC</b>Finalize ou descarte o treino para copiar fichas para esse programa.<div class="ba"><span>Ver treino</span></div></div></div>
+    <div class="form"><div class="fr tall"><div class="badge rb">B</div><div>Costas e bíceps<small>7 exercícios · ~60 min</small><small>de Adaptação</small></div></div></div>
+    <div class="ff">A cópia leva exercícios, séries, cargas, descansos e bi-sets, com a mesma cor e letra. A original não muda.</div>
+    <div class="fh">Copiar para</div>
+    <div class="form">
+      <div class="fr tall off"><div>Hipertrofia ABC <span class="tag" style="margin-top:0">Ativo</span><small>Semanal · 3 fichas</small><span class="tag at"><svg class="i"><use href="#dumbbell"/></svg>Treino em andamento</span></div></div>
+      <div class="fr tall"><div>Força 5×5<small>Sequencial · 3 fichas</small></div><svg class="i sp" style="color:var(--tint);font-size:20px;margin-top:8px"><use href="#check"/></svg></div>
+      <div class="fr tall"><div>Cutting 2025 <span class="tag" style="margin-top:0">Arquivado</span><small>Semanal · 4 fichas</small></div></div>
+      <div class="fr" style="color:var(--tint)"><svg class="i"><use href="#plus"/></svg>Novo programa…</div>
+    </div>
+    <div class="ff">Entra no fim da sequência de Força 5×5. Força 5×5 já tem uma ficha com este nome. A cópia entra como Costas e bíceps (2).</div>
+  </div>
+</template>
+
+<!-- 36. ADICIONAR FICHAS DE OUTRO PROGRAMA (P1.5, fluxo B) -->
+<template data-late data-title="36 · Adicionar fichas de outro programa" data-note="“Adicionar ficha de outro programa” (Treinos › “+”, ou “…” no detalhe do programa) abre a lista das fichas de todos os outros programas, inclusive arquivados, agrupadas por programa e com seleção múltipla. Cada linha traz o selo, o resumo, os dias da original e, se o nome já existe no destino, como a cópia vai se chamar. Destino livre ou em rodízio: o botão é “Adicionar (2)” e as fichas entram no fim. Destino semanal, como aqui: “Continuar” leva aos dias.">
+  <div class="nav"><div class="pill glass">Cancelar</div><div class="ttl">Adicionar fichas</div><div class="pill glass" style="color:var(--tint)">Continuar</div></div>
+  <div class="scroll below-nav">
+    <div class="intro">As fichas marcadas são copiadas para <b>Hipertrofia ABC</b>. As originais não mudam. No próximo passo você escolhe os dias.</div>
+    <div class="fh">Força 5×5</div>
+    <div class="form">
+      <div class="fr tall"><span class="sel on"><svg class="i"><use href="#check"/></svg></span><div class="badge">A</div><div>Agachamento e supino<small>5 exercícios · ~50 min</small></div></div>
+      <div class="fr tall"><span class="sel"></span><div class="badge rb">B</div><div>Terra e desenvolvimento<small>5 exercícios · ~55 min</small></div></div>
+      <div class="fr tall"><span class="sel"></span><div class="badge rg">C</div><div>Acessórios<small>Sem exercícios</small></div></div>
+    </div>
+    <div class="fh">Adaptação · Arquivado</div>
+    <div class="form">
+      <div class="fr tall"><span class="sel on"><svg class="i"><use href="#check"/></svg></span><div class="badge rp">A</div><div>Peito e tríceps<small>6 exercícios · ~55 min</small><div class="days"><i class="on">S</i><i>T</i><i>Q</i><i class="on">Q</i><i>S</i><i>S</i><i>D</i></div><small style="margin-top:6px">Entra como Peito e tríceps (2)</small></div></div>
+      <div class="fr tall"><span class="sel"></span><div class="badge rb">B</div><div>Costas e bíceps<small>7 exercícios · ~60 min</small><div class="days"><i>S</i><i class="on">T</i><i>Q</i><i>Q</i><i class="on">S</i><i>S</i><i>D</i></div><small style="margin-top:6px">Entra como Costas e bíceps (2)</small></div></div>
+    </div>
+  </div>
+</template>
+
+<!-- 37. COPIAR FICHA — DIAS DA SEMANA (P1.5, destino semanal) -->
+<template data-late data-title="37 · Copiar ficha — dias no programa semanal" data-note="Só quando o destino é semanal. Uma seção por ficha, com os mesmos círculos de dia de “Nova ficha”: os dias da original vêm marcados; o ponto marca dia já ocupado no destino e o rodapé diz por qual ficha. Nada bloqueia — dois treinos podem cair no mesmo dia e a ficha pode entrar sem dia. “Adicionar (2)” grava as cópias e fecha a folha.">
+  <div class="nav"><div class="gbtn glass"><svg class="i"><use href="#left"/></svg></div><div class="ttl">Dias da semana</div><div class="pill glass" style="color:var(--tint)">Adicionar (2)</div></div>
+  <div class="scroll below-nav">
+    <div class="intro">Escolha em que dias cada ficha entra em <b>Hipertrofia ABC</b>. Dois treinos podem cair no mesmo dia.</div>
+    <div class="fhr"><div class="badge sm">A</div>Agachamento e supino</div>
+    <div class="form"><div class="fr"><div class="wpick"><i class="used">S</i><i class="used">T</i><i class="used">Q</i><i class="used">Q</i><i class="used">S</i><i class="used">S</i><i>D</i></div></div></div>
+    <div class="ff">A ficha original não tem dias marcados.</div>
+    <div class="ff">Sem dia marcado, a ficha entra no programa, mas não é sugerida em Hoje.</div>
+    <div class="fhr"><div class="badge sm rp">A</div>Peito e tríceps (2)</div>
+    <div class="form"><div class="fr"><div class="wpick"><i class="on used">S</i><i class="used">T</i><i class="used">Q</i><i class="on used">Q</i><i class="used">S</i><i class="used">S</i><i>D</i></div></div></div>
+    <div class="ff">Sugestão: os dias da ficha original.</div>
+    <div class="ff"><svg class="i" style="font-size:13px;vertical-align:-2px"><use href="#warn"/></svg> Dia já usado por outra ficha: Seg (Peito e tríceps); Qui (Peito e tríceps). Os dois treinos aparecem no mesmo dia.</div>
+  </div>
 </template>
 
 
