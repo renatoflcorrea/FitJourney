@@ -236,8 +236,8 @@ private struct MessageRow: View {
     }
 
     var body: some View {
-        if message.role == .tool, let id = message.toolCallID, CopilotChangeStore.shared.record(for: id) != nil {
-            CopilotChangeCardView(changeID: id, onAdjust: onAdjust)
+        if let record = CopilotChangeStore.shared.record(for: message) {
+            CopilotChangeCardView(changeID: record.changeSet.id, onAdjust: onAdjust)
         } else {
             row
         }

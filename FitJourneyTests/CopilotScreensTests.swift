@@ -218,7 +218,7 @@ struct CopilotScreensTests {
     @Test("fluxo: arquivos → análise → 1 pergunta → revisão → apply cria o programa e os ajustes de tela valem")
     func fullFlow() async throws {
         let fixture = try ImportFixture()
-        let json = ImportJSON.program(routines: [
+        let json = ImportJSON.program(mode: "sequential", routines: [
             ImportJSON.routine("Peito", exercises: [
                 ImportJSON.exercise("Supino reto", name: "Supino reto com barra", key: "bench-press"),
                 ImportJSON.exercise("Crucifixo", name: "Crucifixo", key: nil, sets: [ImportJSON.set(load: nil, loadAsWritten: "8?", confidence: "low")],
