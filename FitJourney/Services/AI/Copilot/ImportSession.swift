@@ -100,7 +100,7 @@ final class ImportSession: Identifiable {
     @ObservationIgnored private var ambiguityAnswers: [Int: String] = [:]
     /// Repetições/carga por chave estável ("reps|…"/"load|…"), restauradas se a revisão as perder.
     @ObservationIgnored private var exerciseAnswers: [String: ImportAnswer] = [:]
-    /// Dúvidas da IA já respondidas e aplicadas (`ImportStableKey.question`).
+    /// Dúvidas da IA já respondidas e aplicadas (`ImportStableKey.ambiguity`: pergunta + caminho).
     @ObservationIgnored private var answeredAmbiguities: Set<String> = []
     @ObservationIgnored private var analysisTask: Task<Void, Never>?
     @ObservationIgnored private let context: ModelContext
@@ -292,10 +292,11 @@ final class ImportSession: Identifiable {
 
     /// - Parameter isRevision: revisão das dúvidas (a extração muda e os índices antigos deixam de valer);
     ///   senão, análise inicial (os bytes dos anexos são descartados ao terminar).
-    ///   - answeredQuestions: dúvidas respondidas que esta revisão aplica (não voltam se a IA as reabrir).
+    ///   - answeredAmbiguityKeys: dúvidas respondidas que esta revisão aplica (`ImportStableKey.ambiguity`).
     private func runExtraction(chat: ResolvedChat, messages: [LLMMessage], isRevision: Bool,
-                               answeredQuestions: [String] = []) async {
+                               answeredAmbiguityKeys: [String] = []) async {
         let previousPhase: Phase = (programImport != nil || nutritionImport != nil) ? .interviewing : .selecting
+        let previousProgram = programImport
         // Seleção por chave estável (nome normalizado da ficha/variação), não por posição: a revisão pode reordenar.
         let previousKeys = groupKeys()
         let selectedKeys = Set(selected.compactMap { previousKeys.indices.contains($0) ? previousKeys[$0] : nil })
@@ -318,8 +319,8 @@ final class ImportSession: Identifiable {
                 // Respostas por posição já estão na extração enviada e os índices mudaram: só ficam as sem posição.
                 resolved = []
                 answers = answers.filter { Self.positionFreeAnswerKeys.contains($0.key) }
-                answeredAmbiguities.formUnion(answeredQuestions.map(ImportStableKey.question))
-                reconcileAfterRevision()
+                answeredAmbiguities.formUnion(answeredAmbiguityKeys)
+                reconcileAfterRevision(previous: previousProgram)
             } else {
                 prepared = []
             }
@@ -351,14 +352,15 @@ final class ImportSession: Identifiable {
     /// Depois da revisão pela IA (índices novos): reaplica as decisões de exercício pela chave estável, tira dúvidas
     /// já respondidas ou sobre exercícios decididos e restaura repetições/carga que a IA tenha perdido. Sem isso a
     /// pergunta "Qual exercício é…?" voltava a cada revisão (o exercício novo continua sem casamento no catálogo).
-    private func reconcileAfterRevision() {
+    private func reconcileAfterRevision(previous: ProgramImport?) {
         switch kind {
         case .program:
             guard var extraction = programImport else { return }
-            ProgramInterview.applyDecisions(exerciseDecisions, to: &extraction)
-            ProgramInterview.pruneAmbiguities(&extraction, decisions: exerciseDecisions, answeredQuestions: answeredAmbiguities)
+            let catalog = (try? catalogEntries()) ?? []
+            if let previous { ProgramInterview.rebindDecisions(exerciseDecisions, previous: previous, in: &extraction) }
+            ProgramInterview.applyDecisions(&exerciseDecisions, to: &extraction, catalog: catalog)
+            ProgramInterview.pruneAmbiguities(&extraction, decisions: exerciseDecisions, answered: answeredAmbiguities)
             if !exerciseAnswers.isEmpty {
-                let catalog = (try? catalogEntries()) ?? []
                 let all = ProgramInterview.gaps(for: extraction, selected: Set(extraction.routines.indices), catalog: catalog,
                                                 resolved: [])
                 for gap in all {
@@ -372,8 +374,15 @@ final class ImportSession: Identifiable {
             programImport = extraction
         case .nutrition:
             guard !answeredAmbiguities.isEmpty else { return }
-            nutritionImport?.ambiguities.removeAll { answeredAmbiguities.contains(ImportStableKey.question($0.question)) }
+            nutritionImport?.ambiguities.removeAll { answeredAmbiguities.contains(ImportStableKey.ambiguity($0)) }
         }
+    }
+
+    /// Nome atual do exercício de uma pergunta de exercício (o efetivamente gravado, para o resumo da resposta).
+    func exerciseName(for field: ImportField) -> String? {
+        guard case let .exercise(r, e) = field, let extraction = programImport, extraction.routines.indices.contains(r),
+              extraction.routines[r].exercises.indices.contains(e) else { return nil }
+        return extraction.routines[r].exercises[e].displayName
     }
 
     /// Chave estável de uma resposta de repetições/carga (`nil` para os outros campos).
@@ -464,16 +473,29 @@ final class ImportSession: Identifiable {
             switch kind {
             case .program:
                 guard var extraction = programImport else { throw ImportError.wrongPhase }
-                var decisionKey: String?
+                let catalog = (try? catalogEntries()) ?? []
+                var original: ProgramImport.ExerciseImport?
+                var slot: String?
                 if case let .exercise(r, e) = question.field, extraction.routines.indices.contains(r),
                    extraction.routines[r].exercises.indices.contains(e) {
-                    decisionKey = ProgramInterview.exerciseKey(extraction.routines[r].exercises[e])
+                    original = extraction.routines[r].exercises[e]
+                    slot = ProgramInterview.slotKey(routine: r, exercise: e, in: extraction)
                 }
                 let answerKey = Self.exerciseAnswerKey(question.field, in: extraction)
-                try ProgramInterview.apply(answer, to: question.field, in: &extraction, catalog: (try? catalogEntries()) ?? [])
-                if case let .exercise(r, e) = question.field, let decisionKey {
-                    exerciseDecisions[decisionKey] = ProgramInterview.decision(for: extraction.routines[r].exercises[e], answer: answer)
-                    ProgramInterview.applyDecisions(exerciseDecisions, to: &extraction) // o mesmo exercício nas outras fichas
+                try ProgramInterview.apply(answer, to: question.field, in: &extraction, catalog: catalog)
+                if case let .exercise(r, e) = question.field, let original {
+                    let updated = extraction.routines[r].exercises[e]
+                    let decision = ProgramInterview.decision(for: updated, original: original, answer: answer, slot: slot)
+                    // Sem `asWritten` a chave é o nome, que a resposta pode mudar: grava sob as duas.
+                    for key in Set([original, updated].compactMap(ProgramInterview.exerciseKey)) {
+                        var stored = decision
+                        if key != ProgramInterview.exerciseKey(original) {
+                            stored.slots = ProgramInterview.slotKey(routine: r, exercise: e, in: extraction).map { [$0] } ?? []
+                        }
+                        exerciseDecisions[key] = stored
+                    }
+                    // O mesmo exercício nas outras fichas, se estiver sem casamento ou com baixa confiança.
+                    ProgramInterview.applyDecisions(&exerciseDecisions, to: &extraction, catalog: catalog)
                 }
                 if let answerKey { exerciseAnswers[answerKey] = answer }
                 programImport = extraction
@@ -529,12 +551,12 @@ final class ImportSession: Identifiable {
         }
         let confirmed = programImport.map { ProgramInterview.confirmedExercises(in: $0, decisions: exerciseDecisions) } ?? []
         let message = CopilotPrompt.reviseMessage(json: json, answers: pairs, confirmed: confirmed)
-        let answeredQuestions = pairs.map(\.question)
+        let answeredKeys = ambiguityAnswers.keys.filter(ambiguities.indices.contains).map { ImportStableKey.ambiguity(ambiguities[$0]) }
         phase = .analyzing
         persist()
         let task = Task { @MainActor in
             await self.runExtraction(chat: chat, messages: [.user(message)], isRevision: true,
-                                     answeredQuestions: answeredQuestions)
+                                     answeredAmbiguityKeys: answeredKeys)
         }
         analysisTask = task
         await task.value
@@ -626,9 +648,10 @@ final class ImportSession: Identifiable {
         let ids = Set(exerciseDecisions.values.compactMap(\.exerciseID))
         let library = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
         let byID = Dictionary(library.filter { ids.contains($0.id) }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        return extraction.routines.enumerated().filter { selected.contains($0.offset) }.map { _, routine in
-            routine.exercises.map { exercise in
-                ProgramInterview.exerciseKey(exercise).flatMap { exerciseDecisions[$0]?.exerciseID }.flatMap { byID[$0] }
+        return extraction.routines.enumerated().filter { selected.contains($0.offset) }.map { r, routine in
+            routine.exercises.indices.map { e in
+                ProgramInterview.coveringDecision(routine: r, exercise: e, in: extraction, decisions: exerciseDecisions)?
+                    .exerciseID.flatMap { byID[$0] }
             }
         }
     }

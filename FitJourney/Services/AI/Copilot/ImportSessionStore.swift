@@ -27,7 +27,7 @@ struct ImportSessionState: Codable, Sendable, Hashable {
     var exerciseDecisions: [String: ImportExerciseDecision]? = nil
     /// Respostas de repetições/carga por chave estável ("reps|…"/"load|…"), restauradas se a revisão as perder.
     var exerciseAnswers: [String: ImportAnswer]? = nil
-    /// Dúvidas da IA já respondidas e aplicadas (pergunta normalizada): não voltam se a IA as reabrir.
+    /// Dúvidas da IA já respondidas e aplicadas (`ImportStableKey.ambiguity`: pergunta + caminho): não voltam se a IA as reabrir.
     var answeredAmbiguities: [String]? = nil
 }
 

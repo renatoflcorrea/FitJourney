@@ -950,6 +950,16 @@
         }
       }
     },
+    "%lld de 80 caracteres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of 80 characters"
+          }
+        }
+      }
+    },
     "%lld dia(s) · %lld refeições" : {
       "localizations" : {
         "en" : {
@@ -16892,6 +16902,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use HTTPS. HTTP is only valid on the local network (localhost, .local or private IP)."
+          }
+        }
+      }
+    },
+    "Use até 80 caracteres." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use up to 80 characters."
           }
         }
       }

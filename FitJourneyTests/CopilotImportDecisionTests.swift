@@ -45,8 +45,10 @@ struct CopilotImportDecisionTests {
         try session.answer(.number(8, unit: "kg"), for: "exerciseLoad.1.1")
         try session.answer(.text("Abdutora sentado"), for: "exercise.2.1")
         try session.answer(.choice("0"), for: "ambiguity.0")
-        #expect(session.exerciseDecisions["cadeira abdutora maq 3"]
-            == ImportExerciseDecision(name: "Abdutora sentado", catalogKey: nil, exerciseID: nil))
+        let decision = try #require(session.exerciseDecisions["cadeira abdutora maq 3"])
+        #expect(decision.name == "Abdutora sentado")
+        #expect(decision.isNew)
+        #expect(decision.slots == ["perna|cadeira abdutora maq 3#0"])
 
         try await session.reviseWithAI()
 
@@ -153,13 +155,92 @@ struct CopilotImportDecisionTests {
         #expect(!resumed.questions.contains { $0.id == "exercise.2.1" })
     }
 
-    @Test("caminho de dúvida sobre um exercício")
-    func exercisePath() {
-        #expect(ProgramInterview.exercisePath("routines[2].exercises[1]").map { [$0.0, $0.1] } == [2, 1])
-        #expect(ProgramInterview.exercisePath(" routines[0].exercises[3].name ").map { [$0.0, $0.1] } == [0, 3])
-        #expect(ProgramInterview.exercisePath("$.routines[1].exercises[0].catalogKey").map { [$0.0, $0.1] } == [1, 0])
-        #expect(ProgramInterview.exercisePath("routines[0].exercises[3].sets[0]") == nil) // dúvida de série é legítima
-        #expect(ProgramInterview.exercisePath("routines[0]") == nil)
+    @Test("caminho de dúvida sobre o nome de um exercício (o exercício inteiro ou as séries não contam)")
+    func exerciseNamePath() {
+        #expect(ProgramInterview.exerciseNamePath(" routines[0].exercises[3].name ").map { [$0.0, $0.1] } == [0, 3])
+        #expect(ProgramInterview.exerciseNamePath("$.routines[1].exercises[0].catalogKey").map { [$0.0, $0.1] } == [1, 0])
+        #expect(ProgramInterview.exerciseNamePath("routines[2].exercises[1].asWritten").map { [$0.0, $0.1] } == [2, 1])
+        #expect(ProgramInterview.exerciseNamePath("routines[2].exercises[1]") == nil)
+        #expect(ProgramInterview.exerciseNamePath("routines[0].exercises[3].sets[0]") == nil)
+        #expect(ProgramInterview.exerciseNamePath("routines[0]") == nil)
+    }
+
+    @Test("IA reescreve asWritten na revisão: a decisão casa pela posição anterior e a pergunta não volta")
+    func rewrittenAsWritten() async throws {
+        let revised = ImportJSON.program(routines: [
+            ImportJSON.routine("Peito e tríceps", weekdays: ["monday"], exercises: [
+                ImportJSON.exercise("Supino reto", name: "Supino reto com barra", key: "bench-press"),
+            ]),
+            ImportJSON.routine("Perna", weekdays: ["thursday"], exercises: [
+                ImportJSON.exercise("Agachamento", name: "Agachamento livre", key: "back-squat"),
+                ImportJSON.exercise("Cadeira abdutora (máquina 3)", name: "Cadeira abdutora", key: nil,
+                                    sets: [ImportJSON.set(reps: nil)], confidence: "low"),
+            ]),
+        ])
+        let fixture = try ImportFixture()
+        let gateway = ScriptedImportGateway([.extraction(ImportJSON.fourRoutines), .extraction(revised)])
+        let session = fixture.session(.program, gateway: gateway)
+        try await session.add([fixture.pdf()])
+        try await session.analyze()
+        try session.answer(.text("10-15"), for: "exerciseReps.2.1")
+        try session.answer(.text("Abdutora sentado"), for: "exercise.2.1")
+        try session.skip("exerciseLoad.1.1")
+        try session.answer(.choice("0"), for: "ambiguity.0")
+        try await session.reviseWithAI()
+
+        #expect(session.questions.isEmpty)
+        let abductor = try #require(session.programImport?.routines[1].exercises[1])
+        #expect(abductor.asWritten == "Cadeira abdutora máq. 3") // restaurado
+        #expect(abductor.name == "Abdutora sentado")
+        #expect(abductor.catalogKey == nil)
+        #expect(abductor.sets.allSatisfy { $0.repTarget == ProgramDraft.RepTargetDraft(kind: .range, reps: nil, min: 10, max: 15) })
+    }
+
+    @Test("decisão não sobrescreve o mesmo exercício que a IA já casou com confiança alta em outra ficha")
+    func propagationRespectsConfidentMatch() async throws {
+        let json = ImportJSON.program(mode: "sequential", routines: [
+            ImportJSON.routine("A", exercises: [ImportJSON.exercise("Abdutora")]),
+            ImportJSON.routine("B", exercises: [ImportJSON.exercise("Abdutora", name: "Cadeira abdutora", key: "hip-abduction")]),
+            ImportJSON.routine("C", exercises: [ImportJSON.exercise("Abdutora", confidence: "low")]),
+        ])
+        let fixture = try ImportFixture()
+        let session = fixture.session(.program, gateway: ScriptedImportGateway([.extraction(json)]))
+        try await session.add([fixture.pdf()])
+        try await session.analyze()
+        #expect(session.questions.map(\.id) == ["exercise.0.0", "exercise.2.0"])
+        try session.answer(.text("Abdutora sentado"), for: "exercise.0.0")
+        #expect(session.questions.isEmpty) // C (sem casamento) herdou a resposta
+        let draft = try session.programDraft()
+        #expect(draft.routines.map { $0.exercises[0].name } == ["Abdutora sentado", "Cadeira abdutora", "Abdutora sentado"])
+        #expect(draft.routines[1].exercises[0].catalogKey == "hip-abduction")
+    }
+
+    @Test("dúvida respondida some só no mesmo caminho; dúvida sobre o exercício inteiro decidido fica")
+    func answeredAmbiguityKeyIncludesPath() async throws {
+        let question = "Descanso de 60 s?"
+        func doubt(_ path: String, _ text: String = question) -> JSONValue {
+            .object(["path": .string(path), "question": .string(text), "options": .array([.string("Sim"), .string("Não")])])
+        }
+        let initial = ImportJSON.program(mode: "sequential", routines: [
+            ImportJSON.routine("A", exercises: [ImportJSON.exercise("Abdutora máq. 3")]),
+            ImportJSON.routine("B", exercises: [ImportJSON.exercise("Supino reto", key: "bench-press")]),
+        ], ambiguities: [doubt("routines[0]"), doubt("routines[1]")])
+        let revised = ImportJSON.program(mode: "sequential", routines: [
+            ImportJSON.routine("A", exercises: [ImportJSON.exercise("Abdutora máq. 3", name: "Abdutora sentado")]),
+            ImportJSON.routine("B", exercises: [ImportJSON.exercise("Supino reto", key: "bench-press")]),
+        ], ambiguities: [doubt("routines[0]"), doubt("routines[1]"),
+                         doubt("routines[0].exercises[0]", "São 3 ou 4 séries?"),
+                         doubt("routines[0].exercises[0].name", "Qual é esse exercício?")])
+        let fixture = try ImportFixture()
+        let session = fixture.session(.program, gateway: ScriptedImportGateway([.extraction(initial), .extraction(revised)]))
+        try await session.add([fixture.pdf()])
+        try await session.analyze()
+        try session.answer(.text("Abdutora sentado"), for: "exercise.0.0")
+        try session.answer(.choice("0"), for: "ambiguity.0") // só a da ficha A
+        try await session.reviseWithAI()
+
+        let remaining = try #require(session.programImport?.ambiguities)
+        #expect(remaining.map(\.path) == ["routines[1]", "routines[0].exercises[0]"])
     }
 
     @Test("resumo da resposta de exercício novo com nome")

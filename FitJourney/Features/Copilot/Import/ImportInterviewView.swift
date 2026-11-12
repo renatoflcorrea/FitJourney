@@ -167,8 +167,11 @@ struct ImportInterviewView: View {
         errorMessage = nil
         do {
             try session.answer(answer, for: question.id)
+            // Exercício novo: o resumo mostra o nome efetivamente gravado.
+            var summarized = answer
+            if case .text = answer, let name = session.exerciseName(for: question.field) { summarized = .text(name) }
             ui.history.append(InterviewHistoryItem(id: question.id, prompt: ImportInterviewView.shortPrompt(question),
-                                                   answer: ImportAnswerSummary.text(question: question, answer: answer)))
+                                                   answer: ImportAnswerSummary.text(question: question, answer: summarized)))
             freeText = ""
             showFreeText = false
         } catch {
@@ -233,6 +236,9 @@ private struct QuestionControlView: View {
     @FocusState private var newNameFocused: Bool
 
     private var trimmedNewName: String { newName.trimmingCharacters(in: .whitespacesAndNewlines) }
+    /// Mesmo limite de `ProgramInterview.apply` (sem truncar em silêncio: o botão fica desabilitado acima dele).
+    private static let maxNameLength = 80
+    private var isNewNameTooLong: Bool { trimmedNewName.count > Self.maxNameLength }
 
     var body: some View {
         let control = ImportQuestionControl.make(for: question)
@@ -314,7 +320,6 @@ private struct QuestionControlView: View {
                     FJSecondaryButton("Criar como novo", systemImage: "plus") {
                         newName = question.suggestedText ?? ""
                         isNamingNew = true
-                        newNameFocused = true
                     }
                 }
             }
@@ -339,12 +344,30 @@ private struct QuestionControlView: View {
                 .padding(.horizontal, FJSpacing.m)
                 .frame(minHeight: FJSize.minTap)
                 .background(FJColor.surface, in: FJRadius.shape(FJRadius.field))
-                .textInputAutocapitalization(.sentences)
+                .textInputAutocapitalization(.words)
                 .submitLabel(.done)
                 .onSubmit { confirmNewExercise() }
                 .accessibilityLabel(Text("Nome do exercício novo"))
+                .accessibilityValue(Text(verbatim: newName))
+                .accessibilityHint(Text("\(trimmedNewName.count) de 80 caracteres"))
+                .task {
+                    // Foco depois que o campo entra na hierarquia (no mesmo toque o teclado às vezes não abre).
+                    await Task.yield()
+                    newNameFocused = true
+                }
+            HStack(alignment: .firstTextBaseline) {
+                if isNewNameTooLong {
+                    Text("Use até 80 caracteres.")
+                        .font(FJFont.caption).foregroundStyle(FJColor.destructive)
+                }
+                Spacer(minLength: FJSpacing.s)
+                Text(verbatim: "\(trimmedNewName.count)/\(Self.maxNameLength)")
+                    .font(FJFont.caption.monospacedDigit())
+                    .foregroundStyle(isNewNameTooLong ? FJColor.destructive : FJColor.textSecondary)
+                    .accessibilityHidden(true)
+            }
             FJPrimaryButton("Criar exercício", systemImage: "checkmark", area: .coach) { confirmNewExercise() }
-                .disabled(trimmedNewName.isEmpty)
+                .disabled(trimmedNewName.isEmpty || isNewNameTooLong)
             FJSecondaryButton("Cancelar", systemImage: "xmark") {
                 isNamingNew = false
                 newNameFocused = false
@@ -353,7 +376,7 @@ private struct QuestionControlView: View {
     }
 
     private func confirmNewExercise() {
-        guard !trimmedNewName.isEmpty else { return }
+        guard !trimmedNewName.isEmpty, !isNewNameTooLong else { return }
         newNameFocused = false
         onAnswer(.text(trimmedNewName))
     }
