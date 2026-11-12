@@ -80,6 +80,16 @@
         }
       }
     },
+    "%@ agora também está em %@. A original não mudou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is now also in %@. The original did not change."
+          }
+        }
+      }
+    },
     "%@ ainda não tem fichas." : {
       "localizations" : {
         "en" : {
@@ -212,6 +222,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ was created from your files."
+          }
+        }
+      }
+    },
+    "%@ já tem uma ficha com este nome. A cópia entra como %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ already has a routine with this name. The copy is added as %@."
           }
         }
       }
@@ -402,6 +422,26 @@
         }
       }
     },
+    "%@ · Arquivado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Archived"
+          }
+        }
+      }
+    },
+    "%@ · Ativo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Active"
+          }
+        }
+      }
+    },
     "%@ · descanso" : {
       "localizations" : {
         "en" : {
@@ -474,6 +514,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · sets"
+          }
+        }
+      }
+    },
+    "%@ é semanal. No próximo passo você escolhe os dias." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is weekly. In the next step you choose the days."
           }
         }
       }
@@ -1083,6 +1133,46 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld fichas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld fichas adicionadas a %@" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld routine added to %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld routines added to %@"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ficha adicionada a %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld fichas adicionadas a %@"
                 }
               }
             }
@@ -2038,12 +2128,32 @@
         }
       }
     },
+    "A cópia leva exercícios, séries, cargas, descansos e bi-sets, com a mesma cor e letra. A original não muda." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The copy includes exercises, sets, loads, rest times and supersets, with the same color and letter. The original does not change."
+          }
+        }
+      }
+    },
     "A cópia usa a carga atual como carga inicial." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The copy uses the current load as its starting load."
+          }
+        }
+      }
+    },
+    "A ficha original não tem dias marcados." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The original routine has no days set."
           }
         }
       }
@@ -2566,6 +2676,46 @@
         }
       }
     },
+    "Adicionar %lld fichas" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Add %lld routine"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Add %lld routines"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adicionar %lld ficha"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Adicionar %lld fichas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Adicionar (%lld)" : {
       "localizations" : {
         "en" : {
@@ -2642,6 +2792,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add routine"
+          }
+        }
+      }
+    },
+    "Adicionar ficha de outro programa" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add routine from another program"
+          }
+        }
+      }
+    },
+    "Adicionar fichas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add routines"
           }
         }
       }
@@ -3662,6 +3832,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The routines were added to %@."
+          }
+        }
+      }
+    },
+    "As fichas marcadas são copiadas para %@. As originais não mudam." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The selected routines are copied to %@. The originals do not change."
           }
         }
       }
@@ -5298,6 +5478,46 @@
         }
       }
     },
+    "Copiar ficha" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy routine"
+          }
+        }
+      }
+    },
+    "Copiar para" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy to"
+          }
+        }
+      }
+    },
+    "Copiar para outro programa" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy to another program"
+          }
+        }
+      }
+    },
+    "Copiar para outro programa…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy to another program…"
+          }
+        }
+      }
+    },
     "Copiar refeições de…" : {
       "localizations" : {
         "en" : {
@@ -5524,6 +5744,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Create a program in the Workouts tab."
+          }
+        }
+      }
+    },
+    "Crie um programa para receber a cópia desta ficha." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create a program to receive a copy of this routine."
           }
         }
       }
@@ -6855,6 +7085,56 @@
         }
       }
     },
+    "Entra como %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added as %@"
+          }
+        }
+      }
+    },
+    "Entra na lista de fichas de %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added to the routine list of %@."
+          }
+        }
+      }
+    },
+    "Entra no fim da sequência de %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added to the end of the sequence of %@."
+          }
+        }
+      }
+    },
+    "Entram na lista de fichas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They are added to the routine list."
+          }
+        }
+      }
+    },
+    "Entram no fim da sequência, na ordem desta lista." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They are added to the end of the sequence, in the order of this list."
+          }
+        }
+      }
+    },
     "Entrar com ChatGPT" : {
       "localizations" : {
         "en" : {
@@ -6891,6 +7171,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sign in to ChatGPT again"
+          }
+        }
+      }
+    },
+    "Entrou em %@ como %@. A original não mudou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Added to %@ as %@. The original did not change."
           }
         }
       }
@@ -6991,6 +7281,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose the diet variations you want to import."
+          }
+        }
+      }
+    },
+    "Escolha em que dias a ficha entra em %@. Dois treinos podem cair no mesmo dia." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose which days the routine is on in %@. Two workouts can fall on the same day."
+          }
+        }
+      }
+    },
+    "Escolha em que dias cada ficha entra em %@. Dois treinos podem cair no mesmo dia." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose which days each routine is on in %@. Two workouts can fall on the same day."
           }
         }
       }
@@ -8155,6 +8465,16 @@
         }
       }
     },
+    "Ficha copiada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Routine copied"
+          }
+        }
+      }
+    },
     "Ficha de destino" : {
       "localizations" : {
         "en" : {
@@ -8275,12 +8595,32 @@
         }
       }
     },
+    "Finalize ou descarte o treino em andamento antes de adicionar fichas a %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish or discard the workout in progress before adding routines to %@."
+          }
+        }
+      }
+    },
     "Finalize ou descarte o treino em andamento antes de trocar, arquivar ou excluir programas." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Finish or discard the workout in progress before switching, archiving or deleting programs."
+          }
+        }
+      }
+    },
+    "Finalize ou descarte o treino para copiar fichas para esse programa." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finish or discard the workout to copy routines to that program."
           }
         }
       }
@@ -8987,6 +9327,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A workout is in progress (%@). Finish it before changing the routine."
+          }
+        }
+      }
+    },
+    "Há um treino em andamento em %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A workout is in progress in %@"
           }
         }
       }
@@ -10938,6 +11288,16 @@
         }
       }
     },
+    "Nenhum outro programa" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No other program"
+          }
+        }
+      }
+    },
     "Nenhum plano ainda" : {
       "localizations" : {
         "en" : {
@@ -10998,6 +11358,16 @@
         }
       }
     },
+    "Nenhuma ficha para copiar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No routines to copy"
+          }
+        }
+      }
+    },
     "Nenhuma ficha tem dia marcado. Defina os dias em Treinos." : {
       "localizations" : {
         "en" : {
@@ -11044,6 +11414,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "None — off diet"
+          }
+        }
+      }
+    },
+    "No próximo passo você escolhe os dias." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In the next step you choose the days."
           }
         }
       }
@@ -11308,6 +11688,16 @@
         }
       }
     },
+    "Novo programa…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New program…"
+          }
+        }
+      }
+    },
     "Nutricionista" : {
       "localizations" : {
         "en" : {
@@ -11454,6 +11844,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Could not continue"
+          }
+        }
+      }
+    },
+    "Não foi possível copiar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not copy"
           }
         }
       }
@@ -12600,6 +13000,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The rest of the day's data is still available."
+          }
+        }
+      }
+    },
+    "Os outros programas ainda não têm fichas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The other programs don't have routines yet."
           }
         }
       }
@@ -13770,6 +14180,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "What is the program called?"
+          }
+        }
+      }
+    },
+    "Quando houver mais de um programa, as fichas dos outros aparecem aqui para copiar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "When there is more than one program, the routines of the others appear here to copy."
           }
         }
       }
@@ -15120,6 +15540,16 @@
         }
       }
     },
+    "Sem dia marcado, a ficha entra no programa, mas não é sugerida em Hoje." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "With no day set, the routine is added to the program but is not suggested in Today."
+          }
+        }
+      }
+    },
     "Sem dias marcados = vale para os dias que nenhuma outra variação cobre." : {
       "localizations" : {
         "en" : {
@@ -15776,6 +16206,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suggestion discarded · %@"
+          }
+        }
+      }
+    },
+    "Sugestão: os dias da ficha original." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggestion: the original routine's days."
           }
         }
       }
@@ -16496,6 +16936,16 @@
         }
       }
     },
+    "Treino em andamento" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Workout in progress"
+          }
+        }
+      }
+    },
     "Treino em andamento: %@" : {
       "localizations" : {
         "en" : {
@@ -17136,6 +17586,16 @@
         }
       }
     },
+    "Ver programa" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View program"
+          }
+        }
+      }
+    },
     "Ver programas" : {
       "localizations" : {
         "en" : {
@@ -17684,6 +18144,26 @@
         }
       }
     },
+    "arquivado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "archived"
+          }
+        }
+      }
+    },
+    "ativo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "active"
+          }
+        }
+      }
+    },
     "atual: %@" : {
       "localizations" : {
         "en" : {
@@ -17774,6 +18254,16 @@
         }
       }
     },
+    "cerca de %lld minutos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "about %lld minutes"
+          }
+        }
+      }
+    },
     "colher" : {
       "localizations" : {
         "en" : {
@@ -17834,6 +18324,16 @@
         }
       }
     },
+    "de %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "from %@"
+          }
+        }
+      }
+    },
     "de %@ kcal" : {
       "localizations" : {
         "en" : {
@@ -17864,6 +18364,16 @@
         }
       }
     },
+    "dias da semana: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "days of the week: %@"
+          }
+        }
+      }
+    },
     "domingo" : {
       "localizations" : {
         "en" : {
@@ -17890,6 +18400,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "in progress"
+          }
+        }
+      }
+    },
+    "entra como %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "added as %@"
           }
         }
       }
@@ -18150,6 +18670,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "includes 1 estimated"
+          }
+        }
+      }
+    },
+    "indisponível, treino em andamento" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unavailable, workout in progress"
           }
         }
       }

@@ -50,6 +50,11 @@ struct ProgramDetailView: View {
     @State private var editing: TrainingProgram?
     @State private var errorMessage: String?
     @State private var blockedBySession = false
+    /// Nome do destino quando "Adicionar ficha de outro programa" é barrado por treino em andamento.
+    @State private var blockedAddingTo: String?
+    @State private var addingTo: TrainingProgram?
+    @State private var copying: Routine?
+    @State private var blockTrigger = 0
     /// Exclusão é feita só depois que a tela sai (evita ler o modelo apagado enquanto ela ainda renderiza).
     @State private var deleteOnDisappear = false
 
@@ -69,6 +74,10 @@ struct ProgramDetailView: View {
         List {
             if blockedBySession {
                 Section { SessionBlockBanner().listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
+            } else if let blockedAddingTo {
+                Section {
+                    SessionBlockBanner(addingTo: blockedAddingTo).listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                }
             }
             Section {
                 VStack(alignment: .leading, spacing: FJSpacing.s) {
@@ -98,19 +107,34 @@ struct ProgramDetailView: View {
                 ForEach(program.sortedRoutines) { routine in
                     VStack(alignment: .leading, spacing: FJSpacing.xs) {
                         HStack(spacing: FJSpacing.m) {
-                            FJRoutineBadge(symbol: routine.symbol, name: routine.name, colorName: routine.colorName)
-                            VStack(alignment: .leading) {
-                                Text(verbatim: routine.name).font(FJFont.cardTitle)
-                                Text(verbatim: routine.summaryText).font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                            HStack(spacing: FJSpacing.m) {
+                                FJRoutineBadge(symbol: routine.symbol, name: routine.name, colorName: routine.colorName)
+                                VStack(alignment: .leading) {
+                                    Text(verbatim: routine.name).font(FJFont.cardTitle)
+                                    Text(verbatim: routine.summaryText).font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                                }
+                            }
+                            .accessibilityElement(children: .combine)
+                            Spacer(minLength: FJSpacing.s)
+                            // O "…" é o caminho visível da cópia para outro programa (§4.2.1).
+                            Menu {
+                                Button("Copiar para outro programa…", systemImage: "doc.on.doc") { copying = routine }
+                            } label: {
+                                Image(systemName: "ellipsis")
+                                    .frame(width: FJSize.minTap, height: FJSize.minTap)
+                                    .contentShape(Rectangle())
+                            }
+                            .accessibilityLabel(Text("Ações de \(routine.name)"))
+                        }
+                        VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                            ForEach(routine.sortedExercises) { item in
+                                Text(verbatim: "\(item.displayName) · \(item.prescriptionText)")
+                                    .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                             }
                         }
-                        ForEach(routine.sortedExercises) { item in
-                            Text(verbatim: "\(item.displayName) · \(item.prescriptionText)")
-                                .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
-                        }
+                        .accessibilityElement(children: .combine)
                     }
                     .padding(.vertical, FJSpacing.xs)
-                    .accessibilityElement(children: .combine)
                 }
             }
 
@@ -128,6 +152,10 @@ struct ProgramDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button("Adicionar ficha de outro programa", systemImage: "square.and.arrow.down.on.square") {
+                        startAdding()
+                    }
+                    Divider()
                     if !program.isArchived {
                         Button("Arquivar", systemImage: "archivebox") {
                             perform { try ProgramStore(context: context).archive(program) }
@@ -138,6 +166,9 @@ struct ProgramDetailView: View {
             }
         }
         .sheet(item: $editing) { ProgramEditorSheet(program: $0) }
+        .sheet(item: $copying) { CopyRoutineSheet(routine: $0).tint(FJColor.training) }
+        .addRoutinesSheet(destination: $addingTo)
+        .fjHaptic(.warning, trigger: blockTrigger)
         .confirmationDialog(
             Text("Ativar \(program.name)? \(currentActive?.name ?? String(localized: "O programa atual")) vai para o histórico."),
             isPresented: $confirmReactivate, titleVisibility: .visible
@@ -172,8 +203,22 @@ struct ProgramDetailView: View {
         perform { editing = try ProgramStore(context: context).duplicate(program) }
     }
 
+    /// Fluxo B: a folha não abre com treino em andamento neste programa; o aviso fica no topo da tela.
+    private func startAdding() {
+        blockedBySession = false
+        blockedAddingTo = nil
+        do {
+            try ProgramStore(context: context).ensureNoSession(in: program)
+            addingTo = program
+        } catch ProgramStoreError.sessionInProgress {
+            blockedAddingTo = program.name
+            blockTrigger += 1
+        } catch { errorMessage = userMessage(for: error) }
+    }
+
     private func perform(_ work: () throws -> Void) {
         blockedBySession = false
+        blockedAddingTo = nil
         do { try work() } catch ProgramStoreError.sessionInProgress {
             blockedBySession = true
         } catch { errorMessage = userMessage(for: error) }

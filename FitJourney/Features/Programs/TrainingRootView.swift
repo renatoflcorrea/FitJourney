@@ -17,6 +17,10 @@ struct TrainingRootView: View {
     @State private var now = Date.now
     @State private var path = NavigationPath()
     @State private var blockedBySession = false
+    /// Nome do destino quando "Adicionar ficha de outro programa" é barrado por treino em andamento.
+    @State private var blockedAddingTo: String?
+    @State private var addingTo: TrainingProgram?
+    @State private var blockTrigger = 0
     @State private var sheet: Sheet?
     @State private var routineToDelete: Routine?
     @State private var confirmArchive = false
@@ -26,12 +30,14 @@ struct TrainingRootView: View {
         case newProgram
         case editProgram(TrainingProgram)
         case addRoutine(TrainingProgram)
+        case copyRoutine(Routine)
 
         var id: String {
             switch self {
             case .newProgram: "new"
             case .editProgram(let p): "edit-\(p.id)"
             case .addRoutine(let p): "routine-\(p.id)"
+            case .copyRoutine(let r): "copy-\(r.id)"
             }
         }
     }
@@ -44,6 +50,10 @@ struct TrainingRootView: View {
             List {
                 if blockedBySession {
                     Section { SessionBlockBanner().listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
+                } else if let blockedAddingTo {
+                    Section {
+                        SessionBlockBanner(addingTo: blockedAddingTo).listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                    }
                 }
                 if importCoordinator?.pending(kind: .program).isEmpty == false {
                     Section { ImportContinueCard(kind: .program).listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
@@ -108,8 +118,11 @@ struct TrainingRootView: View {
                 case .newProgram: ProgramEditorSheet(program: nil)
                 case .editProgram(let program): ProgramEditorSheet(program: program)
                 case .addRoutine(let program): RoutineMetaSheet(program: program)
+                case .copyRoutine(let routine): CopyRoutineSheet(routine: routine).tint(FJColor.training)
                 }
             }
+            .addRoutinesSheet(destination: $addingTo)
+            .fjHaptic(.warning, trigger: blockTrigger)
             .confirmationDialog(
                 Text("Excluir \(routineToDelete?.name ?? "")?"),
                 isPresented: Binding(get: { routineToDelete != nil }, set: { if !$0 { routineToDelete = nil } }),
@@ -137,6 +150,11 @@ struct TrainingRootView: View {
                 Button("OK", role: .cancel) {}
             } message: { Text(errorMessage ?? "") }
         }
+        .environment(\.openProgram, OpenProgramAction { program in
+            // Raiz de Treinos para o programa ativo; detalhe do programa nos demais.
+            path = NavigationPath()
+            if !program.isActive { path.append(program) }
+        })
     }
 
     // MARK: Toolbar
@@ -152,6 +170,9 @@ struct TrainingRootView: View {
                 if let active {
                     Button("Nova ficha no programa ativo", systemImage: "plus.rectangle.on.rectangle") {
                         sheet = .addRoutine(active)
+                    }
+                    Button("Adicionar ficha de outro programa", systemImage: "square.and.arrow.down.on.square") {
+                        startAdding(to: active)
                     }
                 }
                 Divider()
@@ -249,6 +270,9 @@ struct TrainingRootView: View {
                              message: "Cada ficha é um treino do programa, como A, B e C.",
                              actionTitle: "Adicionar ficha") { sheet = .addRoutine(program) }
                     .listRowBackground(Color.clear)
+                Button("Adicionar ficha de outro programa") { startAdding(to: program) }
+                    .frame(maxWidth: .infinity, minHeight: FJSize.minTap)
+                    .listRowBackground(Color.clear)
             } else {
                 ForEach(program.sortedRoutines) { routine in
                     NavigationLink(value: routine) {
@@ -260,6 +284,7 @@ struct TrainingRootView: View {
                         Button("Duplicar", systemImage: "plus.square.on.square") {
                             perform { try RoutineActions(context: context).duplicate(routine) }
                         }
+                        Button("Copiar para outro programa…", systemImage: "doc.on.doc") { sheet = .copyRoutine(routine) }
                         if let coachHandoff {
                             Button("Editar com IA", systemImage: "sparkles") {
                                 let scope = CoachHandoff.routineDraft(routineName: routine.name, programName: program.name)
@@ -268,6 +293,7 @@ struct TrainingRootView: View {
                         }
                         Button("Excluir", systemImage: "trash", role: .destructive) { routineToDelete = routine }
                     }
+                    .accessibilityAction(named: Text("Copiar para outro programa")) { sheet = .copyRoutine(routine) }
                     .swipeActions(edge: .trailing) {
                         Button("Excluir", systemImage: "trash", role: .destructive) { routineToDelete = routine }
                         Button("Duplicar", systemImage: "plus.square.on.square") {
@@ -332,8 +358,22 @@ struct TrainingRootView: View {
         } catch { errorMessage = userMessage(for: error) }
     }
 
+    /// Fluxo B: a folha não abre com treino em andamento no destino; o aviso fica no topo da tela.
+    private func startAdding(to program: TrainingProgram) {
+        blockedBySession = false
+        blockedAddingTo = nil
+        do {
+            try ProgramStore(context: context).ensureNoSession(in: program)
+            addingTo = program
+        } catch ProgramStoreError.sessionInProgress {
+            blockedAddingTo = program.name
+            blockTrigger += 1
+        } catch { errorMessage = userMessage(for: error) }
+    }
+
     private func perform(_ work: () throws -> some Any) {
         blockedBySession = false
+        blockedAddingTo = nil
         do { _ = try work() } catch ProgramStoreError.sessionInProgress {
             blockedBySession = true
         } catch { errorMessage = userMessage(for: error) }
