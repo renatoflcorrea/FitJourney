@@ -54,13 +54,12 @@
 ## Integrado em main (11/11 noite)
 - C7.1 design copiloto (fc93e2f), P2.8 memória de carga + auto-start Watch (68e015f), C7.2 núcleo copiloto + correções (f884184).
 
-## Pendente de integração
-- Alerta de descanso: branch `worktree-agent-a2fe7130676f895a9` (2918c33, revisado e corrigido). Merge em main conflita em DESIGN_DIRECTION.md, prototype.html, WatchSessionModel.swift (com P2.8) e Localizable.xcstrings (usar scratchpad xcmerge/união de chaves). Resolver, rodar build/test/watch-test.
-- C7.3 telas copiloto: INTEGRADO (49cc655). Pedidos: índice por messageID no CopilotChangeStore, canUndo no FJChangeCard, API de edição no ImportSession.
-- Depois: `make device TEAM=<TEAM> DEVICE_ID=<iphone-udid> WATCH_ID=<watch-udid>`; Cartographer.
+## Integrado e instalado (11/11 22h)
+- Alerta de descanso (09c5f42) e C7.3 (c2cfdc8) integrados; build/test iOS e watch verdes; instalado no iPhone 18 Pro Max e Apple Watch Ultra 2.
+- Pedidos de acompanhamento: índice por messageID no CopilotChangeStore, canUndo no FJChangeCard, API de edição no ImportSession; Q-RA1/Q-RA2 e Q-CP* em DESIGN §10.
 
 ## Fila
-- P6.8 Idioma do app (Sistema/Português/English em Ajustes, reiniciar para aplicar; relógio segue o iPhone) + nomes de exercícios harmonizados (iPhone envia nomes já localizados no digest/snapshot; também VoiceOver da sessão e Coach). Disparar após P2.8 (mesmos arquivos: WatchLinkMapping, Ajustes).
+- P6.8 (em andamento) Idioma do app (Sistema/Português/English em Ajustes, reiniciar para aplicar; relógio segue o iPhone) + nomes de exercícios harmonizados (iPhone envia nomes já localizados no digest/snapshot; também VoiceOver da sessão e Coach). Disparar após P2.8 (mesmos arquivos: WatchLinkMapping, Ajustes).
 
 ## Próximo
 - Nomes de exercícios em en também no VoiceOver da sessão, no Coach e no relógio (hoje só nas telas).
