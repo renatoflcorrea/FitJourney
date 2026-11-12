@@ -380,13 +380,13 @@ struct SessionSetRow: View {
             }
             switch exercise.measurementKind {
             case .repsAndLoad:
-                loadStepper(label: "Carga", showsSign: false, range: 0...999)
+                loadStepper(label: loadLabel, showsSign: false, range: 0...999)
                 repsField
             case .repsOnly:
                 loadStepper(label: "Lastro", showsSign: true, range: -300...300)
                 repsField
             case .isometric:
-                loadStepper(label: "Carga", showsSign: false, range: 0...999)
+                loadStepper(label: loadLabel, showsSign: false, range: 0...999)
             case .timeOrDistance:
                 NumberStepperField("Distância", value: distanceBinding, unit: "km", step: 0.1, range: 0...500, fractionDigits: 2)
             case .unknown:
@@ -410,6 +410,11 @@ struct SessionSetRow: View {
         case .rpe(let value): "RPE \(FJFormat.number(value, maxFractionDigits: 1))"
         case nil: nil
         }
+    }
+
+    /// Sem carga planejada nem registrada (P2.8): convida a definir em vez de mostrar "0 kg" como prescrito.
+    private var loadLabel: LocalizedStringKey {
+        SessionPresentation.displayLoad(entry) == nil ? "Definir carga" : "Carga"
     }
 
     private func loadStepper(label: LocalizedStringKey, showsSign: Bool, range: ClosedRange<Double>) -> some View {

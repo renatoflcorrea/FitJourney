@@ -215,13 +215,15 @@ extension ProgramImport {
         let chosen = routines.enumerated().filter { selected?.contains($0.offset) ?? true }.map(\.element)
         let mode = scheduleMode ?? (chosen.contains { !$0.weekdays.isEmpty } ? .weekly : .sequential)
         let letters = Array("ABCDEFGHIJKL")
-        let draftRoutines = chosen.prefix(7).enumerated().map { index, routine in
+        // Sem cortes: o schema de importação já limita (12 fichas, 20 exercícios, 12 séries) e o `DraftApplier`
+        // grava qualquer quantidade — nada lido do arquivo é descartado em silêncio.
+        let draftRoutines = chosen.enumerated().map { index, routine in
             ProgramDraft.RoutineDraft(
                 name: routine.name.nonEmpty ?? String(localized: "Ficha \(String(letters[index]))"),
                 symbol: routine.symbol.nonEmpty.map { String($0.prefix(2)) },
                 weekdays: mode == .weekly ? Self.unique(routine.weekdays) : [],
                 notes: routine.notes.nonEmpty,
-                exercises: routine.exercises.prefix(15).map(Self.exerciseDraft))
+                exercises: routine.exercises.map(Self.exerciseDraft))
         }
         return ProgramDraft(
             name: name.nonEmpty ?? String(localized: "Programa importado"),
@@ -230,11 +232,11 @@ extension ProgramImport {
             scheduleMode: mode,
             durationWeeks: durationWeeks.map { min(52, max(1, $0)) },
             notes: notes.nonEmpty,
-            routines: Array(draftRoutines))
+            routines: draftRoutines)
     }
 
     private static func exerciseDraft(_ exercise: ExerciseImport) -> ProgramDraft.ExerciseDraft {
-        var sets = exercise.sets.prefix(10).map { set in
+        var sets = exercise.sets.map { set in
             ProgramDraft.SetDraft(kind: set.kind ?? .working, repTarget: set.repTarget?.repTarget == nil ? nil : set.repTarget,
                                   holdSeconds: set.holdSeconds, load: set.load, restSeconds: set.restSeconds,
                                   tempo: set.tempo.nonEmpty, rir: set.rir, rpe: set.rir == nil ? set.rpe : nil,
@@ -251,7 +253,7 @@ extension ProgramImport {
         return ProgramDraft.ExerciseDraft(name: exercise.displayName, catalogKey: exercise.catalogKey.nonEmpty,
                                           restSeconds: exercise.restSeconds, groupLabel: exercise.groupLabel.nonEmpty,
                                           notes: noteParts.compactMap { $0 }.joined(separator: " · ").nonEmpty,
-                                          sets: Array(sets))
+                                          sets: sets)
     }
 
     static func unique(_ weekdays: [Weekday]) -> [Weekday] {
@@ -262,7 +264,8 @@ extension ProgramImport {
 
 extension NutritionImport {
     /// Rascunho do plano com os dias escolhidos. Dia da semana repetido fica só no primeiro dia que o usa;
-    /// horário ausente vira o horário típico da posição; quantidade ausente vira 1 porção.
+    /// horário ausente vira o horário típico da posição; quantidade ou unidade ausente vira 1 porção (com nota —
+    /// a entrevista pergunta antes, é só o padrão de quem pulou).
     func makeDraft(selected: Set<Int>? = nil) -> NutritionPlanDraft {
         let chosen = days.enumerated().filter { selected?.contains($0.offset) ?? true }.map(\.element)
         var used: Set<Weekday> = []
@@ -293,15 +296,19 @@ extension NutritionImport {
 
     private static func itemDraft(_ item: ItemImport) -> NutritionPlanDraft.ItemDraft {
         let name = item.name.nonEmpty ?? item.asWritten.trimmingCharacters(in: .whitespacesAndNewlines)
+        let guessed = item.quantity == nil || item.unit == nil
+        let note = guessed ? String(localized: "Quantidade/unidade não informada; no arquivo: \(item.asWritten)") : nil
         return NutritionPlanDraft.ItemDraft(
-            name: name, quantity: item.quantity ?? 1, unit: item.unit ?? (item.quantity == nil ? .serving : .grams),
+            name: name, quantity: item.quantity ?? 1, unit: item.unit ?? .serving,
             kcal: item.kcal, protein: item.protein, carbs: item.carbs, fat: item.fat, fiber: item.fiber,
-            notes: item.notes.nonEmpty,
+            notes: [item.notes.nonEmpty, note].compactMap { $0 }.joined(separator: " · ").nonEmpty,
             substitutions: item.substitutions.map { sub in
-                NutritionPlanDraft.SubstitutionDraft(name: sub.name, quantity: sub.quantity ?? 1,
-                                                     unit: sub.unit ?? (sub.quantity == nil ? .serving : .grams),
+                let guessed = sub.quantity == nil || sub.unit == nil
+                return NutritionPlanDraft.SubstitutionDraft(name: sub.name, quantity: sub.quantity ?? 1,
+                                                     unit: sub.unit ?? .serving,
                                                      kcal: sub.kcal, protein: sub.protein, carbs: sub.carbs, fat: sub.fat,
-                                                     notes: sub.notes.nonEmpty)
+                                                     notes: [sub.notes.nonEmpty, guessed ? String(localized: "Quantidade/unidade não informada") : nil]
+                                                         .compactMap { $0 }.joined(separator: " · ").nonEmpty)
             })
     }
 

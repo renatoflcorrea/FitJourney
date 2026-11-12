@@ -417,13 +417,12 @@ final class FitnessToolbox {
                         "meals": .array(day.sortedMeals.map { meal in
                             .object([
                                 "id": .string(meal.id.uuidString),
-                                "itemList": .array(meal.sortedItems.map { item in
+                                "items": .array(meal.sortedItems.map { item in
                                     .object(["id": .string(item.id.uuidString), "name": .string(item.name),
                                              "quantity": .number(Self.round(item.quantity)), "unit": .string(item.unit.rawValue),
                                              "kcal": item.kcal.map { .number(Self.round($0)) } ?? .null])
                                 }),
                                 "name": .string(meal.name), "time": .string(Self.timeString(minutes: meal.minutesFromMidnight)),
-                                "items": .string(meal.sortedItems.map { "\(Self.round($0.quantity)) \($0.unit.rawValue) \($0.name)" }.joined(separator: "; ")),
                                 "plannedKcal": meal.plannedValues.kcal.map { .number(Self.round($0)) } ?? .null,
                             ])
                         }),

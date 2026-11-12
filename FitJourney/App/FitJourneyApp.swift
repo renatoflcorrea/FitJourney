@@ -16,6 +16,8 @@ struct FitJourneyApp: App {
     /// Ponte com o Apple Watch (WatchConnectivity + canal da sessão espelhada). Iniciada cedo no launch:
     /// comandos feitos offline no relógio chegam por `transferUserInfo` assim que o WCSession ativa.
     @State private var watchLink: PhoneWatchLink
+    /// Abre o app do relógio gravando quando a sessão começa no iPhone (P2.8).
+    private let watchAutoStarter: WatchAutoStarter
     /// Lembretes de refeição (agendamento) e tratamento das notificações locais. O delegate do
     /// `UNUserNotificationCenter` é fraco: o App o retém.
     private let mealReminders: MealReminderScheduler
@@ -79,12 +81,16 @@ struct FitJourneyApp: App {
         let link = PhoneWatchLink(engine: engine, health: controller,
                                   workoutFinder: PhoneWatchLink.finder(reading: HealthQueries.live))
         _watchLink = State(initialValue: link)
+        // Ao iniciar no iPhone, abre o app do relógio já gravando (preferência `fj.autoStartWatchWorkout`).
+        let autoStarter = WatchAutoStarter(engine: engine, link: link, health: controller, launcher: HealthKitStore.shared)
+        watchAutoStarter = autoStarter
         let services = AppBackgroundServices {
             // Recuperar sessões espelhadas do relógio e acoplar o Saúde aos eventos do motor
             // (retoma a gravação de uma sessão em andamento e reconcilia treinos pendentes).
             controller.startObservingMirroredSessions()
             controller.attach(to: engine)
             link.start()
+            autoStarter.attach()
             live.start()
         }
         backgroundServices = services

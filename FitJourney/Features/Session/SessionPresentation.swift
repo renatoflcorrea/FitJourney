@@ -66,8 +66,12 @@ enum SessionPresentation {
         return "\(number) \(unit)"
     }
 
-    /// Carga exibida da série: a registrada, senão a planejada.
-    static func displayLoad(_ set: SessionSnapshot.ExerciseSet) -> WatchLoad? { set.load ?? set.plannedLoad }
+    /// Carga exibida da série: a registrada, senão a planejada definida (peso 0 planejado = sem carga, P2.8).
+    static func displayLoad(_ set: SessionSnapshot.ExerciseSet) -> WatchLoad? {
+        if let load = set.load { return load }
+        guard let planned = set.plannedLoad, planned.isBodyweight || planned.value != 0 else { return nil }
+        return planned
+    }
 
     /// "8–12" → "8 a 12"; "45 s" → "45 segundos"; "20 min" → "20 minutos"; "AMRAP" → "máximo de repetições".
     static func spokenTarget(_ text: String) -> String {

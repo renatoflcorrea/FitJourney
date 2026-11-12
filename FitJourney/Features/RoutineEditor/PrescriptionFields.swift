@@ -92,6 +92,8 @@ struct LoadField: View {
     let divergentCurrent: Load?
     var allowsNone = true
     var perSide = false
+    /// Última carga usada no exercício (histórico): valor inicial ao trocar para kg/lb ou peso corporal (P2.8).
+    var lastKnown: Load? = nil
     let useCurrent: () -> Void
 
     @AppStorage(AppPreferenceKeys.loadStep) private var loadStep = 0.0
@@ -120,11 +122,20 @@ struct LoadField: View {
                 if let load { remembered[mode] = load }
                 switch new {
                 case .none: load = nil
-                case .weight: load = remembered[.weight] ?? .weight(value: 0, unit: unit)
-                case .bodyweight: load = remembered[.bodyweight] ?? .bodyweight(delta: 0, unit: unit)
+                case .weight: load = remembered[.weight] ?? known(.weight) ?? .weight(value: 0, unit: unit)
+                case .bodyweight: load = remembered[.bodyweight] ?? known(.bodyweight) ?? .bodyweight(delta: 0, unit: unit)
                 }
             }
         )
+    }
+
+    /// A última carga conhecida, se for do modo pedido (peso 0 não conta).
+    private func known(_ mode: Mode) -> Load? {
+        switch Load.defined(lastKnown) {
+        case .some(let load) where mode == .weight && !load.isBodyweight: load
+        case .some(let load) where mode == .bodyweight && load.isBodyweight: load
+        default: nil
+        }
     }
 
     /// Troca kg/lb convertendo o valor (arredondado a 0,1).
@@ -177,6 +188,12 @@ struct LoadField: View {
             NumberStepperField(perSide ? "Carga por lado" : "Carga", value: weightValue,
                                unit: PrescriptionFormat.unitText(unit), step: LoadDisplay.step(forLoadIn: unit, preferred: preferredUnit, stored: loadStep),
                                range: 0...999, fractionDigits: 1)
+            if load?.isUnsetWeight == true {
+                // Peso 0 = sem carga definida: o treino começa pela última carga usada (ou "Definir carga").
+                Text("0 = sem carga definida. O treino usa a última carga registrada deste exercício.")
+                    .font(FJFont.caption)
+                    .foregroundStyle(FJColor.textSecondary)
+            }
         case .bodyweight:
             NumberStepperField("Lastro (+) ou assistência (−)", value: delta,
                                unit: PrescriptionFormat.unitText(unit), step: LoadDisplay.step(forLoadIn: unit, preferred: preferredUnit, stored: loadStep),
@@ -439,6 +456,8 @@ struct SetFields: View {
     var defaultRest: Int?
     var showsDefaultRestChip = false
     @Binding var rest: Int?
+    /// Última carga usada no exercício (histórico), para o `LoadField`.
+    var lastKnownLoad: Load? = nil
     let useCurrent: () -> Void
 
     var body: some View {
@@ -465,6 +484,7 @@ struct SetFields: View {
                 divergentCurrent: set.divergentCurrent,
                 allowsNone: measurement != .repsOnly,
                 perSide: isUnilateral,
+                lastKnown: lastKnownLoad,
                 useCurrent: useCurrent
             )
         }

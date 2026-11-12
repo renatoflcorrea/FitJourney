@@ -539,6 +539,9 @@ final class HealthWorkoutController {
         return nil
     }
 
+    /// Dá para gravar treinos agora (Saúde disponível, conectado e escrita autorizada).
+    var canRecordWorkouts: Bool { skipReason() == nil }
+
     private func skipReason() -> SkipReason? {
         guard store.isHealthDataAvailable else { return .unavailable }
         guard authorization.isConnectionEnabled else { return .notConnected }

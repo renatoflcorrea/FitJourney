@@ -104,6 +104,7 @@ final class ImportSession: Identifiable {
     @ObservationIgnored private let preparer: AttachmentPreparer
     @ObservationIgnored private let rasterizer: PDFRasterizer
     @ObservationIgnored private var restoring = false
+    @ObservationIgnored private var isDiscarded = false
 
     /// - Parameters:
     ///   - resolveChat: em produção `{ try ProviderFactory.makeChat(secrets: KeychainSecretStore()) }`.
@@ -270,6 +271,7 @@ final class ImportSession: Identifiable {
 
     /// Descarta a importação (apaga o estado gravado).
     func discard() {
+        isDiscarded = true // bloqueia `persist()`: a análise cancelada não recria o arquivo
         analysisTask?.cancel()
         prepared = []
         store.delete(id: id)
@@ -279,6 +281,10 @@ final class ImportSession: Identifiable {
     ///   senão, análise inicial (os bytes dos anexos são descartados ao terminar).
     private func runExtraction(chat: ResolvedChat, messages: [LLMMessage], isRevision: Bool) async {
         let previousPhase: Phase = (programImport != nil || nutritionImport != nil) ? .interviewing : .selecting
+        // Seleção por chave estável (nome normalizado da ficha/variação), não por posição: a revisão pode reordenar.
+        let previousKeys = groupKeys()
+        let selectedKeys = Set(selected.compactMap { previousKeys.indices.contains($0) ? previousKeys[$0] : nil })
+        let allWereSelected = selected.count == previousKeys.count
         do {
             let json = try await extract(chat: chat, messages: messages)
             try Task.checkCancellation()
@@ -286,17 +292,20 @@ final class ImportSession: Identifiable {
             case .program:
                 guard case let .valid(value) = ImportValidation.program(json) else { throw ExtractionFailure.invalid }
                 programImport = value
-                if selected.isEmpty || selected.contains(where: { $0 >= value.routines.count }) {
-                    selected = Set(value.routines.indices)
-                }
             case .nutrition:
                 guard case let .valid(value) = ImportValidation.nutrition(json) else { throw ExtractionFailure.invalid }
                 nutritionImport = value
-                if selected.isEmpty || selected.contains(where: { $0 >= value.days.count }) {
-                    selected = Set(value.days.indices)
-                }
             }
-            if isRevision { resolved = [] } else { prepared = [] }
+            let keys = groupKeys()
+            let kept = Set(keys.indices.filter { selectedKeys.contains(keys[$0]) })
+            selected = !isRevision || allWereSelected || kept.isEmpty ? Set(keys.indices) : kept
+            if isRevision {
+                // Respostas por posição já estão na extração enviada e os índices mudaram: só ficam as sem posição.
+                resolved = []
+                answers = answers.filter { Self.positionFreeAnswerKeys.contains($0.key) }
+            } else {
+                prepared = []
+            }
             ambiguityAnswers = [:]
             refreshGaps()
             phase = questions.isEmpty ? .reviewing : .interviewing
@@ -312,6 +321,22 @@ final class ImportSession: Identifiable {
     }
 
     private enum ExtractionFailure: Error { case invalid, noExtraction }
+
+    static let positionFreeAnswerKeys: Set<String> = [
+        ImportField.programName.key, ImportField.scheduleMode.key, ImportField.planName.key,
+    ]
+
+    /// Chave estável de cada ficha/variação: nome normalizado (ou a posição, sem nome), com sufixo se repetir.
+    private func groupKeys() -> [String] {
+        let names: [String?] = programImport?.routines.map(\.name) ?? nutritionImport?.days.map(\.name) ?? []
+        var seen: [String: Int] = [:]
+        return names.enumerated().map { index, name in
+            let base = name.nonEmpty.map(ExerciseMatcher.normalize) ?? "#\(index)"
+            let count = seen[base, default: 0]
+            seen[base] = count + 1
+            return count == 0 ? base : "\(base)#\(count)"
+        }
+    }
 
     /// Uma chamada + no máximo um reparo (sem reenviar os arquivos). Devolve o JSON validado.
     private func extract(chat: ResolvedChat, messages: [LLMMessage]) async throws -> String {
@@ -531,29 +556,36 @@ final class ImportSession: Identifiable {
         }
         let applier = DraftApplier(context: context)
         let note = Self.importNote(files: attachments.count)
+        func withNote(_ text: String?) -> String { [text.nonEmpty, note].compactMap { $0 }.joined(separator: "\n") }
         phase = .applying
+        // Nota já no rascunho → o `DraftApplier` grava tudo num save só. Se ativar falhar, o que foi criado é
+        // apagado: nada fica pela metade e uma nova tentativa não duplica.
+        var cleanup: (() -> Void)?
         do {
             let resultID: UUID
             switch (kind, target) {
             case (.program, .newProgram):
-                let program = try applier.makeProgram(from: try programDraft(), startDate: now())
-                program.notes = [program.notes.nonEmpty, note].compactMap { $0 }.joined(separator: "\n")
-                try context.save()
+                var draft = try programDraft()
+                draft.notes = withNote(draft.notes)
+                let program = try applier.makeProgram(from: draft, startDate: now())
+                cleanup = { [context] in context.delete(program) }
                 if activate { try ProgramStore(context: context).activate(program) }
                 resultID = program.id
             case let (.program, .existingProgram(programID)):
                 var descriptor = FetchDescriptor<TrainingProgram>(predicate: #Predicate { $0.id == programID })
                 descriptor.fetchLimit = 1
                 guard let program = try context.fetch(descriptor).first else { throw ImportError.programNotFound }
-                let routines = try applier.addRoutines(from: try programDraft(), to: program)
-                for routine in routines { routine.notes = [routine.notes.nonEmpty, note].compactMap { $0 }.joined(separator: "\n") }
-                try context.save()
+                var draft = try programDraft()
+                draft.routines = draft.routines.map { var routine = $0; routine.notes = withNote(routine.notes); return routine }
+                let routines = try applier.addRoutines(from: draft, to: program)
+                cleanup = { [context] in for routine in routines { context.delete(routine) } }
                 if activate, !program.isActive { try ProgramStore(context: context).activate(program) }
                 resultID = program.id
             case (.nutrition, .newNutritionPlan):
-                let plan = try applier.makeNutritionPlan(from: try nutritionDraft(), startDate: now())
-                plan.notes = [plan.notes.nonEmpty, note].compactMap { $0 }.joined(separator: "\n")
-                try context.save()
+                var draft = try nutritionDraft()
+                draft.notes = withNote(draft.notes)
+                let plan = try applier.makeNutritionPlan(from: draft, startDate: now())
+                cleanup = { [context] in context.delete(plan) }
                 if activate { try NutritionStore(context: context).switchActive(to: plan, now: now()) }
                 resultID = plan.id
             default:
@@ -564,6 +596,11 @@ final class ImportSession: Identifiable {
             store.delete(id: id)
             return resultID
         } catch {
+            context.rollback()
+            if let cleanup {
+                cleanup()
+                try? context.save()
+            }
             phase = .reviewing
             persist()
             throw error
@@ -577,7 +614,7 @@ final class ImportSession: Identifiable {
     // MARK: - Persistência
 
     private func persist() {
-        guard !restoring, phase != .done else { return }
+        guard !restoring, !isDiscarded, phase != .done else { return }
         try? store.save(state)
     }
 

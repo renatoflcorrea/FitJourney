@@ -73,8 +73,9 @@ struct CopilotDiffLine: Codable, Sendable, Hashable {
     }
 }
 
-/// Proposta de alteração anexada à mensagem (como a `CoachProposal`), guardada no `CopilotChangeStore` pelo id
-/// (= id da chamada de ferramenta = `ChatMessage.toolCallID` da mensagem `tool`).
+/// Proposta de alteração anexada à mensagem (como a `CoachProposal`), guardada no `CopilotChangeStore` pelo id.
+/// O `id` é gerado pelo app (UUID): ids de chamada de provedores compatíveis repetem (`call_0`). A ligação com a
+/// mensagem `tool` é `toolCallID` (= `ChatMessage.toolCallID`) + `messageID` do registro.
 struct CopilotChangeSet: Codable, Sendable, Hashable, Identifiable {
     var id: String
     var scope: CopilotScope
@@ -83,6 +84,8 @@ struct CopilotChangeSet: Codable, Sendable, Hashable, Identifiable {
     /// Impressão digital do estado sobre o qual o diff foi calculado (vazio no registro alimentar).
     var baseFingerprint: String
     var createdAt: Date
+    /// Id da chamada de ferramenta que gerou a proposta.
+    var toolCallID: String?
 
     var summary: String {
         let lines = diff.prefix(3).map(\.text).joined(separator: "; ")

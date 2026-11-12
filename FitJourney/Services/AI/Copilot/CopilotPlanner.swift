@@ -17,7 +17,7 @@ enum CopilotToolSchemas {
 
     static let routine = ##"{"type":"object","additionalProperties":false,"required":["routineId","operations"],"properties":{"routineId":{"type":"string","description":"id da ficha (get_program)."},"operations":{"type":"array","minItems":1,"maxItems":20,"items":{"$ref":"#/$defs/operation"}}},"$defs":{"operation":{"type":"object","additionalProperties":false,"required":["op","exerciseId","set","load","loadTarget","reps","sets","restSeconds","exercise","position"],"properties":{"op":{"type":"string","enum":["set_load","set_reps","set_sets","set_rest","replace_exercise","add_exercise","remove_exercise","move_exercise"],"description":"set_load (load, loadTarget, set), set_reps (reps, set), set_sets (sets), set_rest (restSeconds), replace_exercise (exercise), add_exercise (exercise, sets, reps, load, restSeconds, position), remove_exercise, move_exercise (position)."},"exerciseId":{"type":["string","null"],"description":"id do exercício na ficha (get_program); null em add_exercise."},"set":{"type":["integer","null"],"minimum":1,"maximum":10,"description":"Número da série (1 = primeira); null = todas as séries válidas."},"load":{"anyOf":[{"$ref":"#/$defs/load"},{"type":"null"}]},"loadTarget":{"type":["string","null"],"enum":["current","initial",null],"description":"current (padrão) = carga atual; initial só se o usuário pedir a carga inicial."},"reps":{"anyOf":[{"$ref":"#/$defs/reps"},{"type":"null"}]},"sets":{"type":["integer","null"],"minimum":1,"maximum":10,"description":"Quantidade de séries."},"restSeconds":{"type":["integer","null"],"minimum":0,"maximum":600},"exercise":{"anyOf":[{"$ref":"#/$defs/exerciseRef"},{"type":"null"}]},"position":{"type":["integer","null"],"minimum":1,"maximum":30,"description":"Posição na ficha (1 = primeiro)."}}},"load":"## + loadDef + ##","reps":"## + repsDef + ##","exerciseRef":{"type":"object","additionalProperties":false,"required":["name","catalogKey"],"properties":{"name":{"type":"string","description":"Nome do exercício do catálogo (list_exercises)."},"catalogKey":{"type":["string","null"]}}}}}"##
 
-    static let nutrition = ##"{"type":"object","additionalProperties":false,"required":["planId","operations"],"properties":{"planId":{"type":"string","description":"id da dieta (list_nutrition_plans)."},"operations":{"type":"array","minItems":1,"maxItems":20,"items":{"$ref":"#/$defs/operation"}}},"$defs":{"operation":{"type":"object","additionalProperties":false,"required":["op","dayId","mealId","itemId","item","meal","targets"],"properties":{"op":{"type":"string","enum":["add_item","remove_item","update_item","add_meal","remove_meal","update_meal","set_targets"],"description":"add_item (mealId, item), remove_item (itemId), update_item (itemId, item completo), add_meal (dayId, meal), remove_meal (mealId), update_meal (mealId, meal), set_targets (targets completo)."},"dayId":{"type":["string","null"]},"mealId":{"type":["string","null"]},"itemId":{"type":["string","null"]},"item":{"anyOf":[{"$ref":"#/$defs/food"},{"type":"null"}]},"meal":{"anyOf":[{"$ref":"#/$defs/meal"},{"type":"null"}]},"targets":{"anyOf":[{"$ref":"#/$defs/targets"},{"type":"null"}]}}},"food":"## + foodDef + ##","meal":{"type":"object","additionalProperties":false,"required":["name","time"],"properties":{"name":{"type":["string","null"]},"time":{"type":["string","null"],"pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]$","description":"HH:MM"}}},"targets":{"type":"object","additionalProperties":false,"required":["kcal","protein","carbs","fat","fiber","waterMilliliters"],"properties":{"kcal":{"type":["number","null"],"minimum":0,"maximum":20000},"protein":{"type":["number","null"],"minimum":0,"maximum":2000},"carbs":{"type":["number","null"],"minimum":0,"maximum":3000},"fat":{"type":["number","null"],"minimum":0,"maximum":1000},"fiber":{"type":["number","null"],"minimum":0,"maximum":500},"waterMilliliters":{"type":["number","null"],"minimum":0,"maximum":20000}}}}}"##
+    static let nutrition = ##"{"type":"object","additionalProperties":false,"required":["planId","operations"],"properties":{"planId":{"type":"string","description":"id da dieta (list_nutrition_plans)."},"operations":{"type":"array","minItems":1,"maxItems":20,"items":{"$ref":"#/$defs/operation"}}},"$defs":{"operation":{"type":"object","additionalProperties":false,"required":["op","dayId","mealId","itemId","item","meal","targets"],"properties":{"op":{"type":"string","enum":["add_item","remove_item","update_item","add_meal","remove_meal","update_meal","set_targets"],"description":"add_item (mealId, item), remove_item (itemId), update_item (itemId, item completo), add_meal (dayId, meal), remove_meal (mealId), update_meal (mealId, meal), set_targets (targets: só os campos a mudar; null = mantém)."},"dayId":{"type":["string","null"]},"mealId":{"type":["string","null"]},"itemId":{"type":["string","null"]},"item":{"anyOf":[{"$ref":"#/$defs/food"},{"type":"null"}]},"meal":{"anyOf":[{"$ref":"#/$defs/meal"},{"type":"null"}]},"targets":{"anyOf":[{"$ref":"#/$defs/targets"},{"type":"null"}]}}},"food":"## + foodDef + ##","meal":{"type":"object","additionalProperties":false,"required":["name","time"],"properties":{"name":{"type":["string","null"]},"time":{"type":["string","null"],"pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]$","description":"HH:MM"}}},"targets":{"type":"object","additionalProperties":false,"required":["kcal","protein","carbs","fat","fiber","waterMilliliters"],"properties":{"kcal":{"type":["number","null"],"minimum":0,"maximum":20000},"protein":{"type":["number","null"],"minimum":0,"maximum":2000},"carbs":{"type":["number","null"],"minimum":0,"maximum":3000},"fat":{"type":["number","null"],"minimum":0,"maximum":1000},"fiber":{"type":["number","null"],"minimum":0,"maximum":500},"waterMilliliters":{"type":["number","null"],"minimum":0,"maximum":20000}}}}}"##
 
     static let foodLog = ##"{"type":"object","additionalProperties":false,"required":["entries"],"properties":{"entries":{"type":"array","minItems":1,"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["food","date","time","mealId"],"properties":{"food":{"$ref":"#/$defs/food"},"date":{"type":["string","null"],"pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}$","description":"AAAA-MM-DD; null = hoje."},"time":{"type":["string","null"],"pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]$","description":"HH:MM; null = agora."},"mealId":{"type":["string","null"],"description":"Refeição do plano ativo (list_nutrition_plans) só se o usuário disser; null = avulso."}}}}},"$defs":{"food":"## + foodDef + ##"}}"##
 }
@@ -144,8 +144,8 @@ struct CopilotPlanner {
         let after = try Self.apply(operations, to: before)
         let diff = Self.diff(before: before, after: after)
         guard !diff.isEmpty else { throw CopilotPlanError("nada muda: os valores pedidos já são os atuais") }
-        return CopilotChangeSet(id: id, scope: .routine(id: routine.id, name: routine.name), operations: operations,
-                                diff: diff, baseFingerprint: before.fingerprint, createdAt: now)
+        return CopilotChangeSet(id: UUID().uuidString, scope: .routine(id: routine.id, name: routine.name), operations: operations,
+                                diff: diff, baseFingerprint: before.fingerprint, createdAt: now, toolCallID: id)
     }
 
     private static func routineOperation(_ op: RoutineChangeArgs.Operation, catalog: [Exercise]) throws -> CopilotOperation {
@@ -326,8 +326,8 @@ struct CopilotPlanner {
         let after = try Self.apply(operations, to: before)
         let diff = Self.diff(before: before, after: after)
         guard !diff.isEmpty else { throw CopilotPlanError("nada muda: os valores pedidos já são os atuais") }
-        return CopilotChangeSet(id: id, scope: .nutritionPlan(id: plan.id, name: plan.name), operations: operations,
-                                diff: diff, baseFingerprint: before.fingerprint, createdAt: now)
+        return CopilotChangeSet(id: UUID().uuidString, scope: .nutritionPlan(id: plan.id, name: plan.name), operations: operations,
+                                diff: diff, baseFingerprint: before.fingerprint, createdAt: now, toolCallID: id)
     }
 
     private static func nutritionOperation(_ op: NutritionChangeArgs.Operation, in plan: NutritionPlanSnapshot) throws -> CopilotOperation {
@@ -413,7 +413,13 @@ struct CopilotPlanner {
                 if let minutes { result.days[d].meals[m].minutesFromMidnight = minutes }
                 result.days[d].meals.sort { $0.minutesFromMidnight < $1.minutesFromMidnight }
             case let .setTargets(targets):
-                result.targets = targets
+                // Mescla: só os campos informados mudam (null = mantém a meta atual).
+                result.targets.kcal = targets.kcal ?? result.targets.kcal
+                result.targets.protein = targets.protein ?? result.targets.protein
+                result.targets.carbs = targets.carbs ?? result.targets.carbs
+                result.targets.fat = targets.fat ?? result.targets.fat
+                result.targets.fiber = targets.fiber ?? result.targets.fiber
+                result.targets.waterMilliliters = targets.waterMilliliters ?? result.targets.waterMilliliters
             default:
                 throw CopilotPlanError("operação de ficha numa dieta")
             }
@@ -468,8 +474,8 @@ struct CopilotPlanner {
         }
         guard issues.isEmpty else { throw CopilotPlanError(issues) }
         guard let first = operations.first, case let .logFood(_, date, _) = first else { throw CopilotPlanError("nada a registrar") }
-        return CopilotChangeSet(id: id, scope: .foodLog(day: calendar.startOfDay(for: date)), operations: operations, diff: diff,
-                                baseFingerprint: "", createdAt: now)
+        return CopilotChangeSet(id: UUID().uuidString, scope: .foodLog(day: calendar.startOfDay(for: date)), operations: operations, diff: diff,
+                                baseFingerprint: "", createdAt: now, toolCallID: id)
     }
 
     private func resolveDate(day: String?, time: String?) -> Date? {
