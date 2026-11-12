@@ -15,7 +15,7 @@ struct LoadEditorView: View {
 
     init(draft: WatchLoadDraft) {
         _draft = State(initialValue: draft)
-        _crown = State(initialValue: draft.value)
+        _crown = State(initialValue: Double(draft.offset))
     }
 
     private var isLargeText: Bool { typeSize >= .accessibility1 }
@@ -35,6 +35,8 @@ struct LoadEditorView: View {
                     model.saveLoad(draft)
                     dismiss()
                 }
+                // Série sem carga e sem nada para gravar (base 0): Salvar só depois de mexer.
+                .disabled(!draft.canSave && draft.wasUnset)
                 .accessibilityHint(Text("Grava \(WatchFormat.spokenLoad(draft.load)) e volta à série"))
             }
             // Sem título: no relógio ele ocupa uma linha inteira abaixo da hora e espremeria o número. O número com a
@@ -47,11 +49,7 @@ struct LoadEditorView: View {
                 }
             }
         }
-        .onAppear {
-            model.isEditingLoad = true
-            crownFocused = true
-        }
-        .onDisappear { model.isEditingLoad = false }
+        .onAppear { crownFocused = true }
     }
 
     // MARK: Número (Coroa + VoiceOver)
@@ -78,11 +76,12 @@ struct LoadEditorView: View {
         .padding(.leading, 10)
         .focusable()
         .focused($crownFocused)
-        .digitalCrownRotation($crown, from: draft.range.lowerBound, through: draft.range.upperBound, by: draft.step,
-                              sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+        // Detentes relativos à base (um detente = um passo): uma carga em lb com ",5" ou fora da grade não é
+        // arredondada só por tocar na Coroa.
+        .digitalCrownRotation($crown, from: Double(draft.offsetRange.lowerBound), through: Double(draft.offsetRange.upperBound),
+                              by: 1, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
         .onChange(of: crown) { _, new in
-            draft.set(new)
-            if abs(draft.value - new) > 0.001 { crown = draft.value }
+            draft.setOffset(Int(new.rounded()))
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(contextText.map { Text("Carga, \($0)") } ?? Text("Carga"))
@@ -138,7 +137,7 @@ struct LoadEditorView: View {
 
     private func step(up: Bool) {
         if up { draft.increment() } else { draft.decrement() }
-        crown = draft.value
+        crown = Double(draft.offset)
     }
 
     // MARK: Formatação

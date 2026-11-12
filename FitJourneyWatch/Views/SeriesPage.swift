@@ -6,9 +6,6 @@ import SwiftUI
 /// botão que abre o editor (`LoadEditorView`); com texto grande a página rola e a Coroa só rola.
 struct SeriesPage: View {
     @Environment(WatchSessionModel.self) private var model
-    /// Editor de carga aberto. Fica aqui, e não na série/descanso, para não fechar quando o descanso termina e a
-    /// página troca de conteúdo por baixo da folha.
-    @State private var loadDraft: WatchLoadDraft?
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -16,10 +13,15 @@ struct SeriesPage: View {
                 .transition(.opacity)
         }
         .accessibilityLabel("Série")
-        .sheet(item: $loadDraft) { draft in LoadEditorView(draft: draft) }
+        // Editor de carga: o estado é do modelo (abre/fecha de forma síncrona e fecha sozinho se a sessão acaba ou a
+        // série atual muda). A folha fica aqui, e não na série/descanso, para não fechar quando o descanso termina e
+        // a página troca de conteúdo por baixo dela. Fechar a folha por qualquer caminho = Cancelar.
+        .sheet(item: Binding(get: { model.loadEditor }, set: { if $0 == nil { model.cancelLoadEdit() } })) { draft in
+            LoadEditorView(draft: draft)
+        }
     }
 
-    private func editLoad(_ setID: UUID) { loadDraft = model.loadDraft(setID: setID) }
+    private func editLoad(_ setID: UUID) { model.openLoadEditor(setID: setID) }
 
     @ViewBuilder private func content(at date: Date) -> some View {
         if let display = model.display {
