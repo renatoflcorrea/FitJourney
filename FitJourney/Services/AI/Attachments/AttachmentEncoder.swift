@@ -8,6 +8,9 @@ import Foundation
 enum AttachmentEncoder {
     /// PDFs acima disso avisam custo (SPEC §7A.1).
     static let costWarningPages = 30
+    /// Acima disso o PDF não vai nativo (Anthropic aceita 100 páginas em modelos de 200k; outros provedores
+    /// têm limites parecidos): vai rasterizado até o limite do `PDFRasterizer`, com aviso.
+    static let nativePDFMaxPages = 100
 
     struct Output: Sendable, Hashable {
         var parts: [LLMContentPart]
@@ -32,7 +35,7 @@ enum AttachmentEncoder {
                 parts.append(.fileText(filename: attachment.filename, text: attachment.text ?? ""))
             case .pdf:
                 let pages = attachment.pageCount ?? 0
-                if capabilities.supportsPDF {
+                if capabilities.supportsPDF, pages <= nativePDFMaxPages {
                     if pages > costWarningPages {
                         warnings.append(String(localized: "\(attachment.filename) tem \(pages) páginas: a análise pode custar mais."))
                     }
@@ -42,7 +45,9 @@ enum AttachmentEncoder {
                     guard capabilities.supportsImages else { throw AttachmentError.imagesNotSupported }
                     let result = try rasterizer.rasterize(attachment.data, filename: attachment.filename)
                     rasterized += 1
-                    if result.truncated {
+                    if capabilities.supportsPDF {
+                        warnings.append(String(localized: "\(attachment.filename) tem \(pages) páginas, acima do limite de \(nativePDFMaxPages) para envio direto; as primeiras \(result.pages.count) foram enviadas como imagens."))
+                    } else if result.truncated {
                         warnings.append(String(localized: "\(attachment.filename) tem \(result.totalPages) páginas; só as primeiras \(result.pages.count) foram enviadas."))
                     }
                     for page in result.pages {

@@ -368,7 +368,7 @@ enum NutritionInterview {
             for (m, meal) in day.meals.enumerated() {
                 if meal.minutesFromMidnight == nil { add(.mealTime(day: d, meal: m), .missingRequired, required: true, meal.source) }
                 for (i, item) in meal.items.enumerated() {
-                    if item.quantity == nil {
+                    if item.quantity == nil || item.unit == nil {
                         add(.itemQuantity(day: d, meal: m, item: i), .missingRequired, required: true, item.source)
                     } else if item.confidence == .low {
                         add(.itemQuantity(day: d, meal: m, item: i), .lowConfidence, required: false, item.source)
@@ -402,7 +402,7 @@ enum NutritionInterview {
             let item = meal.items[i]
             return make(String(localized: "Quanto de \(item.name)?"),
                         [String(localized: "Escrito: \(item.asWritten)"), item.notes.nonEmpty].compactMap { $0 }.joined(separator: " · "),
-                        .number(units: FoodUnit.allCases.map(\.rawValue), defaultUnit: (item.unit ?? .grams).rawValue,
+                        .number(units: FoodUnit.allCases.map(\.rawValue), defaultUnit: (item.unit ?? .serving).rawValue,
                                 suggested: item.quantity))
         case let .ambiguity(index):
             guard extraction.ambiguities.indices.contains(index) else { return nil }

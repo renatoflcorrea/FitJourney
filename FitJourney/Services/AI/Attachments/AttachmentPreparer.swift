@@ -52,9 +52,7 @@ struct AttachmentPreparer: Sendable {
         switch Self.detectKind(data: raw.data, filename: name, hint: raw.typeHint) {
         case .pdf:
             guard let document = PDFDocument(data: raw.data) else { throw AttachmentError.unreadable(filename: name) }
-            guard !document.isLocked, !document.isEncrypted || document.unlock(withPassword: "") else {
-                throw AttachmentError.protectedPDF(filename: name)
-            }
+            if document.isLocked, !document.unlock(withPassword: "") { throw AttachmentError.protectedPDF(filename: name) }
             guard document.pageCount > 0 else { throw AttachmentError.emptyFile(filename: name) }
             return PreparedAttachment(filename: name, kind: .pdf, mimeType: "application/pdf", data: raw.data,
                                       pageCount: document.pageCount)
@@ -97,8 +95,16 @@ struct AttachmentPreparer: Sendable {
                 || (UTType(hint)?.conforms(to: .text) ?? false)
         } ?? false
         if textExtensions.contains(ext) || hintIsText { return .text }
-        if !data.contains(0), String(data: data.prefix(4096), encoding: .utf8) != nil, ext.isEmpty { return .text }
+        if !data.contains(0), ext.isEmpty, isUTF8Prefix(data) { return .text }
         return nil
+    }
+
+    /// Os primeiros 4 KiB são UTF-8 válido — tolerando um caractere multibyte cortado no fim da amostra
+    /// (tenta a amostra e até 3 bytes a menos).
+    static func isUTF8Prefix(_ data: Data, sample: Int = 4096) -> Bool {
+        let prefix = data.prefix(sample)
+        let maxCut = prefix.count < data.count ? min(3, prefix.count) : 0
+        return (0 ... maxCut).contains { cut in String(data: prefix.dropLast(cut), encoding: .utf8) != nil }
     }
 
     // MARK: - Imagem

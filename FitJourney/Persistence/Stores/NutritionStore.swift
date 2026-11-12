@@ -247,10 +247,11 @@ struct NutritionStore {
     }
 
     /// Registro avulso ("+"). Sem `meal` = fora da dieta. Atualiza favoritos/recentes.
+    /// `save: false` permite registrar vários e salvar uma vez só (`context.save()` pelo chamador).
     @discardableResult
     func logFood(name: String, quantity: Double, unit: FoodUnit, values: NutrientValues = NutrientValues(),
                  estimation: EstimationSource = .informed, at date: Date = .now, meal: Meal? = nil,
-                 notes: String = "") throws -> FoodEntry {
+                 notes: String = "", save: Bool = true) throws -> FoodEntry {
         let entry = FoodEntry(name: name, quantity: quantity, unit: unit, date: date, values: values, estimation: estimation)
         entry.notes = notes
         if let meal {
@@ -260,7 +261,7 @@ struct NutritionStore {
         }
         context.insert(entry)
         try recordUsage(name: name, quantity: quantity, unit: unit, values: values, estimation: estimation, at: date)
-        try context.save()
+        if save { try context.save() }
         return entry
     }
 

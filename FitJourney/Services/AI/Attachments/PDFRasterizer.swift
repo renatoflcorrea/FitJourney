@@ -32,7 +32,8 @@ struct PDFRasterizer: Sendable {
 
     func rasterize(_ data: Data, filename: String = "arquivo.pdf") throws -> Result {
         guard let document = PDFDocument(data: data) else { throw AttachmentError.unreadable(filename: filename) }
-        guard !document.isLocked else { throw AttachmentError.protectedPDF(filename: filename) }
+        // PDF "criptografado" sem senha de abertura (só restrições do dono) abre com senha vazia.
+        if document.isLocked, !document.unlock(withPassword: "") { throw AttachmentError.protectedPDF(filename: filename) }
         let total = document.pageCount
         var pages: [Page] = []
         for index in 0 ..< min(total, max(0, maxPages)) {

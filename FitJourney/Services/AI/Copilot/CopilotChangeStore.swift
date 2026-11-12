@@ -21,7 +21,8 @@ enum CopilotUndo: Codable, Sendable, Hashable {
     case foodLog(entryIDs: [UUID])
 }
 
-/// Cartões de alteração do copiloto e seus estados, por id do changeset (= `ChatMessage.toolCallID`).
+/// Cartões de alteração do copiloto e seus estados, por id do changeset (UUID do app; a mensagem `tool` é achada
+/// pelo `messageID` do registro ou pelo `toolCallID`).
 /// Fica num JSON em `Application Support/Copilot/` (fora do backup do app e do iCloud); registros com mais de
 /// 30 dias são descartados. Nada aqui contém segredos.
 @MainActor
@@ -57,14 +58,19 @@ final class CopilotChangeStore {
     func changeSet(for id: String) -> CopilotChangeSet? { records[id]?.changeSet }
     func state(for id: String) -> CopilotChangeState? { records[id]?.state }
 
-    /// Cartão da mensagem `tool` (pelo id da chamada).
+    /// Cartão da mensagem `tool`: pelo `messageID` (sempre único); sem ele, pelo id da chamada — o mais recente,
+    /// porque provedores compatíveis repetem ids de chamada entre conversas.
     func record(for message: ChatMessage) -> Record? {
-        guard message.role == .tool, let id = message.toolCallID else { return nil }
-        return records[id]
+        guard message.role == .tool else { return nil }
+        if let hit = records.values.first(where: { $0.messageID == message.id }) { return hit }
+        guard let callID = message.toolCallID else { return nil }
+        return records.values.filter { $0.messageID == nil && ($0.changeSet.toolCallID ?? $0.changeSet.id) == callID }
+            .max { $0.changeSet.createdAt < $1.changeSet.createdAt }
     }
 
-    /// Registra uma proposta nova (ou substitui a mesma proposta, se o id repetir).
+    /// Registra uma proposta nova. Nunca sobrescreve um cartão que já saiu de `.proposed` (aplicado, desfeito…).
     func register(_ changeSet: CopilotChangeSet, messageID: UUID? = nil, now: Date = .now) {
+        if let existing = records[changeSet.id], existing.state != .proposed { return }
         records[changeSet.id] = Record(changeSet: changeSet, messageID: messageID, state: .proposed, appliedAt: nil, undo: nil,
                                        updatedAt: now)
         save()

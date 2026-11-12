@@ -12,7 +12,7 @@ extension FitnessToolbox {
                      parametersSchema: CopilotToolSchemas.routine)
         case .proposeNutritionChanges:
             ToolSpec(name: name.rawValue,
-                     description: "Propõe alterações numa dieta existente (adicionar/remover/alterar item ou refeição, metas). Use os ids de list_nutrition_plans. O app mostra o antes → depois para o usuário aplicar; nada é gravado.",
+                     description: "Propõe alterações numa dieta existente (adicionar/remover/alterar item ou refeição, metas — em set_targets só os campos não nulos mudam). Use os ids de list_nutrition_plans. O app mostra o antes → depois para o usuário aplicar; nada é gravado.",
                      parametersSchema: CopilotToolSchemas.nutrition)
         case .proposeFoodLog:
             ToolSpec(name: name.rawValue,

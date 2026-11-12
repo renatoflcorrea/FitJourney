@@ -59,8 +59,18 @@ struct ChangeApplier {
         self.calendar = calendar
     }
 
+    /// Em erro, o contexto volta ao último save (nada gravado pela metade).
     @discardableResult
     func apply(_ id: String) throws -> Outcome {
+        do {
+            return try applyUnchecked(id)
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    private func applyUnchecked(_ id: String) throws -> Outcome {
         guard var record = store.record(for: id) else { throw ChangeApplierError.notFound }
         guard record.state == .proposed || record.state == .needsConfirmation else { throw ChangeApplierError.notPending(record.state) }
         let changeSet = record.changeSet
@@ -116,6 +126,15 @@ struct ChangeApplier {
     }
 
     func undo(_ id: String) throws {
+        do {
+            try undoUnchecked(id)
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
+    private func undoUnchecked(_ id: String) throws {
         var record = try undoCheck(id)
         switch record.undo {
         case let .routine(before, _)?:
@@ -191,10 +210,12 @@ struct ChangeApplier {
             guard let meal = meals[mealID] else { throw ChangeApplierError.targetMissing }
             return (item, date, meal)
         }
-        return try entries.map { item, date, meal in
+        let ids = try entries.map { item, date, meal in
             try nutrition.logFood(name: item.name, quantity: item.quantity, unit: item.unit, values: item.values,
-                                  estimation: .ai, at: date, meal: meal).id
+                                  estimation: .ai, at: date, meal: meal, save: false).id
         }
+        try context.save() // um único save para todos os registros
+        return ids
     }
 
     /// Uma alteração nova no mesmo escopo invalida o desfazer das anteriores (desfazer apagaria a nova).
