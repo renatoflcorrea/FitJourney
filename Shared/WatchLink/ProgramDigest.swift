@@ -11,6 +11,9 @@ struct ProgramDigest: Codable, Sendable, Hashable {
     /// Ficha(s) sugerida(s) para hoje, em ordem (vazio = descanso/sem fichas).
     var suggestedRoutineIDs: [UUID]
     var routines: [Routine]
+    /// Idioma efetivo do app no iPhone (`AppLanguageCode`: "pt-BR" | "en"); o relógio o aplica a si mesmo.
+    /// Opcional e sem subir `schemaVersion`: ausente = o relógio mantém o idioma atual.
+    var language: String? = nil
 
     struct Routine: Codable, Sendable, Hashable, Identifiable {
         /// `Routine.id` (vai no comando `start`).

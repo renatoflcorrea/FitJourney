@@ -291,10 +291,10 @@ final class FitnessToolbox {
         let filter = exercise.map(ExerciseMatcher.normalize).flatMap { $0.isEmpty ? nil : $0 }
         let matching = sessions.filter { session in
             guard let filter else { return true }
-            return session.sortedExercises.contains { ExerciseMatcher.normalize($0.name).contains(filter) }
+            return session.sortedExercises.contains { Self.nameMatches($0.name, filter) }
         }
         let items = matching.prefix(Self.maxHistorySessions).map { session -> JSONValue in
-            let exercises = session.sortedExercises.filter { filter == nil || ExerciseMatcher.normalize($0.name).contains(filter!) }
+            let exercises = session.sortedExercises.filter { filter == nil || Self.nameMatches($0.name, filter!) }
             let duration = session.endedAt.map { max(0, $0.timeIntervalSince(session.startedAt) - session.accumulatedPauseSeconds) }
             return .object([
                 "date": .string(Self.dayString(session.startedAt, calendar)),
@@ -305,7 +305,7 @@ final class FitnessToolbox {
                 "exercises": .array(exercises.map { item in
                     let done = item.sortedSets.filter(\.isCompleted)
                     var object: [String: JSONValue] = [
-                        "name": .string(item.name), "status": .string(item.status.rawValue),
+                        "name": .string(item.name.exerciseDisplayName), "status": .string(item.status.rawValue),
                         "sets": .string(done.map(Self.setText).joined(separator: ", ")),
                         "planned": .number(Double(item.sortedSets.count)),
                     ]
@@ -325,6 +325,12 @@ final class FitnessToolbox {
         return ok(.object(result))
     }
 
+    /// Filtro por nome: casa com o nome gravado ou com o localizado no idioma do app (o Coach vê o localizado).
+    static func nameMatches(_ stored: String, _ filter: String) -> Bool {
+        ExerciseMatcher.normalize(stored).contains(filter)
+            || ExerciseMatcher.normalize(stored.exerciseDisplayName).contains(filter)
+    }
+
     private func exerciseProgress(_ name: String?) throws -> ToolOutcome {
         let target = ExerciseMatcher.normalize(name ?? "")
         guard !target.isEmpty else { return error("invalid_arguments", "Informe o nome do exercício.") }
@@ -342,7 +348,7 @@ final class FitnessToolbox {
         for session in sessions {
             let items = session.sortedExercises.filter { item in
                 if let id = matched?.id, item.exerciseID == id { return true }
-                return ExerciseMatcher.normalize(item.name) == target
+                return ExerciseMatcher.normalize(item.name) == target || ExerciseMatcher.normalize(item.name.exerciseDisplayName) == target
             }
             guard !items.isEmpty else { continue }
             let sets = items.flatMap(\.performedSets)
@@ -359,12 +365,12 @@ final class FitnessToolbox {
             }
         }
         guard !history.isEmpty else {
-            return ok(.object(["exercise": .string(matched?.name ?? name ?? ""), "sessions": .array([]),
+            return ok(.object(["exercise": .string((matched?.name).map(\.exerciseDisplayName) ?? name ?? ""), "sessions": .array([]),
                                "note": .string("Sem sessões concluídas com este exercício.")]))
         }
         let bests = WorkoutMetrics.bests(history: history)
         return ok(.object([
-            "exercise": .string(matched?.name ?? name ?? ""),
+            "exercise": .string((matched?.name).map(\.exerciseDisplayName) ?? name ?? ""),
             "sessions": .array(rows),
             "totalSessions": .number(Double(history.count)),
             "window": .string("Últimos \(Self.progressWindowDays) dias."),
@@ -389,7 +395,7 @@ final class FitnessToolbox {
         }
         let items = filtered.prefix(Self.maxListItems).map { e -> JSONValue in
             .object([
-                "name": .string(e.name),
+                "name": .string(e.name.exerciseDisplayName),
                 "catalogKey": e.catalogKey.map(JSONValue.string) ?? .null,
                 "equipment": .string(e.equipment.rawValue),
                 "muscles": .array(e.primaryMuscles.map { .string($0.rawValue) }),

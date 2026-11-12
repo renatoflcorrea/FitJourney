@@ -50,6 +50,8 @@ struct SessionSnapshot: Codable, Sendable, Hashable {
     /// Preferência "Alerta insistente no fim do descanso" (`fj.restAlertRepeat`) do iPhone, para o relógio.
     /// Só vai `false` quando desligada; `nil` (ausente, versões antigas, sessão ainda sem snapshot) = ligada.
     var restAlertRepeat: Bool? = nil
+    /// Idioma efetivo do app no iPhone (`AppLanguageCode`: "pt-BR" | "en"); ausente = sem mudança no relógio.
+    var language: String? = nil
 
     /// Tamanho da janela de `appliedCommandIDs`.
     static let appliedCommandWindow = 64

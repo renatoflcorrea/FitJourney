@@ -35,6 +35,8 @@ struct SettingsRootView: View {
     @State private var notification: SettingsPresentation.NotificationState = .notRequested
     @State private var manualHeartRate = false
     @State private var path: [Route] = Self.initialPath
+    @State private var languageSelection: AppLanguagePreference
+    @State private var showsRestartAlert = false
 
     enum Route: Hashable { case data }
 
@@ -57,6 +59,7 @@ struct SettingsRootView: View {
     init(secrets: any SecretStore, defaults: UserDefaults) {
         self.secrets = secrets
         self.defaults = defaults
+        _languageSelection = State(initialValue: AppLanguagePreference.current(defaults))
     }
 
     private var unit: WeightUnit { WeightUnit(rawValue: weightUnitRaw) ?? .kg }
@@ -65,6 +68,7 @@ struct SettingsRootView: View {
         NavigationStack(path: $path) {
             Form {
                 profileSection
+                generalSection
                 unitsSection
                 trainingSection
                 integrationsSection
@@ -123,6 +127,36 @@ struct SettingsRootView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: Geral
+
+    private var generalSection: some View {
+        Section {
+            Picker("Idioma", selection: $languageSelection) {
+                ForEach(AppLanguagePreference.allCases, id: \.self) { option in
+                    Text(verbatim: option.title).tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .accessibilityLabel(Text("Idioma do app"))
+            .onChange(of: languageSelection) { _, newValue in
+                guard newValue != AppLanguagePreference.current(defaults) else { return }
+                newValue.apply(to: defaults)
+                showsRestartAlert = true
+            }
+        } header: {
+            Text("Geral")
+        } footer: {
+            Text("O Apple Watch segue o idioma escolhido aqui (reabra o app do relógio para aplicar). Os nomes dos exercícios do catálogo aparecem no mesmo idioma no iPhone, no relógio, na Atividade ao Vivo e no Coach.")
+        }
+        .alert("Reinicie o FitJourney para aplicar", isPresented: $showsRestartAlert) {
+            // Encerra o app de forma limpa; o iOS não reabre sozinho, o usuário abre de novo.
+            Button("Reiniciar agora") { exit(0) }
+            Button("Depois", role: .cancel) {}
+        } message: {
+            Text("O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitJourney fecha e você o abre de novo pela tela de início.")
         }
     }
 
