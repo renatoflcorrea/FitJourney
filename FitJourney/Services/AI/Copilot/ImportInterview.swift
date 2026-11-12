@@ -89,6 +89,8 @@ struct ImportQuestion: Codable, Sendable, Hashable, Identifiable {
     var kind: Kind
     var isRequired: Bool
     var source: ImportSource?
+    /// Texto para pré-preencher um campo livre (pergunta de exercício: o nome atual, para "Criar como novo").
+    var suggestedText: String? = nil
 }
 
 enum ImportAnswer: Codable, Sendable, Hashable {
@@ -122,6 +124,32 @@ struct ImportCatalogEntry: Sendable, Hashable {
     var englishName: String?
 
     var optionID: String { catalogKey ?? "exercise:\(id.uuidString)" }
+
+    static let libraryOptionPrefix = "exercise:"
+
+    /// Id do exercício da biblioteca (sem `catalogKey`) num id de opção `exercise:<uuid>`.
+    static func libraryExerciseID(fromOptionID optionID: String) -> UUID? {
+        guard optionID.hasPrefix(libraryOptionPrefix) else { return nil }
+        return UUID(uuidString: String(optionID.dropFirst(libraryOptionPrefix.count)))
+    }
+}
+
+/// Decisão do usuário sobre um exercício importado (pergunta de exercício respondida). Guardada por chave estável
+/// (`ProgramInterview.exerciseKey`, o texto como estava no arquivo) para sobreviver à revisão pela IA — que
+/// reordena e pode renomear — e valer para o mesmo exercício repetido em outras fichas.
+struct ImportExerciseDecision: Codable, Sendable, Hashable {
+    /// Nome final (do catálogo/biblioteca ou o digitado para o exercício novo).
+    var name: String
+    var catalogKey: String?
+    /// Exercício da biblioteca do usuário escolhido (sem `catalogKey`); `nil` com `catalogKey` nil = exercício novo.
+    var exerciseID: UUID?
+    /// Nome que a IA tinha dado antes da decisão (plano B se a revisão reescrever `asWritten`).
+    var originalName: String? = nil
+    /// Posições cobertas (`ProgramInterview.slotKey`): a respondida e as repetições sem casamento/baixa confiança que
+    /// herdaram a resposta. `nil` = todas com a mesma chave.
+    var slots: [String]? = nil
+
+    var isNew: Bool { catalogKey == nil && exerciseID == nil }
 }
 
 // MARK: - Treino
@@ -237,7 +265,9 @@ enum ProgramInterview {
             let prompt = gap.kind == .unmatchedExercise
                 ? String(localized: "Qual exercício é “\(exercise.asWritten)”?")
                 : String(localized: "Confere o exercício “\(exercise.asWritten)”?")
-            return make(prompt, exercise.notes, .exercise(suggestions: options, allowsNew: true))
+            var question = make(prompt, exercise.notes, .exercise(suggestions: options, allowsNew: true))
+            question.suggestedText = exercise.displayName
+            return question
         case let .exerciseReps(r, e):
             guard let exercise = exercise(extraction, r, e) else { return nil }
             return make(String(localized: "Quantas repetições em \(exercise.displayName)?"),
@@ -329,6 +359,171 @@ enum ProgramInterview {
         default:
             throw ImportAnswerError.invalid(String(localized: "Resposta não combina com a pergunta."))
         }
+    }
+
+    // MARK: Decisões estáveis (sobrevivem à revisão pela IA)
+
+    /// Chave estável do exercício: o texto como estava no arquivo, normalizado e sem pontuação ("Máq. 3" = "maq 3"),
+    /// ou o nome quando não há texto original. A IA não deve mudar `asWritten` na revisão (o prompt pede).
+    static func exerciseKey(_ exercise: ProgramImport.ExerciseImport) -> String? {
+        func key(_ text: String) -> String {
+            ExerciseMatcher.normalize(String(text.map { $0.isLetter || $0.isNumber ? $0 : " " }))
+        }
+        let written = key(exercise.asWritten)
+        if !written.isEmpty { return written }
+        let name = key(exercise.name ?? "")
+        return name.isEmpty ? nil : "name:\(name)"
+    }
+
+    /// Decisão a partir do exercício já atualizado pela resposta (`apply`); `original` é o exercício antes dela.
+    static func decision(for exercise: ProgramImport.ExerciseImport, original: ProgramImport.ExerciseImport,
+                         answer: ImportAnswer, slot: String?) -> ImportExerciseDecision {
+        var libraryID: UUID?
+        if case let .exercise(optionID) = answer { libraryID = ImportCatalogEntry.libraryExerciseID(fromOptionID: optionID) }
+        return ImportExerciseDecision(name: exercise.displayName, catalogKey: exercise.catalogKey.nonEmpty, exerciseID: libraryID,
+                                      originalName: original.name.nonEmpty, slots: slot.map { [$0] } ?? [])
+    }
+
+    /// Aplica as decisões (nome, `catalogKey`, confiança alta) às posições cobertas e às outras com a mesma chave que
+    /// estejam sem casamento ou com baixa confiança — estas passam a ser cobertas. Um exercício que a IA casou com
+    /// confiança média/alta fora das posições cobertas não é sobrescrito.
+    static func applyDecisions(_ decisions: inout [String: ImportExerciseDecision], to extraction: inout ProgramImport,
+                               catalog: [ImportCatalogEntry]) {
+        guard !decisions.isEmpty else { return }
+        let slots = slotKeys(extraction)
+        for r in extraction.routines.indices {
+            for e in extraction.routines[r].exercises.indices {
+                let current = extraction.routines[r].exercises[e]
+                guard let key = exerciseKey(current), var decision = decisions[key] else { continue }
+                let slot = slots[r][e]
+                let covered = decision.slots.map { list in slot.map(list.contains) ?? false } ?? true
+                guard covered || matchEntry(current, in: catalog) == nil || current.confidence == .low else { continue }
+                extraction.routines[r].exercises[e].name = decision.name
+                extraction.routines[r].exercises[e].catalogKey = decision.catalogKey
+                extraction.routines[r].exercises[e].confidence = .high
+                if !covered, let slot {
+                    decision.slots?.append(slot)
+                    decisions[key] = decision
+                }
+            }
+        }
+    }
+
+    /// Decisão que cobre o exercício nesta posição (`nil` = não decidido ou não coberto).
+    static func coveringDecision(routine r: Int, exercise e: Int, in extraction: ProgramImport,
+                                 decisions: [String: ImportExerciseDecision]) -> ImportExerciseDecision? {
+        guard let current = exercise(extraction, r, e), let key = exerciseKey(current), let decision = decisions[key] else { return nil }
+        guard let list = decision.slots else { return decision }
+        return slotKey(routine: r, exercise: e, in: extraction).map(list.contains) == true ? decision : nil
+    }
+
+    /// Ids (`ImportField.key`) das perguntas de exercício já decididas: não viram lacuna de novo.
+    static func decidedExerciseFields(in extraction: ProgramImport, decisions: [String: ImportExerciseDecision]) -> Set<String> {
+        guard !decisions.isEmpty else { return [] }
+        let slots = slotKeys(extraction)
+        var keys: Set<String> = []
+        for (r, routine) in extraction.routines.enumerated() {
+            for (e, exercise) in routine.exercises.enumerated() {
+                guard let key = exerciseKey(exercise), let decision = decisions[key] else { continue }
+                if decision.slots.map({ list in slots[r][e].map(list.contains) ?? false }) ?? true {
+                    keys.insert(ImportField.exercise(routine: r, exercise: e).key)
+                }
+            }
+        }
+        return keys
+    }
+
+    /// Plano B depois da revisão: decisão sem nenhum exercício com a mesma chave (a IA reescreveu `asWritten`) tenta
+    /// casar pelo nome (o decidido ou o que a IA tinha dado), de preferência na mesma ficha, ou pela posição anterior
+    /// (mesma ficha pela chave estável, mesmo índice). Ao casar, o `asWritten` anterior é restaurado — a chave volta
+    /// a valer para a decisão e para as respostas de repetições/carga.
+    static func rebindDecisions(_ decisions: [String: ImportExerciseDecision], previous: ProgramImport,
+                                in extraction: inout ProgramImport) {
+        let present = Set(extraction.routines.flatMap(\.exercises).compactMap(exerciseKey))
+        let missing = decisions.keys.filter { !present.contains($0) }.sorted()
+        guard !missing.isEmpty else { return }
+        let previousRoutineKeys = ImportStableKey.groupKeys(previous.routines.map(\.name))
+        let routineKeys = ImportStableKey.groupKeys(extraction.routines.map(\.name))
+        var claimed: Set<[Int]> = []
+        func isFree(_ r: Int, _ e: Int) -> Bool {
+            !claimed.contains([r, e]) && exerciseKey(extraction.routines[r].exercises[e]).map { decisions[$0] == nil } ?? true
+        }
+        for key in missing {
+            guard let decision = decisions[key] else { continue }
+            let names = Set([decision.name, decision.originalName].compactMap { $0.nonEmpty }.map(ExerciseMatcher.normalize))
+            for (pr, routine) in previous.routines.enumerated() {
+                for (pe, old) in routine.exercises.enumerated() where exerciseKey(old) == key {
+                    let sameRoutine = routineKeys.firstIndex(of: previousRoutineKeys[pr])
+                    let order = (sameRoutine.map { [$0] } ?? []) + extraction.routines.indices.filter { $0 != sameRoutine }
+                    var target: [Int]?
+                    search: for r in order {
+                        for e in extraction.routines[r].exercises.indices where isFree(r, e) {
+                            let name = extraction.routines[r].exercises[e].name.nonEmpty.map(ExerciseMatcher.normalize)
+                            if let name, names.contains(name) { target = [r, e]; break search }
+                        }
+                    }
+                    if target == nil, let r = sameRoutine, extraction.routines[r].exercises.indices.contains(pe), isFree(r, pe) {
+                        target = [r, pe]
+                    }
+                    guard let target else { continue }
+                    extraction.routines[target[0]].exercises[target[1]].asWritten = old.asWritten
+                    claimed.insert(target)
+                }
+            }
+        }
+    }
+
+    /// Chave estável de um exercício numa ficha (para respostas de repetições/carga): ficha + exercício + ocorrência.
+    static func slotKey(routine r: Int, exercise e: Int, in extraction: ProgramImport) -> String? {
+        guard exercise(extraction, r, e) != nil else { return nil }
+        return slotKeys(extraction)[r][e]
+    }
+
+    /// `slotKey` de todas as posições, de uma vez.
+    static func slotKeys(_ extraction: ProgramImport) -> [[String?]] {
+        let routineKeys = ImportStableKey.groupKeys(extraction.routines.map(\.name))
+        return extraction.routines.enumerated().map { r, routine in
+            var seen: [String: Int] = [:]
+            return routine.exercises.map { exercise in
+                guard let key = exerciseKey(exercise) else { return nil }
+                let occurrence = seen[key, default: 0]
+                seen[key] = occurrence + 1
+                return "\(routineKeys[r])|\(key)#\(occurrence)"
+            }
+        }
+    }
+
+    /// Exercícios confirmados pelo usuário (um por chave), para a mensagem de revisão.
+    static func confirmedExercises(in extraction: ProgramImport, decisions: [String: ImportExerciseDecision])
+        -> [CopilotPrompt.ConfirmedExercise] {
+        var seen: Set<String> = []
+        var result: [CopilotPrompt.ConfirmedExercise] = []
+        for exercise in extraction.routines.flatMap(\.exercises) {
+            guard let key = exerciseKey(exercise), let decision = decisions[key], seen.insert(key).inserted else { continue }
+            result.append(.init(asWritten: exercise.asWritten, name: decision.name, catalogKey: decision.catalogKey))
+        }
+        return result
+    }
+
+    /// Depois da revisão: tira dúvidas que o usuário já respondeu (mesma pergunta no mesmo caminho) e as sobre o
+    /// nome/catálogo (`.name`/`.catalogKey`/`.asWritten`) de um exercício decidido — a IA às vezes as reabre, o que
+    /// levaria a outra revisão (loop). Dúvidas sobre o exercício inteiro ou as séries dele ficam.
+    static func pruneAmbiguities(_ extraction: inout ProgramImport, decisions: [String: ImportExerciseDecision],
+                                 answered: Set<String>) {
+        let snapshot = extraction
+        extraction.ambiguities.removeAll { ambiguity in
+            if answered.contains(ImportStableKey.ambiguity(ambiguity)) { return true }
+            guard let (r, e) = exerciseNamePath(ambiguity.path) else { return false }
+            return coveringDecision(routine: r, exercise: e, in: snapshot, decisions: decisions) != nil
+        }
+    }
+
+    /// `routines[r].exercises[e].name` (ou `.catalogKey`/`.asWritten`) → índices; outros caminhos → nil.
+    static func exerciseNamePath(_ path: String) -> (Int, Int)? {
+        let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let match = trimmed.wholeMatch(of: #/(?:\$\.)?routines\[(\d+)\]\.exercises\[(\d+)\]\.(?:name|catalogKey|asWritten)/#),
+              let r = Int(match.1), let e = Int(match.2) else { return nil }
+        return (r, e)
     }
 
     private static func setReps(_ target: ProgramDraft.RepTargetDraft, _ r: Int, _ e: Int, _ extraction: inout ProgramImport) {
@@ -448,6 +643,31 @@ enum NutritionInterview {
         default:
             throw ImportAnswerError.invalid(String(localized: "Resposta não combina com a pergunta."))
         }
+    }
+}
+
+// MARK: - Chaves estáveis
+
+/// Chaves que não dependem da posição (a revisão pela IA pode reordenar fichas, exercícios e dúvidas).
+enum ImportStableKey {
+    /// Chave de cada ficha/variação: nome normalizado (ou a posição, sem nome), com sufixo se repetir.
+    static func groupKeys(_ names: [String?]) -> [String] {
+        var seen: [String: Int] = [:]
+        return names.enumerated().map { index, name in
+            let base = name.nonEmpty.map(ExerciseMatcher.normalize) ?? "#\(index)"
+            let count = seen[base, default: 0]
+            seen[base] = count + 1
+            return count == 0 ? base : "\(base)#\(count)"
+        }
+    }
+
+    /// Dúvida normalizada: pergunta + caminho (a mesma pergunta em outra ficha é outra dúvida).
+    static func ambiguity(_ ambiguity: ImportAmbiguity) -> String {
+        let question = ExerciseMatcher.normalize(
+            ambiguity.question.trimmingCharacters(in: .punctuationCharacters.union(.whitespacesAndNewlines)))
+        var path = ambiguity.path.trimmingCharacters(in: .whitespacesAndNewlines)
+        if path.hasPrefix("$.") { path.removeFirst(2) }
+        return "\(question)|\(path)"
     }
 }
 

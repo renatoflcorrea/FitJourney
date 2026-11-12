@@ -22,6 +22,13 @@ struct ImportSessionState: Codable, Sendable, Hashable {
     var resultID: UUID?
     /// Respostas às dúvidas da IA ainda não aplicadas por `reviseWithAI()` (índice da dúvida → resposta).
     var pendingAmbiguityAnswers: [String: String]?
+    /// Decisões de exercício por chave estável (`ProgramInterview.exerciseKey`), reaplicadas depois de cada revisão.
+    /// Opcional: estados gravados antes não têm o campo.
+    var exerciseDecisions: [String: ImportExerciseDecision]? = nil
+    /// Respostas de repetições/carga por chave estável ("reps|…"/"load|…"), restauradas se a revisão as perder.
+    var exerciseAnswers: [String: ImportAnswer]? = nil
+    /// Dúvidas da IA já respondidas e aplicadas (`ImportStableKey.ambiguity`: pergunta + caminho): não voltam se a IA as reabrir.
+    var answeredAmbiguities: [String]? = nil
 }
 
 /// Onde as importações em andamento ficam.
