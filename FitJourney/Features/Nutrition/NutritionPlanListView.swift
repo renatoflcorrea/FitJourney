@@ -65,6 +65,8 @@ struct NutritionPlanListView: View {
                              message: "Crie sua dieta com metas e refeições. Os registros avulsos funcionam sem plano.",
                              actionTitle: "Criar dieta", area: .nutrition) { showNewPlan = true }
                     .listRowBackground(Color.clear)
+                ImportWithAIButton(kind: .nutrition)
+                    .listRowBackground(Color.clear)
             }
             if let active {
                 Section("Plano ativo") {
@@ -101,7 +103,12 @@ struct NutritionPlanListView: View {
         .navigationDestination(for: NutritionPlan.self) { PlanEditorView(plan: $0) }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button("Novo plano", systemImage: "plus") { showNewPlan = true }
+                Menu {
+                    Button("Novo plano", systemImage: "plus") { showNewPlan = true }
+                    ImportWithAIMenuItem(kind: .nutrition)
+                } label: {
+                    Label("Novo plano", systemImage: "plus")
+                }
             }
         }
         .sheet(isPresented: $showNewPlan) { NewPlanSheet() }

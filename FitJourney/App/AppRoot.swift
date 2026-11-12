@@ -13,6 +13,9 @@ struct AppRoot: View {
     /// Modelo de Dados de nível superior: guarda o resultado de substituir/apagar para mostrar após o reset.
     @Environment(DataTransferModel.self) private var transfer: DataTransferModel?
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
+    @Environment(ImportCoordinator.self) private var importCoordinator: ImportCoordinator?
+    @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
+    @Environment(\.modelContext) private var context
 
     private static var initialTab: Tab {
         #if DEBUG
@@ -50,9 +53,32 @@ struct AppRoot: View {
             resetGeneration += 1
             isResetting = false
         }
+        .sheet(item: Binding(get: { importCoordinator?.presented }, set: { if $0 == nil { importCoordinator?.closeSheet() } })) { session in
+            ImportFlowView(session: session)
+        }
+        .overlay(alignment: .top) {
+            if let completion = importCoordinator?.banner {
+                ImportResultBanner(completion: completion, onUndo: { undoImport(completion) },
+                                   onDismiss: { importCoordinator?.banner = nil })
+                    .id(completion.id)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .onChange(of: importCoordinator?.route) { _, route in
+            guard let route else { return }
+            selection = route.kind == .program ? .training : .nutrition
+        }
+        .onChange(of: coachHandoff?.request) { _, request in
+            if request != nil { selection = .coach }
+        }
         .alert(item: Binding(get: { transfer?.announcement }, set: { transfer?.announcement = $0 })) { item in
             Alert(title: Text(verbatim: item.title), message: Text(verbatim: item.message))
         }
+    }
+
+    private func undoImport(_ completion: ImportCompletion) {
+        importCoordinator?.banner = nil
+        try? ImportOverrides.undo(completion, context: context)
     }
 
     private var tabs: some View {

@@ -9,6 +9,8 @@ struct CoachChatView: View {
     let defaults: UserDefaults
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(CoachHandoff.self) private var handoff: CoachHandoff?
+    @Environment(ImportCoordinator.self) private var importCoordinator: ImportCoordinator?
     @State private var text = ""
     @FocusState private var focused: Bool
     @State private var showSettings = false
@@ -18,7 +20,7 @@ struct CoachChatView: View {
 
     private var isRunningHere: Bool { service.runningConversationID == conversation.id }
     private var otherConversationRunning: Bool { service.isRunning && !isRunningHere }
-    private var messages: [ChatMessage] { conversation.visibleMessages }
+    private var messages: [ChatMessage] { conversation.visibleMessages(including: .shared) }
     private var hasConsent: Bool { CoachProfileStore(defaults: defaults).hasConsented }
     private var canSend: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !service.isRunning
@@ -33,6 +35,7 @@ struct CoachChatView: View {
                         MessageRow(message: message, defaults: defaults, isActive: isRunningHere,
                                    canRetry: !service.isRunning && message.id == messages.last?.id,
                                    onRetry: { retry(message) },
+                                   onAdjust: { text = $0; focused = true },
                                    onOpenProgram: { reviewProgram = $0 }, onOpenPlan: { reviewPlan = $0 })
                             .id(message.id)
                     }
@@ -62,7 +65,14 @@ struct CoachChatView: View {
         .navigationDestination(isPresented: $showSettings) { AISettingsView(secrets: secrets, defaults: defaults) }
         .navigationDestination(item: $reviewProgram) { ProgramReviewView(program: $0) }
         .navigationDestination(item: $reviewPlan) { PlanReviewView(plan: $0) }
-        .onAppear { if !service.isRunning { service.clearError() } }
+        .onAppear {
+            if !service.isRunning { service.clearError() }
+            // "Editar com IA": a conversa nasce com o escopo da ficha/dieta já no compositor.
+            if let draft = handoff?.takeDraft(for: conversation.id) {
+                text = draft
+                focused = true
+            }
+        }
         .onChange(of: isRunningHere) { old, new in
             guard old, !new else { return }
             AccessibilityNotification.Announcement(completionAnnouncement).post()
@@ -85,6 +95,14 @@ struct CoachChatView: View {
         VStack(alignment: .leading, spacing: FJSpacing.m) {
             FJEmptyState("Como posso ajudar?", systemImage: "sparkles",
                          message: "Toque numa sugestão ou escreva seu pedido.", area: .coach)
+            if let importCoordinator {
+                FJQuickReplyChips([
+                    FJQuickReply(String(localized: "Importar um treino"), id: "import-program", systemImage: "dumbbell"),
+                    FJQuickReply(String(localized: "Importar uma dieta"), id: "import-nutrition", systemImage: "fork.knife"),
+                ]) { reply in
+                    importCoordinator.start(kind: reply.id == "import-program" ? .program : .nutrition)
+                }
+            }
             ForEach(CoachSuggestions.prompts, id: \.self) { prompt in
                 Button {
                     send(prompt)
@@ -207,6 +225,7 @@ private struct MessageRow: View {
     let isActive: Bool
     let canRetry: Bool
     let onRetry: () -> Void
+    let onAdjust: (String) -> Void
     let onOpenProgram: (TrainingProgram) -> Void
     let onOpenPlan: (NutritionPlan) -> Void
 
@@ -217,6 +236,15 @@ private struct MessageRow: View {
     }
 
     var body: some View {
+        if message.role == .tool, let id = message.toolCallID, CopilotChangeStore.shared.record(for: id) != nil {
+            CopilotChangeCardView(changeID: id, onAdjust: onAdjust)
+        } else {
+            row
+        }
+    }
+
+    @ViewBuilder
+    private var row: some View {
         switch display {
         case .proposal:
             if let proposal = message.proposal {

@@ -10,6 +10,7 @@ import SwiftUI
 struct CoachRootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(CoachHandoff.self) private var handoff: CoachHandoff?
     /// Conexão com o Saúde para `get_health_summary` (ausente em previews: cai no padrão do sistema).
     @Environment(HealthAuthorization.self) private var healthAuthorization: HealthAuthorization?
 
@@ -55,6 +56,7 @@ struct CoachRootView: View {
         .tint(FJColor.coach)
         .onAppear(perform: refresh)
         .onChange(of: path) { refresh() }
+        .onChange(of: handoff?.request) { consumeHandoff() }
         .onChange(of: scenePhase) { if scenePhase == .active { refresh() } }
         .onReceive(NotificationCenter.default.publisher(for: .fjDataWillReset)) { _ in
             // Substituir/apagar tudo: nenhuma resposta em curso pode escrever em conversas que vão sumir.
@@ -74,6 +76,15 @@ struct CoachRootView: View {
                                   readiness: ProviderReadiness.evaluate(settings, hasAPIKey: hasKey))
     }
 
+    /// "Editar com IA" (ficha/dieta): abre uma conversa nova com o escopo no compositor, quando o Coach está pronto.
+    private func consumeHandoff() {
+        guard gate == .ready, let service, let request = handoff?.request else { return }
+        handoff?.clearRequest()
+        guard let conversation = try? service.createConversation(title: request.title) else { return }
+        handoff?.setDraft(request.draft, for: conversation.id)
+        path = [conversation]
+    }
+
     private func refresh() {
         let next = Self.currentGate(secrets: secrets, defaults: defaults)
         if next != gate { gate = next }
@@ -90,6 +101,7 @@ struct CoachRootView: View {
                     try ProviderFactory.makeChat(settingsStore: ProviderSettingsStore(defaults: defaults), secrets: secrets)
                 })
         }
+        consumeHandoff()
     }
 }
 

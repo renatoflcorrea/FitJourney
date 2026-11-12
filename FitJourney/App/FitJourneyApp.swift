@@ -23,6 +23,9 @@ struct FitJourneyApp: App {
     private let categoryRegistry: NotificationCategoryRegistry
     /// Exportar/importar/apagar vivem aqui: sobrevivem ao reset da árvore e mostram o resultado depois dele.
     @State private var dataTransfer: DataTransferModel
+    /// Copiloto de IA: importações em andamento (a folha única) e a ponte "Editar com IA" → conversa do Coach.
+    @State private var importCoordinator: ImportCoordinator
+    @State private var coachHandoff = CoachHandoff()
     /// Atividade ao Vivo + Dynamic Island da sessão (P6.4). Também atende os botões +15 s/Pular
     /// (`LiveActivityIntentRouter`), inclusive quando o sistema acorda o app só para o intent.
     private let liveActivity: LiveActivityController
@@ -66,6 +69,7 @@ struct FitJourneyApp: App {
         liveActivity = live
         let authorization = HealthAuthorization(store: HealthKitStore.shared)
         _dataTransfer = State(initialValue: DataTransferModel(container: container))
+        _importCoordinator = State(initialValue: ImportCoordinator(context: container.mainContext))
         _sessionEngine = State(initialValue: engine)
         _sessionCoordinator = State(initialValue: SessionCoordinator(engine: engine))
         _healthAuthorization = State(initialValue: authorization)
@@ -96,6 +100,8 @@ struct FitJourneyApp: App {
                 .environment(healthController)
                 .environment(watchLink)
                 .environment(dataTransfer)
+                .environment(importCoordinator)
+                .environment(coachHandoff)
                 .environment(\.mealReminderScheduler, mealReminders)
                 .task {
                     await categoryRegistry.apply()
