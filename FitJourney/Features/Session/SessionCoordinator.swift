@@ -201,8 +201,14 @@ final class SessionCoordinator {
         return alert
     }
 
-    private func canStartRestAlert(for end: Date) -> Bool {
+    /// O próximo fim de descanso abre o alerta insistente (preferência ligada e tela da sessão à vista). O painel
+    /// de descanso da doca usa isto para não vibrar nem anunciar por conta própria: um aviso só, o do alerta.
+    var restAlertTakesOver: Bool {
         RestPreference.alertRepeatEnabled(defaults) && isPresented && restAlertHostReady
+    }
+
+    private func canStartRestAlert(for end: Date) -> Bool {
+        restAlertTakesOver
             && engine.snapshot?.status == .active && engine.snapshot?.restEndsAt == end
     }
 
@@ -217,8 +223,8 @@ final class SessionCoordinator {
         restAlertTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(interval))
-                guard !Task.isCancelled else { return }
-                self?.restAlertTick()
+                guard !Task.isCancelled, let self else { return } // coordenador liberado: o laço acaba
+                self.restAlertTick()
             }
         }
     }

@@ -13,6 +13,7 @@ struct FJRestTimerView: View {
     private let nextUp: String?
     private let onAdjust: (TimeInterval) -> Void
     private let onSkip: () -> Void
+    private let signalsFinish: Bool
     private let ticks: [Date]
 
     @ScaledMetric(relativeTo: .largeTitle) private var timerSize: CGFloat = 60
@@ -22,18 +23,21 @@ struct FJRestTimerView: View {
     ///   - total: duração total atual do descanso (para a barra).
     ///   - nextUp: o que vem a seguir ("Série 3 de 4 · 32,5 kg · alvo 8–12").
     ///   - onAdjust: recebe +15 ou −15 segundos.
+    ///   - signalsFinish: vibra e anuncia ao zerar; `false` quando outro aviso assume (alerta insistente).
     init(
         endsAt: Date,
         total: TimeInterval,
         nextUp: String? = nil,
         onAdjust: @escaping (TimeInterval) -> Void,
-        onSkip: @escaping () -> Void
+        onSkip: @escaping () -> Void,
+        signalsFinish: Bool = true
     ) {
         self.endsAt = endsAt
         self.total = total
         self.nextUp = nextUp
         self.onAdjust = onAdjust
         self.onSkip = onSkip
+        self.signalsFinish = signalsFinish
         self.ticks = Self.ticks(until: endsAt, from: .now)
     }
 
@@ -94,9 +98,9 @@ struct FJRestTimerView: View {
         .padding(FJSpacing.l)
         .frame(maxWidth: .infinity)
         .fjGlass(in: FJRadius.shape(FJRadius.panel))
-        .fjHaptic(.timerFinished, trigger: finished) { _, isFinished in isFinished }
+        .fjHaptic(.timerFinished, trigger: finished) { _, isFinished in isFinished && signalsFinish }
         .onChange(of: finished) { _, isFinished in
-            if isFinished {
+            if isFinished, signalsFinish {
                 AccessibilityNotification.Announcement(String(localized: "Descanso concluído")).post()
             }
         }

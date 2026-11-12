@@ -12,6 +12,7 @@ struct FJRestAlertCard: View {
     private let nextUp: String?
     private let isRinging: Bool
     private let onStart: () -> Void
+    private let onStop: (() -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -23,12 +24,16 @@ struct FJRestAlertCard: View {
     ///   - exerciseName: exercício da próxima série.
     ///   - nextUp: a próxima série ("Série 3 de 4 · 26 kg · alvo 8–12").
     ///   - isRinging: a vibração em laço ainda toca (pulsa e mostra a dica de toque).
-    init(endedAt: Date, exerciseName: String? = nil, nextUp: String? = nil, isRinging: Bool, onStart: @escaping () -> Void) {
+    ///   - onStop: parar o alerta sem começar a série — vira a ação "Parar vibração" do VoiceOver no cabeçalho
+    ///     e na próxima série (os elementos em que o foco pousa).
+    init(endedAt: Date, exerciseName: String? = nil, nextUp: String? = nil, isRinging: Bool,
+         onStart: @escaping () -> Void, onStop: (() -> Void)? = nil) {
         self.endedAt = endedAt
         self.exerciseName = exerciseName
         self.nextUp = nextUp
         self.isRinging = isRinging
         self.onStart = onStart
+        self.onStop = onStop
     }
 
     private var animates: Bool { isRinging && !reduceMotion }
@@ -69,6 +74,7 @@ struct FJRestAlertCard: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityElement(children: .combine)
+                .modifier(StopAction(onStop: onStop))
             }
             Button(action: onStart) {
                 Text("Começar série")
@@ -121,6 +127,20 @@ struct FJRestAlertCard: View {
         .accessibilityLabel(Text("Descanso concluído"))
         .accessibilityValue(Text("há \(FJFormat.spokenDuration(seconds))"))
         .accessibilityAddTraits([.isHeader, .updatesFrequently])
+        .modifier(StopAction(onStop: onStop))
+    }
+
+    /// Ação "Parar vibração" no próprio elemento focável (ações em contêiner não aparecem no rotor).
+    private struct StopAction: ViewModifier {
+        let onStop: (() -> Void)?
+
+        func body(content: Content) -> some View {
+            if let onStop {
+                content.accessibilityAction(named: Text("Parar vibração"), onStop)
+            } else {
+                content
+            }
+        }
     }
 
     private var title: some View {

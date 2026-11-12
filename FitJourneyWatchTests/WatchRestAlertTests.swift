@@ -94,29 +94,72 @@ struct WatchRestAlertTests {
         #expect(commands(r.transport).count == sent)
     }
 
-    @Test func loopStopsAtTheCeilingAndLeavesTheScreen() throws {
+    @Test func ceilingClosesTheAlertAndReturnsToTheSessionWithANotice() throws {
         let r = try resting()
         r.model.restDidEnd(at: r.end)
         r.clock.now = r.end.addingTimeInterval(59)
         r.model.restAlertTick()
         #expect(alertEvents(r.haptics).count == 2)
         #expect(r.model.restAlert?.isRinging == true)
+        #expect(r.model.notice == nil)
         r.clock.now = r.end.addingTimeInterval(60)
         r.model.restAlertTick()
         #expect(alertEvents(r.haptics).count == 2)
-        #expect(r.model.restAlert == WatchRestAlert(endedAt: r.end, isRinging: false))
+        #expect(r.model.restAlert == nil) // volta à sessão normal
+        #expect(r.model.notice?.text == "Descanso concluído")
+        #expect(commands(r.transport).count == 1) // o teto não envia comando
         r.clock.now = r.end.addingTimeInterval(70)
         r.model.restAlertTick()
         #expect(alertEvents(r.haptics).count == 2)
     }
 
-    @Test func lateTimerBeyondTheCeilingWarnsOnceWithoutLoop() throws {
+    @Test func silencedAlertStaysPastTheCeiling() throws {
+        let r = try resting()
+        r.model.restDidEnd(at: r.end)
+        r.model.silenceRestAlert()
+        r.clock.now = r.end.addingTimeInterval(120)
+        r.model.restAlertTick()
+        #expect(r.model.restAlert == WatchRestAlert(endedAt: r.end, isRinging: false))
+    }
+
+    @Test func lateTimerBeyondTheCeilingWarnsOnceWithoutScreenOrLoop() throws {
         let r = try resting()
         r.clock.now = r.end.addingTimeInterval(90)
         r.model.restDidEnd(at: r.end)
-        #expect(r.model.restAlert == WatchRestAlert(endedAt: r.end, isRinging: false))
+        #expect(r.model.restAlert == nil)
+        #expect(r.model.notice?.text == "Descanso concluído")
         r.model.restAlertTick()
         #expect(alertEvents(r.haptics) == [.restEnded])
+    }
+
+    @Test func staleSessionNeverOpensOrKeepsTheAlert() throws {
+        // Temporizador que dispara com a sessão já "em aberto" (> 4 h): sem tela nem laço.
+        var r = try resting()
+        r.clock.now = r.end.addingTimeInterval(5 * 3600)
+        #expect(r.model.staleSessionSince != nil)
+        r.model.restAlertCeiling = 10 * 3600 // isola a regra do treino esquecido da regra do teto
+        r.model.restDidEnd(at: r.end)
+        #expect(r.model.restAlert == nil)
+        r.model.restAlertTick()
+        #expect(alertEvents(r.haptics) == [.restEnded])
+
+        // Alerta aberto e a sessão vira "em aberto": o laço para e o alerta fecha (passo do laço ou tique de 1 s).
+        r = try resting()
+        r.model.restAlertCeiling = 10 * 3600
+        r.model.restDidEnd(at: r.end)
+        #expect(r.model.restAlert?.isRinging == true)
+        r.clock.now = r.end.addingTimeInterval(5 * 3600)
+        r.model.restAlertTick()
+        #expect(r.model.restAlert == nil)
+        #expect(alertEvents(r.haptics) == [.restEnded])
+
+        r = try resting()
+        r.model.restAlertCeiling = 10 * 3600
+        r.model.restDidEnd(at: r.end)
+        r.model.silenceRestAlert()
+        r.clock.now = r.end.addingTimeInterval(5 * 3600)
+        r.model.retryStalePending()
+        #expect(r.model.restAlert == nil)
     }
 
     @Test func preferenceOffKeepsTheSingleVibration() throws {

@@ -75,7 +75,6 @@ struct RestAlertView: View {
         .onTapGesture { model.silenceRestAlert() }
         .accessibilityElement(children: .contain)
         .accessibilityAction(.magicTap) { model.silenceRestAlert() }
-        .accessibilityAction(named: Text("Parar vibração")) { model.silenceRestAlert() }
         .onAppear {
             AccessibilityNotification.Announcement(WatchRestAlertText.announcement(model.display)).post()
             pulsing = true
@@ -109,6 +108,7 @@ struct RestAlertView: View {
             .accessibilityLabel("Descanso concluído")
             .accessibilityValue(spokenOvertime(at: context.date))
             .accessibilityAddTraits(.updatesFrequently)
+            .accessibilityAction(named: Text("Parar vibração")) { model.silenceRestAlert() }
             .accessibilitySortPriority(3)
         }
         .padding(.top, isLargeText ? 0 : 2)
@@ -139,6 +139,7 @@ struct RestAlertView: View {
         .multilineTextAlignment(.center)
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
+        .accessibilityAction(named: Text("Parar vibração")) { model.silenceRestAlert() }
         .accessibilitySortPriority(2)
     }
 

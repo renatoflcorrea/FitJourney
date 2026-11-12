@@ -120,6 +120,47 @@ struct SessionRestAlertTests {
         #expect(r.coordinator.restFinishedTick == 1)
     }
 
+    @Test func restPanelStaysQuietOnlyWhenTheAlertTakesOver() throws {
+        // Alerta a caminho: o painel de descanso não vibra nem anuncia (um aviso só).
+        var r = try resting()
+        #expect(r.coordinator.restAlertTakesOver)
+        r.coordinator.restPanelVisible = true
+        r.coordinator.handle(.restFinished(at: r.end))
+        #expect(r.vibration.count == 1)
+        #expect(r.coordinator.restFinishedTick == 0)
+        // Preferência desligada, folha por cima ou tela minimizada: o painel avisa como antes.
+        r = try resting(alertRepeat: false)
+        #expect(!r.coordinator.restAlertTakesOver)
+        r = try resting(hostReady: false)
+        #expect(!r.coordinator.restAlertTakesOver)
+        r = try resting()
+        r.coordinator.minimize()
+        #expect(!r.coordinator.restAlertTakesOver)
+    }
+
+    @Test func loopEndsWhenTheCoordinatorIsReleased() async throws {
+        let f = try EngineFixture()
+        let vibration = RecordingAlertVibration()
+        let clock = f.clock
+        var coordinator: SessionCoordinator? = SessionCoordinator(
+            engine: f.engine, defaults: UserDefaults(suiteName: "rest-alert-release-\(UUID().uuidString)")!,
+            vibration: vibration, now: { clock.now })
+        coordinator?.restAlertInterval = 0.02
+        coordinator?.start(routine: try f.makeRoutine())
+        coordinator?.restAlertHostReady = true
+        let setID = try #require(f.engine.snapshot?.currentSetID)
+        coordinator?.send(.completeSet(setID: setID, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil))
+        let end = try #require(f.engine.snapshot?.restEndsAt)
+        clock.now = end
+        coordinator?.handle(.restFinished(at: end))
+        weak let released = coordinator
+        coordinator = nil
+        #expect(released == nil) // o laço não segura o coordenador
+        let count = vibration.count
+        try await Task.sleep(for: .milliseconds(120))
+        #expect(vibration.count == count)
+    }
+
     @Test func preferenceDefaultsOn() {
         let defaults = UserDefaults(suiteName: "rest-alert-pref-\(UUID().uuidString)")!
         #expect(RestPreference.alertRepeatEnabled(defaults))

@@ -174,9 +174,8 @@ struct SessionView: View {
                     .contentShape(Rectangle())
                     .gesture(DragGesture(minimumDistance: 0).onChanged { _ in coordinator.dismissRestAlert() })
                     .accessibilityHidden(true)
-                FJRestAlertCard(endedAt: alert.endedAt, exerciseName: exerciseName, nextUp: nextUp, isRinging: alert.isRinging) {
-                    coordinator.startSetAfterRest()
-                }
+                FJRestAlertCard(endedAt: alert.endedAt, exerciseName: exerciseName, nextUp: nextUp, isRinging: alert.isRinging,
+                                onStart: { coordinator.startSetAfterRest() }, onStop: { coordinator.dismissRestAlert() })
                 .contentShape(FJRadius.shape(FJRadius.panel))
                 .onTapGesture { coordinator.dismissRestAlert() }
                 .padding(.horizontal, FJSpacing.screenMargin)
@@ -185,7 +184,6 @@ struct SessionView: View {
                 .accessibilityAddTraits(.isModal)
                 .accessibilityAction(.escape) { coordinator.dismissRestAlert() }
                 .accessibilityAction(.magicTap) { coordinator.dismissRestAlert() }
-                .accessibilityAction(named: Text("Parar vibração")) { coordinator.dismissRestAlert() }
                 .onAppear {
                     AccessibilityNotification.Announcement(
                         FJRestAlertCard.announcement(exerciseName: exerciseName, nextUp: nextUp)).post()

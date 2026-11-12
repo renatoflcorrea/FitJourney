@@ -77,7 +77,8 @@ struct WatchSessionSummary: Equatable, Sendable {
 /// `fj.restAlertRepeat` do iPhone; ausente = ligado) o fim do descanso abre a tela "Descanso concluído" e toca
 /// `WatchRestAlertPattern` em laço até `silenceRestAlert()` (qualquer toque/Coroa — não envia comando),
 /// `startSetAfterRest()` ("Começar série": fecha a tela e dispensa o descanso vencido com `skipRest`) ou o teto
-/// de 60 s contado do fim do descanso (o laço para, a tela fica). O alerta some sozinho se o descanso dele deixar
+/// de 60 s contado do fim do descanso (o alerta fecha e a sessão volta com o aviso "Descanso concluído"). Sessão
+/// esquecida (`staleSessionSince`) nunca abre nem mantém o alerta. O alerta some sozinho se o descanso dele deixar
 /// de ser o da sessão (pulado/ajustado/nova série em outro aparelho, pausa, fim). Desligado: uma vibração e
 /// "Descanso concluído" por 2 s (`restFinishedAt`). O laço roda enquanto o app roda: com o pulso abaixado isso
 /// exige a `HKWorkoutSession` do relógio (sessão gravada aqui); sem ela o watchOS suspende o app e o laço só
@@ -276,6 +277,8 @@ final class WatchSessionModel {
     /// Reenvia comandos sem resposta há `resendInterval` (resposta perdida), envia `adjustLoad` coalescidos vencidos
     /// e abandona pedido de snapshot sem retorno.
     func retryStalePending() {
+        // Alerta de descanso nunca fica por baixo da tela "Treino em aberto".
+        if restAlert != nil, staleSessionSince != nil { clearRestAlert() }
         if pending.contains(where: { $0.lastSentAt == nil && ($0.holdUntil ?? .distantFuture) <= now }) { flushCoalescedCommands() }
         guard isPhoneReachable else { return }
         var resent = false
@@ -814,23 +817,33 @@ final class WatchSessionModel {
         }
         restFinishedAt = nil
         restAlertPulses = 0
-        // Temporizador atrasado além do teto (app suspenso com o pulso abaixado): avisa uma vez, sem laço.
-        let ringing = now.timeIntervalSince(end) < restAlertCeiling
-        restAlert = WatchRestAlert(endedAt: end, isRinging: ringing)
+        // Treino esquecido (a tela "Treino em aberto" tem prioridade e não daria como parar o laço) ou
+        // temporizador atrasado além do teto (app suspenso com o pulso abaixado): avisa uma vez, sem tela nem laço.
+        guard staleSessionSince == nil, now.timeIntervalSince(end) < restAlertCeiling else {
+            playRestAlertPulse()
+            show(notice: String(localized: "Descanso concluído"))
+            return
+        }
+        restAlert = WatchRestAlert(endedAt: end, isRinging: true)
         playRestAlertPulse()
-        guard ringing else { return }
         restAlertLoop.start(every: restAlertInterval) { [weak self] in self?.restAlertTick() }
     }
 
     /// Um passo do laço (o temporizador chama a cada `restAlertInterval`; os testes chamam direto): toca o
-    /// próximo pulso ou para no teto, deixando a tela.
+    /// próximo pulso; no teto (ou se a sessão virou "treino em aberto") fecha o alerta e volta à sessão com um
+    /// aviso discreto.
     func restAlertTick() {
         guard let alert = restAlert, alert.isRinging else {
             restAlertLoop.cancel()
             return
         }
+        guard staleSessionSince == nil else {
+            clearRestAlert()
+            return
+        }
         guard now.timeIntervalSince(alert.endedAt) < restAlertCeiling else {
-            silenceRestAlert()
+            clearRestAlert()
+            show(notice: String(localized: "Descanso concluído"))
             return
         }
         playRestAlertPulse()
@@ -841,7 +854,7 @@ final class WatchSessionModel {
         restAlertPulses += 1
     }
 
-    /// Qualquer interação (toque na tela, Coroa, ação do VoiceOver) ou o teto: o laço para e a tela fica.
+    /// Qualquer interação (toque na tela, Coroa, ação do VoiceOver): o laço para e a tela fica.
     /// Não envia comando.
     func silenceRestAlert() {
         restAlertLoop.cancel()
