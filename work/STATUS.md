@@ -59,7 +59,7 @@
 - Pedidos de acompanhamento: índice por messageID no CopilotChangeStore, canUndo no FJChangeCard, API de edição no ImportSession; Q-RA1/Q-RA2 e Q-CP* em DESIGN §10.
 
 ## Fila
-- P6.8 (em andamento) Idioma do app (Sistema/Português/English em Ajustes, reiniciar para aplicar; relógio segue o iPhone) + nomes de exercícios harmonizados (iPhone envia nomes já localizados no digest/snapshot; também VoiceOver da sessão e Coach). Disparar após P2.8 (mesmos arquivos: WatchLinkMapping, Ajustes).
+- P6.8 INTEGRADO (9cf642e) e instalado: Idioma do app (Sistema/Português/English em Ajustes, reiniciar para aplicar; relógio segue o iPhone) + nomes de exercícios harmonizados (iPhone envia nomes já localizados no digest/snapshot; também VoiceOver da sessão e Coach). Disparar após P2.8 (mesmos arquivos: WatchLinkMapping, Ajustes).
 
 ## Próximo
 - Nomes de exercícios em en também no VoiceOver da sessão, no Coach e no relógio (hoje só nas telas).
