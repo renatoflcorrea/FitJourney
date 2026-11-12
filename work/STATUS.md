@@ -1,6 +1,6 @@
 # Status
 
-**Data**: 2026-11-11 · **Ciclo**: 0 (fundamentos)
+**Data**: 2026-11-12 · **Ciclo**: 7 concluído (pedidos do teste em aparelho)
 
 ## Feito
 - SPEC.md v0.1, docs/PLANO.md, docs/ia.md (provedores portados do fireplaice), AGENTS.md/CLAUDE.md, agentes em `.claude/agents/` (supervisor Opus, design Fable, núcleo Opus, telas/revisão/QA Sonnet).
@@ -46,21 +46,16 @@
 - `docs/CODEBASE_MAP.md` gerado pelo Cartographer.
 - P6.7 pendências de acessibilidade integradas (`331b15f`); P5.6 `get_health_summary` real integrado (`f958e9b`). **Plano de implementação concluído.**
 
-## Em andamento (pedidos do teste em aparelho, 11/11)
-- C7.1 design do copiloto (Fable) ∥ C7.2 núcleo do copiloto (Opus) → C7.3 telas (Sonnet).
-- P2.8 memória de carga (sem "0 kg"; última carga usada; primeira carga vira atual) + iniciar no Apple Watch automaticamente (`startWatchApp`) (Opus).
-- Alerta insistente de fim de descanso no relógio e no iPhone (Fable, design + implementação).
+## Ciclo 7 — pedidos do teste em aparelho (11–12/11), tudo integrado e instalado
+- C7.1 design do copiloto (fc93e2f), C7.2 núcleo (f884184), C7.3 telas (c2cfdc8): "Importar com IA" (PDF/imagem/texto, várias fichas, entrevista, revisão) e cartões de alteração Aplicar/Desfazer no Coach. SPEC §7A, docs/ia.md.
+- P2.8 (68e015f): memória de carga (sem "0 kg"; última carga usada; 1ª definição vira atual; propaga às séries seguintes) + `startWatchApp` (abre o FitJourney no relógio ao iniciar no iPhone). SPEC §3.4.
+- Alerta insistente de fim de descanso (09c5f42): vibra a cada 1,8 s até tocar (teto 60 s), relógio e iPhone; "Começar série". DESIGN decisão 34, frames 33/34.
+- P6.8 (9cf642e + b985bac): idioma do app (Ajustes › Geral › Idioma: Sistema/Português/English, "Reiniciar agora" escondido durante treino); relógio segue o iPhone; nomes de exercícios harmonizados (iPhone, relógio, VoiceOver, Live Activity, Coach).
+- Último estado (ecac268): testes iOS e watch verdes; `make device TEAM=<TEAM> DEVICE_ID=<iphone-udid> WATCH_ID=<watch-udid>` instalou no iPhone 18 Pro Max e no Apple Watch Ultra 2.
 
-## Integrado em main (11/11 noite)
-- C7.1 design copiloto (fc93e2f), P2.8 memória de carga + auto-start Watch (68e015f), C7.2 núcleo copiloto + correções (f884184).
-
-## Integrado e instalado (11/11 22h)
-- Alerta de descanso (09c5f42) e C7.3 (c2cfdc8) integrados; build/test iOS e watch verdes; instalado no iPhone 18 Pro Max e Apple Watch Ultra 2.
-- Pedidos de acompanhamento: índice por messageID no CopilotChangeStore, canUndo no FJChangeCard, API de edição no ImportSession; Q-RA1/Q-RA2 e Q-CP* em DESIGN §10.
-
-## Fila
-- P6.8 INTEGRADO (9cf642e) e instalado: Idioma do app (Sistema/Português/English em Ajustes, reiniciar para aplicar; relógio segue o iPhone) + nomes de exercícios harmonizados (iPhone envia nomes já localizados no digest/snapshot; também VoiceOver da sessão e Coach). Disparar após P2.8 (mesmos arquivos: WatchLinkMapping, Ajustes).
-
-## Próximo
-- Nomes de exercícios em en também no VoiceOver da sessão, no Coach e no relógio (hoje só nas telas).
-- **Usuário**: teste em iPhone + Apple Watch (HealthKit, WatchConnectivity, espelhamento, Live Activity, notificações) via `make device TEAM=<TEAM> DEVICE_ID=<udid>`; chave de API ou login ChatGPT para o Coach.
+## Retomar aqui (nova sessão)
+- **Nenhum pedido do usuário pendente.** Aguardando retorno dos testes em aparelho.
+- Não verificado em aparelho: `startWatchApp`/adoção da gravação remota; intensidade da vibração e alerta com pulso abaixado; chamadas reais aos provedores no copiloto; reinício por `exit(0)` e troca de `AppleLanguages` no relógio.
+- Opcionais: índice por `messageID` no `CopilotChangeStore`; `canUndo` no `FJChangeCard`; API de edição inline no `ImportSession`; perguntas de design Q-RA1 (som do alerta), Q-RA2 (pulso abaixado sem gravação), Q-CP1..7 (padrões adotados) em DESIGN §10.
+- Manutenção: rodar `/cartographer:cartographer` (mapa atualizado só parcialmente pelos agentes desde P6.7); republicar o protótipo (artifact KVLeypFG56VoBAsVn2dqqh está na v4, sem os frames 33/34 do alerta); limpar worktrees antigos em `.claude/worktrees/` (todos já integrados).
+- Processo: worktree + simulador próprio por agente (nunca `shutdown all`); review-code antes de integrar; conflitos em `.xcstrings` por união de chaves (script de merge do supervisor estava no scratchpad da sessão anterior — recriar se preciso); supervisor usa o simulador `FJ-main`.
