@@ -26,7 +26,9 @@ enum CopilotPrompt {
         opções; use a interpretação mais provável no item e marque confidence medium ou low.
         - Treino: "3x12" vira 3 séries com repTarget fixed 12; "3x8-12" vira 3 séries range 8–12; carga \
         ilegível ou fora de kg/lb (ex.: "placa 7") vai em loadAsWritten com load null; aquecimento como kind warmup. \
-        Use catalogKey só quando tiver certeza, a partir da lista de catálogo enviada.
+        Use catalogKey só quando tiver certeza, a partir da lista de catálogo enviada. Exercício que não está no \
+        catálogo não é dúvida: deixe catalogKey null, name como está escrito (ou o nome claro do exercício) e não \
+        registre ambiguity por isso — o app pergunta ao usuário.
         - Dieta: valores nutricionais só se escritos; horário em HH:MM; quantidade numérica com a unidade mais \
         próxima (grams, milliliters, unit, tablespoon, cup, slice, serving).
         - Responda chamando a ferramenta \(submitExtractionTool) uma única vez com o objeto completo. Nada de texto fora dela.
@@ -71,9 +73,19 @@ enum CopilotPrompt {
         """
     }
 
-    /// Revisão com as respostas do usuário às dúvidas (sem reenviar os arquivos).
-    static func reviseMessage(json: String, answers: [(question: String, answer: String)]) -> String {
-        """
+    /// Exercício que o usuário confirmou na entrevista (catálogo, biblioteca ou novo com o nome dele).
+    struct ConfirmedExercise: Sendable, Hashable {
+        var asWritten: String
+        var name: String
+        /// `nil` = exercício novo (ou da biblioteca do usuário, fora do catálogo).
+        var catalogKey: String?
+    }
+
+    /// Revisão com as respostas do usuário às dúvidas (sem reenviar os arquivos). `confirmed` são os exercícios que o
+    /// usuário já decidiu: a IA deve mantê-los (o app reaplica as decisões de qualquer forma).
+    static func reviseMessage(json: String, answers: [(question: String, answer: String)],
+                              confirmed: [ConfirmedExercise] = []) -> String {
+        var text = """
         Esta é a extração atual (já com as correções do usuário):
         \(String(json.prefix(60_000)))
 
@@ -81,8 +93,22 @@ enum CopilotPrompt {
         \(answers.map { "- \($0.question) → \($0.answer)" }.joined(separator: "\n"))
 
         Aplique as respostas (ajuste séries, quantidades, nomes ou o que for preciso), esvazie ambiguities das \
-        dúvidas resolvidas e chame \(submitExtractionTool) com o objeto completo.
+        dúvidas resolvidas e chame \(submitExtractionTool) com o objeto completo. Não altere asWritten e não \
+        reabra dúvidas já respondidas.
         """
+        if !confirmed.isEmpty {
+            let list = confirmed.prefix(100).map { item in
+                "- \"\(item.asWritten)\" → name \"\(item.name)\", catalogKey \(item.catalogKey.map { "\"\($0)\"" } ?? "null")"
+            }.joined(separator: "\n")
+            text += """
+
+
+            Exercícios já confirmados pelo usuário (mantenha name e catalogKey exatamente assim e não crie dúvidas \
+            sobre eles; exercício novo fora do catálogo é intencional):
+            \(list)
+            """
+        }
+        return text
     }
 
     /// Seção do Coach para o copiloto de edição (SPEC §7A.2), anexada a `CoachPrompt.system`.

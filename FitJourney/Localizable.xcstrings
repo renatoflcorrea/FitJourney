@@ -5448,6 +5448,16 @@
         }
       }
     },
+    "Criar exercício" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create exercise"
+          }
+        }
+      }
+    },
     "Criar exercício \"%@\"" : {
       "localizations" : {
         "en" : {
@@ -7701,6 +7711,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Exercise in use"
+          }
+        }
+      }
+    },
+    "Exercício novo: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New exercise: %@"
           }
         }
       }
@@ -11074,6 +11094,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Routine name (e.g. A — Chest and triceps)"
+          }
+        }
+      }
+    },
+    "Nome do exercício" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exercise name"
+          }
+        }
+      }
+    },
+    "Nome do exercício novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New exercise name"
           }
         }
       }

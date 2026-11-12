@@ -228,6 +228,11 @@ private struct QuestionControlView: View {
     @State private var unit = ""
     @State private var text = ""
     @State private var showPicker = false
+    @State private var isNamingNew = false
+    @State private var newName = ""
+    @FocusState private var newNameFocused: Bool
+
+    private var trimmedNewName: String { newName.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
         let control = ImportQuestionControl.make(for: question)
@@ -303,14 +308,53 @@ private struct QuestionControlView: View {
             }
             FJSecondaryButton("Buscar no catálogo", systemImage: "magnifyingglass") { showPicker = true }
             if allowsNew {
-                FJSecondaryButton("Criar como novo", systemImage: "plus") { onAnswer(.exercise(ImportQuestion.newExerciseOptionID)) }
+                if isNamingNew {
+                    newExerciseField
+                } else {
+                    FJSecondaryButton("Criar como novo", systemImage: "plus") {
+                        newName = question.suggestedText ?? ""
+                        isNamingNew = true
+                        newNameFocused = true
+                    }
+                }
             }
         }
+        .fjAnimation(FJMotion.structure, value: isNamingNew)
         .sheet(isPresented: $showPicker) {
             ExercisePicker(allowsMultiple: false) { picked in
                 guard let exercise = picked.first else { return }
                 onAnswer(.exercise(exercise.catalogKey ?? "exercise:\(exercise.id.uuidString)"))
             }
         }
+    }
+
+    /// "Criar como novo": nome editável, já com o nome lido do arquivo; Confirmar envia `.text(nome)`.
+    private var newExerciseField: some View {
+        VStack(alignment: .leading, spacing: FJSpacing.s) {
+            Text("Nome do exercício novo")
+                .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                .accessibilityHidden(true)
+            TextField("Nome do exercício", text: $newName)
+                .focused($newNameFocused)
+                .padding(.horizontal, FJSpacing.m)
+                .frame(minHeight: FJSize.minTap)
+                .background(FJColor.surface, in: FJRadius.shape(FJRadius.field))
+                .textInputAutocapitalization(.sentences)
+                .submitLabel(.done)
+                .onSubmit { confirmNewExercise() }
+                .accessibilityLabel(Text("Nome do exercício novo"))
+            FJPrimaryButton("Criar exercício", systemImage: "checkmark", area: .coach) { confirmNewExercise() }
+                .disabled(trimmedNewName.isEmpty)
+            FJSecondaryButton("Cancelar", systemImage: "xmark") {
+                isNamingNew = false
+                newNameFocused = false
+            }
+        }
+    }
+
+    private func confirmNewExercise() {
+        guard !trimmedNewName.isEmpty else { return }
+        newNameFocused = false
+        onAnswer(.text(trimmedNewName))
     }
 }

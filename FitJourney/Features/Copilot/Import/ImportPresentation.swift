@@ -178,6 +178,7 @@ enum ImportAnswerSummary {
             if id == ImportQuestion.newExerciseOptionID { return String(localized: "Criar como exercício novo") }
             return options(of: question).first { $0.id == id }?.label ?? id
         case let .text(value):
+            if case .exercise = question.field { return String(localized: "Exercício novo: \(value)") }
             return value
         case .keep:
             return String(localized: "Mantido como li")
