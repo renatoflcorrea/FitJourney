@@ -95,7 +95,10 @@ enum SessionDisplay {
 @MainActor
 enum SessionSnapshotBuilder {
     static func make(session: WorkoutSession, store: SessionStore, status: SessionSnapshot.Status? = nil,
-                     revision: Int? = nil, restAlertRepeat: Bool = true) -> SessionSnapshot {
+                     revision: Int? = nil, restAlertRepeat: Bool = true,
+                     language: String = AppLanguageCode.current) -> SessionSnapshot {
+        let english = language == AppLanguageCode.english
+        func localized(_ name: String) -> String { ExerciseCatalogIndex.displayName(name, english: english) }
         let exercises = session.sortedExercises
         let prescriptions = (try? prescriptions(ids: Set(exercises.flatMap { ($0.sets ?? []).compactMap(\.prescriptionID) }),
                                                 context: store.context)) ?? [:]
@@ -133,7 +136,7 @@ enum SessionSnapshotBuilder {
                 SessionSnapshot.Exercise(
                     id: exercise.id,
                     exerciseID: exercise.exerciseID,
-                    name: exercise.name,
+                    name: localized(exercise.name),
                     measurementKind: WatchMeasurementKind(exercise.measurementKind),
                     status: WatchExerciseStatus(exercise.status),
                     groupID: exercise.groupID,
@@ -177,7 +180,7 @@ enum SessionSnapshotBuilder {
                 volumeKg: WorkoutMetrics.volumeKg(performed),
                 hasEstimatedVolume: WorkoutMetrics.hasEstimatedVolume(performed)),
             loadProposals: proposals.map {
-                SessionSnapshot.LoadProposal(prescriptionID: $0.prescriptionID, exerciseName: $0.exerciseName,
+                SessionSnapshot.LoadProposal(prescriptionID: $0.prescriptionID, exerciseName: localized($0.exerciseName),
                                              from: $0.from.map(WatchLoad.init), to: WatchLoad($0.to))
             })
         snapshot.focusedExerciseID = session.focusedExerciseID
@@ -187,6 +190,7 @@ enum SessionSnapshotBuilder {
         snapshot.notes = session.notes.isEmpty ? nil : session.notes
         snapshot.workoutType = workoutType.rawValue
         snapshot.restAlertRepeat = restAlertRepeat ? nil : false
+        snapshot.language = language
         return snapshot
     }
 
@@ -203,7 +207,9 @@ enum SessionSnapshotBuilder {
 enum ProgramDigestBuilder {
     /// Resumo do programa ativo (`nil` sem programa ativo) para o relógio fora de sessão.
     static func make(context: ModelContext, now: Date = .now, calendar: Calendar = .current,
-                     fallbackRest: Int = RestPreference.defaultSeconds()) throws -> ProgramDigest? {
+                     fallbackRest: Int = RestPreference.defaultSeconds(),
+                     language: String = AppLanguageCode.current) throws -> ProgramDigest? {
+        let english = language == AppLanguageCode.english
         let programs = ProgramStore(context: context)
         guard let program = try programs.activeProgram() else { return nil }
         let suggestion = try programs.todaySuggestion(for: program, on: now, calendar: calendar)
@@ -228,7 +234,7 @@ enum ProgramDigestBuilder {
                         return ProgramDigest.Exercise(
                             id: item.id,
                             exerciseID: item.exercise?.id,
-                            name: item.displayName,
+                            name: ExerciseCatalogIndex.displayName(item.displayName, english: english),
                             measurementKind: WatchMeasurementKind(kind),
                             groupID: item.groupID,
                             restSeconds: rest,
@@ -249,7 +255,8 @@ enum ProgramDigestBuilder {
                     },
                     workoutType: workoutType(of: routine).rawValue,
                     colorName: routine.colorName.isEmpty ? nil : routine.colorName)
-            })
+            },
+            language: language)
     }
 
     /// Mesma regra do Saúde no fim da sessão (`HealthWorkoutType.derive`), pela ficha.

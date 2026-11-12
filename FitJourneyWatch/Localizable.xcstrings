@@ -41,6 +41,16 @@
         }
       }
     },
+    "%@ · ~%lld min" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · ~%lld min"
+          }
+        }
+      }
+    },
     "%@, %@, %lld de %lld séries" : {
       "localizations" : {
         "en" : {
@@ -141,12 +151,42 @@
         }
       }
     },
-    "%@ · ~%lld min" : {
+    "%lld exercícios" : {
       "localizations" : {
         "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · ~%lld min"
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld exercise"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld exercises"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld exercício"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld exercícios"
+                }
+              }
+            }
           }
         }
       }
@@ -581,6 +621,16 @@
         }
       }
     },
+    "Definir carga" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set load"
+          }
+        }
+      }
+    },
     "Descanso" : {
       "localizations" : {
         "en" : {
@@ -921,26 +971,6 @@
         }
       }
     },
-    "há %lld min" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld min ago"
-          }
-        }
-      }
-    },
-    "há %lld segundos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld seconds ago"
-          }
-        }
-      }
-    },
     "HÁ MAIS TEMPO" : {
       "localizations" : {
         "en" : {
@@ -1181,26 +1211,6 @@
         }
       }
     },
-    "Para a vibração e volta à série" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stops the vibration and returns to the set"
-          }
-        }
-      }
-    },
-    "Parar vibração" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stop vibration"
-          }
-        }
-      }
-    },
     "PC" : {
       "localizations" : {
         "en" : {
@@ -1241,6 +1251,16 @@
         }
       }
     },
+    "Para a vibração e volta à série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops the vibration and returns to the set"
+          }
+        }
+      }
+    },
     "Para mostrar frequência cardíaca e calorias e gravar o treino." : {
       "localizations" : {
         "en" : {
@@ -1257,6 +1277,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stop"
+          }
+        }
+      }
+    },
+    "Parar vibração" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop vibration"
           }
         }
       }
@@ -1341,6 +1371,16 @@
         }
       }
     },
+    "Próxima série sem carga definida. Gire a Coroa para definir." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next set has no load. Turn the Crown to set it."
+          }
+        }
+      }
+    },
     "Próxima série, %@. Gire a Coroa para ajustar." : {
       "localizations" : {
         "en" : {
@@ -1357,6 +1397,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Next: %@"
+          }
+        }
+      }
+    },
+    "Próxima: definir carga" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next: set load"
           }
         }
       }
@@ -1477,6 +1527,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rehabilitation"
+          }
+        }
+      }
+    },
+    "Reabra o app para trocar o idioma" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reopen the app to switch language"
           }
         }
       }
@@ -2041,6 +2101,26 @@
         }
       }
     },
+    "há %lld min" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min ago"
+          }
+        }
+      }
+    },
+    "há %lld segundos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld seconds ago"
+          }
+        }
+      }
+    },
     "iPhone fora de alcance" : {
       "localizations" : {
         "en" : {
@@ -2177,76 +2257,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "· %@"
-          }
-        }
-      }
-    },
-    "%lld exercícios" : {
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld exercise"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld exercises"
-                }
-              }
-            }
-          }
-        },
-        "pt-BR" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld exercício"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld exercícios"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "Definir carga" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Set load"
-          }
-        }
-      }
-    },
-    "Próxima: definir carga" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next: set load"
-          }
-        }
-      }
-    },
-    "Próxima série sem carga definida. Gire a Coroa para definir." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next set has no load. Turn the Crown to set it."
           }
         }
       }

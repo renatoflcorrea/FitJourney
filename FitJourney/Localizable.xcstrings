@@ -5688,6 +5688,16 @@
         }
       }
     },
+    "Depois" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Later"
+          }
+        }
+      }
+    },
     "Desagrupar" : {
       "localizations" : {
         "en" : {
@@ -8631,6 +8641,16 @@
         }
       }
     },
+    "Geral" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "General"
+          }
+        }
+      }
+    },
     "Glúteos" : {
       "localizations" : {
         "en" : {
@@ -8987,6 +9007,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Age, goal, restrictions…"
+          }
+        }
+      }
+    },
+    "Idioma" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
+          }
+        }
+      }
+    },
+    "Idioma do app" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App language"
           }
         }
       }
@@ -11618,6 +11658,16 @@
         }
       }
     },
+    "O Apple Watch segue o idioma escolhido aqui (reabra o app do relógio para aplicar). Os nomes dos exercícios do catálogo aparecem no mesmo idioma no iPhone, no relógio, na Atividade ao Vivo e no Coach." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The Apple Watch follows the language chosen here (reopen the watch app to apply). Catalog exercise names appear in the same language on iPhone, Apple Watch, the Live Activity and the Coach."
+          }
+        }
+      }
+    },
     "O ChatGPT não aprovou o login." : {
       "localizations" : {
         "en" : {
@@ -11874,6 +11924,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "The history you choose is sent to the AI provider you set up. Nothing goes to a FitJourney server. The key stays only in this device's Keychain."
+          }
+        }
+      }
+    },
+    "O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitJourney fecha e você o abre de novo pela tela de início." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The language changes when the app reopens. If you choose Restart now, FitJourney closes and you open it again from the Home Screen."
           }
         }
       }
@@ -14114,6 +14174,26 @@
         }
       }
     },
+    "Reiniciar agora" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart now"
+          }
+        }
+      }
+    },
+    "Reinicie o FitJourney para aplicar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restart FitJourney to apply"
+          }
+        }
+      }
+    },
     "Remo" : {
       "localizations" : {
         "en" : {
@@ -15446,6 +15526,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Friday"
+          }
+        }
+      }
+    },
+    "Sistema" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
           }
         }
       }

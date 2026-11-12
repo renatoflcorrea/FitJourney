@@ -10,6 +10,8 @@ struct SettingsRootView: View {
     private let secrets: any SecretStore
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
     @Environment(HealthAuthorization.self) private var healthAuthorization: HealthAuthorization?
 
     @AppStorage(AppPreferenceKeys.weightUnit) private var weightUnitRaw = WeightUnit.kg.rawValue
@@ -35,6 +37,8 @@ struct SettingsRootView: View {
     @State private var notification: SettingsPresentation.NotificationState = .notRequested
     @State private var manualHeartRate = false
     @State private var path: [Route] = Self.initialPath
+    @State private var languageSelection: AppLanguagePreference
+    @State private var showsRestartAlert = false
 
     enum Route: Hashable { case data }
 
@@ -57,6 +61,7 @@ struct SettingsRootView: View {
     init(secrets: any SecretStore, defaults: UserDefaults) {
         self.secrets = secrets
         self.defaults = defaults
+        _languageSelection = State(initialValue: AppLanguagePreference.current(defaults))
     }
 
     private var unit: WeightUnit { WeightUnit(rawValue: weightUnitRaw) ?? .kg }
@@ -65,6 +70,7 @@ struct SettingsRootView: View {
         NavigationStack(path: $path) {
             Form {
                 profileSection
+                generalSection
                 unitsSection
                 trainingSection
                 integrationsSection
@@ -122,6 +128,46 @@ struct SettingsRootView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: Geral
+
+    private var generalSection: some View {
+        Section {
+            Picker("Idioma", selection: $languageSelection) {
+                ForEach(AppLanguagePreference.allCases, id: \.self) { option in
+                    Text(verbatim: option.title).tag(option)
+                }
+            }
+            .pickerStyle(.menu)
+            .accessibilityLabel(Text("Idioma do app"))
+            .onChange(of: languageSelection) { _, newValue in
+                guard newValue != AppLanguagePreference.current(defaults) else { return }
+                newValue.apply(to: defaults)
+                showsRestartAlert = true
+            }
+        } header: {
+            Text("Geral")
+        } footer: {
+            Text("O Apple Watch segue o idioma escolhido aqui (reabra o app do relógio para aplicar). Os nomes dos exercícios do catálogo aparecem no mesmo idioma no iPhone, no relógio, na Atividade ao Vivo e no Coach.")
+        }
+        .alert("Reinicie o FitJourney para aplicar", isPresented: $showsRestartAlert) {
+            // Encerra o app de forma limpa; o iOS não reabre sozinho, o usuário abre de novo.
+            // Sem sessão de treino ativa; antes de sair, grava o contexto principal.
+            if AppLanguagePreference.canRestartNow(sessionActive: sessionCoordinator?.engine.snapshot != nil) {
+                Button("Reiniciar agora") {
+                    try? modelContext.save()
+                    exit(0)
+                }
+            }
+            Button("Depois", role: .cancel) {}
+        } message: {
+            if AppLanguagePreference.canRestartNow(sessionActive: sessionCoordinator?.engine.snapshot != nil) {
+                Text("O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitJourney fecha e você o abre de novo pela tela de início.")
+            } else {
+                Text("Reabra o app depois do treino para aplicar")
             }
         }
     }

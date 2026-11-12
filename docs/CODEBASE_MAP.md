@@ -209,6 +209,7 @@ sequenceDiagram
 - Swift 6 `complete`, `@MainActor` nos serviços; callbacks de sistema `nonisolated` saltando para a main; protocolos nas bordas com fakes (`WatchLinkSession`, `HealthStoreProtocol`, `LiveActivityClient`, `SecretStore`, `MealReminderNotificationCenter`).
 - Tempo sempre por datas persistidas; "ausente ≠ zero" em saúde, nutrição e export; enums de fio com `.unknown`.
 - Contratos JSON copiados verbatim para Swift (`DraftSchemas`, `BackupSchema`) com teste de identidade.
+- Idioma (P6.8): Ajustes › Geral › Idioma (`AppLanguagePreference`, `fj.appLanguage` + `AppleLanguages`, vale ao reabrir). `AppLanguageCode` (Shared) dá o idioma efetivo ("pt-BR"/"en"), enviado em `ProgramDigest.language`/`SessionSnapshot.language` (opcionais); o relógio aplica em `WatchSessionModel.applyLanguage`. Nomes de exercício do catálogo: `String.exerciseDisplayName` (`ExerciseCatalogIndex`) na UI, e já localizados em digest/snapshot (relógio, Live Activity) e no `FitnessToolbox`.
 - Strings em `Localizable.xcstrings` (pt-BR fonte, en completo; catálogo próprio no relógio; `InfoPlist.xcstrings`); testes rodam em pt-BR (schemes).
 - Processo: pacotes em worktrees, revisão independente antes de integrar, um simulador por agente (`FJ-<pacote>`), desligar só o próprio.
 

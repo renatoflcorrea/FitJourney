@@ -77,6 +77,8 @@ actor DataEraser: ModelActor {
         clearNotifications()
 
         for key in BackupPreferenceKeys.erasable { defaults.removeObject(forKey: key) }
+        // Idioma do app volta ao Sistema (`AppleLanguages` só existe por escolha do usuário).
+        if defaults.string(forKey: AppLanguagePreference.key) != nil { defaults.removeObject(forKey: AppLanguagePreference.appleLanguagesKey) }
         for key in defaults.dictionaryRepresentation().keys
         where BackupPreferenceKeys.erasablePrefixes.contains(where: key.hasPrefix) {
             defaults.removeObject(forKey: key)

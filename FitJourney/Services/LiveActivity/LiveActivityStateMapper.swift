@@ -53,7 +53,7 @@ enum LiveActivityStateMapper {
 
         var state = State(
             phase: phase,
-            exerciseName: phase == .finished ? routineTitle(snapshot) : (focus?.exercise.name ?? routineTitle(snapshot)),
+            exerciseName: phase == .finished ? routineTitle(snapshot) : (focus?.exercise.name.exerciseDisplayName ?? routineTitle(snapshot)),
             setIndex: phase == .finished ? nil : position?.index,
             setCount: phase == .finished ? nil : position?.of,
             loadText: phase == .finished ? nil : load,

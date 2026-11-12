@@ -170,6 +170,9 @@ final class WatchSessionModel {
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var observedRest: (end: Date?, status: SessionSnapshot.Status?) = (nil, nil)
     @ObservationIgnored private let restAlertLoop = WatchHapticLoop()
+    /// Onde o idioma recebido é gravado e o idioma em uso (injetáveis nos testes).
+    @ObservationIgnored var languageDefaults: UserDefaults = .standard
+    @ObservationIgnored var runningLanguage: String = AppLanguageCode.current
     @ObservationIgnored private var restAlertPulses = 0
     /// Fim de descanso já avisado (um aviso por descanso, mesmo que o temporizador dispare de novo).
     @ObservationIgnored private var announcedRestEnd: Date?
@@ -362,9 +365,17 @@ final class WatchSessionModel {
 
     // MARK: Recepção
 
+    /// Idioma do iPhone (digest/snapshot): grava em `AppleLanguages`; vale no próximo lançamento do app.
+    /// Se mudou, avisa de leve. Ausente = comportamento anterior.
+    func applyLanguage(_ code: String?) {
+        guard AppLanguageCode.applyReceived(code, running: runningLanguage, defaults: languageDefaults) else { return }
+        show(notice: String(localized: "Reabra o app para trocar o idioma"))
+    }
+
     func receive(digest: ProgramDigest?) {
         hasReceivedData = true
         isAwaitingSnapshot = false
+        applyLanguage(digest?.language)
         self.digest = digest
         digestReceivedAt = digest?.generatedAt ?? now
     }
@@ -372,6 +383,7 @@ final class WatchSessionModel {
     func receive(snapshot: SessionSnapshot?) {
         hasReceivedData = true
         isAwaitingSnapshot = false
+        applyLanguage(snapshot?.language)
         guard let snapshot else {
             // "Sem sessão" atrasado em relação a um `start` nosso (qualquer estado de resposta): ignora.
             if pending.contains(where: { $0.command.kind.isStart }) { return }
