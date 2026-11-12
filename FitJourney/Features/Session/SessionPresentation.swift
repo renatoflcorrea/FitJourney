@@ -248,6 +248,15 @@ enum SessionPresentation {
         return join([exercise.groupID == nil ? nil : exercise.name, head, loadText(displayLoad(set)), targetPart(set)])
     }
 
+    /// Próxima série no alerta de fim de descanso, sem repetir o nome do exercício (o cartão já o mostra):
+    /// "Série 3 de 4 · 26 kg · alvo 8–12".
+    static func restAlertNextUp(_ snapshot: SessionSnapshot) -> String? {
+        guard let exercise = snapshot.currentExercise, let setID = snapshot.currentSetID,
+              let position = snapshot.currentSetPosition,
+              let set = exercise.sets.first(where: { $0.id == setID }) else { return nil }
+        return join([String(localized: "Série \(position.index) de \(position.of)"), loadText(displayLoad(set)), targetPart(set)])
+    }
+
     /// Duração total do descanso em curso (inclui os ajustes de ±15 s): `restTotalSeconds` do snapshot.
     /// Nunca menor que o restante (snapshot antigo sem o campo cai no restante).
     static func restTotal(_ snapshot: SessionSnapshot, endsAt: Date, now: Date) -> TimeInterval {

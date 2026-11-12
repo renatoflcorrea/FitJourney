@@ -8,6 +8,14 @@ struct SessionHeartRate: Equatable, Sendable {
     var zone: FJHeartRateZone?
 }
 
+/// Alerta insistente de fim de descanso na tela da sessão (DESIGN_DIRECTION §4.5).
+struct SessionRestAlert: Equatable, Sendable {
+    /// Fim do descanso (a data do snapshot): o cartão conta "+0:12" a partir daqui.
+    var endedAt: Date
+    /// A vibração em laço ainda toca; para no primeiro toque ou no teto.
+    var isRinging: Bool
+}
+
 /// Apresentação da sessão: tela cheia, acessório e hápticos dirigidos pelos eventos do motor.
 ///
 /// API fixa (o supervisor liga no `AppRoot` e na aba Hoje):
@@ -16,6 +24,13 @@ struct SessionHeartRate: Equatable, Sendable {
 /// - `View.sessionHost(_:)` instala cover, acessório, treino esquecido e ciclo de vida.
 ///
 /// Toda escrita na sessão passa por `engine.send` (via `send(_:)`).
+///
+/// Fim do descanso: com `fj.restAlertRepeat` ligado e a tela da sessão à vista (`restAlertHostReady`), o evento
+/// `restFinished` abre o alerta "Descanso concluído" (`restAlert`) e vibra em laço até um toque
+/// (`dismissRestAlert()`), "Começar série" (`startSetAfterRest()`, que dispensa o descanso com `skipRest`) ou o
+/// teto de 60 s contado do fim do descanso (a vibração para, o cartão fica). O alerta só vale enquanto o descanso
+/// dele é o da sessão (`activeRestAlert`). Fora disso (preferência desligada, tela fechada, folha por cima) vale
+/// a vibração única de antes; com o app em segundo plano, a notificação/Atividade ao Vivo.
 @MainActor
 @Observable
 final class SessionCoordinator {
@@ -38,6 +53,13 @@ final class SessionCoordinator {
 
     /// A doca está mostrando o painel de descanso (que vibra e anuncia sozinho ao zerar).
     var restPanelVisible = false
+    /// A tela da sessão pode mostrar o alerta de fim de descanso: visível, app ativo e sem folha por cima
+    /// (a `SessionView` mantém). Ao deixar de poder, a vibração em laço para.
+    var restAlertHostReady = false {
+        didSet { if !restAlertHostReady { silenceRestAlert() } }
+    }
+    /// Alerta de fim de descanso aberto (use `activeRestAlert` para exibir).
+    private(set) var restAlert: SessionRestAlert?
 
     // Gatilhos de háptico (contadores: mudar dispara).
     private(set) var setCompletedTick = 0
@@ -47,12 +69,24 @@ final class SessionCoordinator {
     /// Última falha de comando para a UI ("Não foi possível salvar").
     private(set) var lastRejection: SessionCommandRejection?
 
+    /// Intervalo entre as vibrações do alerta e teto contado do fim do descanso.
+    @ObservationIgnored var restAlertInterval: TimeInterval = 1.5
+    static let restAlertCeiling: TimeInterval = 60
+
     @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let vibration: any FJAlertVibrating
+    @ObservationIgnored private let now: () -> Date
+    @ObservationIgnored private var restAlertTask: Task<Void, Never>?
+    /// Fim de descanso que já abriu o alerta (um alerta por descanso).
+    @ObservationIgnored private var alertedRestEnd: Date?
     @ObservationIgnored private var restored = false
 
-    init(engine: SessionEngine, defaults: UserDefaults = .standard) {
+    init(engine: SessionEngine, defaults: UserDefaults = .standard, vibration: any FJAlertVibrating = FJSystemAlertVibration(),
+         now: @escaping () -> Date = { Date() }) {
         self.engine = engine
         self.defaults = defaults
+        self.vibration = vibration
+        self.now = now
     }
 
     // MARK: Ciclo de vida
@@ -129,6 +163,7 @@ final class SessionCoordinator {
     }
 
     func handle(_ event: SessionEvent) {
+        reconcileRestAlert()
         switch event {
         case .sessionStarted:
             present()
@@ -137,9 +172,15 @@ final class SessionCoordinator {
             if !isPresented { setCompletedTick += 1 }
         case .restStarted:
             Task { await askNotificationPermissionIfNeeded() }
-        case .restFinished:
-            // O painel do descanso já vibra e anuncia sozinho; fora dele (outro modo da doca ou tela fechada) vibra aqui.
-            if !(isPresented && restPanelVisible) { restFinishedTick += 1 }
+        case .restFinished(let end):
+            if alertedRestEnd == end {
+                break // este descanso já alertou: evento repetido não vibra de novo
+            } else if canStartRestAlert(for: end) {
+                startRestAlert(endedAt: end)
+            } else if !(isPresented && restPanelVisible) {
+                // O painel do descanso já vibra e anuncia sozinho; fora dele (outro modo da doca ou tela fechada) vibra aqui.
+                restFinishedTick += 1
+            }
         case .sessionFinished:
             isPresented = false
             celebrationTick += 1
@@ -148,6 +189,90 @@ final class SessionCoordinator {
         case .restAdjusted, .restSkipped, .holdStarted, .sessionPaused, .sessionResumed:
             break
         }
+    }
+
+    // MARK: Alerta de fim de descanso
+
+    /// O alerta aberto, enquanto o descanso dele ainda é o da sessão ativa e a tela está aberta. Descanso
+    /// dispensado, ajustado ou substituído (aqui, no relógio ou na Atividade ao Vivo), pausa ou fim → `nil`.
+    var activeRestAlert: SessionRestAlert? {
+        guard let alert = restAlert, isPresented, let snapshot = engine.snapshot, snapshot.status == .active,
+              snapshot.restEndsAt == alert.endedAt else { return nil }
+        return alert
+    }
+
+    /// O próximo fim de descanso abre o alerta insistente (preferência ligada e tela da sessão à vista). O painel
+    /// de descanso da doca usa isto para não vibrar nem anunciar por conta própria: um aviso só, o do alerta.
+    var restAlertTakesOver: Bool {
+        RestPreference.alertRepeatEnabled(defaults) && isPresented && restAlertHostReady
+    }
+
+    private func canStartRestAlert(for end: Date) -> Bool {
+        restAlertTakesOver
+            && engine.snapshot?.status == .active && engine.snapshot?.restEndsAt == end
+    }
+
+    private func startRestAlert(endedAt end: Date) {
+        restAlertTask?.cancel()
+        alertedRestEnd = end
+        let ringing = now().timeIntervalSince(end) < Self.restAlertCeiling
+        restAlert = SessionRestAlert(endedAt: end, isRinging: ringing)
+        vibration.vibrate()
+        guard ringing else { return }
+        let interval = restAlertInterval
+        restAlertTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(interval))
+                guard !Task.isCancelled, let self else { return } // coordenador liberado: o laço acaba
+                self.restAlertTick()
+            }
+        }
+    }
+
+    /// Um passo do laço (o temporizador chama a cada `restAlertInterval`; os testes chamam direto): vibra de
+    /// novo, para no teto (o cartão fica) ou encerra o alerta que deixou de valer.
+    func restAlertTick() {
+        guard let alert = activeRestAlert else {
+            clearRestAlert()
+            return
+        }
+        guard alert.isRinging else {
+            restAlertTask?.cancel()
+            return
+        }
+        guard now().timeIntervalSince(alert.endedAt) < Self.restAlertCeiling else {
+            silenceRestAlert()
+            return
+        }
+        vibration.vibrate()
+    }
+
+    /// Para a vibração e mantém o cartão (teto, app fora do primeiro plano).
+    func silenceRestAlert() {
+        restAlertTask?.cancel()
+        restAlertTask = nil
+        if restAlert?.isRinging == true { restAlert?.isRinging = false }
+    }
+
+    /// Qualquer toque na tela: para a vibração e fecha o alerta. Não envia comando — a doca volta ao modo dela.
+    func dismissRestAlert() { clearRestAlert() }
+
+    /// "Começar série": fecha o alerta e dispensa o descanso vencido (`skipRest`), como o "Continuar" da doca.
+    func startSetAfterRest() {
+        let hadAlert = activeRestAlert != nil
+        clearRestAlert()
+        if hadAlert { send(.skipRest) }
+    }
+
+    /// Chamado quando o estado do descanso muda: encerra o alerta que deixou de valer.
+    func reconcileRestAlert() {
+        if restAlert != nil, activeRestAlert == nil { clearRestAlert() }
+    }
+
+    private func clearRestAlert() {
+        restAlertTask?.cancel()
+        restAlertTask = nil
+        if restAlert != nil { restAlert = nil }
     }
 
     // MARK: Permissão de notificação (contextual)

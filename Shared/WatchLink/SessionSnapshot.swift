@@ -47,6 +47,9 @@ struct SessionSnapshot: Codable, Sendable, Hashable {
     var notes: String? = nil
     /// Tipo do treino para o Saúde (`HealthWorkoutType.rawValue`, derivado da ficha no iPhone).
     var workoutType: String? = nil
+    /// Preferência "Alerta insistente no fim do descanso" (`fj.restAlertRepeat`) do iPhone, para o relógio.
+    /// Só vai `false` quando desligada; `nil` (ausente, versões antigas, sessão ainda sem snapshot) = ligada.
+    var restAlertRepeat: Bool? = nil
 
     /// Tamanho da janela de `appliedCommandIDs`.
     static let appliedCommandWindow = 64

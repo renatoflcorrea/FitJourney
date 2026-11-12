@@ -30,14 +30,17 @@ struct SessionDock: View {
                     SessionCompactRest(
                         endsAt: endsAt, nextUp: nextUp,
                         onAdjust: { coordinator.send(.adjustRest(seconds: Int($0))) },
-                        onSkip: { coordinator.send(.skipRest) }
+                        onSkip: { coordinator.send(.skipRest) },
+                        signalsFinish: !coordinator.restAlertTakesOver
                     )
                 } else {
                     FJRestTimerView(
                         endsAt: endsAt, total: total, nextUp: nextUp,
                         onAdjust: { coordinator.send(.adjustRest(seconds: Int($0))) },
                         // `skipRest` também dispensa o descanso já vencido (limpa no motor).
-                        onSkip: { coordinator.send(.skipRest) }
+                        onSkip: { coordinator.send(.skipRest) },
+                        // Com o alerta insistente a caminho, só ele vibra e anuncia.
+                        signalsFinish: !coordinator.restAlertTakesOver
                     )
                 }
             case .holding(let setID, let startedAt, let target, let isCardio, let targetDistance):
@@ -100,6 +103,8 @@ struct SessionCompactRest: View {
     let nextUp: String?
     let onAdjust: (TimeInterval) -> Void
     let onSkip: () -> Void
+    /// Vibra ao zerar; `false` quando o alerta insistente assume o aviso.
+    var signalsFinish = true
 
     @ScaledMetric(relativeTo: .title) private var timerSize: CGFloat = 34
 
@@ -138,7 +143,7 @@ struct SessionCompactRest: View {
             .padding(FJSpacing.m)
             .frame(maxWidth: .infinity)
             .fjGlass(in: FJRadius.shape(FJRadius.panel))
-            .fjHaptic(.timerFinished, trigger: finished) { _, isFinished in isFinished }
+            .fjHaptic(.timerFinished, trigger: finished) { _, isFinished in isFinished && signalsFinish }
         }
     }
 }

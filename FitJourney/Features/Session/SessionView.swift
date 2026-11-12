@@ -9,6 +9,7 @@ struct SessionView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     /// Só força nova leitura da doca quando o descanso concluído vence o `restFinishedLinger` (a decisão é derivada da data).
     @State private var restTick = Date.now
@@ -69,6 +70,8 @@ struct SessionView: View {
             }
         }
         .tint(FJColor.training)
+        .overlay { restAlertOverlay }
+        .fjAnimation(FJMotion.structure, value: coordinator.activeRestAlert != nil)
         .sheet(item: $picker) { purpose in
             ExercisePicker(allowsMultiple: purpose.allowsMultiple) { picked in
                 apply(picked, for: purpose)
@@ -137,9 +140,57 @@ struct SessionView: View {
         }
         .task(id: holdPrep) { await tickHoldPrep() }
         .onChange(of: engine.snapshot?.currentSetID) { holdPrep = nil }
-        .onDisappear { coordinator.restPanelVisible = false }
+        .onDisappear {
+            coordinator.restPanelVisible = false
+            coordinator.restAlertHostReady = false
+        }
+        .onChange(of: canHostRestAlert, initial: true) { _, ready in coordinator.restAlertHostReady = ready }
+        .onChange(of: engine.snapshot?.restEndsAt) { coordinator.reconcileRestAlert() }
+        .onChange(of: engine.snapshot?.status) { coordinator.reconcileRestAlert() }
         .onChange(of: engine.snapshot?.currentExerciseID) { old, new in advanceIfFinished(from: old, to: new) }
         .task { await coordinator.refreshNotificationAuthorization() }
+    }
+
+    // MARK: Alerta de fim de descanso
+
+    /// O alerta "Descanso concluído" só abre com a tela à vista: app ativo e nada por cima (folha, diálogo,
+    /// encerramento). Senão vale a vibração única.
+    private var canHostRestAlert: Bool {
+        scenePhase == .active && picker == nil && media == nil && editing == nil && progressExercise == nil
+            && noteFor == nil && painFor == nil && skipping == nil && !showsSessionNote && !showsReorder
+            && !showsFinish && !confirmsDiscard && !coordinator.showsNotificationRationale
+    }
+
+    /// Escurece a tela e mostra o cartão sobre a doca. Qualquer toque (ou arrasto) fora de "Começar série"
+    /// para a vibração e fecha o alerta, sem acionar o que está por baixo.
+    @ViewBuilder
+    private var restAlertOverlay: some View {
+        if let alert = coordinator.activeRestAlert, let snapshot = engine.snapshot {
+            let exerciseName = snapshot.currentExercise?.name
+            let nextUp = SessionPresentation.restAlertNextUp(snapshot)
+            ZStack(alignment: .bottom) {
+                FJColor.scrim
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .gesture(DragGesture(minimumDistance: 0).onChanged { _ in coordinator.dismissRestAlert() })
+                    .accessibilityHidden(true)
+                FJRestAlertCard(endedAt: alert.endedAt, exerciseName: exerciseName, nextUp: nextUp, isRinging: alert.isRinging,
+                                onStart: { coordinator.startSetAfterRest() }, onStop: { coordinator.dismissRestAlert() })
+                .contentShape(FJRadius.shape(FJRadius.panel))
+                .onTapGesture { coordinator.dismissRestAlert() }
+                .padding(.horizontal, FJSpacing.screenMargin)
+                .padding(.bottom, FJSpacing.s)
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(.isModal)
+                .accessibilityAction(.escape) { coordinator.dismissRestAlert() }
+                .accessibilityAction(.magicTap) { coordinator.dismissRestAlert() }
+                .onAppear {
+                    AccessibilityNotification.Announcement(
+                        FJRestAlertCard.announcement(exerciseName: exerciseName, nextUp: nextUp)).post()
+                }
+            }
+            .transition(.opacity)
+        }
     }
 
     // MARK: Conteúdo

@@ -186,6 +186,36 @@
         }
       }
     },
+    "%@ está protegido por senha." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is password protected."
+          }
+        }
+      }
+    },
+    "%@ está vazio." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is empty."
+          }
+        }
+      }
+    },
+    "%@ foi criado a partir dos seus arquivos." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ was created from your files."
+          }
+        }
+      }
+    },
     "%@ kcal" : {
       "localizations" : {
         "en" : {
@@ -222,6 +252,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ doesn't cover this day. Standalone entries still work."
+          }
+        }
+      }
+    },
+    "%@ passa de %lld MB." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ is over %lld MB."
           }
         }
       }
@@ -296,6 +336,36 @@
         }
       }
     },
+    "%@ tem %lld páginas, acima do limite de %lld para envio direto; as primeiras %lld foram enviadas como imagens." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has %lld pages, above the limit of %lld for direct sending; the first %lld were sent as images."
+          }
+        }
+      }
+    },
+    "%@ tem %lld páginas: a análise pode custar mais." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has %lld pages: the analysis may cost more."
+          }
+        }
+      }
+    },
+    "%@ tem %lld páginas; só as primeiras %lld foram enviadas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ has %lld pages; only the first %lld were sent."
+          }
+        }
+      }
+    },
     "%@ vai para o histórico." : {
       "localizations" : {
         "en" : {
@@ -328,6 +398,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · descanso" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · rest"
           }
         }
       }
@@ -374,6 +454,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · set %lld of %lld"
+          }
+        }
+      }
+    },
+    "%@ · série %lld · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · set %lld · %@"
+          }
+        }
+      }
+    },
+    "%@ · séries" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · sets"
           }
         }
       }
@@ -498,6 +598,16 @@
         }
       }
     },
+    "%@, p. %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, p. %lld"
+          }
+        }
+      }
+    },
     "%@, peso corporal" : {
       "localizations" : {
         "en" : {
@@ -538,6 +648,26 @@
         }
       }
     },
+    "%@. Próxima: %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@. Next: %@."
+          }
+        }
+      }
+    },
+    "%@: **%@**" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: **%@**"
+          }
+        }
+      }
+    },
     "%@: de %@ para %@" : {
       "localizations" : {
         "en" : {
@@ -550,6 +680,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$@: de %2$@ para %3$@"
+          }
+        }
+      }
+    },
+    "%@: formato não suportado (use PDF, foto ou texto)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: unsupported format (use PDF, photo or text)."
           }
         }
       }
@@ -604,12 +744,32 @@
         }
       }
     },
+    "%lld PDFs" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld PDFs"
+          }
+        }
+      }
+    },
     "%lld alimentos salvos" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld saved foods"
+          }
+        }
+      }
+    },
+    "%lld alterações" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld changes"
           }
         }
       }
@@ -634,6 +794,16 @@
         }
       }
     },
+    "%lld arquivos enviados" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld files sent"
+          }
+        }
+      }
+    },
     "%lld batimentos por minuto" : {
       "localizations" : {
         "en" : {
@@ -654,6 +824,16 @@
         }
       }
     },
+    "%lld caracteres" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld characters"
+          }
+        }
+      }
+    },
     "%lld conversas do Coach" : {
       "localizations" : {
         "en" : {
@@ -670,6 +850,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld of %lld"
+          }
+        }
+      }
+    },
+    "%lld de %lld arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld of %lld files"
           }
         }
       }
@@ -890,12 +1080,32 @@
         }
       }
     },
+    "%lld fichas detectadas." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld routines detected."
+          }
+        }
+      }
+    },
     "%lld fichas · %lld exercícios · %lld séries" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld routines · %lld exercises · %lld sets"
+          }
+        }
+      }
+    },
+    "%lld fotos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld photos"
           }
         }
       }
@@ -956,6 +1166,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld items on this device were newer and were kept."
+          }
+        }
+      }
+    },
+    "%lld itens para conferir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld items to check"
           }
         }
       }
@@ -1200,6 +1420,16 @@
         }
       }
     },
+    "%lld substituições" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld substitutions"
+          }
+        }
+      }
+    },
     "%lld séries" : {
       "localizations" : {
         "en" : {
@@ -1276,6 +1506,16 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "%lld textos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld texts"
           }
         }
       }
@@ -1518,12 +1758,62 @@
         }
       }
     },
+    "1 PDF" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 PDF"
+          }
+        }
+      }
+    },
+    "1 arquivo enviado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 file sent"
+          }
+        }
+      }
+    },
+    "1 exercício" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 exercise"
+          }
+        }
+      }
+    },
+    "1 foto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 photo"
+          }
+        }
+      }
+    },
     "1 item" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 item"
+          }
+        }
+      }
+    },
+    "1 item para conferir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 item to check"
           }
         }
       }
@@ -1578,12 +1868,32 @@
         }
       }
     },
+    "1 substituição" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 substitution"
+          }
+        }
+      }
+    },
     "1 série" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "1 set"
+          }
+        }
+      }
+    },
+    "1 texto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 text"
           }
         }
       }
@@ -1658,6 +1968,36 @@
         }
       }
     },
+    "A IA ainda não aplicou o que você respondeu. É uma chamada só de texto; os arquivos não são enviados de novo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The AI has not applied your answers yet. It is a text-only call; the files are not sent again."
+          }
+        }
+      }
+    },
+    "A IA não conseguiu extrair um treino ou dieta válido desses arquivos. Tente outra foto ou outro modelo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The AI could not extract a valid workout or diet from these files. Try another photo or model."
+          }
+        }
+      }
+    },
+    "A alteração não vale mais: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The change is no longer valid: %@"
+          }
+        }
+      }
+    },
     "A carga atual dessa série é diferente da inicial e será descartada junto com ela." : {
       "localizations" : {
         "en" : {
@@ -1698,6 +2038,26 @@
         }
       }
     },
+    "A ficha ou dieta mudou depois; desfazer apagaria essas mudanças." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The routine or diet changed afterwards; undoing would erase those changes."
+          }
+        }
+      }
+    },
+    "A ficha ou dieta não existe mais." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The routine or diet no longer exists."
+          }
+        }
+      }
+    },
     "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usa um, confira se o FitJourney pode ler seus dados em Ajustes › Saúde › Acesso a Dados." : {
       "localizations" : {
         "en" : {
@@ -1714,6 +2074,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Heart rate comes from Apple Watch or a paired sensor. If you used one, check that FitJourney can read your data in Settings › Health › Data Access."
+          }
+        }
+      }
+    },
+    "A leitura não deu certo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading did not work"
+          }
+        }
+      }
+    },
+    "A leitura segue. Quando terminar, “Continuar importação” aparece em %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading continues. When it finishes, “Continue import” appears in %@."
           }
         }
       }
@@ -1754,6 +2134,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This exercise's prescription in the routine will be erased. The exercise stays in the catalog."
+          }
+        }
+      }
+    },
+    "A próxima ficha depois da última feita" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The next routine after the last one done"
           }
         }
       }
@@ -2100,6 +2490,16 @@
         }
       }
     },
+    "Aceitar vale como consentimento do Coach. Importar não lê o seu histórico: os compartilhamentos do Coach continuam desligados." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accepting counts as Coach consent. Importing does not read your history: the Coach sharing options stay off."
+          }
+        }
+      }
+    },
     "Adiciona tempo ao descanso do treino em andamento." : {
       "localizations" : {
         "en" : {
@@ -2176,6 +2576,26 @@
         }
       }
     },
+    "Adicionar ao programa" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to program"
+          }
+        }
+      }
+    },
+    "Adicionar ao programa %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add to program %@"
+          }
+        }
+      }
+    },
     "Adicionar copo" : {
       "localizations" : {
         "en" : {
@@ -2212,6 +2632,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add routine"
+          }
+        }
+      }
+    },
+    "Adicionar fichas com IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add routines with AI"
           }
         }
       }
@@ -2276,12 +2706,42 @@
         }
       }
     },
+    "Adicionar um alimento" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a food"
+          }
+        }
+      }
+    },
     "Adicionar um copo, %lld mililitros" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add a glass, %lld milliliters"
+          }
+        }
+      }
+    },
+    "Adicionar um exercício" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add an exercise"
+          }
+        }
+      }
+    },
+    "Adicionar uma refeição" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a meal"
           }
         }
       }
@@ -2496,6 +2956,16 @@
         }
       }
     },
+    "Ajustando o que você respondeu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjusting what you answered"
+          }
+        }
+      }
+    },
     "Ajustar" : {
       "localizations" : {
         "en" : {
@@ -2576,6 +3046,16 @@
         }
       }
     },
+    "Alerta insistente no fim do descanso" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Persistent alert when rest ends"
+          }
+        }
+      }
+    },
     "Algo deu errado" : {
       "localizations" : {
         "en" : {
@@ -2616,6 +3096,26 @@
         }
       }
     },
+    "Alterar um alimento" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change a food"
+          }
+        }
+      }
+    },
+    "Alterar uma refeição" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change a meal"
+          }
+        }
+      }
+    },
     "Alteração aplicada" : {
       "localizations" : {
         "en" : {
@@ -2632,6 +3132,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Change undone"
+          }
+        }
+      }
+    },
+    "Alteração não encontrada." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change not found."
+          }
+        }
+      }
+    },
+    "Alteração proposta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proposed change"
           }
         }
       }
@@ -2702,6 +3222,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Analyzes your progress"
+          }
+        }
+      }
+    },
+    "Analisar %lld arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyze %lld files"
+          }
+        }
+      }
+    },
+    "Analisar 1 arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyze 1 file"
           }
         }
       }
@@ -2782,6 +3322,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Previous and drafts"
+          }
+        }
+      }
+    },
+    "Antes de analisar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Before analyzing"
           }
         }
       }
@@ -2956,6 +3506,16 @@
         }
       }
     },
+    "Aplicando suas respostas…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Applying your answers…"
+          }
+        }
+      }
+    },
     "Aplicar" : {
       "localizations" : {
         "en" : {
@@ -3056,6 +3616,16 @@
         }
       }
     },
+    "Arquivos preparados" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Files prepared"
+          }
+        }
+      }
+    },
     "Arraste pela alça ou use o menu (…) para subir e descer. Selecione exercícios vizinhos para agrupar em bi-set, tri-set ou circuito." : {
       "localizations" : {
         "en" : {
@@ -3072,6 +3642,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Routines and prescriptions will be deleted. Completed workouts stay in history."
+          }
+        }
+      }
+    },
+    "As fichas foram adicionadas a %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The routines were added to %@."
           }
         }
       }
@@ -3186,6 +3766,16 @@
         }
       }
     },
+    "Ativar a nova dieta agora?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activate the new diet now?"
+          }
+        }
+      }
+    },
     "Ativar agora" : {
       "localizations" : {
         "en" : {
@@ -3222,6 +3812,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Activate this plan?"
+          }
+        }
+      }
+    },
+    "Ativar o novo programa agora?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activate the new program now?"
           }
         }
       }
@@ -3587,12 +4187,32 @@
         }
       }
     },
+    "Brilho único" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Single sheen"
+          }
+        }
+      }
+    },
     "Buscar exercício" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Search exercises"
+          }
+        }
+      }
+    },
+    "Buscar no catálogo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search the catalog"
           }
         }
       }
@@ -3634,6 +4254,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "C — Legs and shoulders"
+          }
+        }
+      }
+    },
+    "Cada ficha em dias marcados" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Each routine on set days"
           }
         }
       }
@@ -3748,6 +4378,16 @@
         }
       }
     },
+    "Cancelar importação" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel import"
+          }
+        }
+      }
+    },
     "Carboidrato" : {
       "localizations" : {
         "en" : {
@@ -3814,6 +4454,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Loading…"
+          }
+        }
+      }
+    },
+    "Cartão proposto pela IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Card proposed by the AI"
+          }
+        }
+      }
+    },
+    "Casar com a sua biblioteca" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Match with your library"
           }
         }
       }
@@ -3968,6 +4628,26 @@
         }
       }
     },
+    "Colar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste"
+          }
+        }
+      }
+    },
+    "Colar texto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paste text"
+          }
+        }
+      }
+    },
     "Cole o endereço (http://localhost:1455/auth/callback?…)" : {
       "localizations" : {
         "en" : {
@@ -4008,12 +4688,32 @@
         }
       }
     },
+    "Começa com: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts with: %@"
+          }
+        }
+      }
+    },
     "Começar com um exemplo (ABC)" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start with an example (ABC)"
+          }
+        }
+      }
+    },
+    "Começar série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start set"
           }
         }
       }
@@ -4064,6 +4764,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "How can I help?"
+          }
+        }
+      }
+    },
+    "Como você segue as fichas?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How do you follow the routines?"
           }
         }
       }
@@ -4124,6 +4834,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done"
+          }
+        }
+      }
+    },
+    "Concordar e analisar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agree and analyze"
           }
         }
       }
@@ -4208,12 +4928,32 @@
         }
       }
     },
+    "Confere o exercício “%@”?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Is the exercise “%@” right?"
+          }
+        }
+      }
+    },
     "Conferir" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Check"
+          }
+        }
+      }
+    },
+    "Conferir calorias e quantidades" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check calories and quantities"
           }
         }
       }
@@ -4248,6 +4988,16 @@
         }
       }
     },
+    "Configurar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set up"
+          }
+        }
+      }
+    },
     "Configurar chave" : {
       "localizations" : {
         "en" : {
@@ -4274,6 +5024,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Check the spelling or create the exercise."
+          }
+        }
+      }
+    },
+    "Confira o que será criado antes de salvar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check what will be created before saving."
+          }
+        }
+      }
+    },
+    "Confirmar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm"
+          }
+        }
+      }
+    },
+    "Confirmar e aplicar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confirm and apply"
           }
         }
       }
@@ -4308,12 +5088,102 @@
         }
       }
     },
+    "Continuar com %lld fichas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue with %lld routines"
+          }
+        }
+      }
+    },
+    "Continuar com %lld variações" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue with %lld variations"
+          }
+        }
+      }
+    },
+    "Continuar com 1 ficha" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue with 1 routine"
+          }
+        }
+      }
+    },
+    "Continuar com 1 variação" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue with 1 variation"
+          }
+        }
+      }
+    },
+    "Continuar depois" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue later"
+          }
+        }
+      }
+    },
     "Continuar editando" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keep editing"
+          }
+        }
+      }
+    },
+    "Continuar em segundo plano" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue in the background"
+          }
+        }
+      }
+    },
+    "Continuar em segundo plano?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue in the background?"
+          }
+        }
+      }
+    },
+    "Continuar importação" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue import"
+          }
+        }
+      }
+    },
+    "Continuar para a revisão" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue to review"
           }
         }
       }
@@ -4354,6 +5224,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keep logging to see the trend"
+          }
+        }
+      }
+    },
+    "Continuo quando ela voltar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I will continue when it is back."
           }
         }
       }
@@ -4498,12 +5378,42 @@
         }
       }
     },
+    "Criado, mas os ajustes de nome e cor não foram aplicados. Edite no programa." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Created, but the name and color adjustments were not applied. Edit them in the program."
+          }
+        }
+      }
+    },
     "Criar com IA — em breve" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Create with AI — coming soon"
+          }
+        }
+      }
+    },
+    "Criar como exercício novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create as a new exercise"
+          }
+        }
+      }
+    },
+    "Criar como novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create as new"
           }
         }
       }
@@ -4524,6 +5434,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Create from scratch"
+          }
+        }
+      }
+    },
+    "Criar e ativar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create and activate"
           }
         }
       }
@@ -4604,6 +5524,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Glass capsule"
+          }
+        }
+      }
+    },
+    "Câmera" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Camera"
+          }
+        }
+      }
+    },
+    "Câmera sem acesso" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No camera access"
           }
         }
       }
@@ -4928,6 +5868,16 @@
         }
       }
     },
+    "Descartar importação?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard import?"
+          }
+        }
+      }
+    },
     "Descartar treino" : {
       "localizations" : {
         "en" : {
@@ -5018,6 +5968,26 @@
         }
       }
     },
+    "Desligado, a dieta fica salva sem trocar a ativa." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off, the diet is saved without replacing the active one."
+          }
+        }
+      }
+    },
+    "Desligado, o programa fica salvo sem trocar o ativo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off, the program is saved without replacing the active one."
+          }
+        }
+      }
+    },
     "Desmarcar série" : {
       "localizations" : {
         "en" : {
@@ -5034,6 +6004,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Uncheck what you didn't eat. To log nothing, use Skip."
+          }
+        }
+      }
+    },
+    "Destino" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destination"
           }
         }
       }
@@ -5068,6 +6048,16 @@
         }
       }
     },
+    "Dia %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Day %lld"
+          }
+        }
+      }
+    },
     "Dia anterior" : {
       "localizations" : {
         "en" : {
@@ -5094,6 +6084,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Days of the week"
+          }
+        }
+      }
+    },
+    "Dias fixos da semana" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fixed days of the week"
           }
         }
       }
@@ -5128,6 +6128,16 @@
         }
       }
     },
+    "Dieta %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diet %@"
+          }
+        }
+      }
+    },
     "Dieta anterior" : {
       "localizations" : {
         "en" : {
@@ -5138,12 +6148,32 @@
         }
       }
     },
+    "Dieta criada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diet created"
+          }
+        }
+      }
+    },
     "Dieta e registros" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diet and entries"
+          }
+        }
+      }
+    },
+    "Dieta importada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imported diet"
           }
         }
       }
@@ -5625,6 +6655,26 @@
         }
       }
     },
+    "Em que dias vale %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On which days does %@ apply?"
+          }
+        }
+      }
+    },
+    "Em que dias você faz %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On which days do you do %@?"
+          }
+        }
+      }
+    },
     "Em seguida, sem descanso: %@" : {
       "localizations" : {
         "en" : {
@@ -5661,6 +6711,56 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ends the rest of the workout in progress."
+          }
+        }
+      }
+    },
+    "Encontrei %lld fichas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I found %lld routines"
+          }
+        }
+      }
+    },
+    "Encontrei %lld refeições" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I found %lld meals"
+          }
+        }
+      }
+    },
+    "Encontrei %lld variações" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I found %lld variations"
+          }
+        }
+      }
+    },
+    "Encontrei 1 ficha" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I found 1 routine"
+          }
+        }
+      }
+    },
+    "Encontrei 1 refeição" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I found 1 meal"
           }
         }
       }
@@ -5705,6 +6805,26 @@
         }
       }
     },
+    "Entendi um programa com %@ e %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I understood a program with %@ and %@."
+          }
+        }
+      }
+    },
+    "Entendi uma dieta com %@ e %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I understood a diet with %@ and %@."
+          }
+        }
+      }
+    },
     "Entrar com ChatGPT" : {
       "localizations" : {
         "en" : {
@@ -5741,6 +6861,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sign in to ChatGPT again"
+          }
+        }
+      }
+    },
+    "Enviados a %@ · menos de 1 minuto" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent to %@ · less than 1 minute"
           }
         }
       }
@@ -5795,6 +6925,56 @@
         }
       }
     },
+    "Escolha ao menos um arquivo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose at least one file."
+          }
+        }
+      }
+    },
+    "Escolha ao menos um dia." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose at least one day."
+          }
+        }
+      }
+    },
+    "Escolha as que quer importar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the ones you want to import."
+          }
+        }
+      }
+    },
+    "Escolha as variações de dieta que quer importar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the diet variations you want to import."
+          }
+        }
+      }
+    },
+    "Escolha no máximo %lld arquivos." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose at most %lld files."
+          }
+        }
+      }
+    },
     "Escolha o provedor de IA e informe sua chave de API para começar a conversar." : {
       "localizations" : {
         "en" : {
@@ -5805,12 +6985,52 @@
         }
       }
     },
+    "Escolha o provedor e informe a chave. Os arquivos escolhidos ficam aqui." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the provider and enter the key. The files you chose stay here."
+          }
+        }
+      }
+    },
+    "Escolha os arquivos de novo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose the files again"
+          }
+        }
+      }
+    },
+    "Escolha um arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a file"
+          }
+        }
+      }
+    },
     "Escolha um modelo" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose a model"
+          }
+        }
+      }
+    },
+    "Escolha uma opção." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose an option."
           }
         }
       }
@@ -5835,12 +7055,32 @@
         }
       }
     },
+    "Escolho a ficha no dia" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "I pick the routine on the day"
+          }
+        }
+      }
+    },
     "Escolho a ficha no dia. O app destaca a que está há mais tempo sem treinar." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "I pick the routine each day. The app highlights the one you have not done for the longest."
+          }
+        }
+      }
+    },
+    "Escreva um nome." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Write a name."
           }
         }
       }
@@ -5855,6 +7095,16 @@
         }
       }
     },
+    "Escrito: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Written: %@"
+          }
+        }
+      }
+    },
     "Esforço alvo" : {
       "localizations" : {
         "en" : {
@@ -5865,12 +7115,62 @@
         }
       }
     },
+    "Essa pergunta não está mais pendente." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This question is no longer pending."
+          }
+        }
+      }
+    },
+    "Esta alteração já foi resolvida." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This change has already been resolved."
+          }
+        }
+      }
+    },
+    "Esta conversa usa só os arquivos que você enviou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This conversation only uses the files you sent."
+          }
+        }
+      }
+    },
+    "Esta etapa da importação já passou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This import step has already passed."
+          }
+        }
+      }
+    },
     "Esta ficha ainda não tem exercícios" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "This routine has no exercises yet"
+          }
+        }
+      }
+    },
+    "Esta importação foi retomada, mas os arquivos não ficam guardados no app." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This import was resumed, but files are not kept in the app."
           }
         }
       }
@@ -5951,6 +7251,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "This backup was created by a newer version of FitJourney (format v%lld). Update the app to import it."
+          }
+        }
+      }
+    },
+    "Este destino não combina com o tipo de importação." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This destination does not match the import type."
           }
         }
       }
@@ -6095,12 +7405,52 @@
         }
       }
     },
+    "Está demorando mais que o normal. Pode fechar: eu aviso quando terminar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is taking longer than usual. You can close it: I will let you know when it finishes."
+          }
+        }
+      }
+    },
     "Eu" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Me"
+          }
+        }
+      }
+    },
+    "Ex.: ABCD Hipertrofia" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E.g. ABCD Hypertrophy"
+          }
+        }
+      }
+    },
+    "Ex.: Dieta da nutricionista" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E.g. Nutritionist’s diet"
+          }
+        }
+      }
+    },
+    "Ex.: Peito e tríceps" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "E.g. Chest and triceps"
           }
         }
       }
@@ -6341,6 +7691,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Exercise in use"
+          }
+        }
+      }
+    },
+    "Exercício não encontrado no catálogo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exercise not found in the catalog."
           }
         }
       }
@@ -6595,6 +7955,16 @@
         }
       }
     },
+    "Falta 1 detalhe." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 detail is missing."
+          }
+        }
+      }
+    },
     "Falta a chave de API" : {
       "localizations" : {
         "en" : {
@@ -6605,12 +7975,42 @@
         }
       }
     },
+    "Falta algo para criar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something is missing to create it"
+          }
+        }
+      }
+    },
+    "Falta configurar a IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AI is not set up yet"
+          }
+        }
+      }
+    },
     "Falta configurar o provedor" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Provider not set up"
+          }
+        }
+      }
+    },
+    "Faltam %lld detalhes." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld details are missing."
           }
         }
       }
@@ -6701,6 +8101,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fiber"
+          }
+        }
+      }
+    },
+    "Ficha %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Routine %@"
           }
         }
       }
@@ -7061,6 +8471,16 @@
         }
       }
     },
+    "Foto %lld.jpg" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo %lld.jpg"
+          }
+        }
+      }
+    },
     "Foto da galeria" : {
       "localizations" : {
         "en" : {
@@ -7087,6 +8507,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Photo unavailable"
+          }
+        }
+      }
+    },
+    "Fotos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photos"
           }
         }
       }
@@ -7501,6 +8931,26 @@
         }
       }
     },
+    "Há um treino em andamento (%@). Finalize antes de alterar a ficha." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A workout is in progress (%@). Finish it before changing the routine."
+          }
+        }
+      }
+    },
+    "Há um treino em andamento. Cria sem ativar; ative depois de finalizar o treino." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A workout is in progress. It is created without activating; activate after you finish the workout."
+          }
+        }
+      }
+    },
     "Há um treino em andamento. Finalize ou descarte o treino antes de substituir os dados." : {
       "localizations" : {
         "en" : {
@@ -7571,6 +9021,46 @@
         }
       }
     },
+    "Importado com IA de %lld arquivos." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imported with AI from %lld files."
+          }
+        }
+      }
+    },
+    "Importado com IA de 1 arquivo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imported with AI from 1 file."
+          }
+        }
+      }
+    },
+    "Importado de %lld arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imported from %lld files"
+          }
+        }
+      }
+    },
+    "Importado de 1 arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imported from 1 file"
+          }
+        }
+      }
+    },
     "Importado: %@." : {
       "localizations" : {
         "en" : {
@@ -7627,6 +9117,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Import Coach conversations"
+          }
+        }
+      }
+    },
+    "Importar dieta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import diet"
+          }
+        }
+      }
+    },
+    "Importar treino" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import workout"
+          }
+        }
+      }
+    },
+    "Importar um treino" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import a workout"
+          }
+        }
+      }
+    },
+    "Importar uma dieta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import a diet"
           }
         }
       }
@@ -7691,6 +9221,26 @@
         }
       }
     },
+    "Informe a carga em kg ou lb." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the load in kg or lb."
+          }
+        }
+      }
+    },
+    "Informe a quantidade." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter the quantity."
+          }
+        }
+      }
+    },
     "Informe o nome do modelo a usar." : {
       "localizations" : {
         "en" : {
@@ -7717,6 +9267,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Enter a full URL, like http://192.168.0.10:11434/v1."
+          }
+        }
+      }
+    },
+    "Informe uma quantidade maior que zero." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter a quantity greater than zero."
           }
         }
       }
@@ -8091,6 +9651,26 @@
         }
       }
     },
+    "Lendo %@…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading %@…"
+          }
+        }
+      }
+    },
+    "Lendo %lld arquivos…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading %lld files…"
+          }
+        }
+      }
+    },
     "Lendo dados do Saúde…" : {
       "localizations" : {
         "en" : {
@@ -8101,12 +9681,42 @@
         }
       }
     },
+    "Lendo exercícios e séries" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading exercises and sets"
+          }
+        }
+      }
+    },
     "Lendo o arquivo…" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reading file…"
+          }
+        }
+      }
+    },
+    "Lendo refeições e quantidades" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reading meals and quantities"
+          }
+        }
+      }
+    },
+    "Letra" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letter"
           }
         }
       }
@@ -8151,12 +9761,32 @@
         }
       }
     },
+    "Libere a câmera em Ajustes para fotografar a ficha. As outras fontes continuam disponíveis." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow the camera in Settings to photograph the sheet. The other sources remain available."
+          }
+        }
+      }
+    },
     "Lido com clareza" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Read clearly"
+          }
+        }
+      }
+    },
+    "Limite de %lld arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limit of %lld files"
           }
         }
       }
@@ -8297,6 +9927,16 @@
         }
       }
     },
+    "Localização e dados da câmera são removidos das fotos antes do envio." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location and camera data are removed from photos before sending."
+          }
+        }
+      }
+    },
     "Lombar" : {
       "localizations" : {
         "en" : {
@@ -8378,12 +10018,32 @@
         }
       }
     },
+    "Manter o que li" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keep what I read"
+          }
+        }
+      }
+    },
     "Manter só a primeira variação" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Keep only the first variation"
+          }
+        }
+      }
+    },
+    "Mantido como li" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kept as I read it"
           }
         }
       }
@@ -8404,6 +10064,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manual (%lld bpm)"
+          }
+        }
+      }
+    },
+    "Marca ou desmarca para importar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selects or deselects for import"
           }
         }
       }
@@ -8768,6 +10438,16 @@
         }
       }
     },
+    "Mostra os exercícios" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Shows the exercises"
+          }
+        }
+      }
+    },
     "Mostramos um resumo antes de mudar qualquer coisa. Se algo falhar no meio, nada é aplicado." : {
       "localizations" : {
         "en" : {
@@ -8838,12 +10518,62 @@
         }
       }
     },
+    "Mudar a carga" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change the load"
+          }
+        }
+      }
+    },
     "Mudar a unidade muda só a exibição. O histórico não é alterado. O início da semana vale para a Dieta, a aderência semanal, Saúde e o calendário; os dias das fichas não mudam." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Changing the unit only changes how loads are shown. History is not altered. The week start applies to Diet, weekly adherence, Health and the calendar; routine days do not change."
+          }
+        }
+      }
+    },
+    "Mudar as metas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change the targets"
+          }
+        }
+      }
+    },
+    "Mudar as repetições" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change the reps"
+          }
+        }
+      }
+    },
+    "Mudar o descanso" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change the rest"
+          }
+        }
+      }
+    },
+    "Mudar o número de séries" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change the number of sets"
           }
         }
       }
@@ -9024,6 +10754,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Minimum (floor)"
+          }
+        }
+      }
+    },
+    "Na dieta “%@”: " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In diet “%@”: "
+          }
+        }
+      }
+    },
+    "Na ficha “%@” do programa “%@”: " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In routine “%@” of program “%@”: "
+          }
+        }
+      }
+    },
+    "Na ficha “%@”: " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In routine “%@”: "
           }
         }
       }
@@ -9218,6 +10978,16 @@
         }
       }
     },
+    "No supino está “3x12”. Como devo ler?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The bench press says “3x12”. How should I read it?"
+          }
+        }
+      }
+    },
     "Nome" : {
       "localizations" : {
         "en" : {
@@ -9234,6 +11004,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Name (e.g., Training day)"
+          }
+        }
+      }
+    },
+    "Nome da dieta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diet name"
           }
         }
       }
@@ -9518,6 +11298,16 @@
         }
       }
     },
+    "Não foi possível analisar os arquivos." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not analyze the files."
+          }
+        }
+      }
+    },
     "Não foi possível aplicar" : {
       "localizations" : {
         "en" : {
@@ -9568,6 +11358,36 @@
         }
       }
     },
+    "Não foi possível continuar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not continue"
+          }
+        }
+      }
+    },
+    "Não foi possível criar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not create"
+          }
+        }
+      }
+    },
+    "Não foi possível desfazer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not undo"
+          }
+        }
+      }
+    },
     "Não foi possível duplicar" : {
       "localizations" : {
         "en" : {
@@ -9594,6 +11414,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couldn't save to the Keychain."
+          }
+        }
+      }
+    },
+    "Não foi possível ler %@." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not read %@."
           }
         }
       }
@@ -9644,6 +11474,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Could not read your workouts"
+          }
+        }
+      }
+    },
+    "Não foi possível ler uma das fotos." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Could not read one of the photos."
           }
         }
       }
@@ -9704,6 +11544,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Couldn't play here"
+          }
+        }
+      }
+    },
+    "Não há o que desfazer." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing to undo."
           }
         }
       }
@@ -9938,6 +11788,16 @@
         }
       }
     },
+    "O arquivo inteiro vai para %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The whole file goes to %@"
+          }
+        }
+      }
+    },
     "O arquivo não foi encontrado neste aparelho." : {
       "localizations" : {
         "en" : {
@@ -9988,12 +11848,12 @@
         }
       }
     },
-    "O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island." : {
+    "O descanso padrão vale quando a ficha e o exercício não definem um, a partir do próximo descanso. Sem som, o alerta da Atividade ao Vivo é dispensado e o aviso chega silencioso pela notificação. Com o alerta insistente, o relógio e a tela do treino vibram várias vezes até você tocar; desligado, vibram uma vez. A FC máxima define as zonas de frequência cardíaca. Sem valor manual, usamos 220 menos a idade do seu perfil. A Atividade ao Vivo mostra o treino e o descanso na Tela Bloqueada e na Dynamic Island." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The default rest applies when the routine and exercise don't set one, starting with the next rest. Without sound, the Live Activity alert is dismissed and the notice arrives silently as a notification. Max heart rate defines the heart rate zones. Without a manual value, we use 220 minus the age in your profile. The Live Activity shows the workout and rest on the Lock Screen and in the Dynamic Island."
+            "value" : "The default rest applies when the routine and exercise don't set one, starting with the next rest. Without sound, the Live Activity alert is dismissed and the notice arrives silently as a notification. With the persistent alert, the watch and the workout screen vibrate repeatedly until you tap; when off, they vibrate once. Max heart rate defines the heart rate zones. Without a manual value, we use 220 minus the age in your profile. The Live Activity shows the workout and rest on the Lock Screen and in the Dynamic Island."
           }
         }
       }
@@ -10038,6 +11898,16 @@
         }
       }
     },
+    "O modelo escolhido não aceita imagens. Escolha outro modelo em Ajustes de IA." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The chosen model does not accept images. Pick another model in AI Settings."
+          }
+        }
+      }
+    },
     "O modelo não quis responder a este pedido. Tente reformular." : {
       "localizations" : {
         "en" : {
@@ -10078,12 +11948,32 @@
         }
       }
     },
+    "O prazo para desfazer (24 h) passou." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The undo window (24 h) has passed."
+          }
+        }
+      }
+    },
     "O programa atual" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "The current program"
+          }
+        }
+      }
+    },
+    "O programa de destino não está mais disponível. Escolha outro destino ou crie um novo programa." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The destination program is no longer available. Choose another destination or create a new program."
           }
         }
       }
@@ -10128,12 +12018,32 @@
         }
       }
     },
+    "O que aconteceu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What happened"
+          }
+        }
+      }
+    },
     "O que compartilhar" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "What to share"
+          }
+        }
+      }
+    },
+    "O que estava salvo mudou desde a sugestão. Este é o antes → depois atualizado: confira e confirme." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What was saved has changed since the suggestion. This is the updated before → after: check it and confirm."
           }
         }
       }
@@ -10288,6 +12198,16 @@
         }
       }
     },
+    "Obrigatória" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Required"
+          }
+        }
+      }
+    },
     "Observação" : {
       "localizations" : {
         "en" : {
@@ -10324,6 +12244,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Exercise notes"
+          }
+        }
+      }
+    },
+    "Ocultar lista" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hide list"
           }
         }
       }
@@ -10428,6 +12358,16 @@
         }
       }
     },
+    "Ordem" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Order"
+          }
+        }
+      }
+    },
     "Ordenadas por horário. Para mudar a ordem, altere o horário." : {
       "localizations" : {
         "en" : {
@@ -10470,6 +12410,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Context budget"
+          }
+        }
+      }
+    },
+    "Os arquivos ficam aqui; analise quando voltar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The files stay here; analyze when it is back."
+          }
+        }
+      }
+    },
+    "Os arquivos inteiros vão para %@ para serem lidos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The whole files go to %@ to be read"
+          }
+        }
+      }
+    },
+    "Os arquivos juntos passam de %lld MB. Remova algum." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The files together are over %lld MB. Remove one."
           }
         }
       }
@@ -10624,12 +12594,52 @@
         }
       }
     },
+    "PC" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BW"
+          }
+        }
+      }
+    },
+    "PC %@%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BW %@%@ %@"
+          }
+        }
+      }
+    },
     "PDF" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "PDF"
+          }
+        }
+      }
+    },
+    "PDF ou arquivo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PDF or file"
+          }
+        }
+      }
+    },
+    "PDF, foto ou texto. Eu leio, pergunto o que faltar e monto." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PDF, photo or text. I read it, ask what is missing and build it."
           }
         }
       }
@@ -10694,6 +12704,26 @@
         }
       }
     },
+    "Para a vibração e volta à série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stops the vibration and returns to the set"
+          }
+        }
+      }
+    },
+    "Para importar, aceite enviar os arquivos ao provedor de IA." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To import, agree to send the files to the AI provider."
+          }
+        }
+      }
+    },
     "Parar" : {
       "localizations" : {
         "en" : {
@@ -10710,6 +12740,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Stop response"
+          }
+        }
+      }
+    },
+    "Parar vibração" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop vibration"
           }
         }
       }
@@ -11054,6 +13094,16 @@
         }
       }
     },
+    "Pode esclarecer este ponto?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Can you clarify this point?"
+          }
+        }
+      }
+    },
     "Polia" : {
       "localizations" : {
         "en" : {
@@ -11214,12 +13264,42 @@
         }
       }
     },
+    "Programa criado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Program created"
+          }
+        }
+      }
+    },
     "Programa de exemplo: ajuste exercícios, séries e cargas à vontade." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sample program: adjust exercises, sets and loads as you like."
+          }
+        }
+      }
+    },
+    "Programa importado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imported program"
+          }
+        }
+      }
+    },
+    "Programa não encontrado." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Program not found."
           }
         }
       }
@@ -11494,6 +13574,26 @@
         }
       }
     },
+    "Pular esta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip this one"
+          }
+        }
+      }
+    },
+    "Pular todas e revisar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip all and review"
+          }
+        }
+      }
+    },
     "Qua" : {
       "localizations" : {
         "en" : {
@@ -11514,12 +13614,72 @@
         }
       }
     },
+    "Qual a carga em %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is the load in %@?"
+          }
+        }
+      }
+    },
+    "Qual exercício é “%@”?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Which exercise is “%@”?"
+          }
+        }
+      }
+    },
+    "Qual o nome da dieta?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is the diet called?"
+          }
+        }
+      }
+    },
+    "Qual o nome da ficha %lld?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is routine %lld called?"
+          }
+        }
+      }
+    },
+    "Qual o nome do programa?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What is the program called?"
+          }
+        }
+      }
+    },
     "Quando você finalizar um treino, ele entra no histórico com séries, intensidade e notas." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "When you finish a workout, it goes into history with sets, intensity and notes."
+          }
+        }
+      }
+    },
+    "Quantas repetições em %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How many reps in %@?"
           }
         }
       }
@@ -11534,6 +13694,46 @@
         }
       }
     },
+    "Quantidade/unidade não informada" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quantity/unit not given"
+          }
+        }
+      }
+    },
+    "Quantidade/unidade não informada; no arquivo: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quantity/unit not given; in the file: %@"
+          }
+        }
+      }
+    },
+    "Quanto de %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How much %@?"
+          }
+        }
+      }
+    },
+    "Quarta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wednesday"
+          }
+        }
+      }
+    },
     "Quase máximo" : {
       "localizations" : {
         "en" : {
@@ -11544,12 +13744,32 @@
         }
       }
     },
+    "Que horas é %@?" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What time is %@?"
+          }
+        }
+      }
+    },
     "Qui" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Thu"
+          }
+        }
+      }
+    },
+    "Quinta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thursday"
           }
         }
       }
@@ -11684,6 +13904,16 @@
         }
       }
     },
+    "Recolhe a ficha" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collapses the routine"
+          }
+        }
+      }
+    },
     "Recolhe os campos" : {
       "localizations" : {
         "en" : {
@@ -11730,6 +13960,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Meal"
+          }
+        }
+      }
+    },
+    "Refeição %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Meal %lld"
           }
         }
       }
@@ -11824,6 +14064,16 @@
         }
       }
     },
+    "Registrar o que você comeu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log what you ate"
+          }
+        }
+      }
+    },
     "Registrar refeição" : {
       "localizations" : {
         "en" : {
@@ -11840,6 +14090,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Log more workouts to see progress."
+          }
+        }
+      }
+    },
+    "Registro %@ %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log %@ %@ · %@"
+          }
+        }
+      }
+    },
+    "Registro alimentar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Food log"
           }
         }
       }
@@ -11960,12 +14230,42 @@
         }
       }
     },
+    "Remover um alimento" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove a food"
+          }
+        }
+      }
+    },
     "Remover um copo" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Remove a glass"
+          }
+        }
+      }
+    },
+    "Remover um exercício" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove an exercise"
+          }
+        }
+      }
+    },
+    "Remover uma refeição" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Remove a meal"
           }
         }
       }
@@ -11990,12 +14290,32 @@
         }
       }
     },
+    "Renomear %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename %@"
+          }
+        }
+      }
+    },
     "Reordenar" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reorder"
+          }
+        }
+      }
+    },
+    "Reordenar exercícios" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reorder exercises"
           }
         }
       }
@@ -12070,6 +14390,16 @@
         }
       }
     },
+    "Responda as perguntas obrigatórias antes de revisar." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer the required questions before reviewing."
+          }
+        }
+      }
+    },
     "Responde com base no seu histórico." : {
       "localizations" : {
         "en" : {
@@ -12086,6 +14416,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Responding"
+          }
+        }
+      }
+    },
+    "Responder…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer…"
+          }
+        }
+      }
+    },
+    "Respondida. %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answered. %@: %@"
+          }
+        }
+      }
+    },
+    "Resposta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Answer"
           }
         }
       }
@@ -12116,6 +14476,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Response interrupted."
+          }
+        }
+      }
+    },
+    "Resposta não combina com a pergunta." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The answer does not match the question."
           }
         }
       }
@@ -12200,6 +14570,16 @@
         }
       }
     },
+    "Revisar com IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review with AI"
+          }
+        }
+      }
+    },
     "Revisar e salvar" : {
       "localizations" : {
         "en" : {
@@ -12216,6 +14596,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Review permissions"
+          }
+        }
+      }
+    },
+    "Revise a importação: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review the import: %@"
           }
         }
       }
@@ -12246,6 +14636,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Revoke consent?"
+          }
+        }
+      }
+    },
+    "Rodízio A → B → C" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rotation A → B → C"
           }
         }
       }
@@ -12930,6 +15330,16 @@
         }
       }
     },
+    "Serão adicionadas ao programa que você escolheu." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "They will be added to the program you chose."
+          }
+        }
+      }
+    },
     "Sessão" : {
       "localizations" : {
         "en" : {
@@ -13030,6 +15440,16 @@
         }
       }
     },
+    "Sexta" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Friday"
+          }
+        }
+      }
+    },
     "Sobre" : {
       "localizations" : {
         "en" : {
@@ -13050,6 +15470,16 @@
         }
       }
     },
+    "Sobre “%@” (%@): " : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About “%@” (%@): "
+          }
+        }
+      }
+    },
     "Som ao fim do descanso" : {
       "localizations" : {
         "en" : {
@@ -13066,6 +15496,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Read-only. Reactivate or duplicate to edit."
+          }
+        }
+      }
+    },
+    "Suas respostas às dúvidas da IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your answers to the AI’s questions"
           }
         }
       }
@@ -13190,6 +15630,16 @@
         }
       }
     },
+    "Sugestões da sua biblioteca" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggestions from your library"
+          }
+        }
+      }
+    },
     "Sugestões de nome" : {
       "localizations" : {
         "en" : {
@@ -13226,6 +15676,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sat"
+          }
+        }
+      }
+    },
+    "Sábado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saturday"
           }
         }
       }
@@ -13372,6 +15832,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "WORKOUT SAVED"
+          }
+        }
+      }
+    },
+    "Tem a ficha do seu personal em PDF ou foto? Eu monto para você." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Have your trainer’s sheet as a PDF or photo? I will build it for you."
           }
         }
       }
@@ -13536,12 +16006,32 @@
         }
       }
     },
+    "Terça" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tuesday"
+          }
+        }
+      }
+    },
     "Texto" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Text"
+          }
+        }
+      }
+    },
+    "Texto da ficha" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sheet text"
           }
         }
       }
@@ -13686,6 +16176,16 @@
         }
       }
     },
+    "Toque em qualquer lugar para parar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap anywhere to stop"
+          }
+        }
+      }
+    },
     "Toque numa sugestão ou escreva seu pedido." : {
       "localizations" : {
         "en" : {
@@ -13772,6 +16272,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Day total: %@"
+          }
+        }
+      }
+    },
+    "Traga a dieta como ela está" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bring the diet as it is"
+          }
+        }
+      }
+    },
+    "Traga a ficha como ela está" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bring the sheet as it is"
           }
         }
       }
@@ -13956,6 +16476,16 @@
         }
       }
     },
+    "Trocar arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change files"
+          }
+        }
+      }
+    },
     "Trocar exercício" : {
       "localizations" : {
         "en" : {
@@ -13972,6 +16502,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Swap for…"
+          }
+        }
+      }
+    },
+    "Trocar um exercício" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swap an exercise"
           }
         }
       }
@@ -14002,6 +16542,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Everything starts off. You can change it later in AI Settings."
+          }
+        }
+      }
+    },
+    "Tudo lido com clareza" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything read clearly"
+          }
+        }
+      }
+    },
+    "Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado ao provedor de IA que você configurou. Nada vai a servidor do FitJourney." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything written in it (name, phone, your trainer’s notes) will be sent to the AI provider you set up. Nothing goes to a FitJourney server."
+          }
+        }
+      }
+    },
+    "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitJourney." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Everything written in them will be sent. After the import they are not kept in FitJourney."
+          }
+        }
+      }
+    },
+    "Tudo respondido" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All answered"
           }
         }
       }
@@ -14146,6 +16726,16 @@
         }
       }
     },
+    "Usar exemplo ABC" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use ABC example"
+          }
+        }
+      }
+    },
     "Usar o mesmo plano em todos os dias?" : {
       "localizations" : {
         "en" : {
@@ -14162,6 +16752,46 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Use HTTPS. HTTP is only valid on the local network (localhost, .local or private IP)."
+          }
+        }
+      }
+    },
+    "Use de 1 a 100 repetições." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use 1 to 100 reps."
+          }
+        }
+      }
+    },
+    "Use o formato HH:MM, ex.: 07:30." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use the HH:MM format, e.g. 07:30."
+          }
+        }
+      }
+    },
+    "Use um número (10) ou uma faixa (8-12)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use a number (10) or a range (8-12)."
+          }
+        }
+      }
+    },
+    "Use um número (10), uma faixa (8-12) ou “máximo”." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Use a number (10), a range (8-12) or “max”."
           }
         }
       }
@@ -14196,6 +16826,16 @@
         }
       }
     },
+    "Valores estimados pela IA" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Values estimated by the AI"
+          }
+        }
+      }
+    },
     "Valores para a quantidade acima." : {
       "localizations" : {
         "en" : {
@@ -14212,6 +16852,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Variation"
+          }
+        }
+      }
+    },
+    "Variação %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variation %lld"
           }
         }
       }
@@ -14242,6 +16892,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Speed"
+          }
+        }
+      }
+    },
+    "Ver" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View"
           }
         }
       }
@@ -14282,6 +16942,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "View routines and exercises"
+          }
+        }
+      }
+    },
+    "Ver lista" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show list"
           }
         }
       }
@@ -14446,6 +17116,26 @@
         }
       }
     },
+    "Você está treinando esta ficha agora. Aplique depois de finalizar o treino." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You are training with this routine right now. Apply after you finish the workout."
+          }
+        }
+      }
+    },
+    "Você pode continuar depois: o que já foi lido e respondido fica guardado." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You can continue later: what was read and answered is kept."
+          }
+        }
+      }
+    },
     "Você tem um treino em aberto" : {
       "localizations" : {
         "en" : {
@@ -14462,6 +17152,36 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "You:"
+          }
+        }
+      }
+    },
+    "Volta à série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Returns to the set"
+          }
+        }
+      }
+    },
+    "Voltar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        }
+      }
+    },
+    "Voltar às perguntas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back to the questions"
           }
         }
       }
@@ -14724,12 +17444,52 @@
         }
       }
     },
+    "a IA ficou em dúvida" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "the AI was unsure"
+          }
+        }
+      }
+    },
+    "a leitura falhou" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reading failed"
+          }
+        }
+      }
+    },
     "ainda não feita" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "not done yet"
+          }
+        }
+      }
+    },
+    "alimento" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "food"
+          }
+        }
+      }
+    },
+    "alimentos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "foods"
           }
         }
       }
@@ -14804,6 +17564,56 @@
         }
       }
     },
+    "cardio" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "cardio"
+          }
+        }
+      }
+    },
+    "carga atual" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "current load"
+          }
+        }
+      }
+    },
+    "carga com dúvida" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "load in doubt"
+          }
+        }
+      }
+    },
+    "carga ilegível: li “%@”" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "unreadable load: I read “%@”"
+          }
+        }
+      }
+    },
+    "carga inicial" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "starting load"
+          }
+        }
+      }
+    },
     "colher" : {
       "localizations" : {
         "en" : {
@@ -14830,6 +17640,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ate"
+          }
+        }
+      }
+    },
+    "concluída" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "completed"
           }
         }
       }
@@ -14914,6 +17734,26 @@
         }
       }
     },
+    "escolha ao menos uma ficha" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "choose at least one routine"
+          }
+        }
+      }
+    },
+    "escolha ao menos uma variação" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "choose at least one variation"
+          }
+        }
+      }
+    },
     "escolha um modelo" : {
       "localizations" : {
         "en" : {
@@ -14950,6 +17790,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "e.g., 3-1-1-0"
+          }
+        }
+      }
+    },
+    "exercício" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "exercise"
+          }
+        }
+      }
+    },
+    "exercícios" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "exercises"
           }
         }
       }
@@ -15004,12 +17864,52 @@
         }
       }
     },
+    "ficha" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "routine"
+          }
+        }
+      }
+    },
+    "ficha %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "routine %lld"
+          }
+        }
+      }
+    },
+    "fichas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "routines"
+          }
+        }
+      }
+    },
     "fora da dieta" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "off diet"
+          }
+        }
+      }
+    },
+    "fora do plano" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "off plan"
           }
         }
       }
@@ -15040,6 +17940,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "http://192.168.0.10:11434/v1"
+          }
+        }
+      }
+    },
+    "há %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ago"
           }
         }
       }
@@ -15164,6 +18074,16 @@
         }
       }
     },
+    "lendo os arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reading the files"
+          }
+        }
+      }
+    },
     "libras" : {
       "localizations" : {
         "en" : {
@@ -15230,6 +18150,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "max bpm"
+          }
+        }
+      }
+    },
+    "máx." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "max"
           }
         }
       }
@@ -15344,6 +18274,16 @@
         }
       }
     },
+    "não está na sua biblioteca; será criado" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "not in your library; will be created"
+          }
+        }
+      }
+    },
     "não foi possível ler o login do ChatGPT no Keychain" : {
       "localizations" : {
         "en" : {
@@ -15374,12 +18314,52 @@
         }
       }
     },
+    "ontem" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "yesterday"
+          }
+        }
+      }
+    },
     "ontem, %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "yesterday, %@"
+          }
+        }
+      }
+    },
+    "padrão" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "default"
+          }
+        }
+      }
+    },
+    "parou na entrevista" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stopped at the interview"
+          }
+        }
+      }
+    },
+    "parou na escolha dos arquivos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "stopped at choosing files"
           }
         }
       }
@@ -15424,6 +18404,16 @@
         }
       }
     },
+    "peso corporal %@%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bodyweight %@%@ %@"
+          }
+        }
+      }
+    },
     "peso corporal mais %@ %@" : {
       "localizations" : {
         "en" : {
@@ -15460,6 +18450,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "serving"
+          }
+        }
+      }
+    },
+    "pronta para revisar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ready to review"
           }
         }
       }
@@ -15544,12 +18544,52 @@
         }
       }
     },
+    "refeição" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "meal"
+          }
+        }
+      }
+    },
+    "refeição %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "meal %lld"
+          }
+        }
+      }
+    },
     "refeição removida" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "meal removed"
+          }
+        }
+      }
+    },
+    "refeições" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "meals"
+          }
+        }
+      }
+    },
+    "repetições" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reps"
           }
         }
       }
@@ -15580,6 +18620,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "seconds"
+          }
+        }
+      }
+    },
+    "sem metas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no targets"
           }
         }
       }
@@ -15624,12 +18674,32 @@
         }
       }
     },
+    "série %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "set %lld"
+          }
+        }
+      }
+    },
     "série %lld · %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "set %lld · %@"
+          }
+        }
+      }
+    },
+    "séries %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sets %@"
           }
         }
       }
@@ -15664,12 +18734,32 @@
         }
       }
     },
+    "todas as séries" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "all sets"
+          }
+        }
+      }
+    },
     "un" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "unit"
+          }
+        }
+      }
+    },
+    "variação %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "variation %lld"
           }
         }
       }
@@ -15880,3016 +18970,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "−15 s"
-          }
-        }
-      }
-    },
-    "Ficha %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Routine %@"
-          }
-        }
-      }
-    },
-    "Programa importado" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imported program"
-          }
-        }
-      }
-    },
-    "Dia %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Day %lld"
-          }
-        }
-      }
-    },
-    "Refeição %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Meal %lld"
-          }
-        }
-      }
-    },
-    "Dieta importada" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imported diet"
-          }
-        }
-      }
-    },
-    "Dieta %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diet %@"
-          }
-        }
-      }
-    },
-    "Registro alimentar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Food log"
-          }
-        }
-      }
-    },
-    "parou na escolha dos arquivos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "stopped at choosing files"
-          }
-        }
-      }
-    },
-    "lendo os arquivos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "reading the files"
-          }
-        }
-      }
-    },
-    "parou na entrevista" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "stopped at the interview"
-          }
-        }
-      }
-    },
-    "pronta para revisar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ready to review"
-          }
-        }
-      }
-    },
-    "a leitura falhou" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "reading failed"
-          }
-        }
-      }
-    },
-    "concluída" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "completed"
-          }
-        }
-      }
-    },
-    "Continuar importação" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue import"
-          }
-        }
-      }
-    },
-    "%@ foi criado a partir dos seus arquivos." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ was created from your files."
-          }
-        }
-      }
-    },
-    "As fichas foram adicionadas a %@." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The routines were added to %@."
-          }
-        }
-      }
-    },
-    "Programa criado" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Program created"
-          }
-        }
-      }
-    },
-    "Dieta criada" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diet created"
-          }
-        }
-      }
-    },
-    "Você está treinando esta ficha agora. Aplique depois de finalizar o treino." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You are training with this routine right now. Apply after you finish the workout."
-          }
-        }
-      }
-    },
-    "Mudar a carga" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change the load"
-          }
-        }
-      }
-    },
-    "Mudar as repetições" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change the reps"
-          }
-        }
-      }
-    },
-    "Mudar o número de séries" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change the number of sets"
-          }
-        }
-      }
-    },
-    "Mudar o descanso" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change the rest"
-          }
-        }
-      }
-    },
-    "Trocar um exercício" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Swap an exercise"
-          }
-        }
-      }
-    },
-    "Adicionar um exercício" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add an exercise"
-          }
-        }
-      }
-    },
-    "Remover um exercício" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove an exercise"
-          }
-        }
-      }
-    },
-    "Reordenar exercícios" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reorder exercises"
-          }
-        }
-      }
-    },
-    "Adicionar um alimento" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add a food"
-          }
-        }
-      }
-    },
-    "Remover um alimento" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove a food"
-          }
-        }
-      }
-    },
-    "Alterar um alimento" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change a food"
-          }
-        }
-      }
-    },
-    "Adicionar uma refeição" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add a meal"
-          }
-        }
-      }
-    },
-    "Remover uma refeição" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove a meal"
-          }
-        }
-      }
-    },
-    "Alterar uma refeição" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change a meal"
-          }
-        }
-      }
-    },
-    "Mudar as metas" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change the targets"
-          }
-        }
-      }
-    },
-    "Registrar o que você comeu" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Log what you ate"
-          }
-        }
-      }
-    },
-    "%lld alterações" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld changes"
-          }
-        }
-      }
-    },
-    "Alteração proposta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proposed change"
-          }
-        }
-      }
-    },
-    "Sobre “%@” (%@): " : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "About “%@” (%@): "
-          }
-        }
-      }
-    },
-    "O que estava salvo mudou desde a sugestão. Este é o antes → depois atualizado: confira e confirme." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What was saved has changed since the suggestion. This is the updated before → after: check it and confirm."
-          }
-        }
-      }
-    },
-    "Na ficha “%@” do programa “%@”: " : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In routine “%@” of program “%@”: "
-          }
-        }
-      }
-    },
-    "Na ficha “%@”: " : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In routine “%@”: "
-          }
-        }
-      }
-    },
-    "Na dieta “%@”: " : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In diet “%@”: "
-          }
-        }
-      }
-    },
-    "Ativar o novo programa agora?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activate the new program now?"
-          }
-        }
-      }
-    },
-    "Ativar a nova dieta agora?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activate the new diet now?"
-          }
-        }
-      }
-    },
-    "Criar e ativar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Create and activate"
-          }
-        }
-      }
-    },
-    "Voltar às perguntas" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Back to the questions"
-          }
-        }
-      }
-    },
-    "Recolhe a ficha" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Collapses the routine"
-          }
-        }
-      }
-    },
-    "Mostra os exercícios" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Shows the exercises"
-          }
-        }
-      }
-    },
-    "1 exercício" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 exercise"
-          }
-        }
-      }
-    },
-    "Valores estimados pela IA" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Values estimated by the AI"
-          }
-        }
-      }
-    },
-    "1 item para conferir" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 item to check"
-          }
-        }
-      }
-    },
-    "%lld itens para conferir" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld items to check"
-          }
-        }
-      }
-    },
-    "1 substituição" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 substitution"
-          }
-        }
-      }
-    },
-    "%lld substituições" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld substitutions"
-          }
-        }
-      }
-    },
-    "Importado de 1 arquivo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imported from 1 file"
-          }
-        }
-      }
-    },
-    "Importado de %lld arquivos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imported from %lld files"
-          }
-        }
-      }
-    },
-    "Nome da dieta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diet name"
-          }
-        }
-      }
-    },
-    "Tudo lido com clareza" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Everything read clearly"
-          }
-        }
-      }
-    },
-    "Ver" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "View"
-          }
-        }
-      }
-    },
-    "Destino" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Destination"
-          }
-        }
-      }
-    },
-    "Adicionar ao programa %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add to program %@"
-          }
-        }
-      }
-    },
-    "Há um treino em andamento. Cria sem ativar; ative depois de finalizar o treino." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A workout is in progress. It is created without activating; activate after you finish the workout."
-          }
-        }
-      }
-    },
-    "Desligado, o programa fica salvo sem trocar o ativo." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Off, the program is saved without replacing the active one."
-          }
-        }
-      }
-    },
-    "Desligado, a dieta fica salva sem trocar a ativa." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Off, the diet is saved without replacing the active one."
-          }
-        }
-      }
-    },
-    "Não foi possível criar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not create"
-          }
-        }
-      }
-    },
-    "Falta algo para criar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Something is missing to create it"
-          }
-        }
-      }
-    },
-    "Adicionar ao programa" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add to program"
-          }
-        }
-      }
-    },
-    "Aplicando suas respostas…" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Applying your answers…"
-          }
-        }
-      }
-    },
-    "Ajustando o que você respondeu" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adjusting what you answered"
-          }
-        }
-      }
-    },
-    "Lendo %@…" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reading %@…"
-          }
-        }
-      }
-    },
-    "Lendo %lld arquivos…" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reading %lld files…"
-          }
-        }
-      }
-    },
-    "Arquivos preparados" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Files prepared"
-          }
-        }
-      }
-    },
-    "1 arquivo enviado" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 file sent"
-          }
-        }
-      }
-    },
-    "%lld arquivos enviados" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld files sent"
-          }
-        }
-      }
-    },
-    "Lendo exercícios e séries" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reading exercises and sets"
-          }
-        }
-      }
-    },
-    "Lendo refeições e quantidades" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reading meals and quantities"
-          }
-        }
-      }
-    },
-    "Casar com a sua biblioteca" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Match with your library"
-          }
-        }
-      }
-    },
-    "Conferir calorias e quantidades" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Check calories and quantities"
-          }
-        }
-      }
-    },
-    "Está demorando mais que o normal. Pode fechar: eu aviso quando terminar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This is taking longer than usual. You can close it: I will let you know when it finishes."
-          }
-        }
-      }
-    },
-    "Enviados a %@ · menos de 1 minuto" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sent to %@ · less than 1 minute"
-          }
-        }
-      }
-    },
-    "Encontrei 1 ficha" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I found 1 routine"
-          }
-        }
-      }
-    },
-    "Encontrei %lld fichas" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I found %lld routines"
-          }
-        }
-      }
-    },
-    "Encontrei 1 refeição" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I found 1 meal"
-          }
-        }
-      }
-    },
-    "Encontrei %lld refeições" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I found %lld meals"
-          }
-        }
-      }
-    },
-    "1 PDF" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 PDF"
-          }
-        }
-      }
-    },
-    "%lld PDFs" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld PDFs"
-          }
-        }
-      }
-    },
-    "1 foto" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 photo"
-          }
-        }
-      }
-    },
-    "%lld fotos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld photos"
-          }
-        }
-      }
-    },
-    "1 texto" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 text"
-          }
-        }
-      }
-    },
-    "%lld textos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld texts"
-          }
-        }
-      }
-    },
-    "Entendi um programa com %@ e %@." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I understood a program with %@ and %@."
-          }
-        }
-      }
-    },
-    "Entendi uma dieta com %@ e %@." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I understood a diet with %@ and %@."
-          }
-        }
-      }
-    },
-    "Falta 1 detalhe." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1 detail is missing."
-          }
-        }
-      }
-    },
-    "Faltam %lld detalhes." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld details are missing."
-          }
-        }
-      }
-    },
-    "ficha" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "routine"
-          }
-        }
-      }
-    },
-    "fichas" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "routines"
-          }
-        }
-      }
-    },
-    "exercício" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "exercise"
-          }
-        }
-      }
-    },
-    "exercícios" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "exercises"
-          }
-        }
-      }
-    },
-    "refeição" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "meal"
-          }
-        }
-      }
-    },
-    "refeições" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "meals"
-          }
-        }
-      }
-    },
-    "alimento" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "food"
-          }
-        }
-      }
-    },
-    "alimentos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "foods"
-          }
-        }
-      }
-    },
-    "Criar como exercício novo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Create as a new exercise"
-          }
-        }
-      }
-    },
-    "Mantido como li" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kept as I read it"
-          }
-        }
-      }
-    },
-    "carga ilegível: li “%@”" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "unreadable load: I read “%@”"
-          }
-        }
-      }
-    },
-    "carga com dúvida" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "load in doubt"
-          }
-        }
-      }
-    },
-    "não está na sua biblioteca; será criado" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "not in your library; will be created"
-          }
-        }
-      }
-    },
-    "a IA ficou em dúvida" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "the AI was unsure"
-          }
-        }
-      }
-    },
-    "Variação %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Variation %lld"
-          }
-        }
-      }
-    },
-    "cardio" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "cardio"
-          }
-        }
-      }
-    },
-    "PC" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BW"
-          }
-        }
-      }
-    },
-    "PC %@%@ %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "BW %@%@ %@"
-          }
-        }
-      }
-    },
-    "máx." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "max"
-          }
-        }
-      }
-    },
-    "Não foi possível desfazer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not undo"
-          }
-        }
-      }
-    },
-    "Confirmar e aplicar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Confirm and apply"
-          }
-        }
-      }
-    },
-    "Adicionar fichas com IA" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add routines with AI"
-          }
-        }
-      }
-    },
-    "%@ tem %lld páginas: a análise pode custar mais." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ has %lld pages: the analysis may cost more."
-          }
-        }
-      }
-    },
-    "%@ tem %lld páginas; só as primeiras %lld foram enviadas." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ has %lld pages; only the first %lld were sent."
-          }
-        }
-      }
-    },
-    "No supino está “3x12”. Como devo ler?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The bench press says “3x12”. How should I read it?"
-          }
-        }
-      }
-    },
-    "Tem a ficha do seu personal em PDF ou foto? Eu monto para você." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Have your trainer’s sheet as a PDF or photo? I will build it for you."
-          }
-        }
-      }
-    },
-    "Usar exemplo ABC" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use ABC example"
-          }
-        }
-      }
-    },
-    "%@ · descanso" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · rest"
-          }
-        }
-      }
-    },
-    "%@ · séries" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · sets"
-          }
-        }
-      }
-    },
-    "repetições" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "reps"
-          }
-        }
-      }
-    },
-    "carga atual" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "current load"
-          }
-        }
-      }
-    },
-    "carga inicial" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "starting load"
-          }
-        }
-      }
-    },
-    "Ordem" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Order"
-          }
-        }
-      }
-    },
-    "Registro %@ %@ · %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Log %@ %@ · %@"
-          }
-        }
-      }
-    },
-    "fora do plano" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "off plan"
-          }
-        }
-      }
-    },
-    "ontem" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "yesterday"
-          }
-        }
-      }
-    },
-    "todas as séries" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "all sets"
-          }
-        }
-      }
-    },
-    "série %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "set %lld"
-          }
-        }
-      }
-    },
-    "séries %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "sets %@"
-          }
-        }
-      }
-    },
-    "peso corporal %@%@ %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "bodyweight %@%@ %@"
-          }
-        }
-      }
-    },
-    "%@ · série %lld · %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ · set %lld · %@"
-          }
-        }
-      }
-    },
-    "padrão" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "default"
-          }
-        }
-      }
-    },
-    "sem metas" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "no targets"
-          }
-        }
-      }
-    },
-    "Essa pergunta não está mais pendente." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This question is no longer pending."
-          }
-        }
-      }
-    },
-    "Qual o nome do programa?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What is the program called?"
-          }
-        }
-      }
-    },
-    "%lld fichas detectadas." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld routines detected."
-          }
-        }
-      }
-    },
-    "Ex.: ABCD Hipertrofia" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "E.g. ABCD Hypertrophy"
-          }
-        }
-      }
-    },
-    "Dias fixos da semana" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fixed days of the week"
-          }
-        }
-      }
-    },
-    "Cada ficha em dias marcados" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Each routine on set days"
-          }
-        }
-      }
-    },
-    "Rodízio A → B → C" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rotation A → B → C"
-          }
-        }
-      }
-    },
-    "A próxima ficha depois da última feita" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The next routine after the last one done"
-          }
-        }
-      }
-    },
-    "Escolho a ficha no dia" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I pick the routine on the day"
-          }
-        }
-      }
-    },
-    "Como você segue as fichas?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "How do you follow the routines?"
-          }
-        }
-      }
-    },
-    "Qual o nome da ficha %lld?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What is routine %lld called?"
-          }
-        }
-      }
-    },
-    "Começa com: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Starts with: %@"
-          }
-        }
-      }
-    },
-    "Ex.: Peito e tríceps" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "E.g. Chest and triceps"
-          }
-        }
-      }
-    },
-    "Em que dias você faz %@?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On which days do you do %@?"
-          }
-        }
-      }
-    },
-    "Qual exercício é “%@”?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Which exercise is “%@”?"
-          }
-        }
-      }
-    },
-    "Confere o exercício “%@”?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Is the exercise “%@” right?"
-          }
-        }
-      }
-    },
-    "Quantas repetições em %@?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "How many reps in %@?"
-          }
-        }
-      }
-    },
-    "Qual a carga em %@?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What is the load in %@?"
-          }
-        }
-      }
-    },
-    "ficha %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "routine %lld"
-          }
-        }
-      }
-    },
-    "Terça" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tuesday"
-          }
-        }
-      }
-    },
-    "Quarta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wednesday"
-          }
-        }
-      }
-    },
-    "Quinta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Thursday"
-          }
-        }
-      }
-    },
-    "Sexta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Friday"
-          }
-        }
-      }
-    },
-    "Sábado" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Saturday"
-          }
-        }
-      }
-    },
-    "Use um número (10) ou uma faixa (8-12)." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use a number (10) or a range (8-12)."
-          }
-        }
-      }
-    },
-    "Escrito: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Written: %@"
-          }
-        }
-      }
-    },
-    "Escolha uma opção." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose an option."
-          }
-        }
-      }
-    },
-    "Escolha ao menos um dia." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose at least one day."
-          }
-        }
-      }
-    },
-    "Exercício não encontrado no catálogo." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exercise not found in the catalog."
-          }
-        }
-      }
-    },
-    "Use de 1 a 100 repetições." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use 1 to 100 reps."
-          }
-        }
-      }
-    },
-    "Use um número (10), uma faixa (8-12) ou “máximo”." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use a number (10), a range (8-12) or “max”."
-          }
-        }
-      }
-    },
-    "Informe a carga em kg ou lb." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter the load in kg or lb."
-          }
-        }
-      }
-    },
-    "Resposta não combina com a pergunta." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The answer does not match the question."
-          }
-        }
-      }
-    },
-    "Escreva um nome." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Write a name."
-          }
-        }
-      }
-    },
-    "Qual o nome da dieta?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What is the diet called?"
-          }
-        }
-      }
-    },
-    "Ex.: Dieta da nutricionista" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "E.g. Nutritionist’s diet"
-          }
-        }
-      }
-    },
-    "Em que dias vale %@?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "On which days does %@ apply?"
-          }
-        }
-      }
-    },
-    "Que horas é %@?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What time is %@?"
-          }
-        }
-      }
-    },
-    "Quanto de %@?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "How much %@?"
-          }
-        }
-      }
-    },
-    "variação %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "variation %lld"
-          }
-        }
-      }
-    },
-    "refeição %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "meal %lld"
-          }
-        }
-      }
-    },
-    "Use o formato HH:MM, ex.: 07:30." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Use the HH:MM format, e.g. 07:30."
-          }
-        }
-      }
-    },
-    "Informe uma quantidade maior que zero." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter a quantity greater than zero."
-          }
-        }
-      }
-    },
-    "Informe a quantidade." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enter the quantity."
-          }
-        }
-      }
-    },
-    "%@, p. %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@, p. %lld"
-          }
-        }
-      }
-    },
-    "Pode esclarecer este ponto?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Can you clarify this point?"
-          }
-        }
-      }
-    },
-    "Alteração não encontrada." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change not found."
-          }
-        }
-      }
-    },
-    "Esta alteração já foi resolvida." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This change has already been resolved."
-          }
-        }
-      }
-    },
-    "Há um treino em andamento (%@). Finalize antes de alterar a ficha." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A workout is in progress (%@). Finish it before changing the routine."
-          }
-        }
-      }
-    },
-    "A ficha ou dieta não existe mais." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The routine or diet no longer exists."
-          }
-        }
-      }
-    },
-    "A alteração não vale mais: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The change is no longer valid: %@"
-          }
-        }
-      }
-    },
-    "Não há o que desfazer." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing to undo."
-          }
-        }
-      }
-    },
-    "O prazo para desfazer (24 h) passou." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The undo window (24 h) has passed."
-          }
-        }
-      }
-    },
-    "A ficha ou dieta mudou depois; desfazer apagaria essas mudanças." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The routine or diet changed afterwards; undoing would erase those changes."
-          }
-        }
-      }
-    },
-    "Câmera sem acesso" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No camera access"
-          }
-        }
-      }
-    },
-    "Escolha os arquivos de novo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose the files again"
-          }
-        }
-      }
-    },
-    "Esta importação foi retomada, mas os arquivos não ficam guardados no app." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This import was resumed, but files are not kept in the app."
-          }
-        }
-      }
-    },
-    "Os arquivos ficam aqui; analise quando voltar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The files stay here; analyze when it is back."
-          }
-        }
-      }
-    },
-    "Foto %lld.jpg" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photo %lld.jpg"
-          }
-        }
-      }
-    },
-    "Libere a câmera em Ajustes para fotografar a ficha. As outras fontes continuam disponíveis." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Allow the camera in Settings to photograph the sheet. The other sources remain available."
-          }
-        }
-      }
-    },
-    "PDF, foto ou texto. Eu leio, pergunto o que faltar e monto." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PDF, photo or text. I read it, ask what is missing and build it."
-          }
-        }
-      }
-    },
-    "Traga a ficha como ela está" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bring the sheet as it is"
-          }
-        }
-      }
-    },
-    "Traga a dieta como ela está" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bring the diet as it is"
-          }
-        }
-      }
-    },
-    "Limite de %lld arquivos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Limit of %lld files"
-          }
-        }
-      }
-    },
-    "PDF ou arquivo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PDF or file"
-          }
-        }
-      }
-    },
-    "Fotos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photos"
-          }
-        }
-      }
-    },
-    "Câmera" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Camera"
-          }
-        }
-      }
-    },
-    "Colar texto" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paste text"
-          }
-        }
-      }
-    },
-    "%lld de %lld arquivos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld of %lld files"
-          }
-        }
-      }
-    },
-    "Localização e dados da câmera são removidos das fotos antes do envio." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Location and camera data are removed from photos before sending."
-          }
-        }
-      }
-    },
-    "Os arquivos inteiros vão para %@ para serem lidos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The whole files go to %@ to be read"
-          }
-        }
-      }
-    },
-    "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitJourney." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Everything written in them will be sent. After the import they are not kept in FitJourney."
-          }
-        }
-      }
-    },
-    "Falta configurar a IA" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "AI is not set up yet"
-          }
-        }
-      }
-    },
-    "Escolha o provedor e informe a chave. Os arquivos escolhidos ficam aqui." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose the provider and enter the key. The files you chose stay here."
-          }
-        }
-      }
-    },
-    "Configurar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Set up"
-          }
-        }
-      }
-    },
-    "Escolha um arquivo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose a file"
-          }
-        }
-      }
-    },
-    "Analisar 1 arquivo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Analyze 1 file"
-          }
-        }
-      }
-    },
-    "Analisar %lld arquivos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Analyze %lld files"
-          }
-        }
-      }
-    },
-    "Não foi possível ler uma das fotos." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not read one of the photos."
-          }
-        }
-      }
-    },
-    "Antes de analisar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Before analyzing"
-          }
-        }
-      }
-    },
-    "Aceitar vale como consentimento do Coach. Importar não lê o seu histórico: os compartilhamentos do Coach continuam desligados." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Accepting counts as Coach consent. Importing does not read your history: the Coach sharing options stay off."
-          }
-        }
-      }
-    },
-    "O arquivo inteiro vai para %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The whole file goes to %@"
-          }
-        }
-      }
-    },
-    "Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado ao provedor de IA que você configurou. Nada vai a servidor do FitJourney." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Everything written in it (name, phone, your trainer’s notes) will be sent to the AI provider you set up. Nothing goes to a FitJourney server."
-          }
-        }
-      }
-    },
-    "Concordar e analisar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agree and analyze"
-          }
-        }
-      }
-    },
-    "Texto da ficha" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sheet text"
-          }
-        }
-      }
-    },
-    "%lld caracteres" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld characters"
-          }
-        }
-      }
-    },
-    "Colar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paste"
-          }
-        }
-      }
-    },
-    "Brilho único" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Single sheen"
-          }
-        }
-      }
-    },
-    "Cartão proposto pela IA" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Card proposed by the AI"
-          }
-        }
-      }
-    },
-    "Continuar em segundo plano?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue in the background?"
-          }
-        }
-      }
-    },
-    "Descartar importação?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discard import?"
-          }
-        }
-      }
-    },
-    "Continuar em segundo plano" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue in the background"
-          }
-        }
-      }
-    },
-    "Cancelar importação" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cancel import"
-          }
-        }
-      }
-    },
-    "Continuar depois" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue later"
-          }
-        }
-      }
-    },
-    "Voltar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Back"
-          }
-        }
-      }
-    },
-    "A leitura segue. Quando terminar, “Continuar importação” aparece em %@." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reading continues. When it finishes, “Continue import” appears in %@."
-          }
-        }
-      }
-    },
-    "Você pode continuar depois: o que já foi lido e respondido fica guardado." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You can continue later: what was read and answered is kept."
-          }
-        }
-      }
-    },
-    "Importar treino" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import workout"
-          }
-        }
-      }
-    },
-    "Importar dieta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import diet"
-          }
-        }
-      }
-    },
-    "A leitura não deu certo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reading did not work"
-          }
-        }
-      }
-    },
-    "O que aconteceu" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What happened"
-          }
-        }
-      }
-    },
-    "Não foi possível continuar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not continue"
-          }
-        }
-      }
-    },
-    "Não foi possível analisar os arquivos." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not analyze the files."
-          }
-        }
-      }
-    },
-    "Trocar arquivos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change files"
-          }
-        }
-      }
-    },
-    "Esta conversa usa só os arquivos que você enviou." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This conversation only uses the files you sent."
-          }
-        }
-      }
-    },
-    "Respondida. %@: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Answered. %@: %@"
-          }
-        }
-      }
-    },
-    "Pular esta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skip this one"
-          }
-        }
-      }
-    },
-    "Pular todas e revisar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skip all and review"
-          }
-        }
-      }
-    },
-    "%@: **%@**" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: **%@**"
-          }
-        }
-      }
-    },
-    "Obrigatória" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Required"
-          }
-        }
-      }
-    },
-    "Responder…" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Answer…"
-          }
-        }
-      }
-    },
-    "Tudo respondido" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All answered"
-          }
-        }
-      }
-    },
-    "Confira o que será criado antes de salvar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Check what will be created before saving."
-          }
-        }
-      }
-    },
-    "Suas respostas às dúvidas da IA" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your answers to the AI’s questions"
-          }
-        }
-      }
-    },
-    "A IA ainda não aplicou o que você respondeu. É uma chamada só de texto; os arquivos não são enviados de novo." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The AI has not applied your answers yet. It is a text-only call; the files are not sent again."
-          }
-        }
-      }
-    },
-    "Revisar com IA" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Review with AI"
-          }
-        }
-      }
-    },
-    "Continuar para a revisão" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue to review"
-          }
-        }
-      }
-    },
-    "Confirmar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Confirm"
-          }
-        }
-      }
-    },
-    "Resposta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Answer"
-          }
-        }
-      }
-    },
-    "Manter o que li" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keep what I read"
-          }
-        }
-      }
-    },
-    "Sugestões da sua biblioteca" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suggestions from your library"
-          }
-        }
-      }
-    },
-    "Buscar no catálogo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search the catalog"
-          }
-        }
-      }
-    },
-    "Criar como novo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Create as new"
-          }
-        }
-      }
-    },
-    "Importar um treino" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import a workout"
-          }
-        }
-      }
-    },
-    "Importar uma dieta" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import a diet"
-          }
-        }
-      }
-    },
-    "Escolha no máximo %lld arquivos." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose at most %lld files."
-          }
-        }
-      }
-    },
-    "%@ passa de %lld MB." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ is over %lld MB."
-          }
-        }
-      }
-    },
-    "Os arquivos juntos passam de %lld MB. Remova algum." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The files together are over %lld MB. Remove one."
-          }
-        }
-      }
-    },
-    "%@: formato não suportado (use PDF, foto ou texto)." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@: unsupported format (use PDF, photo or text)."
-          }
-        }
-      }
-    },
-    "Não foi possível ler %@." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Could not read %@."
-          }
-        }
-      }
-    },
-    "%@ está protegido por senha." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ is password protected."
-          }
-        }
-      }
-    },
-    "%@ está vazio." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ is empty."
-          }
-        }
-      }
-    },
-    "O modelo escolhido não aceita imagens. Escolha outro modelo em Ajustes de IA." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The chosen model does not accept images. Pick another model in AI Settings."
-          }
-        }
-      }
-    },
-    "Continuo quando ela voltar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I will continue when it is back."
-          }
-        }
-      }
-    },
-    "Serão adicionadas ao programa que você escolheu." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "They will be added to the program you chose."
-          }
-        }
-      }
-    },
-    "Encontrei %lld variações" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "I found %lld variations"
-          }
-        }
-      }
-    },
-    "Escolha as que quer importar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose the ones you want to import."
-          }
-        }
-      }
-    },
-    "Escolha as variações de dieta que quer importar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose the diet variations you want to import."
-          }
-        }
-      }
-    },
-    "Continuar com 1 ficha" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue with 1 routine"
-          }
-        }
-      }
-    },
-    "Continuar com %lld fichas" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue with %lld routines"
-          }
-        }
-      }
-    },
-    "Continuar com 1 variação" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue with 1 variation"
-          }
-        }
-      }
-    },
-    "Continuar com %lld variações" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Continue with %lld variations"
-          }
-        }
-      }
-    },
-    "Marca ou desmarca para importar" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selects or deselects for import"
-          }
-        }
-      }
-    },
-    "Renomear %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rename %@"
-          }
-        }
-      }
-    },
-    "Ocultar lista" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hide list"
-          }
-        }
-      }
-    },
-    "Ver lista" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Show list"
-          }
-        }
-      }
-    },
-    "Letra" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Letter"
-          }
-        }
-      }
-    },
-    "Para importar, aceite enviar os arquivos ao provedor de IA." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "To import, agree to send the files to the AI provider."
-          }
-        }
-      }
-    },
-    "Escolha ao menos um arquivo." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose at least one file."
-          }
-        }
-      }
-    },
-    "Esta etapa da importação já passou." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This import step has already passed."
-          }
-        }
-      }
-    },
-    "Responda as perguntas obrigatórias antes de revisar." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Answer the required questions before reviewing."
-          }
-        }
-      }
-    },
-    "Revise a importação: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Review the import: %@"
-          }
-        }
-      }
-    },
-    "Este destino não combina com o tipo de importação." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This destination does not match the import type."
-          }
-        }
-      }
-    },
-    "Programa não encontrado." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Program not found."
-          }
-        }
-      }
-    },
-    "A IA não conseguiu extrair um treino ou dieta válido desses arquivos. Tente outra foto ou outro modelo." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The AI could not extract a valid workout or diet from these files. Try another photo or model."
-          }
-        }
-      }
-    },
-    "escolha ao menos uma ficha" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "choose at least one routine"
-          }
-        }
-      }
-    },
-    "escolha ao menos uma variação" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "choose at least one variation"
-          }
-        }
-      }
-    },
-    "Importado com IA de 1 arquivo." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imported with AI from 1 file."
-          }
-        }
-      }
-    },
-    "Importado com IA de %lld arquivos." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imported with AI from %lld files."
-          }
-        }
-      }
-    },
-    "Criado, mas os ajustes de nome e cor não foram aplicados. Edite no programa." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Created, but the name and color adjustments were not applied. Edit them in the program."
-          }
-        }
-      }
-    },
-    "O programa de destino não está mais disponível. Escolha outro destino ou crie um novo programa." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The destination program is no longer available. Choose another destination or create a new program."
-          }
-        }
-      }
-    },
-    "Quantidade/unidade não informada; no arquivo: %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quantity/unit not given; in the file: %@"
-          }
-        }
-      }
-    },
-    "Quantidade/unidade não informada" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quantity/unit not given"
-          }
-        }
-      }
-    },
-    "%@ tem %lld páginas, acima do limite de %lld para envio direto; as primeiras %lld foram enviadas como imagens." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ has %lld pages, above the limit of %lld for direct sending; the first %lld were sent as images."
           }
         }
       }
