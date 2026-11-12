@@ -1,8 +1,13 @@
 import Foundation
 
-/// Passo e limites da carga ajustada pela Digital Crown (SPEC D3: 0,5 kg por detente).
+/// Passo e limites da carga (SPEC D3). A grade é sempre de 0,5 (vale para kg e lb); o passo do editor de carga
+/// é 0,5 kg ou 1 lb por detente/toque, como o padrão do iPhone (`LoadDisplay.defaultStep`).
 enum WatchLoadStepping {
+    /// Grade da carga: todo valor é múltiplo de 0,5 na unidade dele.
     static let step = 0.5
+
+    /// Passo do editor (Coroa, − / +, VoiceOver): 0,5 kg ou 1 lb.
+    static func step(for load: WatchLoad) -> Double { load.unit == .lb ? 1 : step }
     /// Carga absoluta: 0 … 1000. Peso corporal (lastro/assistência): −150 … +150.
     static let absoluteRange: ClosedRange<Double> = 0...1000
     static let bodyweightRange: ClosedRange<Double> = -150...150

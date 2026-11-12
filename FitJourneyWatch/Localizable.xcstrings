@@ -441,6 +441,16 @@
         }
       }
     },
+    "Cancelar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        }
+      }
+    },
     "Cardio" : {
       "localizations" : {
         "en" : {
@@ -457,6 +467,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Load"
+          }
+        }
+      }
+    },
+    "Carga, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Load, %@"
           }
         }
       }
@@ -671,6 +691,16 @@
         }
       }
     },
+    "Descarta a mudança" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discards the change"
+          }
+        }
+      }
+    },
     "Descartar" : {
       "localizations" : {
         "en" : {
@@ -687,6 +717,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Discard workout?"
+          }
+        }
+      }
+    },
+    "Deslize para cima ou para baixo para mudar meio quilo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe up or down to change by half a kilo"
+          }
+        }
+      }
+    },
+    "Deslize para cima ou para baixo para mudar uma libra" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe up or down to change by one pound"
           }
         }
       }
@@ -907,6 +957,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Glutes"
+          }
+        }
+      }
+    },
+    "Grava %@ e volta à série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saves %@ and returns to the set"
           }
         }
       }
@@ -1371,12 +1431,32 @@
         }
       }
     },
+    "Próxima série sem carga definida" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next set, no load set"
+          }
+        }
+      }
+    },
     "Próxima série sem carga definida. Gire a Coroa para definir." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Next set has no load. Turn the Crown to set it."
+          }
+        }
+      }
+    },
+    "Próxima série, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next set, %@"
           }
         }
       }
@@ -1621,6 +1701,16 @@
         }
       }
     },
+    "Salvar carga" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save load"
+          }
+        }
+      }
+    },
     "Salvo no relógio" : {
       "localizations" : {
         "en" : {
@@ -1811,12 +1901,32 @@
         }
       }
     },
+    "Toque para ajustar" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to adjust"
+          }
+        }
+      }
+    },
     "Toque para ajustar. Deslize para cima ou para baixo para mudar meio quilo." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tap to adjust. Swipe up or down to change by half a kilo."
+          }
+        }
+      }
+    },
+    "Toque para definir" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap to set"
           }
         }
       }
@@ -2011,6 +2121,16 @@
         }
       }
     },
+    "assistência" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "assistance"
+          }
+        }
+      }
+    },
     "atual" : {
       "localizations" : {
         "en" : {
@@ -2151,6 +2271,16 @@
         }
       }
     },
+    "lastro" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "added weight"
+          }
+        }
+      }
+    },
     "lb" : {
       "localizations" : {
         "en" : {
@@ -2247,6 +2377,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "no load"
+          }
+        }
+      }
+    },
+    "sem carga definida" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "no load set"
           }
         }
       }

@@ -65,9 +65,10 @@ struct WatchSessionSummary: Equatable, Sendable {
 /// comandos seguintes saem na hora, sem reter nem remapear. Pendentes que citam série/exercício que o snapshot
 /// confirmado não tem são descartados com aviso (`pruneCommandsWithUnknownIDs`).
 ///
-/// Coalescência da Coroa: `adjustLoad` fica `loadCoalesceInterval` sem enviar; outro `adjustLoad` da mesma série
-/// nesse intervalo soma no mesmo comando (mesmo `commandID`, nunca enviado — seguro). Qualquer outro comando
-/// envia antes o que estiver esperando (ordem preservada).
+/// Coalescência de `adjustLoad` em rajada: fica `loadCoalesceInterval` sem enviar; outro `adjustLoad` da mesma
+/// série nesse intervalo soma no mesmo comando (mesmo `commandID`, nunca enviado — seguro). Qualquer outro comando
+/// envia antes o que estiver esperando (ordem preservada). Desde o W4 a Coroa não mexe mais na carga fora do
+/// editor, que envia um único comando ao salvar (`saveLoad`, sem esperar a janela).
 ///
 /// Quem grava o treino no Saúde (`WatchWorkoutStatus`): sessão iniciada aqui → o relógio grava; sessão iniciada
 /// no iPhone → o relógio só controla, e oferece "gravar no relógio" (`canOfferWatchRecording`,
@@ -123,6 +124,11 @@ final class WatchSessionModel {
     var restFinishedAt: Date?
     /// Alerta insistente de fim de descanso em curso (`nil` = sem alerta).
     private(set) var restAlert: WatchRestAlert?
+    /// Editor de carga aberto (W4) e o rascunho com que abriu (a folha edita uma cópia). Fecha sozinho — como
+    /// Cancelar — se a sessão acaba, troca ou fica esquecida, ou se a série atual deixa de ser a dele.
+    private(set) var loadEditor: WatchLoadDraft?
+    /// O fim do descanso não abre a tela cheia por cima do editor.
+    var isEditingLoad: Bool { loadEditor != nil }
     var liveMetrics = WatchLiveMetrics.empty
     var healthAccess: WatchHealthAccess
     /// Sessão cujo treino o relógio está gravando no Saúde (`nil` = só controle).
@@ -137,7 +143,7 @@ final class WatchSessionModel {
     /// Espera por resposta antes de reenviar um comando; espera máxima por um snapshot pedido.
     @ObservationIgnored var resendInterval: TimeInterval = 5
     @ObservationIgnored var snapshotTimeout: TimeInterval = 10
-    /// Janela de coalescência dos `adjustLoad` da Coroa (0 = envia cada um na hora).
+    /// Janela de coalescência dos `adjustLoad` em rajada (0 = envia cada um na hora).
     @ObservationIgnored var loadCoalesceInterval: TimeInterval = 0.35
     /// Intervalo mínimo entre envios de métricas ao iPhone.
     @ObservationIgnored var metricsInterval: TimeInterval = 2
@@ -289,6 +295,7 @@ final class WatchSessionModel {
     func retryStalePending() {
         // Alerta de descanso nunca fica por baixo da tela "Treino em aberto".
         if restAlert != nil, staleSessionSince != nil { clearRestAlert() }
+        if loadEditor != nil, staleSessionSince != nil { loadEditor = nil }
         if pending.contains(where: { $0.lastSentAt == nil && ($0.holdUntil ?? .distantFuture) <= now }) { flushCoalescedCommands() }
         guard isPhoneReachable else { return }
         var resent = false
@@ -621,10 +628,66 @@ final class WatchSessionModel {
         send(.adjustLoad(setID: setID, delta: effective))
     }
 
-    /// Valor absoluto vindo da Coroa: converte em `adjustLoad`.
+    /// Valor absoluto: converte em `adjustLoad`.
     func setLoad(setID: UUID, to value: Double) {
         guard let display, let base = SessionReducer.loadBase(setID: setID, in: display) else { return }
         adjustLoad(setID: setID, by: value - base.value)
+    }
+
+    // MARK: Editor de carga (W4)
+
+    /// Abre o editor de carga da série: o rascunho parte da carga mostrada. `nil` se a série não existe ou o
+    /// exercício não usa carga.
+    func loadDraft(setID: UUID) -> WatchLoadDraft? {
+        guard let display, let base = SessionReducer.loadBase(setID: setID, in: display),
+              let exercise = display.exercises.first(where: { $0.sets.contains { $0.id == setID } }),
+              let set = exercise.sets.first(where: { $0.id == setID }),
+              effectiveLoad(of: set, in: exercise) != nil else { return nil }
+        return WatchLoadDraft(setID: setID, base: base, wasUnset: isLoadUnset(set))
+    }
+
+    /// Abre o editor de carga (W4) para a série **atual** ainda não concluída — no descanso, a próxima série.
+    /// A partir daqui o fim do descanso não abre a tela cheia (`isEditingLoad`).
+    func openLoadEditor(setID: UUID) {
+        guard hasActiveSession, staleSessionSince == nil, let set = currentSet, set.id == setID, !set.isCompleted,
+              let draft = loadDraft(setID: setID) else { return }
+        loadEditor = draft
+    }
+
+    /// "Cancelar" (✕ ou a folha fechada por qualquer motivo): descarta o rascunho. Não envia nada.
+    func cancelLoadEdit() { loadEditor = nil }
+
+    /// "Salvar" do editor: **um** `adjustLoad` até o valor escolhido, com a mesma propagação às séries seguintes
+    /// de sempre, enviado na hora (sem esperar a coalescência), e fecha o editor. A diferença é calculada sobre a
+    /// carga atual: se o iPhone mudou a carga com o editor aberto, vale o número que o usuário viu e salvou.
+    /// Não envia nada se o valor não mudou (nem "acerta" uma carga fora da grade), se a série deixou de ser a atual
+    /// ou já foi concluída. Série sem carga ("Definir carga") e sem mexer: delta 0 grava a carga mostrada (o iPhone
+    /// trata delta 0 do mesmo jeito) — só se houver carga real (0 kg não conta, `canSave`).
+    func saveLoad(_ draft: WatchLoadDraft) {
+        defer { loadEditor = nil }
+        guard draft.canSave, hasActiveSession, let display, let set = currentSet, set.id == draft.setID, !set.isCompleted,
+              let base = SessionReducer.loadBase(setID: draft.setID, in: display) else { return }
+        if draft.hasChanges {
+            let delta = draft.value - base.value
+            guard abs(delta) > 0.001 else { return } // o iPhone já pôs a mesma carga
+            send(.adjustLoad(setID: draft.setID, delta: delta))
+        } else {
+            guard isLoadUnset(set), base.isBodyweight || base.value != 0 else { return }
+            send(.adjustLoad(setID: draft.setID, delta: 0))
+        }
+        flushCoalescedCommands()
+    }
+
+    /// O editor só vale para a série atual de uma sessão ativa: sessão terminada/trocada/esquecida ou série atual
+    /// diferente (concluída aqui ou no iPhone, pulada, exercício trocado) fecham o editor, que descarta o rascunho.
+    private func reconcileLoadEditor(from old: SessionSnapshot?, to snapshot: SessionSnapshot?) {
+        guard let editor = loadEditor else { return }
+        if old?.sessionID != snapshot?.sessionID { loadEditor = nil; return }
+        let active = snapshot?.status == .active || snapshot?.status == .paused
+        let current = snapshot?.currentExercise?.sets.first { $0.id == snapshot?.currentSetID }
+        if !active || staleSessionSince != nil || current?.id != editor.setID || current?.isCompleted == true {
+            loadEditor = nil
+        }
     }
 
     func skipRest() { send(.skipRest) }
@@ -793,6 +856,7 @@ final class WatchSessionModel {
         }
         if !isActive { introExerciseID = nil }
         reconcileRestAlert(with: new)
+        reconcileLoadEditor(from: old, to: new)
 
         if let new, isActive, let exercise = new.currentExercise, exercise.measurementKind == .timeOrDistance,
            let set = exercise.sets.first(where: { $0.id == new.currentSetID }), !set.isCompleted,
@@ -863,7 +927,9 @@ final class WatchSessionModel {
     func restDidEnd(at end: Date) {
         guard let display, display.status == .active, display.restEndsAt == end, announcedRestEnd != end else { return }
         announcedRestEnd = end
-        guard restAlertRepeats else {
+        // Editor de carga aberto (W4): o usuário já está com o relógio na mão. Vibra uma vez, como com o alerta
+        // desligado, e o editor fica — a tela cheia fecharia a folha e descartaria a carga em ajuste.
+        guard restAlertRepeats, !isEditingLoad else {
             restFinishedAt = now
             haptics.play(.restEnded)
             return

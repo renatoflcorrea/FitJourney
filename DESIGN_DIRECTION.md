@@ -1633,7 +1633,7 @@ Comportamento e arquitetura de dados: SPEC §6.4. Objetivo: o iPhone fica no bol
 ### 9.1 Princípios do relógio
 
 1. **Um relance, uma ação.** Cada tela responde "o que faço agora?" com um número grande e um botão. Nada de listas durante a série.
-2. **A Coroa é da carga.** Na sessão, girar a Digital Crown ajusta a carga em passos de 0,5 kg (e o RPE ao finalizar). Por isso as páginas da sessão são **horizontais** (`TabView` com `.page`), não verticais: paginação vertical disputaria a Coroa com a carga. Ver Q-W1.
+2. **A Coroa só mexe em valor dentro de um editor (W4, substitui "A Coroa é da carga").** Em aparelho, o pulso dobrado durante a série girava a Coroa e mudava a carga sem o usuário perceber. Agora nenhuma tela que fica aberta durante o esforço reage à Coroa: na Série e no Descanso ela não faz nada (com texto grande, só rola). Ela ajusta valores apenas em telas que o usuário abriu de propósito e fecha em seguida: o **editor de carga** (0,5 kg ou 1 lb por detente), o seletor de reps e o RPE do Finalizar. Exceção sem risco: no alerta de fim de descanso, girar a Coroa só para a vibração. As páginas da sessão continuam **horizontais** (`TabView` com `.page`) para a Coroa nunca trocar de página no meio da série. Ver Q-W1.
 3. **Toque duplo = ação principal** da tela (`handGestureShortcut(.primaryAction)`): Iniciar, Concluir série, Pular descanso, Iniciar/Parar sustentação, Salvar.
 4. **O pulso avisa.** Hápticos distintos são a interface principal entre as séries (§9.6); a tela pode estar apagada.
 5. **Nunca trava.** O relógio aplica o próprio comando na hora (otimista) e reconcilia com o snapshot do iPhone. Sem iPhone por perto, continua sozinho.
@@ -1655,6 +1655,7 @@ NavigationStack
 │    └─ Ficha (exercícios e prescrição) ── [Iniciar]
 └─ Sessão (substitui a raiz enquanto houver sessão em andamento)
      TabView horizontal:  Controles ◀ │ SÉRIE (inicial) │ ▶ Métricas │ ▶ Ficha
+     ├─ Editor de carga (folha, a partir da Série ou do Descanso): Coroa · − / + · Salvar · ✕
      └─ Finalizar:  RPE (Coroa) → Resumo
 ```
 
@@ -1678,13 +1679,13 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 │ 32:14         10:09│  tempo da sessão (toolbar) · hora do sistema
 │ Supino inclinado   │  nome (headline)
 │ Série 2 de 4       │  + tipo quando não for "válida"
-│   ◉  26,0 kg       │  carga grande; ◉ = Coroa ativa
+│ ╭ 26,0 kg      ± ╮ │  carga = botão de vidro; toque abre o editor
 │ alvo 8–12 · RIR 2  │  alvo sempre como prescrito
 │ [    Concluir    ] │  botão principal · toque duplo
 └────────────────────┘
 ```
 
-- **Carga**: gira a Coroa → ±0,5 kg por detente, com háptico de detente; o indicador da Coroa (traço laranja à direita do número) mostra que ela está ativa. Tocar no número abre a folha "Carga" com − / + grandes (alternativa sem Coroa). Peso corporal mostra "PC", "PC +10 kg" e a Coroa ajusta o lastro.
+- **Carga (W4)**: botão de vidro (`glassEffect(.regular.interactive())`, cantos de 18 pt, ≥ 48 pt de altura) com o número no tamanho de sempre (36/42 pt rounded bold), a unidade ao lado e um "±" laranja à direita como afordância. **A Coroa não altera nada nesta tela.** Toque abre o **editor de carga**. Sem carga: "Definir carga" em laranja, no mesmo botão. Peso corporal: "PC" ou "PC +10 kg".
 - **Alvo** como prescrito: "8–12", "10", "máx.", com RIR/RPE. Reps realizadas não são pedidas aqui (D2).
 - **Concluir**: conclui a série com a carga exibida → háptico de sucesso → a página vira **Descanso**. Na última série do exercício o botão diz "Concluir exercício".
 - Entre exercícios: "Próximo: Crucifixo · 3 × 12–15 · 15 kg" + `Começar` (toque duplo).
@@ -1692,9 +1693,31 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 **Sessão · Descanso** (mesma página)
 
 - Título "Descanso" na toolbar (no lugar do tempo da sessão); contagem regressiva grande; barra fina de progresso.
-- "Próxima: 26,0 kg" — a Coroa continua ajustando a carga, agora da próxima série (Q-W2).
+- "Próxima: 26,0 kg ±" — chip de vidro fino (cápsula, altura de uma linha, porque o descanso é a tela mais apertada) que abre o editor de carga da **próxima** série. A área de toque cresce 20 pt para cima, sobre o tempo e a barra (não tocáveis), chegando a ≈ 44 pt. A Coroa não faz nada aqui (responde Q-W2: nem carga, nem tempo).
 - Linha de botões de vidro: `+ reps` (abre seletor pela Coroa, começando no piso da faixa; "Limpar" volta a não informado) e `+15 s`. Abaixo, `Pular` em largura total (toque duplo).
 - Fim: abre o **alerta "Descanso concluído"** (abaixo). Com "Alerta insistente" desligado no iPhone: háptico forte uma vez (§9.6), "Descanso concluído" por 2 s e volta à Série.
+
+**Sessão · Editor de carga (W4)** — folha em tela cheia, aberta pelo botão de carga da Série ou pelo chip do Descanso
+
+```
+┌────────────────────┐
+│ (✕)           10:09│  Cancelar (toolbar, sistema) · hora
+│     26,0 kg      ▌ │  número 42/48 pt; ▌ = traço laranja da Coroa
+│   Série 2 de 4     │  contexto — só 45/46 mm
+│ [  −  ]  [  +  ]   │  vidro, 44 pt
+│ [ ✓   Salvar     ] │  principal · toque duplo
+└────────────────────┘
+```
+
+- **Folha, não navegação**: cobre as páginas (nenhum deslize lateral troca de tela no meio do ajuste), tem o "✕" padrão do sistema e já era o padrão das outras escolhas do relógio (reps, RPE). Fica presa à página Série, não ao conteúdo dela: o descanso terminar por baixo não fecha o editor.
+- **A Coroa é dele**: detentes de 0,5 kg (1 lb se a carga estiver em libras), com o háptico de detente do sistema — o único lugar da sessão com esse háptico de carga. O traço laranja à direita do número indica que a Coroa está ativa. − / + fazem o mesmo passo. Limites: 0–1000; peso corporal −150…+150.
+- **Rascunho**: nada é enviado enquanto se ajusta. **Salvar** (ou toque duplo) envia **um** `adjustLoad` com a diferença até o valor escolhido — mesma regra de hoje, as séries seguintes pendentes acompanham — e volta. **Cancelar** (✕) descarta, sem confirmação (o custo de refazer é um giro). Fechar por qualquer outro motivo (alerta, fim do treino) também descarta.
+- **Sem mudança**, Salvar só fecha (nem "acerta" uma carga fora da grade, como 22,25 kg). **Série sem carga** ("Definir carga"): o número parte da última carga usada no exercício, esmaecido; Salvar sem mexer grava esse valor (delta 0, que o iPhone trata do mesmo jeito). Sem histórico (base 0 kg), Salvar fica desabilitado até mexer.
+- **Detentes relativos**: cada detente ou toque soma um passo à carga de partida e o resultado vai para a grade de 0,5 — 22,5 lb vira 23,5 lb no primeiro detente, não 23.
+- **A série muda por baixo** (concluída no iPhone, exercício pulado, sessão encerrada, trocada ou esquecida): o editor fecha sozinho, como Cancelar; um Salvar atrasado não grava em outra série.
+- **Peso corporal**: "PC" pequeno antes do número com sinal ("PC +10 kg", "PC −5 kg"); em zero, "PC". No 46 mm a linha de contexto diz "· lastro" ou "· assistência".
+- **Fim do descanso com o editor aberto**: o usuário já está com o relógio na mão — vibra uma vez (como o alerta desligado) e o editor fica; não abre a tela cheia, que fecharia a folha e perderia o ajuste.
+- **41/42 mm**: sem título nem linha de contexto (custariam 30% do número). O número é o único elemento compressível (até 70%); nunca rola.
 
 **Sessão · Descanso concluído (alerta)** — tela cheia, no lugar das páginas da sessão
 
@@ -1739,7 +1762,7 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 - Pausado: a página Série mostra "Pausado" com o tempo congelado e `Retomar` (toque duplo).
 
 **Finalizar**
-1. **RPE**: "Como foi o treino?", número grande (1–10) com o rótulo ("7 · Muito difícil"), ajustado pela Coroa com detentes. `Salvar` (toque duplo) e `Sem nota`.
+1. **RPE**: "Como foi o treino?", número grande (1–10) com o rótulo ("7 · Muito difícil"), ajustado pela Coroa com detentes (tela aberta de propósito, depois do esforço). `Salvar` (toque duplo) e `Sem nota`.
 2. **Resumo**: check, duração, séries (18/20), calorias, FC média, "1 recorde". Cargas atuais: o relógio aplica a regra padrão do SPEC §3.4 (atualiza só quando todas as séries válidas foram concluídas) e mostra "2 cargas atualizadas · revise no iPhone" (Q-W3). `OK` volta a Treinos.
 - Finalizar sem nenhuma série concluída: "Descartar treino?" — Descartar (destrutivo) · Voltar.
 
@@ -1767,7 +1790,7 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 
 | Evento | Háptico (`WKHapticType`) |
 |---|---|
-| Detente da Coroa (carga, reps, RPE) | detente do sistema |
+| Detente da Coroa (editor de carga, reps, RPE — nunca na Série/Descanso) | detente do sistema |
 | Série concluída | `.success` |
 | Fim do descanso (alerta insistente desligado) | `.notification`, duas vezes com 0,4 s |
 | Fim do descanso (alerta insistente) | laço a cada 1,8 s alternando `.notification` duplo e `.retry`, até toque/Coroa/"Começar série" ou 60 s |
@@ -1780,11 +1803,11 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 
 ### 9.7 Acessibilidade no relógio
 
-- **VoiceOver**: a página Série é lida como "Supino inclinado, série 2 de 4, 26 quilos, alvo 8 a 12 repetições"; a carga é um elemento ajustável (deslizar para cima/baixo = ±0,5 kg), independente da Coroa; botões com rótulo completo ("Concluir série 2"); o fim do descanso é anunciado. Páginas têm nome ("Controles", "Série", "Métricas", "Ficha").
-- **Texto grande (até AX3 no relógio)**: a página Série vira rolável; como a rolagem passa a usar a Coroa, a carga deixa de ser ajustada por ela e ganha botões − / + visíveis ao lado do número. O botão principal continua fixo na base. Nenhum texto essencial é truncado: o nome do exercício quebra em até 3 linhas.
+- **VoiceOver**: a página Série é lida como "Supino inclinado, série 2 de 4" → "Carga, 26 quilos, botão. Toque para ajustar" → "alvo 8 a 12 repetições" → "Concluir série 2". Na Série a carga **não** é ajustável (nem por gesto): toque duplo abre o editor. No editor, o número é ajustável ("Carga, série 2 de 4, 26 quilos"; deslizar para cima/baixo = ±0,5 kg ou ±1 lb), − / + são "Diminuir/Aumentar carga", "Salvar carga" (dica: "Grava 27,5 quilos e volta à série") e "Cancelar" (dica: "Descarta a mudança"). No descanso: "Próxima série, 26 quilos. Toque para ajustar". O fim do descanso é anunciado. Páginas têm nome ("Controles", "Série", "Métricas", "Ficha").
+- **Texto grande (até AX3 no relógio)**: Série e Descanso viram roláveis e a Coroa só rola (nada nelas reage a ela); a carga continua sendo o botão que abre o editor. O botão principal continua fixo na base. Nenhum texto essencial é truncado: o nome do exercício quebra em até 3 linhas. O editor **não rola** em nenhum tamanho (a Coroa precisa ser da carga): o número tem tamanho fixo e encolhe se faltar espaço, a linha de contexto some, − / + e Salvar ficam.
 - **Reduzir Movimento**: sem rolagem de dígitos nem transição de página animada entre série e descanso (esmaecimento); hápticos mantidos. No alerta de fim de descanso nada pulsa: disco laranja cheio com o número em branco (só contraste).
 - **Alerta de fim de descanso**: ao abrir, o VoiceOver anuncia "Descanso concluído. Próxima: Supino inclinado, série 3 de 4, 26 quilos, alvo 8 a 12 repetições."; ordem de leitura: tempo ("Descanso concluído, há 12 segundos") → próxima série → "Começar série" (dica: "Para a vibração e volta à série"); toque mágico e a ação "Parar vibração" (no tempo e na próxima série) silenciam sem sair da tela. Texto grande: a tela rola (a Coroa passa a rolar, então não silencia), o botão fica fixo na base e os textos quebram linha.
-- **Sem depender de gesto**: toque duplo e Coroa têm sempre um botão equivalente na tela (folha "Carga" com − / +).
+- **Sem depender de gesto**: toque duplo e Coroa têm sempre um botão equivalente na tela (no editor de carga, − / + e Salvar).
 - **Cor nunca sozinha**: zona com "Z3", estado do exercício com símbolo, pausa com texto.
 - **AssistiveTouch / uma mão**: toda a sessão é operável só com toque duplo + Coroa, ou só com toques.
 
@@ -1793,7 +1816,7 @@ A página **Série** muda de conteúdo conforme o estado: série → descanso �
 Exigem iPhone + Apple Watch pareados; no simulador vale só layout.
 
 W1. Da face do relógio até a sessão iniciada: no máximo 3 toques (app → ficha do dia → Iniciar).
-W2. Concluir uma série = 1 toque ou 1 toque duplo, sem olhar para o iPhone; ajustar a carga em 0,5 kg = 1 detente da Coroa.
+W2. Concluir uma série = 1 toque ou 1 toque duplo, sem olhar para o iPhone; ajustar a carga em 0,5 kg = toque na carga → 1 detente (ou +) → Salvar/toque duplo. Girar a Coroa na Série, no Descanso, na Sustentação e no Cardio não muda nenhum valor (W4).
 W3. O alvo aparece como prescrito ("8–12", "10", "máx."); nenhuma tela exige reps para concluir.
 W4. O fim do descanso é sentido com o pulso abaixado e a tela apagada: com o relógio gravando o treino, vibra repetidamente até uma interação (ou 60 s).
 W5. Série concluída no relógio aparece no iPhone em até 2 s (e vice-versa) com os dois por perto.
@@ -1803,10 +1826,11 @@ W8. Pausar no relógio congela o tempo no relógio e no iPhone; retomar não con
 W9. Sem permissão de Saúde a sessão inteira funciona e as métricas mostram "—".
 W10. Todas as telas cabem em 41 mm sem truncar número, alvo ou botão principal; em 46 mm não sobra área morta acima do botão.
 W11. Toda área de toque ≥ 44 pt; botão principal ≥ 46 pt (41 mm).
-W12. VoiceOver percorre a página Série em ordem: exercício → série → carga (ajustável) → alvo → Concluir.
-W13. Com texto no maior tamanho a carga é ajustável por botões e nada essencial é cortado.
+W12. VoiceOver percorre a página Série em ordem: exercício → série → carga (botão "Toque para ajustar") → alvo → Concluir; no editor a carga é ajustável deslizando para cima/baixo.
+W13. Com texto no maior tamanho a carga é ajustável no editor por − / + e pela Coroa (o editor não rola) e nada essencial é cortado.
 W14. Finalizar: RPE pela Coroa, "Sem nota" disponível, resumo mostra quantas cargas foram atualizadas.
 W15. Alerta de fim de descanso: toque em qualquer ponto ou giro da Coroa para a vibração e mantém a tela; "Começar série" (ou toque duplo) leva à próxima série em 1 ação; a tela cabe em 41 mm sem cortar o tempo, a próxima série ou o botão; descanso pulado ou ajustado não alerta em dobro; desligado no iPhone, volta a uma vibração.
+W16. Editor de carga (W4): Cancelar não envia comando e não muda a carga; Salvar envia exatamente um `adjustLoad` e as séries seguintes acompanham; Salvar sem mudança não envia; o editor cabe em 41 mm sem rolar, com número, − / + e Salvar inteiros; o descanso acabar com o editor aberto vibra uma vez e não fecha o editor.
 
 ### 9.9 Fora do W0
 
@@ -1836,7 +1860,7 @@ Decididas neste documento:
 8. **Sem onboarding**: primeiro uso é a própria tela Hoje com convites.
 9. **Descanso para em 0:00** ("Descanso concluído"), sem contar o excedente.
 10. **Botões de ação próprios** usam `fjGlass` (vidro nativo tingido) com altura por token, em vez de `.glassProminent`, para garantir 56/48/44 pt exatos e o substituto sólido; toolbars e o relógio usam os estilos nativos.
-11. **Relógio: páginas horizontais** e Coroa dedicada à carga.
+11. **Relógio: páginas horizontais.** A parte "Coroa dedicada à carga" foi substituída pela decisão 35.
 12. **Cores de ficha são identidade, não significado**: paleta própria de oito cores com par `fill`/`onFill` por tema; todo `fill` tem ≥ 3:1 sobre cartão e fundo, por isso o amarelo do tema claro é ouro escuro (§2.1.1).
 13. **Ícone "degraus"**: caminho em três degraus até um ponto, branco sobre laranja; sem halter (§2.6).
 14. **Uma Atividade ao Vivo por sessão**, não uma por descanso; na Tela Bloqueada só **+15 s** e **Pular** (o −15 s fica no app); sem FC na atividade (§4.14).
@@ -1861,6 +1885,8 @@ Decididas neste documento:
 33. **Consentimento para importar não liga nenhum compartilhamento do Coach**: a importação só envia os arquivos escolhidos.
 34. **Fim do descanso insiste até um toque** (pedido do usuário): relógio e iPhone vibram em laço com a tela "Descanso concluído", teto de 60 s, ligado por padrão e desligável em Ajustes › Treino. No relógio o toque só silencia (a tela fica com "Começar série"); no iPhone o toque silencia e fecha (a doca já mostra o próximo passo). O alerta em primeiro plano não toca som. Responde à Q4 quando o alerta está ligado: fica até um toque.
 
+35. **W4 — a Coroa não mexe na carga fora do editor** (relato do usuário em aparelho: o pulso dobrado girava a Coroa e mudava a carga durante a série). Na Série e no Descanso a carga é um botão de vidro que abre o editor de carga (folha); só lá a Coroa ajusta, com rascunho, Salvar (um `adjustLoad`) e Cancelar (descarta). Nenhuma tela aberta durante o esforço reage à Coroa; o alerta de fim de descanso continua parando a vibração com ela (§9.1, §9.4). Responde Q-W2.
+
 Perguntas em aberto:
 
 - Q-CP1. O botão de IA em destaque usa gradiente sólido (não vidro). Se preferir manter 100% vidro, a alternativa é o estilo sutil em todo lugar (vidro + contorno em gradiente). Qual?
@@ -1877,7 +1903,7 @@ Perguntas em aberto:
 - Q5. O laranja de preenchimento é queimado (`#D4450C`) para manter texto branco legível. Alternativa: laranja vivo (`#FF9500`) com texto **preto** nos botões. Qual prefere?
 - Q6. "Atenção" e "recorde" ficaram na mesma família amarela (diferenciados por símbolo). Aceitável, ou o recorde deve ter outra cor?
 - Q-W1. Sessão no relógio em páginas **horizontais** (Coroa livre para a carga), não verticais como sugerido. Confirma?
-- Q-W2. Durante o descanso, a Coroa ajusta a carga da próxima série (proposto) ou o tempo de descanso?
+- ~~Q-W2~~ Respondida pela decisão 35: no descanso a Coroa não ajusta nada; a carga da próxima série se ajusta pelo chip "Próxima".
 - Q-W3. Ao finalizar pelo relógio, as cargas atuais são atualizadas pela regra padrão sem perguntar, com revisão no iPhone. Confirma?
 - Q-W4. Treino livre (sem ficha) no relógio fica fora do W0. Confirma?
 - Q-LA1. Na Tela Bloqueada, o estado **Série** não tem botão. Um "Concluir série" ali fecharia o ciclo sem desbloquear, mas aceita toque acidental no bolso. Incluir?
