@@ -1,8 +1,8 @@
 # FitJourney — direção de design
 
-Data: 11 de novembro de 2026
-Status: **revisão 4** (pacote C7.1, `ios-design`): Copiloto de IA — importar e editar (§4.15), identidade visual da IA (gradiente "aurora"), componentes do copiloto (§8). Revisão 3 (pacote P6.1): paleta oficial de fichas (§2.1.1), ícone do app (§2.6), aba Saúde detalhada (§4.11), Ajustes (§4.12), Coach (§4.13) e Atividade ao Vivo / Dynamic Island (§4.14). Revisão 2 (pacotes P0.1 + P0.4 + W0) — incorpora as decisões do usuário de 11/11 (SPEC §11 D1–D5): laranja como cor do treino, reps realizadas opcionais, passo de carga 0,5 kg, propostas P1/P3/P4/P5 aprovadas e "manter tela ligada" recusada, app do Apple Watch (§9).
-Protótipo: [design/prototype.html](design/prototype.html) (abrir no Safari/Chrome; claro e escuro lado a lado; seções 10–23 são da revisão 3; 24–32, do copiloto de IA).
+Data: 12 de novembro de 2026
+Status: **revisão 5** (pacote P1.5-design, `ios-design`): copiar ficha para outro programa (§4.2.1, §5.16, critérios 28ak–28ar, decisões 36–39). Revisão 4 (pacote C7.1): Copiloto de IA — importar e editar (§4.15), identidade visual da IA (gradiente "aurora"), componentes do copiloto (§8). Revisão 3 (pacote P6.1): paleta oficial de fichas (§2.1.1), ícone do app (§2.6), aba Saúde detalhada (§4.11), Ajustes (§4.12), Coach (§4.13) e Atividade ao Vivo / Dynamic Island (§4.14). Revisão 2 (pacotes P0.1 + P0.4 + W0) — incorpora as decisões do usuário de 11/11 (SPEC §11 D1–D5): laranja como cor do treino, reps realizadas opcionais, passo de carga 0,5 kg, propostas P1/P3/P4/P5 aprovadas e "manter tela ligada" recusada, app do Apple Watch (§9).
+Protótipo: [design/prototype.html](design/prototype.html) (abrir no Safari/Chrome; claro e escuro lado a lado; seções 10–23 são da revisão 3; 24–32, do copiloto de IA; 35–37, da cópia de ficha).
 Código: `FitJourney/DesignSystem/` (tokens e componentes; `DesignSystemGallery` mostra todos).
 Referências: [SPEC.md](SPEC.md) · [docs/PLANO.md](docs/PLANO.md) · Manylens e Health Product (`DESIGN_DIRECTION.md`: vidro só no que flutua, a forma diz o que o toque faz, nada corta, cor com significado, nunca falha em silêncio).
 
@@ -253,13 +253,13 @@ Título grande "Hoje" com a data por extenso como subtítulo ("quarta, 11 de nov
 
 ### 4.2 Treinos
 
-Título grande "Treinos". Toolbar: "+" (menu: Novo programa, Nova ficha no programa ativo, Novo exercício).
+Título grande "Treinos". Toolbar: "+" (menu: Novo programa, Nova ficha no programa ativo, Adicionar ficha de outro programa — §4.2.1 —, Novo exercício).
 
 1. **Programa ativo** (`FJCard`): nome, etiqueta do objetivo (`FJTag`), modo de agenda com símbolo (Livre `shuffle`, Sequencial `arrow.triangle.2.circlepath`, Semanal `calendar`), "semana 3 de 8", aderência da semana no modo semanal ("2 de 4 treinos"). Menu "…": Editar programa, Duplicar, Arquivar.
-2. **Fichas** (seção): um cartão por ficha — selo com letra/cor, nome, "6 exercícios · ~55 min", dias da semana (modo semanal: 7 círculos S T Q Q S S D, os ativos preenchidos), "última vez: seg, 9 nov". Toque abre a **ficha** (pré-visualização somente leitura com `FJPrimaryButton("Iniciar treino")` na base e "Editar" na toolbar). Arrastar reordena (define a sequência no modo rodízio). Menu de contexto: Iniciar, Editar, Duplicar, Excluir.
+2. **Fichas** (seção): um cartão por ficha — selo com letra/cor, nome, "6 exercícios · ~55 min", dias da semana (modo semanal: 7 círculos S T Q Q S S D, os ativos preenchidos), "última vez: seg, 9 nov". Toque abre a **ficha** (pré-visualização somente leitura com `FJPrimaryButton("Iniciar treino")` na base e "Editar" na toolbar). Arrastar reordena (define a sequência no modo rodízio). Menu de contexto: Iniciar, Editar, Duplicar, Copiar para outro programa… (§4.2.1), Excluir.
 3. **Atalhos** (lista inset): Biblioteca de exercícios · Histórico · Programas.
 
-**Programas** (push): seções "Ativo", "Anteriores", "Arquivados". Linha: nome, período, nº de fichas, origem (manual/IA/importado/duplicado). Detalhe de um programa anterior é somente leitura, com `FJSecondaryButton` "Duplicar e editar" e "Reativar".
+**Programas** (push): seções "Ativo", "Anteriores", "Arquivados". Linha: nome, período, nº de fichas, origem (manual/IA/importado/duplicado). Detalhe de um programa anterior é somente leitura, com `FJSecondaryButton` "Duplicar e editar" e "Reativar"; as únicas mudanças que ele aceita são as cópias de ficha do §4.2.1 ("…" de cada ficha para copiar para fora, "…" da toolbar para trazer de outro programa).
 
 **Criar/editar programa** (sheet `.large`, `Form`):
 
@@ -280,9 +280,121 @@ Título grande "Treinos". Toolbar: "+" (menu: Novo programa, Nova ficha no progr
 | Programa vencido (fim no passado) | `FJBanner` de atenção no cartão: "Este programa terminou em 31/10" + "Estender" / "Criar novo". |
 | Nome vazio ao salvar | Campo marcado, "Salvar" desabilitado, rodapé "Dê um nome ao programa". |
 
+#### 4.2.1 Copiar ficha para outro programa (P1.5)
+
+Só cópia; não existe "mover". A cópia leva tudo da ficha (exercícios, séries, repetições, cargas, descansos, bi-sets, observações, cor e letra) e a original não muda. Dentro do mesmo programa continua valendo "Duplicar". **Nenhum componente novo**: folha nativa com `List`, `FJRoutineBadge`, os círculos de dia que já existem em "Nova ficha" (`WeekdayPicker`, `WeekdayDots`), `FJTag`, `FJBanner` e `FJEmptyState`. Vidro só na folha, na toolbar e no botão do estado final; as linhas são sólidas. Protótipo: quadros 35–37.
+
+**Entradas**
+
+| Rótulo | Onde | Abre |
+|---|---|---|
+| **"Copiar para outro programa…"** (`doc.on.doc`) | Treinos › menu de contexto da ficha, depois de "Duplicar" · Editor de ficha › "…" da toolbar (o caminho visível do toque longo, §3) · Detalhe do programa › "…" na linha de cada ficha (`Menu`, `ellipsis`, alvo de 44 pt) | **Fluxo A**, folha "Copiar ficha": uma ficha, escolhe o destino |
+| **"Adicionar ficha de outro programa"** (`square.and.arrow.down.on.square`) | Treinos › "+", logo abaixo de "Nova ficha no programa ativo" · Treinos › estado "Programa sem fichas", botão de texto sob "Adicionar ficha" · Detalhe do programa › "…" da toolbar, primeiro item, separado de Arquivar/Excluir | **Fluxo B**, folha "Adicionar fichas": destino fixo, escolhe uma ou mais fichas |
+
+A entrada B fica onde as fichas do programa aparecem, **não** na folha "Editar programa": lá vale Cancelar/Salvar, a cópia grava na hora e o modo de agenda pode estar alterado sem salvar.
+
+**Fluxo A — "Copiar ficha"** (folha `.medium`/`.large`, `NavigationStack`, `List`)
+
+```
+│ Cancelar    Copiar ficha    Copiar │  "Continuar" se o destino marcado é semanal
+│ [B] Costas e bíceps                │  FJRoutineBadge(.md) · nome
+│     7 exercícios · ~60 min         │  resumo
+│     de Hipertrofia ABC             │  programa de origem
+│ A cópia leva exercícios, séries, … │  rodapé fixo
+│ COPIAR PARA                        │
+│ Força 5×5                       ✓  │  seleção única, check à direita
+│ Sequencial · 3 fichas              │
+│ Adaptação            [Arquivado]   │
+│ Semanal · 4 fichas                 │
+│ ＋ Novo programa…                  │
+│ Entra no fim da sequência de …     │  rodapé do destino marcado
+```
+
+1. **Linha da ficha** (não tocável): selo, nome, "7 exercícios · ~60 min", "de {Origem}". Rodapé: "A cópia leva exercícios, séries, cargas, descansos e bi-sets, com a mesma cor e letra. A original não muda."
+2. Seção **"Copiar para"**: todos os outros programas — ativo primeiro, depois anteriores (mais recente primeiro), depois arquivados. Linha: nome, `FJTag` "Ativo" ou "Arquivado", "{Modo} · {n} fichas". Tocar marca. Última linha: **"Novo programa…"** — abre a folha "Novo programa" por cima; ao salvar, o programa novo entra na lista já marcado.
+3. **Rodapé da seção**, conforme o destino marcado:
+   - livre: "Entra na lista de fichas de {Destino}."
+   - sequencial: "Entra no fim da sequência de {Destino}."
+   - semanal: "{Destino} é semanal. No próximo passo você escolhe os dias."
+   - nome repetido, mais uma frase: "{Destino} já tem uma ficha com este nome. A cópia entra como {Nome} (2)."
+4. **"Copiar"** na toolbar (desabilitado sem destino). Com destino semanal o botão é **"Continuar"** e empurra "Dias da semana", onde o botão volta a ser "Copiar".
+5. **Estado final**: o conteúdo da folha troca por `FJEmptyState("Ficha copiada", systemImage: "checkmark.circle.fill")` com a mensagem "{Nome} agora também está em {Destino}. A original não mudou." — com nome trocado, "Entrou em {Destino} como {Nome} (2). A original não mudou." — e a ação **"Ver programa"**. Toolbar só com **"OK"**. "Ver programa" fecha a folha e abre o destino: a raiz de Treinos se ele for o programa ativo, o detalhe do programa nos demais.
+
+**Fluxo B — "Adicionar fichas"** (folha `.large`)
+
+```
+│ Cancelar   Adicionar fichas   Adicionar (2) │  "Continuar" se o destino é semanal
+│ As fichas marcadas são copiadas para        │
+│ Hipertrofia ABC. As originais não mudam.    │  + a frase do encaixe
+│ FORÇA 5×5                                   │  um grupo por programa
+│ ● [A] Agachamento e supino                  │  marcada: check cheio
+│       5 exercícios · ~50 min                │
+│ ○ [B] Terra e desenvolvimento               │
+│ ADAPTAÇÃO · ARQUIVADO                       │
+│ ● [A] Peito e tríceps                       │
+│       6 exercícios · ~55 min                │
+│       S T Q Q S S D                         │  WeekdayDots (origem semanal)
+│       Entra como Peito e tríceps (2)        │  nome repetido
+```
+
+1. **Abertura** (linha sem fundo): "As fichas marcadas são copiadas para {Destino}. As originais não mudam." e a frase do encaixe — livre: "Entram na lista de fichas." · sequencial: "Entram no fim da sequência, na ordem desta lista." · semanal: "No próximo passo você escolhe os dias."
+2. **Um grupo por programa** que tenha fichas, na ordem do fluxo A; o cabeçalho é o nome do programa, com " · Ativo" ou " · Arquivado" quando for o caso. A linha inteira alterna a marcação: indicador à esquerda (`checkmark.circle.fill` laranja ou `circle`), `FJRoutineBadge(.md)`, nome, resumo (ficha vazia mostra "Sem exercícios" e pode ser copiada), `WeekdayDots` se a origem é semanal e, com nome repetido, "Entra como {Nome} (2)" — contando o destino e as marcadas acima dela.
+3. **"Adicionar (n)"** na toolbar ("Adicionar", desabilitado, com zero). Com destino semanal: **"Continuar"** → "Dias da semana" → "Adicionar (n)".
+4. Ao confirmar, a folha fecha e as fichas aparecem no fim da lista do destino, que é a tela de baixo. Não há estado final: não há para onde levar.
+
+**Passo "Dias da semana"** (push na mesma folha; só com destino semanal)
+
+- Abertura: "Escolha em que dias a ficha entra em {Destino}. Dois treinos podem cair no mesmo dia." (fluxo B: "…em que dias cada ficha entra…").
+- Uma seção por ficha: cabeçalho com `FJRoutineBadge(.sm)` e o nome com que ela entra; `WeekdayPicker` com **os dias da original já marcados** (origem semanal) e o ponto de atenção nos dias ocupados — pelas fichas do destino e pelas outras fichas desta mesma cópia.
+- Rodapé da seção, uma linha por caso:
+  - "Sugestão: os dias da ficha original."
+  - "A ficha original não tem dias marcados."
+  - dia ocupado marcado — o aviso que já existe em "Nova ficha": "Dia já usado por outra ficha: Ter (B — Costas e bíceps). Os dois treinos aparecem no mesmo dia."
+  - nenhum dia: "Sem dia marcado, a ficha entra no programa, mas não é sugerida em Hoje."
+- Nada bloqueia: dia ocupado e ficha sem dia são permitidos.
+
+**Regras**
+
+- **Nome**: comparação sem diferenciar maiúsculas nem acentos, ignorando espaços nas pontas. Repetido vira "{Nome} (2)", depois "(3)"…; nome que já termina em "(n)" incrementa ("Peito (2)" vira "Peito (3)"). Letra e cor nunca mudam, mesmo que o destino já tenha um selo igual.
+- **Ordem**: sempre no fim do destino; várias fichas entram na ordem da lista, não na dos toques.
+- **Tudo ou nada**: uma falha não deixa cópia parcial.
+- **Treino em andamento na origem não bloqueia**: a cópia lê a ficha, não o treino.
+
+| Estado | O que aparece |
+|---|---|
+| A · sem outro programa | No lugar da lista, `FJEmptyState("Nenhum outro programa", systemImage: "square.stack.3d.up")` · "Crie um programa para receber a cópia desta ficha." · ação **"Novo programa"** |
+| B · sem outro programa | `FJEmptyState("Nenhum outro programa", …)` · "Quando houver mais de um programa, as fichas dos outros aparecem aqui para copiar." · sem ação |
+| B · outros programas sem fichas | `FJEmptyState("Nenhuma ficha para copiar", systemImage: "rectangle.stack")` · "Os outros programas ainda não têm fichas." Programa sem fichas no meio da lista é omitido |
+| A · destino com treino em andamento | `FJBanner` de atenção no topo da folha: "Há um treino em andamento em {Programa}" · "Finalize ou descarte o treino para copiar fichas para esse programa." · **Ver treino** (fecha a folha e abre a sessão). A linha desse programa fica desabilitada, com `FJTag("Treino em andamento", tone: .attention)`; os outros destinos continuam disponíveis |
+| B · destino com treino em andamento | A folha não abre. `FJBanner` de atenção no topo da tela, como em §5.5: "Há um treino em andamento" · "Finalize ou descarte o treino em andamento antes de adicionar fichas a {Programa}." · **Ver treino** |
+| Treino começou com a folha aberta (pelo relógio) | Ao confirmar, nada é copiado e o mesmo aviso aparece no topo da folha |
+| Salvando | Botão de confirmar desabilitado até terminar; sem indicador (é local e imediato) |
+| Falha | Alerta "Não foi possível copiar" + o motivo · [OK]; a folha continua com as escolhas |
+
+**Acessibilidade**
+
+- **VoiceOver**
+  - Linha de programa (A): um elemento — "Força 5×5, sequencial, 3 fichas", mais "ativo" ou "arquivado" — com o traço *selecionado*; bloqueada: "…, indisponível, treino em andamento".
+  - Linha de ficha (B): um elemento — "Peito e tríceps, 6 exercícios, cerca de 55 minutos, dias da semana: segunda, quinta, entra como Peito e tríceps 2" — com o traço *selecionado*; o selo é decorativo. Cabeçalhos de programa e de ficha são títulos (rotor).
+  - O botão da toolbar lê "Adicionar 2 fichas", não "Adicionar, 2".
+  - Dias: o que `WeekdayPicker` já faz ("terça, selecionado, já usado por outra ficha").
+  - O "…" da linha no detalhe do programa lê "Ações de {ficha}"; na lista de Treinos a linha ganha a ação personalizada "Copiar para outro programa".
+  - Ao entrar o estado final o foco vai para "Ficha copiada". No fluxo B, ao fechar: anúncio "2 fichas adicionadas a Hipertrofia ABC" ("1 ficha adicionada a…").
+- **Dynamic Type até AX5**: nomes quebram em quantas linhas precisarem (sem `lineLimit`). Em tamanhos de acessibilidade a linha empilha com `FJAdaptiveStack` (indicador e selo em cima; nome, resumo, dias e "Entra como…" abaixo) e a etiqueta "Ativo"/"Arquivado" desce para baixo do nome. O selo para em 1,4×. Os sete dias continuam inteiros, com 44 pt cada: se não couberem numa linha, quebram em 4 + 3 (`FJFlowLayout`). Rodapés nunca truncam.
+- **Sem depender de cor**: marcado tem check; dia ocupado tem ponto e a frase com o nome da ficha; bloqueado tem etiqueta com texto.
+- **Reduzir Transparência / Movimento**: folha, toolbar e push são do sistema; a troca para o estado final usa `FJMotion.structure` (esmaecimento).
+- **Hápticos**: marcar programa, ficha ou dia `selection` · cópia concluída `celebration` · bloqueio por treino em andamento `warning` · falha `error`.
+
+**Para quem implementa**
+
+- A cópia segue a regra do "Duplicar": a carga atual vira a carga inicial da cópia; os exercícios do catálogo são referenciados, não duplicados.
+- A regra do nome é uma função pura, testável, usada pela folha (para mostrar "Entra como…" antes de confirmar) e pela gravação.
+- O bloqueio usa o que já existe (`ProgramStore.ensureNoSession(in:)`, `sessionInProgress`); o aviso de `SessionBlockBanner` precisa aceitar a mensagem deste caso.
+- `ProgramEditorSheet` já tem `onSaved`: é por ele que "Novo programa…" marca o programa recém-criado.
+
 ### 4.3 Editor de ficha
 
-Push a partir da ficha. `List` nativa em modo de edição permanente (alças de arrastar à direita). Toolbar: "OK". Base: `FJPrimaryButton("Adicionar exercício")` fixo (abre a Biblioteca como seletor múltiplo).
+Push a partir da ficha. `List` nativa em modo de edição permanente (alças de arrastar à direita). Toolbar: "OK"; no "…", "Copiar para outro programa…" (§4.2.1). Base: `FJPrimaryButton("Adicionar exercício")` fixo (abre a Biblioteca como seletor múltiplo).
 
 - **Cabeçalho**: nome, letra/cor, dias (modo semanal), observações, duração estimada calculada ("~55 min").
 - **Linha de exercício**: miniatura da mídia (ou símbolo do equipamento), nome, resumo da prescrição em uma linha ("4 × 8–12 · 32,5 kg · 90 s"), etiquetas de tipo de série quando não for "válida". Toque abre a **prescrição**. Deslizar: Duplicar, Mover/copiar para outra ficha, Remover.
@@ -1474,6 +1586,11 @@ Ficha › "…" › Editar com IA (ou aba Coach) → "sobe o supino para 34 kg e
 ### 5.15 Retomar uma importação
 Fechar o app no meio da entrevista → reabrir → Treinos mostra "Continuar importação · parou na entrevista" → [Continuar] → mesma pergunta, respostas anteriores preservadas.
 
+### 5.16 Copiar ficha para outro programa (§4.2.1)
+- **A partir da ficha**: toque longo na ficha (ou "…" no editor / no detalhe do programa) → "Copiar para outro programa…" → marcar o destino → [Copiar] → "Ficha copiada" · [Ver programa] ou [OK]. Destino semanal: [Continuar] → conferir os dias sugeridos → [Copiar].
+- **A partir do destino**: Treinos › "+" › "Adicionar ficha de outro programa" → marcar uma ou mais fichas → [Adicionar (2)] → a folha fecha e as fichas estão no fim da lista. Destino semanal: [Continuar] → dias de cada ficha → [Adicionar (2)].
+- Caminho mínimo (destino livre ou em rodízio): 3 toques depois de abrir o menu — item, destino ou ficha, confirmar.
+
 ---
 
 ## 6. Acessibilidade
@@ -1550,6 +1667,16 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 28f. `python3 design/tools/routine_palette_check.py` passa (32 pares). Nenhuma tela usa `RoutineColor`, `RoutineBadge` ou `FlowLayout` fora do DesignSystem; cor de ficha vem só de `FJRoutineColor`.
 28g. O selo aparece igual (letra, cor, raio) em Hoje, Treinos, editor, histórico, Saúde e Coach; em AX5 não passa de 1,4× o tamanho base.
 28h. O ícone é reconhecível a 29 pt (Ajustes) nas três aparências do iOS e no relógio; nenhum traço encosta na máscara.
+
+**Copiar ficha (§4.2.1)**
+28ak. As duas entradas existem em todos os pontos da tabela do §4.2.1 e nenhuma depende só de gesto: "Copiar para outro programa…" também está no "…" do editor de ficha e do detalhe do programa.
+28al. A cópia tem os mesmos exercícios, na mesma ordem, com séries, repetições, cargas, descansos, grupos (bi-set), observações, cor e letra; a ficha original e o programa de origem ficam idênticos ao que eram.
+28am. Destino livre ou em rodízio: a ficha entra no fim, sem perguntar nada; do item de menu à confirmação são 3 toques. Destino semanal: os dias da original vêm marcados; dia ocupado tem ponto e a frase com o nome da ficha que o ocupa; dá para confirmar com dia ocupado e sem nenhum dia.
+28an. Nome repetido entra como "Nome (2)" (depois "(3)") e a folha mostra o nome final antes de confirmar; letra e cor não mudam.
+28ao. Destino com treino em andamento: nada é copiado e há aviso com "Ver treino"; no fluxo A os outros destinos continuam disponíveis; treino em andamento na ficha de origem não impede a cópia.
+28ap. Estados vazios: sem outro programa o fluxo A oferece "Novo programa" e o fluxo B explica; outros programas sem fichas mostram "Nenhuma ficha para copiar"; programas arquivados aparecem como origem e como destino, identificados em texto.
+28aq. O fluxo A termina em "Ficha copiada" com "Ver programa", que abre o destino certo (raiz de Treinos se ativo, detalhe nos demais); o fluxo B fecha a folha e anuncia "n fichas adicionadas a {Destino}".
+28ar. VoiceOver lê cada linha como um elemento com o traço *selecionado* e o botão como "Adicionar 2 fichas"; em AX5 nenhum nome, rodapé ou dia é cortado; nenhuma linha das duas folhas usa vidro.
 
 **Coach**
 28i. Nenhuma mensagem é enviada antes do consentimento; os quatro compartilhamentos começam desligados.
@@ -1887,7 +2014,16 @@ Decididas neste documento:
 
 35. **W4 — a Coroa não mexe na carga fora do editor** (relato do usuário em aparelho: o pulso dobrado girava a Coroa e mudava a carga durante a série). Na Série e no Descanso a carga é um botão de vidro que abre o editor de carga (folha); só lá a Coroa ajusta, com rascunho, Salvar (um `adjustLoad`) e Cancelar (descarta). Nenhuma tela aberta durante o esforço reage à Coroa; o alerta de fim de descanso continua parando a vibração com ela (§9.1, §9.4). Responde Q-W2.
 
+36. **P1.5 — copiar ficha é só cópia, em uma folha nativa e sem componente novo** (§4.2.1). Duas entradas que terminam no mesmo passo de encaixe: pela ficha (uma ficha, escolhe o destino) e pelo destino (várias fichas, agrupadas por programa).
+37. **A entrada do destino fica onde as fichas aparecem** (Treinos › "+", estado sem fichas, "…" do detalhe do programa), não na folha "Editar programa": lá a edição é pendente (Cancelar/Salvar) e a cópia grava na hora.
+38. **Confirmação só quando o usuário está longe do destino**: a cópia pela ficha termina em "Ficha copiada" + "Ver programa" dentro da própria folha; a cópia pelo destino só fecha a folha, porque as fichas aparecem na tela de baixo. Sem "Desfazer".
+39. **Programas anteriores e arquivados recebem cópias**, como já recebem fichas da importação com IA; o detalhe deles continua somente leitura para todo o resto. Cor e letra da cópia nunca são trocadas; só o nome ganha "(2)".
+
 Perguntas em aberto:
+
+- Q-CF1. Programas arquivados aparecem como **destino** da cópia (como origem foi pedido). Deixar só ativo e anteriores?
+- Q-CF2. Uma ficha copiada para um programa que não é o ativo só sai de lá excluindo o programa (o detalhe não tem "Excluir ficha"). Vale um "Desfazer" no estado final, ou excluir ficha no detalhe do programa?
+- Q-CF3. No fluxo pelo destino não há "Marcar todas" por programa (um toque por ficha). Faz falta para trazer um programa inteiro?
 
 - Q-CP1. O botão de IA em destaque usa gradiente sólido (não vidro). Se preferir manter 100% vidro, a alternativa é o estilo sutil em todo lugar (vidro + contorno em gradiente). Qual?
 - Q-CP2. No primeiro uso (Hoje), "Importar com IA" é o botão em destaque e "Criar do zero"/"Exemplo ABC" são secundários. Confirma a prioridade?
