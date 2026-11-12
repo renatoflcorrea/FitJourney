@@ -19,6 +19,7 @@ struct RoutineEditorView: View {
     @State private var transferring: RoutineExercise?
     @State private var deleting: RoutineExercise?
     @State private var errorMessage: String?
+    @State private var copyingToProgram = false
 
     private var store: ProgramStore { ProgramStore(context: context) }
 
@@ -47,6 +48,9 @@ struct RoutineEditorView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("OK") { dismiss() }
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button("Copiar para outro programa…", systemImage: "doc.on.doc") { copyingToProgram = true }
+            }
             if let coachHandoff, !routine.name.isEmpty {
                 ToolbarItem(placement: .secondaryAction) {
                     Button("Editar com IA", systemImage: "sparkles") {
@@ -70,6 +74,7 @@ struct RoutineEditorView: View {
                 run { try RoutineEditorOps.add(picked, to: routine, store: store) }
             }
         }
+        .sheet(isPresented: $copyingToProgram) { CopyRoutineSheet(routine: routine).tint(FJColor.training) }
         .sheet(item: $transferring) { item in
             MoveCopySheet(item: item, routine: routine, onError: { errorMessage = $0 })
         }

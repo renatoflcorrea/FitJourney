@@ -21,30 +21,10 @@ struct RoutineActions {
         guard let program = routine.program else { return routine }
         let ordered = program.sortedRoutines
         let insertAt = (ordered.firstIndex { $0 === routine } ?? ordered.count - 1) + 1
-        let copy = Routine(name: String(localized: "\(routine.name) (cópia)"), symbol: routine.symbol,
-                           sortIndex: insertAt, weekdays: [])  // cópia nasce sem dias: evita dois treinos no mesmo dia
-        copy.colorName = routine.colorName
-        copy.notes = routine.notes
-        context.insert(copy)
-        copy.program = program
-        for item in routine.sortedExercises {
-            let newItem = RoutineExercise(sortIndex: item.sortIndex, groupID: item.groupID,
-                                          restSeconds: item.restSeconds, notes: item.notes)
-            context.insert(newItem)
-            newItem.routine = copy
-            newItem.exercise = item.exercise
-            for set in item.sortedSets {
-                let newSet = SetPrescription(sortIndex: set.sortIndex, kind: set.kind, repTarget: set.repTarget,
-                                             initialLoad: set.effectiveLoad, restSeconds: set.restSeconds)
-                newSet.holdSeconds = set.holdSeconds
-                newSet.tempo = set.tempo
-                newSet.effort = set.effort
-                newSet.cardio = set.cardio
-                newSet.notes = set.notes
-                context.insert(newSet)
-                newSet.routineExercise = newItem
-            }
-        }
+        // Cópia sem dias: evita dois treinos no mesmo dia. Mesma cópia profunda de "Copiar para outro programa".
+        let copy = ProgramStore(context: context).cloneRoutine(
+            routine, into: program, name: String(localized: "\(routine.name) (cópia)"),
+            sortIndex: insertAt, weekdays: [])
         try renumber(program.sortedRoutines.filter { $0 !== copy }, inserting: copy, at: insertAt)
         return copy
     }

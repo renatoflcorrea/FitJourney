@@ -180,12 +180,21 @@ func userMessage(for error: Error) -> String {
 }
 
 /// Aviso do DESIGN §5.5: treino em andamento impede trocar/arquivar/excluir programa.
+/// Com `addingTo`, a mensagem é a de "Adicionar ficha de outro programa" (§4.2.1).
 struct SessionBlockBanner: View {
+    var addingTo: String?
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
 
     var body: some View {
-        FJBanner("Há um treino em andamento",
-                 message: "Finalize ou descarte o treino em andamento antes de trocar, arquivar ou excluir programas.",
+        if let addingTo {
+            banner(message: "Finalize ou descarte o treino em andamento antes de adicionar fichas a \(addingTo).")
+        } else {
+            banner(message: "Finalize ou descarte o treino em andamento antes de trocar, arquivar ou excluir programas.")
+        }
+    }
+
+    private func banner(message: LocalizedStringKey) -> some View {
+        FJBanner("Há um treino em andamento", message: message,
                  tone: .attention, actionTitle: "Ver treino") {
             sessionCoordinator?.present()
         }

@@ -220,31 +220,8 @@ struct ProgramStore {
         copy.notes = program.notes
         context.insert(copy)
         for routine in program.sortedRoutines {
-            let r = Routine(name: routine.name, symbol: routine.symbol, sortIndex: routine.sortIndex, weekdays: routine.weekdays)
-            r.colorName = routine.colorName
-            r.notes = routine.notes
-            context.insert(r)
-            r.program = copy
-            for item in routine.sortedExercises {
-                let i = RoutineExercise(sortIndex: item.sortIndex, groupID: item.groupID,
-                                        restSeconds: item.restSeconds, notes: item.notes)
-                context.insert(i)
-                i.routine = r
-                i.exercise = item.exercise
-                for set in item.sortedSets {
-                    let s = SetPrescription(sortIndex: set.sortIndex, kind: set.kind, repTarget: set.repTarget,
-                                            initialLoad: set.effectiveLoad, restSeconds: set.restSeconds)
-                    s.holdSeconds = set.holdSeconds
-                    s.tempo = set.tempo
-                    s.effort = set.effort
-                    s.cardio = set.cardio
-                    s.notes = set.notes
-                    context.insert(s)
-                    s.routineExercise = i
-                }
-            }
+            cloneRoutine(routine, into: copy, name: routine.name, sortIndex: routine.sortIndex, weekdays: routine.weekdays)
         }
-        // `groupID` é compartilhado entre exercícios da mesma ficha; a cópia mantém o agrupamento.
         try context.save()
         return copy
     }
@@ -399,5 +376,84 @@ extension ProgramStore {
         for s in last.sets ?? [] { s.restSeconds = nil }
         last.updatedAt = .now
         try finish(routine)
+    }
+}
+
+
+// MARK: - Copiar fichas para outro programa (DESIGN §4.2.1)
+
+extension ProgramStore {
+    /// Dias que a cópia sugere no destino semanal: os da original, se ela vem de um programa semanal.
+    static func suggestedWeekdays(for routine: Routine) -> Set<Weekday> {
+        routine.program?.scheduleMode == .weekly ? routine.weekdays : []
+    }
+
+    /// Cópia profunda de `routine` para o fim de `program`; a original não muda.
+    /// Mesma regra do "Duplicar": a carga atual vira a inicial; exercícios do catálogo são referenciados;
+    /// cada bi-set/circuito ganha `groupID` novo (a cópia não compartilha grupo com a original).
+    /// Sem `save`: quem chama grava.
+    @discardableResult
+    func cloneRoutine(_ routine: Routine, into program: TrainingProgram, name: String,
+                      sortIndex: Int, weekdays: Set<Weekday>) -> Routine {
+        let copy = Routine(name: name, symbol: routine.symbol, sortIndex: sortIndex, weekdays: weekdays)
+        copy.colorName = routine.colorName
+        copy.notes = routine.notes
+        context.insert(copy)
+        copy.program = program
+        var groups: [UUID: UUID] = [:]
+        for item in routine.sortedExercises {
+            var groupID: UUID?
+            if let original = item.groupID {
+                groupID = groups[original] ?? UUID()
+                groups[original] = groupID
+            }
+            cloneExercise(item, into: copy, sortIndex: item.sortIndex, groupID: groupID)
+        }
+        return copy
+    }
+
+    /// Copia `routines` (na ordem dada) para o fim de `program`. Tudo ou nada: com treino em andamento no
+    /// destino lança `sessionInProgress` antes de tocar em qualquer coisa; qualquer outra falha desfaz tudo.
+    ///
+    /// - Parameters:
+    ///   - weekdays: dias por ficha original (`Routine.id`), só usados com destino semanal; sem entrada,
+    ///     vale a sugestão (`suggestedWeekdays`). Em destino livre/sequencial a cópia nasce sem dias.
+    ///   - commit: ponto de gravação (testes injetam falha para provar a atomicidade).
+    /// - Returns: as cópias, na mesma ordem. O nome repetido ganha "(2)" (`RoutineNaming`).
+    @discardableResult
+    func copyRoutines(_ routines: [Routine], to program: TrainingProgram,
+                      weekdays: [UUID: Set<Weekday>] = [:],
+                      commit: (ModelContext) throws -> Void = { try $0.save() }) throws -> [Routine] {
+        guard !routines.isEmpty else { return [] }
+        try ensureNoSession(in: program)
+        let updatedAt = program.updatedAt
+        var copies: [Routine] = []
+        do {
+            let existing = program.sortedRoutines
+            let names = RoutineNaming.uniqueNames(routines.map(\.name), among: existing.map(\.name))
+            let start = (existing.map(\.sortIndex).max() ?? -1) + 1
+            for (offset, routine) in routines.enumerated() {
+                let days = program.scheduleMode == .weekly
+                    ? weekdays[routine.id] ?? Self.suggestedWeekdays(for: routine)
+                    : []
+                copies.append(cloneRoutine(routine, into: program, name: names[offset],
+                                           sortIndex: start + offset, weekdays: days))
+            }
+            program.updatedAt = .now
+            try commit(context)
+            return copies
+        } catch {
+            // Sem cópia parcial. `rollback()` descarta o que foi inserido, mas o SwiftData deixa nos objetos
+            // já carregados os inversos novos (o destino com as cópias em `routines`, o `updatedAt` novo e
+            // cada `Exercise` do catálogo com os itens clonados em `routineExercises`): desfaz à mão antes.
+            for copy in copies {
+                for item in copy.exercises ?? [] { item.exercise = nil }
+                copy.program = nil
+            }
+            program.routines?.removeAll { routine in copies.contains { $0 === routine } }
+            program.updatedAt = updatedAt
+            context.rollback()
+            throw error
+        }
     }
 }
