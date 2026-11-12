@@ -82,8 +82,17 @@ struct DraftApplier {
         }
         context.insert(program)
 
-        let letters = Array("ABCDEFG")
-        for (r, routineDraft) in draft.routines.enumerated() {
+        try insertRoutines(draft.routines, into: program, firstSortIndex: 0, catalog: &catalog)
+        try context.save()
+        return program
+    }
+
+    /// Fichas do rascunho dentro de `program`, a partir de `firstSortIndex` (sem salvar).
+    private func insertRoutines(_ routines: [ProgramDraft.RoutineDraft], into program: TrainingProgram,
+                                firstSortIndex: Int, catalog: inout [Exercise]) throws {
+        let letters = Array("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        for (offset, routineDraft) in routines.enumerated() {
+            let r = firstSortIndex + offset
             let symbol = routineDraft.symbol?.trimmed(max: 2) ?? (r < letters.count ? String(letters[r]) : "")
             let routine = Routine(name: routineDraft.name.trimmed(max: 80), symbol: symbol, sortIndex: r,
                                   weekdays: Set(routineDraft.weekdays))
@@ -130,8 +139,28 @@ struct DraftApplier {
                 }
             }
         }
-        try context.save()
-        return program
+    }
+
+    /// "Adicionar ao programa X" (import): acrescenta as fichas do rascunho ao fim do programa existente.
+    /// Os campos do programa (nome, objetivo, agenda) não mudam; dias da semana só valem no modo semanal.
+    @discardableResult
+    func addRoutines(from draft: ProgramDraft, to program: TrainingProgram) throws -> [Routine] {
+        do {
+            var catalog = try context.fetch(FetchDescriptor<Exercise>())
+            let before = Set((program.routines ?? []).map(\.id))
+            var routines = draft.routines
+            if program.scheduleMode != .weekly {
+                routines = routines.map { var copy = $0; copy.weekdays = []; return copy }
+            }
+            let first = ((program.routines ?? []).map(\.sortIndex).max() ?? -1) + 1
+            try insertRoutines(routines, into: program, firstSortIndex: first, catalog: &catalog)
+            program.updatedAt = .now
+            try context.save()
+            return program.sortedRoutines.filter { !before.contains($0.id) }
+        } catch {
+            context.rollback()
+            throw error
+        }
     }
 
     private func insertNutritionPlan(from draft: NutritionPlanDraft, startDate: Date) throws -> NutritionPlan {

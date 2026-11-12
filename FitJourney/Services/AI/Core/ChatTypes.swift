@@ -40,9 +40,37 @@ struct ReasoningBlock: Codable, Sendable, Hashable {
     var data: String?
 }
 
+/// Parte de conteúdo multimodal de uma mensagem do usuário (SPEC §7A.3). **Nunca persistida**: fica fora do
+/// `Codable` de `LLMMessage`, não entra em `ChatMessage.content`, log nem backup — só vive no pedido em memória.
+enum LLMContentPart: Sendable, Hashable {
+    case text(String)
+    /// Imagem já preparada (redimensionada, sem EXIF/GPS) em base64, com o tipo MIME (`image/jpeg`, `image/png`).
+    case image(mimeType: String, base64: String)
+    /// PDF em base64 (só para provedores/modelos com `AttachmentCapabilities.supportsPDF`).
+    case pdf(filename: String, base64: String)
+    /// Arquivo de texto (.txt/.md) já decodificado.
+    case fileText(filename: String, text: String)
+
+    /// `data:` URL (OpenAI/ChatGPT) para imagem e PDF; `nil` nas partes de texto.
+    var dataURL: String? {
+        switch self {
+        case let .image(mime, base64): "data:\(mime);base64,\(base64)"
+        case let .pdf(_, base64): "data:application/pdf;base64,\(base64)"
+        case .text, .fileText: nil
+        }
+    }
+
+    /// Texto de um arquivo de texto com o nome à frente (todos os provedores o recebem como texto).
+    static func fileTextBody(filename: String, text: String) -> String {
+        "[Arquivo: \(filename)]\n\(text)"
+    }
+}
+
 struct LLMMessage: Codable, Sendable, Hashable {
     var role: LLMRole
     var content: String
+    /// Só em `user`: anexos multimodais (enviados antes de `content`). Fora do `Codable` de propósito.
+    var parts: [LLMContentPart] = []
     /// Só em `assistant`: ferramentas pedidas neste turno.
     var toolCalls: [ToolCall]
     /// Só em `tool`: a qual `ToolCall.id` este resultado responde.
@@ -54,10 +82,16 @@ struct LLMMessage: Codable, Sendable, Hashable {
     /// Só em `tool`: o resultado é um erro (Anthropic `is_error`).
     var isError: Bool
 
+    private enum CodingKeys: String, CodingKey {
+        case role, content, toolCalls, toolCallID, toolName, reasoningBlocks, isError
+    }
+
     init(role: LLMRole, content: String, toolCalls: [ToolCall] = [], toolCallID: String? = nil,
-         toolName: String? = nil, reasoningBlocks: [ReasoningBlock] = [], isError: Bool = false) {
+         toolName: String? = nil, reasoningBlocks: [ReasoningBlock] = [], isError: Bool = false,
+         parts: [LLMContentPart] = []) {
         self.role = role
         self.content = content
+        self.parts = parts
         self.toolCalls = toolCalls
         self.toolCallID = toolCallID
         self.toolName = toolName
@@ -67,6 +101,10 @@ struct LLMMessage: Codable, Sendable, Hashable {
 
     static func system(_ text: String) -> LLMMessage { LLMMessage(role: .system, content: text) }
     static func user(_ text: String) -> LLMMessage { LLMMessage(role: .user, content: text) }
+    /// Mensagem do usuário com anexos (os anexos vão antes do texto no fio).
+    static func user(_ text: String, parts: [LLMContentPart]) -> LLMMessage {
+        LLMMessage(role: .user, content: text, parts: parts)
+    }
     static func assistant(_ text: String, toolCalls: [ToolCall] = []) -> LLMMessage {
         LLMMessage(role: .assistant, content: text, toolCalls: toolCalls)
     }

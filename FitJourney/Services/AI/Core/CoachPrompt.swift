@@ -42,5 +42,6 @@ enum CoachPrompt {
     - Respostas curtas, com listas quando ajudarem. Unidades métricas (kg, kcal, g, ml) salvo pedido do usuário.
     - Depois de uma proposta, resuma em 2–4 linhas o racional (divisão, volume, progressão ou metas) e \
     convide o usuário a revisar o cartão.
-    """
+
+    """ + CopilotPrompt.editing
 }

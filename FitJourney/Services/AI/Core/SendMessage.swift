@@ -44,17 +44,20 @@ final class CoachConversationService {
     @ObservationIgnored private let toolbox: FitnessToolbox
     @ObservationIgnored private let resolveChat: @MainActor () throws -> ResolvedChat
     @ObservationIgnored private let systemPrompt: String
+    /// Onde os cartões de alteração do copiloto (`propose_*_changes`, `propose_food_log`) ficam.
+    @ObservationIgnored private let changeStore: CopilotChangeStore
     @ObservationIgnored private var currentTask: Task<Bool, Never>?
 
     /// - Parameter resolveChat: monta o gateway a cada envio (pega mudanças de provedor/chave);
     ///   em produção, `{ try ProviderFactory.makeChat(secrets: KeychainSecretStore()) }`.
     init(context: ModelContext, toolbox: FitnessToolbox,
          resolveChat: @escaping @MainActor () throws -> ResolvedChat,
-         systemPrompt: String = CoachPrompt.system) {
+         systemPrompt: String = CoachPrompt.system, changeStore: CopilotChangeStore? = nil) {
         self.context = context
         self.toolbox = toolbox
         self.resolveChat = resolveChat
         self.systemPrompt = systemPrompt
+        self.changeStore = changeStore ?? .shared
     }
 
     // MARK: - API pública
@@ -232,6 +235,7 @@ final class CoachConversationService {
                 result.proposal = outcome.proposal
                 context.insert(result)
                 result.conversation = conversation
+                if let changeSet = outcome.changeSet { changeStore.register(changeSet, messageID: result.id) }
             }
             conversation.updatedAt = .now
             try context.save()
