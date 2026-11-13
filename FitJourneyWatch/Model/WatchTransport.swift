@@ -40,7 +40,7 @@ protocol WatchWorkoutDataChannel: AnyObject {
     var onMirroringChange: (@MainActor (Bool) -> Void)? { get set }
 }
 
-/// Nunca alcança o iPhone e não entrega nada — o relógio mostra "Abra o FitRoute no iPhone". Só para
+/// Nunca alcança o iPhone e não entrega nada — o relógio mostra "Abra o FitJourney no iPhone". Só para
 /// ambientes sem `WCSession` (não suportado); o app usa o `WatchConnectivityTransport`.
 @MainActor
 final class UnavailableWatchTransport: WatchTransport {

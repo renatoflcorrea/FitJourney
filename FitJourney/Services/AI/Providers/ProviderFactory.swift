@@ -10,7 +10,7 @@ struct ResolvedChat: Sendable {
 
 /// Composição pura: configurações + segredo → gateway. Sem rede, sem log.
 ///
-/// O roteador por tarefa do fireplaice (`GatewayRouter`) não foi portado: o FitRoute tem uma
+/// O roteador por tarefa do fireplaice (`GatewayRouter`) não foi portado: o FitJourney tem uma
 /// única tarefa (chat do Coach) e um único provedor ativo por vez.
 enum ProviderFactory {
     static func endpoint(settings: ProviderSettings, apiKey: String?) throws -> EndpointConfiguration {
@@ -32,7 +32,7 @@ enum ProviderFactory {
         case .openRouter:
             return EndpointConfiguration(
                 provider: .openRouter, baseURL: url, auth: .bearer(key),
-                extraHeaders: ["X-Title": "FitRoute"],
+                extraHeaders: ["X-Title": "FitJourney"],
                 quirks: ProviderQuirks(tokenParameter: "max_tokens"))
         case .anthropic:
             // `strict` desligado: validamos localmente (schema + Codable) e evitamos 400 por

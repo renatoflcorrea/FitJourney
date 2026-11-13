@@ -144,7 +144,7 @@ struct AICoachLoopTests {
         #expect(bodies.count == 3)
         let first = try #require(bodies[0]["messages"]?.arrayValue)
         #expect(first[0]["role"] == .string("system"))
-        #expect(first[0]["content"]?.stringValue?.contains("Coach do FitRoute") == true)
+        #expect(first[0]["content"]?.stringValue?.contains("Coach do FitJourney") == true)
         #expect(bodies[0]["tools"]?.arrayValue?.contains { $0["function"]?["name"] == .string("propose_program") } == true)
         let second = try #require(bodies[1]["messages"]?.arrayValue)
         #expect(second.map { $0["role"] } == [.string("system"), .string("user"), .string("assistant"), .string("tool")])

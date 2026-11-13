@@ -73,7 +73,7 @@ struct CoachWelcomeView: View {
 
     private var privacyCard: some View {
         FJBanner("Privacidade",
-                 message: "O histórico que você escolher é enviado ao provedor de IA que você configurar. Nada vai a servidor do FitRoute. A chave fica só no Keychain deste aparelho.",
+                 message: "O histórico que você escolher é enviado ao provedor de IA que você configurar. Nada vai a servidor do FitJourney. A chave fica só no Keychain deste aparelho.",
                  tone: .neutral, systemImage: "lock.shield.fill")
     }
 

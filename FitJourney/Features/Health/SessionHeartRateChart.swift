@@ -152,7 +152,7 @@ struct SessionHeartRateChart: View {
                          systemImage: "exclamationmark.triangle.fill", actionTitle: "Tentar de novo") { reload() }
             case .noData:
                 FJBanner("Sem frequência cardíaca neste treino",
-                         message: "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usou um, confira se o FitRoute pode ler seus dados em Ajustes › Saúde › Acesso a Dados.",
+                         message: "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usou um, confira se o FitJourney pode ler seus dados em Ajustes › Saúde › Acesso a Dados.",
                          tone: .neutral, systemImage: "heart.slash", actionTitle: "Abrir Ajustes") { HealthSettings.open(openURL) }
             case .loaded:
                 if let analysis = model.analysis, let timeline = model.timeline {

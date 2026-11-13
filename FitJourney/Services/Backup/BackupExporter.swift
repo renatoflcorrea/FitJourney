@@ -61,7 +61,7 @@ actor BackupExporter: ModelActor {
 
     static func currentAppInfo(bundle: Bundle = .main) -> BackupV1.AppInfo {
         BackupV1.AppInfo(
-            name: "FitRoute",
+            name: "FitJourney",
             version: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
             build: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0",
             platform: "iOS",
@@ -181,12 +181,12 @@ actor BackupExporter: ModelActor {
         (Int64((date.timeIntervalSince1970 * 1000).rounded()), id.uuidString)
     }
 
-    /// "FitRoute-2026-11-11-0930.fitjourney"
+    /// "FitJourney-2026-11-11-0930.fitjourney"
     static func fileName(for date: Date, timeZone: TimeZone, ext: String) -> String {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         let c = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         let stamp = String(format: "%04d-%02d-%02d-%02d%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0, c.hour ?? 0, c.minute ?? 0)
-        return "FitRoute-\(stamp).\(ext)"
+        return "FitJourney-\(stamp).\(ext)"
     }
 }

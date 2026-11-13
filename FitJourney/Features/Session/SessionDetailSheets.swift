@@ -326,7 +326,7 @@ struct SessionWatchStatus: View {
                 .accessibilityElement(children: .combine)
         case .incompatible(let phoneIsOutdated):
             FJBanner(
-                phoneIsOutdated ? "Atualize o FitRoute no iPhone" : "Atualize o app no relógio",
+                phoneIsOutdated ? "Atualize o FitJourney no iPhone" : "Atualize o app no relógio",
                 message: phoneIsOutdated
                     ? "O app do relógio é mais novo que este. Atualize para voltar a sincronizar."
                     : "O app do Apple Watch é antigo demais para sincronizar este treino. Atualize-o no relógio.",

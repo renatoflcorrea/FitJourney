@@ -2189,22 +2189,22 @@
         }
       }
     },
-    "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usa um, confira se o FitRoute pode ler seus dados em Ajustes › Saúde › Acesso a Dados." : {
+    "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usa um, confira se o FitJourney pode ler seus dados em Ajustes › Saúde › Acesso a Dados." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Heart rate comes from Apple Watch or a paired sensor. If you use one, check that FitRoute can read your data in Settings › Health › Data Access."
+            "value" : "Heart rate comes from Apple Watch or a paired sensor. If you use one, check that FitJourney can read your data in Settings › Health › Data Access."
           }
         }
       }
     },
-    "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usou um, confira se o FitRoute pode ler seus dados em Ajustes › Saúde › Acesso a Dados." : {
+    "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usou um, confira se o FitJourney pode ler seus dados em Ajustes › Saúde › Acesso a Dados." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Heart rate comes from Apple Watch or a paired sensor. If you used one, check that FitRoute can read your data in Settings › Health › Data Access."
+            "value" : "Heart rate comes from Apple Watch or a paired sensor. If you used one, check that FitJourney can read your data in Settings › Health › Data Access."
           }
         }
       }
@@ -3527,12 +3527,12 @@
         }
       }
     },
-    "Ao iniciar um treino no iPhone, o FitRoute abre no relógio já gravando (frequência cardíaca e calorias do relógio). Exige o app no Apple Watch e o Saúde conectado. O app Exercício da Apple não é aberto." : {
+    "Ao iniciar um treino no iPhone, o FitJourney abre no relógio já gravando (frequência cardíaca e calorias do relógio). Exige o app no Apple Watch e o Saúde conectado. O app Exercício da Apple não é aberto." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "When you start a workout on iPhone, FitRoute opens on your watch already recording (heart rate and calories from the watch). Requires the Apple Watch app and Health connected. Apple’s Workout app is not opened."
+            "value" : "When you start a workout on iPhone, FitJourney opens on your watch already recording (heart rate and calories from the watch). Requires the Apple Watch app and Health connected. Apple’s Workout app is not opened."
           }
         }
       }
@@ -3647,12 +3647,12 @@
         }
       }
     },
-    "Apagar todos os dados do FitRoute?" : {
+    "Apagar todos os dados do FitJourney?" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Erase all FitRoute data?"
+            "value" : "Erase all FitJourney data?"
           }
         }
       }
@@ -4107,12 +4107,12 @@
         }
       }
     },
-    "Atualize o FitRoute no iPhone" : {
+    "Atualize o FitJourney no iPhone" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Update FitRoute on iPhone"
+            "value" : "Update FitJourney on iPhone"
           }
         }
       }
@@ -7566,22 +7566,22 @@
         }
       }
     },
-    "Este aparelho não tem o app Saúde. Seus treinos continuam sendo registrados no FitRoute." : {
+    "Este aparelho não tem o app Saúde. Seus treinos continuam sendo registrados no FitJourney." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This device doesn't have the Health app. Your workouts are still recorded in FitRoute."
+            "value" : "This device doesn't have the Health app. Your workouts are still recorded in FitJourney."
           }
         }
       }
     },
-    "Este arquivo não é um backup do FitRoute." : {
+    "Este arquivo não é um backup do FitJourney." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This file isn't a FitRoute backup."
+            "value" : "This file isn't a FitJourney backup."
           }
         }
       }
@@ -7596,12 +7596,12 @@
         }
       }
     },
-    "Este backup foi criado por uma versão mais nova do FitRoute (formato v%lld). Atualize o app para importá-lo." : {
+    "Este backup foi criado por uma versão mais nova do FitJourney (formato v%lld). Atualize o app para importá-lo." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This backup was created by a newer version of FitRoute (format v%lld). Update the app to import it."
+            "value" : "This backup was created by a newer version of FitJourney (format v%lld). Update the app to import it."
           }
         }
       }
@@ -8636,102 +8636,102 @@
         }
       }
     },
-    "FitRoute" : {
+    "FitJourney" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute"
+            "value" : "FitJourney"
           }
         }
       }
     },
-    "FitRoute + Apple Watch" : {
+    "FitJourney + Apple Watch" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute + Apple Watch"
+            "value" : "FitJourney + Apple Watch"
           }
         }
       }
     },
-    "FitRoute, cardio" : {
+    "FitJourney, cardio" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute, cardio"
+            "value" : "FitJourney, cardio"
           }
         }
       }
     },
-    "FitRoute, descanso" : {
+    "FitJourney, descanso" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute, rest"
+            "value" : "FitJourney, rest"
           }
         }
       }
     },
-    "FitRoute, descanso concluído" : {
+    "FitJourney, descanso concluído" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute, rest complete"
+            "value" : "FitJourney, rest complete"
           }
         }
       }
     },
-    "FitRoute, pausado" : {
+    "FitJourney, pausado" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute, paused"
+            "value" : "FitJourney, paused"
           }
         }
       }
     },
-    "FitRoute, sustentação" : {
+    "FitJourney, sustentação" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute, hold"
+            "value" : "FitJourney, hold"
           }
         }
       }
     },
-    "FitRoute, série" : {
+    "FitJourney, série" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute, set"
+            "value" : "FitJourney, set"
           }
         }
       }
     },
-    "FitRoute, treino completo" : {
+    "FitJourney, treino completo" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute, workout complete"
+            "value" : "FitJourney, workout complete"
           }
         }
       }
     },
-    "FitRoute, treino concluído" : {
+    "FitJourney, treino concluído" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute, workout saved"
+            "value" : "FitJourney, workout saved"
           }
         }
       }
@@ -12209,32 +12209,32 @@
         }
       }
     },
-    "O FitRoute avisa no horário da refeição. O iOS vai pedir sua permissão agora; você pode mudar depois em Ajustes." : {
+    "O FitJourney avisa no horário da refeição. O iOS vai pedir sua permissão agora; você pode mudar depois em Ajustes." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute notifies you at mealtime. iOS will ask for your permission now; you can change it later in Settings."
+            "value" : "FitJourney notifies you at mealtime. iOS will ask for your permission now; you can change it later in Settings."
           }
         }
       }
     },
-    "O FitRoute lê frequência cardíaca, treinos, energia ativa, passos e peso, e grava seus treinos no Saúde." : {
+    "O FitJourney lê frequência cardíaca, treinos, energia ativa, passos e peso, e grava seus treinos no Saúde." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute reads heart rate, workouts, active energy, steps and weight, and saves your workouts to Health."
+            "value" : "FitJourney reads heart rate, workouts, active energy, steps and weight, and saves your workouts to Health."
           }
         }
       }
     },
-    "O FitRoute para de ler e gravar no Saúde. As permissões do sistema só mudam em Ajustes › Saúde." : {
+    "O FitJourney para de ler e gravar no Saúde. As permissões do sistema só mudam em Ajustes › Saúde." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitRoute stops reading from and saving to Health. System permissions only change in Settings › Health."
+            "value" : "FitJourney stops reading from and saving to Health. System permissions only change in Settings › Health."
           }
         }
       }
@@ -12379,22 +12379,22 @@
         }
       }
     },
-    "O histórico que você escolher é enviado ao provedor de IA que você configurar. Nada vai a servidor do FitRoute. A chave fica só no Keychain deste aparelho." : {
+    "O histórico que você escolher é enviado ao provedor de IA que você configurar. Nada vai a servidor do FitJourney. A chave fica só no Keychain deste aparelho." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The history you choose is sent to the AI provider you set up. Nothing goes to a FitRoute server. The key stays only in this device's Keychain."
+            "value" : "The history you choose is sent to the AI provider you set up. Nothing goes to a FitJourney server. The key stays only in this device's Keychain."
           }
         }
       }
     },
-    "O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitRoute fecha e você o abre de novo pela tela de início." : {
+    "O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitJourney fecha e você o abre de novo pela tela de início." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The language changes when the app reopens. If you choose Restart now, FitRoute closes and you open it again from the Home Screen."
+            "value" : "The language changes when the app reopens. If you choose Restart now, FitJourney closes and you open it again from the Home Screen."
           }
         }
       }
@@ -12579,22 +12579,22 @@
         }
       }
     },
-    "O que o FitRoute grava" : {
+    "O que o FitJourney grava" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "What FitRoute saves"
+            "value" : "What FitJourney saves"
           }
         }
       }
     },
-    "O que o FitRoute lê" : {
+    "O que o FitJourney lê" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "What FitRoute reads"
+            "value" : "What FitJourney reads"
           }
         }
       }
@@ -12669,12 +12669,12 @@
         }
       }
     },
-    "O treino fica só no FitRoute. Confira em Ajustes › Saúde › Acesso a Dados." : {
+    "O treino fica só no FitJourney. Confira em Ajustes › Saúde › Acesso a Dados." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The workout stays only in FitRoute. Check Settings › Health › Data Access."
+            "value" : "The workout stays only in FitJourney. Check Settings › Health › Data Access."
           }
         }
       }
@@ -13035,12 +13035,12 @@
         }
       }
     },
-    "Os treinos do Saúde não foram lidos; só os do FitRoute aparecem." : {
+    "Os treinos do Saúde não foram lidos; só os do FitJourney aparecem." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Health workouts weren't read; only FitRoute ones appear."
+            "value" : "Health workouts weren't read; only FitJourney ones appear."
           }
         }
       }
@@ -14675,12 +14675,12 @@
         }
       }
     },
-    "Reinicie o FitRoute para aplicar" : {
+    "Reinicie o FitJourney para aplicar" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restart FitRoute to apply"
+            "value" : "Restart FitJourney to apply"
           }
         }
       }
@@ -15871,12 +15871,12 @@
         }
       }
     },
-    "Semana: Saúde indisponível, só treinos do FitRoute" : {
+    "Semana: Saúde indisponível, só treinos do FitJourney" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Week: Health unavailable, FitRoute workouts only"
+            "value" : "Week: Health unavailable, FitJourney workouts only"
           }
         }
       }
@@ -15991,12 +15991,12 @@
         }
       }
     },
-    "Seus treinos, dieta e dados de saúde ficam neste iPhone. Nada é enviado a servidores do FitRoute. Só o Coach envia texto ao provedor de IA que você escolher, e apenas o que você permitir em Coach e IA." : {
+    "Seus treinos, dieta e dados de saúde ficam neste iPhone. Nada é enviado a servidores do FitJourney. Só o Coach envia texto ao provedor de IA que você escolher, e apenas o que você permitir em Coach e IA." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your workouts, diet and health data stay on this iPhone. Nothing is sent to FitRoute servers. Only the Coach sends text to the AI provider you choose, and only what you allow in Coach & AI."
+            "value" : "Your workouts, diet and health data stay on this iPhone. Nothing is sent to FitJourney servers. Only the Coach sends text to the AI provider you choose, and only what you allow in Coach & AI."
           }
         }
       }
@@ -17167,22 +17167,22 @@
         }
       }
     },
-    "Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado ao provedor de IA que você configurou. Nada vai a servidor do FitRoute." : {
+    "Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado ao provedor de IA que você configurou. Nada vai a servidor do FitJourney." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Everything written in it (name, phone, your trainer’s notes) will be sent to the AI provider you set up. Nothing goes to a FitRoute server."
+            "value" : "Everything written in it (name, phone, your trainer’s notes) will be sent to the AI provider you set up. Nothing goes to a FitJourney server."
           }
         }
       }
     },
-    "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitRoute." : {
+    "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitJourney." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Everything written in them will be sent. After the import they are not kept in FitRoute."
+            "value" : "Everything written in them will be sent. After the import they are not kept in FitJourney."
           }
         }
       }

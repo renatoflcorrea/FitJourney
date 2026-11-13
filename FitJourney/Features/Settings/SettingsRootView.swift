@@ -25,7 +25,7 @@ struct SettingsRootView: View {
     @AppStorage(AppPreferenceKeys.liveActivity) private var liveActivity = true
     /// Abrir o app do relógio gravando ao iniciar no iPhone (padrão ligado; consumidor: `WatchAutoStarter`).
     @AppStorage(AppPreferenceKeys.autoStartWatchWorkout) private var autoStartWatchWorkout = true
-    /// Atividades ao Vivo permitidas em Ajustes do iPhone › FitRoute (relido ao voltar ao app).
+    /// Atividades ao Vivo permitidas em Ajustes do iPhone › FitJourney (relido ao voltar ao app).
     @State private var systemLiveActivities = ActivityAuthorizationInfo().areActivitiesEnabled
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
@@ -153,7 +153,7 @@ struct SettingsRootView: View {
         } footer: {
             Text("O Apple Watch segue o idioma escolhido aqui (reabra o app do relógio para aplicar). Os nomes dos exercícios do catálogo aparecem no mesmo idioma no iPhone, no relógio, na Atividade ao Vivo e no Coach.")
         }
-        .alert("Reinicie o FitRoute para aplicar", isPresented: $showsRestartAlert) {
+        .alert("Reinicie o FitJourney para aplicar", isPresented: $showsRestartAlert) {
             // Encerra o app de forma limpa; o iOS não reabre sozinho, o usuário abre de novo.
             // Sem sessão de treino ativa; antes de sair, grava o contexto principal.
             if AppLanguagePreference.canRestartNow(sessionActive: sessionCoordinator?.engine.snapshot != nil) {
@@ -165,7 +165,7 @@ struct SettingsRootView: View {
             Button("Depois", role: .cancel) {}
         } message: {
             if AppLanguagePreference.canRestartNow(sessionActive: sessionCoordinator?.engine.snapshot != nil) {
-                Text("O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitRoute fecha e você o abre de novo pela tela de início.")
+                Text("O idioma muda ao reabrir o app. Se escolher Reiniciar agora, o FitJourney fecha e você o abre de novo pela tela de início.")
             } else {
                 Text("Reabra o app depois do treino para aplicar")
             }
@@ -233,7 +233,7 @@ struct SettingsRootView: View {
             liveActivityRows
             VStack(alignment: .leading, spacing: FJSpacing.xxs) {
                 Toggle("Iniciar no Apple Watch automaticamente", isOn: $autoStartWatchWorkout)
-                Text("Ao iniciar um treino no iPhone, o FitRoute abre no relógio já gravando (frequência cardíaca e calorias do relógio). Exige o app no Apple Watch e o Saúde conectado. O app Exercício da Apple não é aberto.")
+                Text("Ao iniciar um treino no iPhone, o FitJourney abre no relógio já gravando (frequência cardíaca e calorias do relógio). Exige o app no Apple Watch e o Saúde conectado. O app Exercício da Apple não é aberto.")
                     .font(FJFont.caption)
                     .foregroundStyle(FJColor.textSecondary)
             }

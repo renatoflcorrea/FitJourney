@@ -3,7 +3,7 @@ import Observation
 
 /// Estado da conexão com o iPhone, como o relógio o mostra (DESIGN §9.5).
 enum WatchConnectionState: Equatable, Sendable {
-    /// Nunca recebeu programa nem sessão: "Abra o FitRoute no iPhone para trazer seus treinos".
+    /// Nunca recebeu programa nem sessão: "Abra o FitJourney no iPhone para trazer seus treinos".
     case neverSynced
     /// iPhone alcançável e tudo confirmado.
     case connected

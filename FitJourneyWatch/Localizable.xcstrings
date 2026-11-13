@@ -271,12 +271,12 @@
         }
       }
     },
-    "Abra o FitRoute no iPhone" : {
+    "Abra o FitJourney no iPhone" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Open FitRoute on iPhone"
+            "value" : "Open FitJourney on iPhone"
           }
         }
       }
@@ -341,12 +341,12 @@
         }
       }
     },
-    "Atualize o FitRoute no iPhone." : {
+    "Atualize o FitJourney no iPhone." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Update FitRoute on your iPhone."
+            "value" : "Update FitJourney on your iPhone."
           }
         }
       }
