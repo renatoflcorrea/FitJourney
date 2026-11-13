@@ -40,7 +40,7 @@ struct LiveActivityPalette {
 }
 
 /// Glifo da atividade: o motivo "degraus" do ícone (§2.6), numa cor só. Geometria em 1024:
-/// traço 92 por (238,770) (420,770) (420,600) (602,600) (602,430) (786,430); ponto r 66 em (706,284).
+/// traço 108 por (238,770) (420,770) (420,600) (602,600) (602,430) (786,430); ponto r 74 em (706,284) (traço do ícone em vidro).
 struct StepsGlyph: View {
     var size: CGFloat = 20
 
@@ -69,7 +69,7 @@ private enum StepsGeometry {
 }
 
 struct StepsGlyphPath: Shape {
-    static let strokeRatio: CGFloat = 92 / 724
+    static let strokeRatio: CGFloat = 108 / 724
     private static let points: [CGPoint] = [
         CGPoint(x: 238, y: 770), CGPoint(x: 420, y: 770), CGPoint(x: 420, y: 600),
         CGPoint(x: 602, y: 600), CGPoint(x: 602, y: 430), CGPoint(x: 786, y: 430),
@@ -87,7 +87,7 @@ struct StepsGlyphDot: Shape {
     func path(in rect: CGRect) -> Path {
         let map = StepsGeometry.transform(in: rect)
         let center = map(CGPoint(x: 706, y: 284))
-        let edge = map(CGPoint(x: 706 + 66, y: 284))
+        let edge = map(CGPoint(x: 706 + 74, y: 284))
         let radius = edge.x - center.x
         return Path(ellipseIn: CGRect(x: center.x - radius, y: center.y - radius, width: radius * 2, height: radius * 2))
     }
