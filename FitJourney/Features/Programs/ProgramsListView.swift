@@ -128,7 +128,7 @@ struct ProgramDetailView: View {
                         }
                         VStack(alignment: .leading, spacing: FJSpacing.xs) {
                             ForEach(routine.sortedExercises) { item in
-                                Text(verbatim: "\(item.displayName) · \(item.prescriptionText)")
+                                Text(verbatim: "\(item.displayName.exerciseDisplayName) · \(item.prescriptionText)")
                                     .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                             }
                         }

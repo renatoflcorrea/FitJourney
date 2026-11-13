@@ -140,7 +140,7 @@ enum ProgressCalculator {
             case .month: "1M"
             case .quarter: "3M"
             case .half: "6M"
-            case .year: "1A"
+            case .year: String(localized: "1A")
             case .all: String(localized: "Tudo")
             }
         }

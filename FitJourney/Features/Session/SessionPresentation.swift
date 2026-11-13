@@ -235,7 +235,7 @@ enum SessionPresentation {
 
     /// "Supino inclinado · 26 kg · alvo 8–12" (em grupo: "Agora: …").
     static func setDetail(exercise: SessionSnapshot.Exercise, set: SessionSnapshot.ExerciseSet) -> String {
-        let text = join([exercise.name, loadText(displayLoad(set)), targetPart(set)])
+        let text = join([exercise.name.exerciseDisplayName, loadText(displayLoad(set)), targetPart(set)])
         return exercise.groupID == nil ? text : String(localized: "Agora: \(text)")
     }
 
@@ -245,7 +245,7 @@ enum SessionPresentation {
               let position = snapshot.currentSetPosition,
               let set = exercise.sets.first(where: { $0.id == setID }) else { return nil }
         let head = String(localized: "Série \(position.index) de \(position.of)")
-        return join([exercise.groupID == nil ? nil : exercise.name, head, loadText(displayLoad(set)), targetPart(set)])
+        return join([exercise.groupID == nil ? nil : exercise.name.exerciseDisplayName, head, loadText(displayLoad(set)), targetPart(set)])
     }
 
     /// Próxima série no alerta de fim de descanso, sem repetir o nome do exercício (o cartão já o mostra):

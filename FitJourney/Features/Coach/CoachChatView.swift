@@ -341,6 +341,7 @@ private struct MessageRow: View {
 
 // MARK: - Previews
 
+#if DEBUG
 #Preview("Chat — com proposta") {
     let container = CoachPreviewData.container(withConversations: true)
     let conversation = (try? container.mainContext.fetch(FetchDescriptor<ChatConversation>()))?.first
@@ -353,3 +354,4 @@ private struct MessageRow: View {
     .modelContainer(container)
     .tint(FJColor.coach)
 }
+#endif

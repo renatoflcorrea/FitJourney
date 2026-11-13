@@ -31,6 +31,10 @@ struct FitJourneyApp: App {
     /// Atividade ao Vivo + Dynamic Island da sessão (P6.4). Também atende os botões +15 s/Pular
     /// (`LiveActivityIntentRouter`), inclusive quando o sistema acorda o app só para o intent.
     private let liveActivity: LiveActivityController
+    #if DEBUG
+    /// Saúde sintético das capturas da App Store (`-fj.seedDemo YES`); `nil` fora da demonstração.
+    private let storeDemoHealth: StoreDemoHealthModifier
+    #endif
     /// Serviços da sessão que não dependem de UI (Saúde, canal do relógio, Atividade ao Vivo). Roda uma
     /// vez: no `.task` da cena ou antes, quando um intent da atividade acorda o app sem cena.
     private let backgroundServices: AppBackgroundServices
@@ -45,6 +49,18 @@ struct FitJourneyApp: App {
             if (try? SampleProgramFactory.shouldOfferStarter(in: context)) == true {
                 try? SampleData.insert(into: context)
             }
+        }
+        #endif
+        #if DEBUG
+        // Capturas da App Store: histórico rico, dieta, conversa do Coach e FC sintética (ver `StoreDemo`).
+        if StoreDemo.isEnabled {
+            // FC máxima definida: o gráfico de FC mostra as zonas em vez do pedido de configuração.
+            UserDefaults.standard.set(185.0, forKey: AppPreferenceKeys.maxHeartRate)
+            StoreDemo.insertIfNeeded(into: container.mainContext)
+            storeDemoHealth = StoreDemoHealthModifier(reader: StoreDemo.healthReader(context: container.mainContext),
+                                                      authorization: StoreDemo.healthAuthorization())
+        } else {
+            storeDemoHealth = StoreDemoHealthModifier(reader: nil, authorization: nil)
         }
         #endif
         modelContainer = container
@@ -62,7 +78,7 @@ struct FitJourneyApp: App {
         categoryRegistry = registry
 
         // Com Atividade ao Vivo ativa, a notificação de fim de descanso dá lugar ao alerta da atividade.
-        let restGate = LiveActivityRestNotificationGate(wrapping: UserNotificationRestScheduler())
+        let restGate = LiveActivityRestNotificationGate(wrapping: Self.makeRestScheduler())
         let engine = SessionEngine(context: container.mainContext, notifications: restGate)
         let live = LiveActivityController(
             engine: engine, gate: restGate,
@@ -97,9 +113,19 @@ struct FitJourneyApp: App {
         live.onWake = { services.start() }
     }
 
+    private static func makeRestScheduler() -> any RestNotificationScheduling {
+        #if DEBUG
+        if StoreDemo.isEnabled { return StoreDemo.RestScheduler() }
+        #endif
+        return UserNotificationRestScheduler()
+    }
+
     var body: some Scene {
         WindowGroup {
             AppRoot()
+                #if DEBUG
+                .modifier(storeDemoHealth)
+                #endif
                 .environment(sessionEngine)
                 .environment(sessionCoordinator)
                 .environment(healthAuthorization)
@@ -121,6 +147,9 @@ struct FitJourneyApp: App {
                     }
                 }
                 .task { backgroundServices.start() }
+                #if DEBUG
+                .task { StoreDemo.scheduleScrollIfRequested() }
+                #endif
                 .task {
                     // FC ao vivo na tela da sessão; a zona usa a FC máxima de Ajustes (ou 220 − idade do perfil).
                     let zones = HeartRateZoneProvider()

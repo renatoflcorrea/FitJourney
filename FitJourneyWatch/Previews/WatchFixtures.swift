@@ -9,6 +9,11 @@ enum WatchFixtures {
     static let routineC = UUID(uuidString: "A0000000-0000-0000-0000-000000000003")!
     static let sessionID = UUID(uuidString: "5E000000-0000-0000-0000-000000000001")!
 
+    /// Capturas da App Store (`-FJWStore` junto de `-FJWScene`): mesma ficha e nomes do iPhone, no idioma do app.
+    static var isStore: Bool { ProcessInfo.processInfo.arguments.contains("-FJWStore") }
+    private static var isEnglish: Bool { AppLanguageCode.current == AppLanguageCode.english }
+    private static func store(_ pt: String, _ en: String) -> String { isEnglish ? en : pt }
+
     static func id(_ n: Int) -> UUID { UUID(uuidString: String(format: "E0000000-0000-0000-0000-%012d", n))! }
 
     static func load(_ value: Double) -> WatchLoad { WatchLoad(value: value) }
@@ -21,16 +26,17 @@ enum WatchFixtures {
             }
         }
         let a = ProgramDigest.Routine(
-            id: routineA, name: "A · Peito e tríceps", symbol: "A", lastCompletedAt: now.addingTimeInterval(-4 * 86_400),
+            id: routineA, name: isStore ? store("A — Peito e tríceps", "A — Chest & triceps") : "A · Peito e tríceps", symbol: "A", lastCompletedAt: now.addingTimeInterval(-4 * 86_400),
             estimatedDurationSeconds: 55 * 60,
             exercises: [
-                .init(id: id(100), exerciseID: nil, name: "Supino inclinado", measurementKind: .repsAndLoad, groupID: nil, restSeconds: 90,
-                      sets: prescription(110, count: 4, target: "8–12", reps: .range(min: 8, max: 12), load: 26, rest: 90)),
-                .init(id: id(200), exerciseID: nil, name: "Crucifixo", measurementKind: .repsAndLoad, groupID: nil, restSeconds: 60,
-                      sets: prescription(210, count: 3, target: "12–15", reps: .range(min: 12, max: 15), load: 15, rest: 60)),
-                .init(id: id(300), exerciseID: nil, name: "Tríceps corda", measurementKind: .repsAndLoad, groupID: id(999), restSeconds: 60,
+                .init(id: id(100), exerciseID: nil, name: isStore ? store("Supino reto com barra", "Barbell Bench Press") : "Supino inclinado",
+                      measurementKind: .repsAndLoad, groupID: nil, restSeconds: isStore ? 120 : 90,
+                      sets: prescription(110, count: 4, target: "8–12", reps: .range(min: 8, max: 12), load: isStore ? 62.5 : 26, rest: isStore ? 120 : 90)),
+                .init(id: id(200), exerciseID: nil, name: isStore ? store("Supino inclinado com halteres", "Incline Dumbbell Press") : "Crucifixo", measurementKind: .repsAndLoad, groupID: nil, restSeconds: 60,
+                      sets: prescription(210, count: 3, target: "12–15", reps: .range(min: 12, max: 15), load: isStore ? 23 : 15, rest: 60)),
+                .init(id: id(300), exerciseID: nil, name: isStore ? store("Voador (peck deck)", "Pec Deck") : "Tríceps corda", measurementKind: .repsAndLoad, groupID: id(999), restSeconds: 60,
                       sets: prescription(310, count: 3, target: "10–12", reps: .range(min: 10, max: 12), load: 22.5, rest: 60)),
-                .init(id: id(400), exerciseID: nil, name: "Prancha", measurementKind: .isometric, groupID: id(999), restSeconds: 45,
+                .init(id: id(400), exerciseID: nil, name: isStore ? store("Tríceps na polia (corda)", "Rope Triceps Pushdown") : "Prancha", measurementKind: .isometric, groupID: id(999), restSeconds: 45,
                       sets: prescription(410, count: 3, target: "45 s", reps: nil, load: nil, rest: 45, hold: 45)),
             ])
         let b = ProgramDigest.Routine(id: routineB, name: "B · Costas e bíceps", symbol: "B", lastCompletedAt: now.addingTimeInterval(-2 * 86_400),

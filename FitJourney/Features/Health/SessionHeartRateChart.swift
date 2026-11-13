@@ -269,7 +269,7 @@ struct SessionHeartRateChart: View {
                         selection = nil
                         selectedExerciseID = isSelected ? nil : (result == nil ? nil : exercise.id)
                     } label: {
-                        ExerciseHeartRateRow(number: offset + 1, name: exercise.name, result: result, isSelected: isSelected)
+                        ExerciseHeartRateRow(number: offset + 1, name: exercise.name.exerciseDisplayName, result: result, isSelected: isSelected)
                     }
                     .buttonStyle(.plain)
                     .disabled(result == nil)
@@ -311,7 +311,7 @@ private struct HeartRateChartCard: View {
     private var content: (title: String, value: HeaderValue) {
         if let selection {
             if let found = analysis.lookup(at: selection) {
-                let title = HealthPresentation.selectionTitle(number: numbers[found.exercise.exerciseID], exercise: found.exercise.name,
+                let title = HealthPresentation.selectionTitle(number: numbers[found.exercise.exerciseID], exercise: found.exercise.name.exerciseDisplayName,
                                                               setNumber: found.set?.number, stats: nil)
                 let stats = found.set?.stats ?? found.exercise.stats
                 return (title, stats.map { .stats($0) } ?? .none)
@@ -321,7 +321,7 @@ private struct HeartRateChartCard: View {
             return (String(localized: "min \(minute)"), model.bpm(near: selection).map { .point($0) } ?? .none)
         }
         if let id = highlighted, let exercise = analysis.exercises.first(where: { $0.exerciseID == id }) {
-            let title = HealthPresentation.selectionTitle(number: numbers[id], exercise: exercise.name, setNumber: nil, stats: nil)
+            let title = HealthPresentation.selectionTitle(number: numbers[id], exercise: exercise.name.exerciseDisplayName, setNumber: nil, stats: nil)
             return (title, exercise.stats.map { .stats($0) } ?? .none)
         }
         return (String(localized: "Treino inteiro"), analysis.overall.map { .stats($0) } ?? .none)

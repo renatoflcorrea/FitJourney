@@ -364,7 +364,7 @@ struct MoveCopySheet: View {
                     }
                 }
             }
-            .navigationTitle(item.displayName)
+            .navigationTitle(item.displayName.exerciseDisplayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }

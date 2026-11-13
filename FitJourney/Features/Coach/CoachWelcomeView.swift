@@ -138,6 +138,7 @@ struct SharingToggles: View {
     }
 }
 
+#if DEBUG
 #Preview("Boas-vindas") {
     NavigationStack {
         CoachWelcomeView(gate: .needsConsent, secrets: InMemorySecretStore(),
@@ -145,3 +146,4 @@ struct SharingToggles: View {
     }
     .tint(FJColor.coach)
 }
+#endif

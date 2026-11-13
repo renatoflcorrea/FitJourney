@@ -1998,6 +1998,17 @@
         }
       }
     },
+    "1A" : {
+      "comment" : "Seletor de período da evolução: 1 ano (1A em pt, 1Y em en).",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1Y"
+          }
+        }
+      }
+    },
     "1RM est." : {
       "localizations" : {
         "en" : {

@@ -75,7 +75,7 @@ struct PrescriptionEditorView: View {
                     .accessibilityLabel(Text("Observações do exercício"))
             }
         }
-        .navigationTitle(item.displayName)
+        .navigationTitle(item.displayName.exerciseDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .task(id: item.exercise?.id) {
             lastKnownLoad = try? SessionStore(context: context).lastUsedLoad(exerciseID: item.exercise?.id)

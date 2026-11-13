@@ -74,6 +74,10 @@ struct TrainingRootView: View {
             .navigationTitle("Treinos")
             .navigationDestination(for: Routine.self) { RoutineEditorView(routine: $0) }
             .navigationDestination(for: TrainingProgram.self) { ProgramDetailView(program: $0) }
+            #if DEBUG
+            .navigationDestination(for: WorkoutSession.self) { WorkoutDetailView(session: $0) }
+            .navigationDestination(for: StoreDemo.ProgressRoute.self) { ExerciseProgressView(exerciseID: $0.exerciseID) }
+            #endif
             .navigationDestination(for: Shortcut.self) { shortcut in
                 switch shortcut {
                 case .library: ExerciseLibraryView()
@@ -88,12 +92,18 @@ struct TrainingRootView: View {
                 // QA/evidências: `-fj.openFirstRoutine YES` abre o editor da primeira ficha.
                 if UserDefaults.standard.bool(forKey: "fj.openFirstRoutine"), path.isEmpty,
                    let routine = active?.sortedRoutines.first { path.append(routine) }
+                // Capturas da App Store: `-fj.demoRoute workout|progress` empurra o detalhe de um treino ou a evolução do supino.
+                if path.isEmpty, let route = StoreDemo.route(in: context) {
+                    if let session = route.base as? WorkoutSession { path.append(session) }
+                    else if let progress = route.base as? StoreDemo.ProgressRoute { path.append(progress) }
+                }
                 // QA/evidências: `-fj.sessionDemo set|rest|restalert|finish` inicia a primeira ficha (rest: conclui a 1ª série;
                 // restalert: deixa 3 s de descanso para ver o alerta de fim; finish: abre o encerramento).
                 if let demo = UserDefaults.standard.string(forKey: "fj.sessionDemo"), let coordinator = sessionCoordinator,
                    coordinator.engine.snapshot == nil, let routine = active?.sortedRoutines.first {
-                    coordinator.start(routine: routine)
-                    if demo != "set", let setID = coordinator.engine.snapshot?.currentSetID {
+                    // Capturas da App Store: `mid` = meio do treino (séries concluídas e descanso correndo).
+                    if demo == "mid" { StoreDemo.startMidSession(coordinator, routine: routine) } else { coordinator.start(routine: routine) }
+                    if demo != "set", demo != "mid", let setID = coordinator.engine.snapshot?.currentSetID {
                         coordinator.send(.completeSet(setID: setID, reps: nil, load: nil, durationSeconds: nil, distanceMeters: nil))
                         if demo == "restalert" {
                             // Depois da conclusão (um ajuste no mesmo instante seria tratado como anterior a ela).

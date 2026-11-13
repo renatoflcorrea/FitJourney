@@ -66,3 +66,11 @@
 - Opcionais: índice por `messageID` no `CopilotChangeStore`; `canUndo` no `FJChangeCard`; API de edição inline no `ImportSession`; perguntas de design Q-RA1 (som do alerta), Q-RA2 (pulso abaixado sem gravação), Q-CP1..7 (padrões adotados) em DESIGN §10.
 - Manutenção: rodar `/cartographer:cartographer` (mapa atualizado só parcialmente pelos agentes desde P6.7); republicar o protótipo (artifact KVLeypFG56VoBAsVn2dqqh está na v4, sem os frames 33/34 do alerta); limpar worktrees antigos em `.claude/worktrees/` (todos já integrados).
 - Processo: worktree + simulador próprio por agente (nunca `shutdown all`); review-code antes de integrar; conflitos em `.xcstrings` por união de chaves (`python3 scripts/xcmerge.py <arquivo>` durante o merge, usa os stages 1/2/3 do git); supervisor usa o simulador `FJ-main`.
+
+## Loja (13/11) — kit da App Store
+- `work/store/`: `store.json` (en-US + pt-BR, Saúde e fitness + Estilo de vida, 1.0.0), telas cruas (`raw/`), 7 capturas de iPhone por idioma (`png/`), 3 do relógio (`watch/`), header e busca (`creatives/`, fontes em `creatives/src/build.py`). `check.py` OK.
+- Ganchos DEBUG de demonstração: `-fj.seedDemo` (`App/StoreDemo.swift`), `-fj.demoRoute`, `-fj.demoScrollY`, `-fj.sessionDemo mid`, relógio `-FJWStore`; scripts `scripts/store-screens.sh` e `store-watch-screens.sh`.
+- Correções: Release compilava com erro (`#Preview` do Coach fora de DEBUG); nomes de exercício em pt na UI inglesa (Hoje, editor, FC, sessão, copiloto); decimal do copiloto por idioma; "1A" → "1Y"; `PrivacyInfo.xcprivacy` no app e no relógio; MARKETING_VERSION 1.0.0.
+- Páginas de suporte/privacidade em `CV_Website/site/FitJourney/` (não commitadas nem publicadas).
+- Pendente do dono: criar o app no App Store Connect (en-US, bundle `br.com.renatocorrea.fitjourney`, SKU `fitjourney-ios-001`); autorizar push do CV_Website, upload do build e envio da ficha.
+- Ressalvas: pílula de zona do `FJHeartRateBadge` corta com nomes longos (ios-design); "8reps" sem espaço na sessão; "Last time … 5 day…" truncado na Evolução.

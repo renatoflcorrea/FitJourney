@@ -530,17 +530,17 @@ extension CopilotPlanner {
         let beforeByID = Dictionary(before.exercises.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let afterIDs = Set(after.exercises.map(\.id))
         for item in before.exercises where !afterIDs.contains(item.id) {
-            lines.append(CopilotDiffLine(context: item.exerciseName, before: setsSummary(item), after: nil))
+            lines.append(CopilotDiffLine(context: item.exerciseName.exerciseDisplayName, before: setsSummary(item), after: nil))
         }
         for item in after.exercises {
             guard let old = beforeByID[item.id] else {
-                lines.append(CopilotDiffLine(context: item.exerciseName, before: nil, after: setsSummary(item)))
+                lines.append(CopilotDiffLine(context: item.exerciseName.exerciseDisplayName, before: nil, after: setsSummary(item)))
                 continue
             }
             if old.exerciseID != item.exerciseID {
-                lines.append(CopilotDiffLine(context: String(localized: "Exercício"), before: old.exerciseName, after: item.exerciseName))
+                lines.append(CopilotDiffLine(context: String(localized: "Exercício"), before: old.exerciseName.exerciseDisplayName, after: item.exerciseName.exerciseDisplayName))
             }
-            let name = item.exerciseName
+            let name = item.exerciseName.exerciseDisplayName
             if old.restSeconds != item.restSeconds {
                 lines.append(CopilotDiffLine(context: String(localized: "\(name) · descanso"), before: restText(old.restSeconds),
                                              after: restText(item.restSeconds)))
@@ -565,8 +565,8 @@ extension CopilotPlanner {
         let commonAfter = after.exercises.map(\.id).filter { beforeByID[$0] != nil }
         if commonBefore != commonAfter {
             lines.append(CopilotDiffLine(context: String(localized: "Ordem"),
-                                         before: commonBefore.compactMap { beforeByID[$0]?.exerciseName }.joined(separator: ", "),
-                                         after: commonAfter.compactMap { id in after.exercises.first { $0.id == id }?.exerciseName }
+                                         before: commonBefore.compactMap { beforeByID[$0]?.exerciseName.exerciseDisplayName }.joined(separator: ", "),
+                                         after: commonAfter.compactMap { id in after.exercises.first { $0.id == id }?.exerciseName.exerciseDisplayName }
                                              .joined(separator: ", ")))
         }
         return lines
@@ -604,7 +604,10 @@ extension CopilotPlanner {
     static func loadText(_ load: Load?) -> String {
         guard let load else { return "—" }
         func number(_ value: Double) -> String {
-            value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value).replacingOccurrences(of: ".", with: ",")
+            // Separador decimal do idioma do app (pt-BR "62,5", en "62.5"), não o fixo em vírgula.
+            value.rounded() == value ? String(Int(value))
+                : value.formatted(.number.precision(.fractionLength(1)).grouping(.never).locale(
+                    Locale(identifier: AppLanguageCode.current == AppLanguageCode.english ? "en_US" : "pt_BR")))
         }
         switch load {
         case let .weight(value, unit): return "\(number(value)) \(unit.rawValue)"

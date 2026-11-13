@@ -68,7 +68,7 @@ struct TodayWorkoutCard: View {
 
     private func exerciseLine(_ item: RoutineExercise) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: FJSpacing.s) {
-            Text(verbatim: item.displayName)
+            Text(verbatim: item.displayName.exerciseDisplayName)
                 .font(FJFont.body)
                 .lineLimit(2)
             Spacer(minLength: FJSpacing.s)

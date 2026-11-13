@@ -20,8 +20,18 @@ struct CoachRootView: View {
     @State private var gate: CoachGate = .needsConsent
     @State private var service: CoachConversationService?
     @State private var path: [ChatConversation] = []
+    #if DEBUG
+    @State private var openedDemoChat = false
+    #endif
 
     init() {
+        #if DEBUG
+        // Capturas da App Store: Coach pronto, sem Keychain nem rede (`-fj.seedDemo YES`).
+        if StoreDemo.isEnabled {
+            self.init(secrets: StoreDemo.coachSecrets, defaults: StoreDemo.coachDefaults)
+            return
+        }
+        #endif
         self.init(secrets: KeychainSecretStore(), defaults: .standard)
     }
 
@@ -102,6 +112,15 @@ struct CoachRootView: View {
                 })
         }
         consumeHandoff()
+        #if DEBUG
+        // Capturas da App Store: abre direto a conversa de demonstração (`-fj.demoRoute chat`).
+        if StoreDemo.isEnabled, UserDefaults.standard.string(forKey: "fj.demoRoute") == "chat", gate == .ready, !openedDemoChat,
+           path.isEmpty,
+           let first = try? context.fetch(FetchDescriptor<ChatConversation>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])).first {
+            openedDemoChat = true
+            path = [first]
+        }
+        #endif
     }
 }
 
@@ -228,6 +247,7 @@ private struct ConversationRow: View {
 
 // MARK: - Previews
 
+#if DEBUG
 #Preview("Coach — lista") {
     let container = CoachPreviewData.container(withConversations: true)
     return CoachRootView(secrets: CoachPreviewData.readySecrets(), defaults: CoachPreviewData.defaults(consented: true))
@@ -238,3 +258,4 @@ private struct ConversationRow: View {
     CoachRootView(secrets: InMemorySecretStore(), defaults: CoachPreviewData.defaults(consented: false))
         .modelContainer(CoachPreviewData.container(withConversations: false))
 }
+#endif
