@@ -1,6 +1,6 @@
 # Status
 
-**Data**: 2026-11-12 · **Ciclo**: 7 concluído (pedidos do teste em aparelho)
+**Data**: 2026-11-13 · **Ciclo**: 7 concluído (pedidos do teste em aparelho)
 
 ## Feito
 - SPEC.md v0.1, docs/PLANO.md, docs/ia.md (provedores portados do fireplaice), AGENTS.md/CLAUDE.md, agentes em `.claude/agents/` (supervisor Opus, design Fable, núcleo Opus, telas/revisão/QA Sonnet).
@@ -60,7 +60,8 @@
 - P1.5 (12/11): copiar fichas para outro programa (só cópia) — DESIGN §4.2.1; folhas "Copiar ficha" e "Adicionar fichas", dias no semanal, nome "(2)", bloqueio por treino no destino, `ProgramStore.copyRoutines` atômico, `cloneRoutine` compartilhado com Duplicar. Integrado, testes verdes. **Instalação pendente** (aparelhos "unavailable"). Pendências: título "Adicionar fichas" trunca com o botão "Adicionar (n)"; Q-CF2 (excluir ficha no detalhe do programa/desfazer), Q-CF3 (marcar todas).
 
 ## Retomar aqui (nova sessão)
-- **Nenhum pedido do usuário pendente.** Aguardando retorno dos testes em aparelho.
+- **Primeiro passo**: instalar nos aparelhos (W4 + P1.5 ainda não instalados; C7.4 já instalado): `make device TEAM=<TEAM> DEVICE_ID=<iphone-udid> WATCH_ID=<watch-udid>` com o iPhone desbloqueado e visível (`xcrun devicectl list devices`); se o relógio falhar no túnel, repetir só `xcrun devicectl device install app --device <watch-udid> build/device/Build/Products/Debug-watchos/FitJourneyWatch.app`.
+- **Nenhum pedido do usuário pendente** além da instalação. Aguardando retorno dos testes em aparelho (importar com exercício novo, editor de carga no relógio, copiar fichas).
 - Não verificado em aparelho: `startWatchApp`/adoção da gravação remota; intensidade da vibração e alerta com pulso abaixado; chamadas reais aos provedores no copiloto; reinício por `exit(0)` e troca de `AppleLanguages` no relógio.
 - Opcionais: índice por `messageID` no `CopilotChangeStore`; `canUndo` no `FJChangeCard`; API de edição inline no `ImportSession`; perguntas de design Q-RA1 (som do alerta), Q-RA2 (pulso abaixado sem gravação), Q-CP1..7 (padrões adotados) em DESIGN §10.
 - Manutenção: rodar `/cartographer:cartographer` (mapa atualizado só parcialmente pelos agentes desde P6.7); republicar o protótipo (artifact KVLeypFG56VoBAsVn2dqqh está na v4, sem os frames 33/34 do alerta); limpar worktrees antigos em `.claude/worktrees/` (todos já integrados).
