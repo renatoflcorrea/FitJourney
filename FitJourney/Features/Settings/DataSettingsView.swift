@@ -380,7 +380,7 @@ struct EraseAllView: View {
         }
         .navigationTitle("Apagar todos os dados")
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog("Apagar todos os dados do FitJourney?", isPresented: $confirms, titleVisibility: .visible) {
+        .confirmationDialog("Apagar todos os dados do FitRoute?", isPresented: $confirms, titleVisibility: .visible) {
             Button("Continuar…", role: .destructive) { finalConfirm = true }
             Button("Cancelar", role: .cancel) {}
         }

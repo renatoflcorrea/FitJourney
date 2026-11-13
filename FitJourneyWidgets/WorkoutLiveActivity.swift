@@ -79,14 +79,14 @@ struct IslandLeading: View {
 
     private var accessibilityKey: LocalizedStringKey {
         switch phase {
-        case .resting: "FitJourney, descanso"
-        case .restDone: "FitJourney, descanso concluído"
-        case .exercising: "FitJourney, série"
-        case .hold: "FitJourney, sustentação"
-        case .cardio: "FitJourney, cardio"
-        case .paused: "FitJourney, pausado"
-        case .allDone: "FitJourney, treino completo"
-        case .finished: "FitJourney, treino concluído"
+        case .resting: "FitRoute, descanso"
+        case .restDone: "FitRoute, descanso concluído"
+        case .exercising: "FitRoute, série"
+        case .hold: "FitRoute, sustentação"
+        case .cardio: "FitRoute, cardio"
+        case .paused: "FitRoute, pausado"
+        case .allDone: "FitRoute, treino completo"
+        case .finished: "FitRoute, treino concluído"
         }
     }
 }

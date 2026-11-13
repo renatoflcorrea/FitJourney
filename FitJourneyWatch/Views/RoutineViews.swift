@@ -7,7 +7,7 @@ struct RoutineListView: View {
     var body: some View {
         Group {
             if !model.hasReceivedData && model.digest == nil {
-                WatchEmptyState(symbol: "iphone.and.arrow.forward", title: "Abra o FitJourney no iPhone",
+                WatchEmptyState(symbol: "iphone.and.arrow.forward", title: "Abra o FitRoute no iPhone",
                                 message: "para trazer seus treinos")
             } else if let digest = model.digest, !digest.routines.isEmpty {
                 list(digest)
@@ -41,7 +41,7 @@ struct RoutineListView: View {
             }
             ProgramFooter(digest: digest).listRowBackground(Color.clear)
             if let issue = model.incompatibility {
-                Text(issue.peerIsOutdated ? String(localized: "Atualize o FitJourney no iPhone.") : String(localized: "Atualize o app do relógio."))
+                Text(issue.peerIsOutdated ? String(localized: "Atualize o FitRoute no iPhone.") : String(localized: "Atualize o app do relógio."))
                     .font(.footnote).foregroundStyle(WF.attention).listRowBackground(Color.clear)
             }
         }

@@ -143,7 +143,7 @@ struct HealthDayView: View {
         case .noData:
             if data.hasRecentHeartRate == false {
                 FJBanner("Sem dados de frequência cardíaca",
-                         message: "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usa um, confira se o FitJourney pode ler seus dados em Ajustes › Saúde › Acesso a Dados.",
+                         message: "A frequência cardíaca vem do Apple Watch ou de um sensor pareado. Se você usa um, confira se o FitRoute pode ler seus dados em Ajustes › Saúde › Acesso a Dados.",
                          tone: .attention, systemImage: "heart.slash.fill", actionTitle: "Abrir Ajustes") { HealthSettings.open(openURL) }
             } else {
                 FJCard {
@@ -243,7 +243,7 @@ struct HealthDayView: View {
                     }
                     .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 } else if data.weekWorkoutsStatus == .unavailable {
-                    Text("Semana: Saúde indisponível, só treinos do FitJourney").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                    Text("Semana: Saúde indisponível, só treinos do FitRoute").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 } else {
                     Text("Sem treinos nesta semana").font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                 }
@@ -558,7 +558,7 @@ private struct PendingSuggestionCard: View {
                 .font(.subheadline.weight(.semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(FJColor.textPrimary)
-            Text("Mesmo horário do treino \(suggestion.workout.routineName ?? "do FitJourney") · \(Int((suggestion.overlap * 100).rounded())) % em comum")
+            Text("Mesmo horário do treino \(suggestion.workout.routineName ?? "do FitRoute") · \(Int((suggestion.overlap * 100).rounded())) % em comum")
                 .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
             FJAdaptiveStack(spacing: FJSpacing.s) {
                 Button("Vincular", action: onLink).buttonStyle(.fjPrimary(.health, fillsWidth: false))

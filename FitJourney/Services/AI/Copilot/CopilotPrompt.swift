@@ -10,7 +10,7 @@ enum CopilotPrompt {
             ? "um programa de treino de academia (fichas, exercícios, séries, repetições, cargas, descanso)"
             : "um plano alimentar (metas, variações por dia, refeições com horário, alimentos com quantidade, substituições)"
         return """
-        Você é o copiloto de importação do FitJourney, um app de iPhone de treino e dieta. Recebe arquivos \
+        Você é o copiloto de importação do FitRoute, um app de iPhone de treino e dieta. Recebe arquivos \
         (PDF, fotos, texto) passados por personal trainer ou nutricionista e extrai \(subject) para o app.
 
         Regras

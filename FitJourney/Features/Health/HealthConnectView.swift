@@ -60,7 +60,7 @@ struct HealthConnectCard: View {
             case .unavailable:
                 FJCard {
                     FJEmptyState("Saúde indisponível neste aparelho", systemImage: "heart.slash",
-                                 message: "Este aparelho não tem o app Saúde. Seus treinos continuam sendo registrados no FitJourney.")
+                                 message: "Este aparelho não tem o app Saúde. Seus treinos continuam sendo registrados no FitRoute.")
                 }
             case .notConnected:
                 intro
@@ -78,14 +78,14 @@ struct HealthConnectCard: View {
                             .font(FJFont.cardTitle)
                             .foregroundStyle(FJColor.textPrimary)
                             .symbolRenderingMode(.hierarchical)
-                        Text("O FitJourney lê frequência cardíaca, treinos, energia ativa, passos e peso, e grava seus treinos no Saúde.")
+                        Text("O FitRoute lê frequência cardíaca, treinos, energia ativa, passos e peso, e grava seus treinos no Saúde.")
                             .font(FJFont.label)
                             .foregroundStyle(FJColor.textSecondary)
                     }
                 }
                 if !canWrite {
                     FJBanner("Sem acesso para gravar no Saúde",
-                             message: "O treino fica só no FitJourney. Confira em Ajustes › Saúde › Acesso a Dados.",
+                             message: "O treino fica só no FitRoute. Confira em Ajustes › Saúde › Acesso a Dados.",
                              tone: .attention, systemImage: "exclamationmark.triangle.fill",
                              actionTitle: "Abrir Ajustes") { HealthSettings.open(openURL) }
                 }
@@ -113,7 +113,7 @@ struct HealthConnectCard: View {
             Button("Desconectar", role: .destructive) { authorization?.disconnect() }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("O FitJourney para de ler e gravar no Saúde. As permissões do sistema só mudam em Ajustes › Saúde.")
+            Text("O FitRoute para de ler e gravar no Saúde. As permissões do sistema só mudam em Ajustes › Saúde.")
         }
     }
 
@@ -137,13 +137,13 @@ struct HealthConnectCard: View {
     private var details: some View {
         FJCard {
             VStack(alignment: .leading, spacing: FJSpacing.l) {
-                section("O que o FitJourney lê", rows: [
+                section("O que o FitRoute lê", rows: [
                     ("heart.fill", "Frequência cardíaca e FC em repouso"),
                     ("figure.run", "Treinos do Apple Watch e de outros apps"),
                     ("flame.fill", "Energia ativa e passos"),
                     ("scalemass", "Peso (para estimar a energia quando o relógio não mediu)"),
                 ])
-                section("O que o FitJourney grava", rows: [
+                section("O que o FitRoute grava", rows: [
                     ("dumbbell.fill", "Seus treinos, com início, fim e tipo"),
                     ("flame.fill", "Energia ativa do treino"),
                 ])

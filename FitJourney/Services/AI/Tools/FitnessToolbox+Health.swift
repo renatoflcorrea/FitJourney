@@ -14,7 +14,7 @@ enum HealthToolAccess: Sendable, Hashable {
         switch self {
         case .ready: nil
         case .deviceUnavailable: "O app Saúde não está disponível neste aparelho."
-        case .disconnected: "\"Conectar ao Saúde\" está desligado nos Ajustes do FitJourney."
+        case .disconnected: "\"Conectar ao Saúde\" está desligado nos Ajustes do FitRoute."
         }
     }
 
@@ -66,7 +66,7 @@ extension FitnessToolbox {
     static var healthResultBudget: Int { CoachConversationService.maxToolResultCharacters - 500 }
 
     static let healthNote = "Contexto do app Saúde, não diagnóstico. null = sem dado (no_data: nada registrado ou leitura não permitida; unavailable: não foi possível ler) — nunca zero. Treinos vinculados aparecem uma vez (origin app+watch); pares maybeSameAsAppSession contam 1 em period.workouts. O dia de hoje é parcial (partial) e fica fora das médias e da tendência. avgHRApprox = FC média estimada pela FC do período do treino."
-    static let healthNoteWithoutAppSessions = "O usuário não compartilha treinos: sessões do FitJourney (e treinos do Saúde ligados a elas) foram omitidas; só treinos de outras fontes."
+    static let healthNoteWithoutAppSessions = "O usuário não compartilha treinos: sessões do FitRoute (e treinos do Saúde ligados a elas) foram omitidas; só treinos de outras fontes."
 
     // MARK: Execução
 

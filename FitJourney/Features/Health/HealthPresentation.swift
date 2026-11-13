@@ -258,8 +258,8 @@ enum HealthPresentation {
 
     static func originText(_ origin: WorkoutRow.Origin) -> String {
         switch origin {
-        case .app: String(localized: "FitJourney")
-        case .appAndWatch: String(localized: "FitJourney + Apple Watch")
+        case .app: String(localized: "FitRoute")
+        case .appAndWatch: String(localized: "FitRoute + Apple Watch")
         case .external(let name): name
         }
     }

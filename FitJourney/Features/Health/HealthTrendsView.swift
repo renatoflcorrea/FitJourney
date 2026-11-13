@@ -212,7 +212,7 @@ struct HealthTrendsView: View {
     }
 
     private var healthNotRead: some View {
-        Text("Os treinos do Saúde não foram lidos; só os do FitJourney aparecem.")
+        Text("Os treinos do Saúde não foram lidos; só os do FitRoute aparecem.")
             .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
     }
 

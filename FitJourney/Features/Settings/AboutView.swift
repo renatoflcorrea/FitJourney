@@ -17,7 +17,7 @@ struct AboutView: View {
                 }
             }
             Section {
-                Text("Seus treinos, dieta e dados de saúde ficam neste iPhone. Nada é enviado a servidores do FitJourney. Só o Coach envia texto ao provedor de IA que você escolher, e apenas o que você permitir em Coach e IA.")
+                Text("Seus treinos, dieta e dados de saúde ficam neste iPhone. Nada é enviado a servidores do FitRoute. Só o Coach envia texto ao provedor de IA que você escolher, e apenas o que você permitir em Coach e IA.")
                     .font(FJFont.label)
             } header: {
                 Text("Privacidade")

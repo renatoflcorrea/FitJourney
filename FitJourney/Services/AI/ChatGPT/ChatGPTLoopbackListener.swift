@@ -232,8 +232,8 @@ final class ChatGPTLoopbackListener: @unchecked Sendable {
 
     private static let success = """
     <!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">\
-    <title>FitJourney</title><body style="font-family:-apple-system,sans-serif;text-align:center;padding:3em">\
-    <h2>Login recebido.</h2><p>Pode voltar ao FitJourney.</p></body>
+    <title>FitRoute</title><body style="font-family:-apple-system,sans-serif;text-align:center;padding:3em">\
+    <h2>Login recebido.</h2><p>Pode voltar ao FitRoute.</p></body>
     """
     private static let notFound = "<!doctype html><title>Not found</title>"
 }

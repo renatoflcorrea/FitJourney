@@ -387,7 +387,7 @@ struct ChatGPTListenerTests {
         async let callback = listener.callback()
         let (status, body) = try await get(port, "code=codigo-1&state=estado-1")
         #expect(status == 200)
-        #expect(body.contains("FitJourney"))
+        #expect(body.contains("FitRoute"))
         let received = try await callback
         #expect(received == .init(code: "codigo-1", state: "estado-1", error: nil))
         #expect(try ChatGPTLoginValidation.code(from: received, attempt: attempt) == "codigo-1")

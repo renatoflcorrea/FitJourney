@@ -213,7 +213,7 @@ struct MealEditorView: View {
             }
             Button("Agora não", role: .cancel) {}
         } message: {
-            Text("O FitJourney avisa no horário da refeição. O iOS vai pedir sua permissão agora; você pode mudar depois em Ajustes.")
+            Text("O FitRoute avisa no horário da refeição. O iOS vai pedir sua permissão agora; você pode mudar depois em Ajustes.")
         }
         .onDisappear { if context.autosaveEnabled { Task { await scheduler?.reschedule(for: context) } } }
         .sheet(item: $newItem) { item in

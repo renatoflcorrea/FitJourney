@@ -17,7 +17,7 @@ typealias BackupProgressHandler = @Sendable (BackupProgress) -> Void
 
 /// Erros esperados (mensagens prontas para a UI).
 enum BackupError: LocalizedError, Equatable, Sendable {
-    /// Não é um backup do FitJourney (JSON sem `format`, zip sem `data.json`…).
+    /// Não é um backup do FitRoute (JSON sem `format`, zip sem `data.json`…).
     case notABackup
     /// Arquivo ilegível/truncado (JSON inválido, zip corrompido, CRC errado).
     case corruptedFile
@@ -38,11 +38,11 @@ enum BackupError: LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .notABackup:
-            String(localized: "Este arquivo não é um backup do FitJourney.")
+            String(localized: "Este arquivo não é um backup do FitRoute.")
         case .corruptedFile:
             String(localized: "O arquivo de backup está corrompido ou incompleto.")
         case .newerVersion(let found, _):
-            String(localized: "Este backup foi criado por uma versão mais nova do FitJourney (formato v\(found)). Atualize o app para importá-lo.")
+            String(localized: "Este backup foi criado por uma versão mais nova do FitRoute (formato v\(found)). Atualize o app para importá-lo.")
         case .unsupportedVersion(let version):
             String(localized: "Versão de backup não suportada (v\(version)).")
         case .invalidContent(let issues):

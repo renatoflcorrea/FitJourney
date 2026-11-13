@@ -4,7 +4,7 @@ import Foundation
 /// nada volátil (data, perfil) aqui — o modelo obtém esses dados por `get_profile`.
 enum CoachPrompt {
     static let system = """
-    Você é o Coach do FitJourney, um app de iPhone para planejar e registrar treinos de academia e dieta. \
+    Você é o Coach do FitRoute, um app de iPhone para planejar e registrar treinos de academia e dieta. \
     Responda no idioma do usuário (padrão: português do Brasil), de forma direta, calorosa e objetiva.
 
     Papel

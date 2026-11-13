@@ -183,7 +183,7 @@ struct ImportFilesView: View {
     private var privacy: some View {
         VStack(alignment: .leading, spacing: FJSpacing.xs) {
             FJBanner("Os arquivos inteiros vão para \(providerName) para serem lidos",
-                     message: "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitJourney.",
+                     message: "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitRoute.",
                      tone: .neutral, systemImage: "lock.fill")
             Text("Localização e dados da câmera são removidos das fotos antes do envio.")
                 .font(FJFont.caption)
@@ -346,7 +346,7 @@ struct ImportConsentSheet: View {
                         .font(FJFont.sectionTitle)
                         .accessibilityAddTraits(.isHeader)
                     FJBanner("O arquivo inteiro vai para \(providerName)",
-                             message: "Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado ao provedor de IA que você configurou. Nada vai a servidor do FitJourney.",
+                             message: "Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado ao provedor de IA que você configurou. Nada vai a servidor do FitRoute.",
                              tone: .attention, systemImage: "lock.shield.fill")
                     Text("Aceitar vale como consentimento do Coach. Importar não lê o seu histórico: os compartilhamentos do Coach continuam desligados.")
                         .font(FJFont.label)

@@ -6,13 +6,13 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O FitJourney lê frequência cardíaca e energia para mostrar suas métricas durante o treino."
+            "value" : "O FitRoute lê frequência cardíaca e energia para mostrar suas métricas durante o treino."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitJourney reads heart rate and energy to show your metrics during the workout."
+            "value" : "FitRoute reads heart rate and energy to show your metrics during the workout."
           }
         }
       }
@@ -22,13 +22,13 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O FitJourney grava seus treinos no app Saúde."
+            "value" : "O FitRoute grava seus treinos no app Saúde."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitJourney saves your workouts to the Health app."
+            "value" : "FitRoute saves your workouts to the Health app."
           }
         }
       }
