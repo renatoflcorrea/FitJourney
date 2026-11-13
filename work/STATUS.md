@@ -74,3 +74,8 @@
 - Páginas de suporte/privacidade em `CV_Website/site/FitJourney/` (não commitadas nem publicadas).
 - Pendente do dono: criar o app no App Store Connect (en-US, bundle `br.com.renatocorrea.fitjourney`, SKU `fitjourney-ios-001`); autorizar push do CV_Website, upload do build e envio da ficha.
 - Ressalvas: pílula de zona do `FJHeartRateBadge` corta com nomes longos (ios-design); "8reps" sem espaço na sessão; "Last time … 5 day…" truncado na Evolução.
+
+## Complicação do relógio e ícone em vidro (13/11)
+- Novo target `FitJourneyWatchWidgets` (WidgetKit, watchOS 26): complicação de atalho (circular, canto, retangular, inline), sem dados nem App Group. Arte em vidro nos mostradores de cor cheia; glifo chapado `StairGlyph` nos acentuados.
+- Opção de ícone em vidro em `design/icon/glass/` (gerador `make_icon_glass.swift` e `make_complication_glass.swift`); ainda não adotada no app.
+- Pendente: validar a complicação em relógio real; novo build para a loja.

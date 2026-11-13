@@ -1,0 +1,54 @@
+{
+  "sourceLanguage": "pt-BR",
+  "strings": {
+    "Abra o FitJourney no pulso.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open FitJourney on your wrist."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abra o FitJourney no pulso."
+          }
+        }
+      }
+    },
+    "FitJourney": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney"
+          }
+        }
+      }
+    },
+    "Seus treinos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your workouts"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seus treinos"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

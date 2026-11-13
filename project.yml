@@ -106,6 +106,10 @@ targets:
       - FitJourney/Domain/TrainingEnums.swift
       - FitJourney/Domain/HealthAnalysis.swift
       - FitJourney/Domain/HealthWorkoutType.swift
+    dependencies:
+      # Complicação do mostrador (WidgetKit).
+      - target: FitJourneyWatchWidgets
+        embed: true
     info:
       path: FitJourneyWatch/Info.plist
       properties:
@@ -131,6 +135,27 @@ targets:
         INFOPLIST_KEY_NSHealthShareUsageDescription: "O FitJourney lê frequência cardíaca e energia para mostrar suas métricas durante o treino."
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: "O FitJourney grava seus treinos no app Saúde."
         TARGETED_DEVICE_FAMILY: "4"
+        SWIFT_EMIT_LOC_STRINGS: YES
+  FitJourneyWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "26.0"
+    # Complicação de atalho (v1): abre o app do relógio; sem dados do treino nem App Group.
+    sources:
+      - FitJourneyWatchWidgets
+    info:
+      path: FitJourneyWatchWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: FitJourney
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: br.com.renatocorrea.fitjourney.watchkitapp.widgets
+        TARGETED_DEVICE_FAMILY: "4"
+        GENERATE_INFOPLIST_FILE: YES
         SWIFT_EMIT_LOC_STRINGS: YES
   FitJourneyWatchTests:
     type: bundle.unit-test
