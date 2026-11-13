@@ -27,9 +27,5 @@
 	</dict>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>workout-processing</string>
-	</array>
 </dict>
 </plist>
