@@ -62,21 +62,25 @@ struct SessionStore {
         return try context.fetch(descriptor)
     }
 
+    // Predicados e ordenações do SwiftData aqui só usam keypaths de **um nível** (`item.exerciseID`), nunca
+    // através de relação (`item.session?.statusRaw`, `\.session?.startedAt`): o SwiftData do iOS 27 resolve
+    // keypaths compostos pelo texto de `String(describing: keyPath)`, que num binário sem símbolos (Release/
+    // TestFlight) vira `<computed 0x…>` — e o `fetch` dá `fatalError` (crash em loop do build 1.0.0 (2)).
+    // O filtro pela relação é feito em memória. `SwiftDataKeyPathGuardTests` impede a volta do padrão.
+
     /// Última execução concluída de um exercício ("última vez: 3×10 com 32 kg").
     func lastPerformance(exerciseID: UUID, before date: Date = .distantFuture) throws -> SessionExercise? {
-        let completed = SessionStatus.completed.rawValue
         let skipped = SessionExerciseStatus.skipped.rawValue
         let eid: UUID? = exerciseID
-        var descriptor = FetchDescriptor<SessionExercise>(
-            predicate: #Predicate { item in
-                item.exerciseID == eid && item.statusRaw != skipped
-                    && item.session?.statusRaw == completed
-                    && (item.session?.startedAt ?? date) < date
-            },
-            sortBy: [SortDescriptor(\.session?.startedAt, order: .reverse)]
-        )
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
+        let candidates = try context.fetch(FetchDescriptor<SessionExercise>(
+            predicate: #Predicate { item in item.exerciseID == eid && item.statusRaw != skipped }
+        ))
+        var best: (item: SessionExercise, startedAt: Date)?
+        for item in candidates {
+            guard let session = item.session, session.status == .completed, session.startedAt < date else { continue }
+            if best == nil || session.startedAt > best!.startedAt { best = (item, session.startedAt) }
+        }
+        return best?.item
     }
 
     /// Última carga realmente usada num exercício (P2.8): a da série concluída mais recente com carga definida
@@ -86,18 +90,26 @@ struct SessionStore {
     func lastUsedLoad(exerciseID: UUID?, working: Bool = true) throws -> Load? {
         guard let eid = exerciseID else { return nil }
         let id: UUID? = eid
-        var descriptor = FetchDescriptor<SetLog>(
-            predicate: #Predicate { log in
-                log.isCompleted && log.loadData != nil && log.sessionExercise?.exerciseID == id
-            },
-            sortBy: [SortDescriptor(\.completedAt, order: .reverse)]
-        )
-        descriptor.fetchLimit = 60
-        return try context.fetch(descriptor).lazy
-            .filter { $0.kind.isWorking == working }
-            .compactMap { Load.defined($0.load) }
-            .first
+        // Execuções do exercício, das mais novas para as mais antigas, em lotes: para no lote em que aparece a
+        // primeira série qualificada (dentro do lote vale a de `completedAt` mais recente).
+        var descriptor = FetchDescriptor<SessionExercise>(predicate: #Predicate { $0.exerciseID == id },
+                                                          sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        descriptor.fetchLimit = Self.lastUsedLoadBatchSize
+        var offset = 0
+        while true {
+            descriptor.fetchOffset = offset
+            let batch = try context.fetch(descriptor)
+            let best = batch.lazy
+                .flatMap { $0.sets ?? [] }
+                .filter { $0.isCompleted && $0.kind.isWorking == working && Load.defined($0.load) != nil }
+                .max { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
+            if let best { return Load.defined(best.load) }
+            guard batch.count == Self.lastUsedLoadBatchSize else { return nil }
+            offset += batch.count
+        }
     }
+
+    static let lastUsedLoadBatchSize = 15
 
     /// Carga planejada de uma série (P2.8): a da ficha se definida (peso 0 = vazia), senão `fallback`
     /// (última carga usada no exercício). Nunca inventa zero.
@@ -580,17 +592,17 @@ struct SessionStore {
     private func historyBests(exerciseIDs: Set<UUID>, excluding session: WorkoutSession) throws -> [UUID: ExerciseBests] {
         guard !exerciseIDs.isEmpty else { return [:] }
         let ids: [UUID?] = exerciseIDs.map { $0 }
-        let completed = SessionStatus.completed.rawValue
-        let current: UUID? = session.id
+        let current = session.id
+        // Só keypath de um nível no predicado (ver nota em `lastPerformance`); sessão filtrada em memória.
         let items = try context.fetch(FetchDescriptor<SessionExercise>(
-            predicate: #Predicate { item in
-                ids.contains(item.exerciseID) && item.session?.statusRaw == completed && item.session?.id != current
-            }
+            predicate: #Predicate { item in ids.contains(item.exerciseID) }
         ))
         struct Key: Hashable { var exerciseID: UUID; var sessionID: UUID }
         var bySession: [Key: [PerformedSet]] = [:]
         for item in items {
-            guard let exerciseID = item.exerciseID, let sessionID = item.session?.id else { continue }
+            guard let exerciseID = item.exerciseID, let owner = item.session,
+                  owner.status == .completed, owner.id != current else { continue }
+            let sessionID = owner.id
             bySession[Key(exerciseID: exerciseID, sessionID: sessionID), default: []].append(contentsOf: item.performedSets)
         }
         var perExercise: [UUID: [[PerformedSet]]] = [:]

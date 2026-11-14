@@ -17,12 +17,11 @@ struct ExerciseProgressView: View {
     init(exerciseID: UUID) {
         self.exerciseID = exerciseID
         let optionalID: UUID? = exerciseID
-        let completed = SessionStatus.completed.rawValue
         let skipped = SessionExerciseStatus.skipped.rawValue
+        // Sem keypath através da relação (`$0.session?.statusRaw`): trava o SwiftData em build Release
+        // (ver `SessionStore.lastPerformance`). A sessão concluída é filtrada em `makeSamples`.
         _executions = Query(
-            filter: #Predicate<SessionExercise> {
-                $0.exerciseID == optionalID && $0.statusRaw != skipped && $0.session?.statusRaw == completed
-            },
+            filter: #Predicate<SessionExercise> { $0.exerciseID == optionalID && $0.statusRaw != skipped },
             sort: \SessionExercise.createdAt
         )
         _catalog = Query(filter: #Predicate<Exercise> { $0.id == exerciseID })
@@ -35,7 +34,7 @@ struct ExerciseProgressView: View {
 
     private func makeSamples() -> [ProgressCalculator.Sample] {
         executions.compactMap { execution in
-            guard let session = execution.session else { return nil }
+            guard let session = execution.session, session.status == .completed else { return nil }
             return ProgressCalculator.Sample(
                 id: execution.id, date: session.startedAt,
                 sets: execution.sortedSets.map {

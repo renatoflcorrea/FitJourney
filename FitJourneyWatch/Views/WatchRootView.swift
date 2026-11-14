@@ -113,11 +113,21 @@ struct SavingView: View {
                 Text("Salvo no relógio").font(.headline)
                 Text("Será enviado ao iPhone quando conectar.").font(.footnote).foregroundStyle(WF.textSecondary).multilineTextAlignment(.center)
                 Button("OK") { model.dismissSaving() }.buttonStyle(.glass)
+            } else if model.isSavingTimedOut {
+                // iPhone alcançável mas sem confirmar no prazo: o relógio já encerrou e gravou.
+                Image(systemName: "checkmark.circle").font(.system(size: 30)).foregroundStyle(WF.textSecondary).accessibilityHidden(true)
+                Text("Salvo no relógio. O iPhone vai atualizar o histórico.").font(.footnote).multilineTextAlignment(.center)
+                Button("OK") { model.dismissSaving() }.buttonStyle(.glass)
             } else {
                 ProgressView()
                 Text("Salvando…").font(.headline)
             }
         }
         .accessibilityElement(children: .contain)
+        .onChange(of: model.isSavingTimedOut) { _, timedOut in
+            guard timedOut else { return }
+            AccessibilityNotification.Announcement(
+                String(localized: "Salvo no relógio. O iPhone vai atualizar o histórico.")).post()
+        }
     }
 }

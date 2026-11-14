@@ -108,15 +108,45 @@ final class SessionCoordinator {
 
     func minimize() { isPresented = false }
 
+    /// Aberturas seguidas que reabriram a tela cheia da sessão e não chegaram a `restoreStableAfter` nem ao
+    /// segundo plano (crash na abertura).
+    @ObservationIgnored static let restoreGuardKey = "fj.session.restoreGuard"
+    /// Tempo de vida que conta como abertura estável (zera o contador).
+    @ObservationIgnored static let restoreStableAfter: Duration = .seconds(8)
+
     /// Ao abrir o app: carrega a sessão e reabre a tela como estava (cheia ou minimizada).
+    ///
+    /// Defesa contra crash em loop (build 1.0.0 (2)): uma trava dentro da tela da sessão não pode ser capturada.
+    /// Cada abertura que vai reabrir a tela cheia conta como instável até sobreviver `restoreStableAfter` ou ir
+    /// para o segundo plano (`handleBackground()`). Se a anterior não chegou lá, a sessão volta **minimizada**
+    /// (acessório; a tela cheia abre por toque) — o app abre nas abas em vez de travar de novo. Não protege de
+    /// uma trava dentro do próprio `engine.restore()`.
     func restoreIfNeeded() {
         guard !restored else { return }
         restored = true
         engine.restore()
         if engine.snapshot != nil, engine.staleSessionPrompt == nil {
-            isPresented = defaults.object(forKey: Self.presentedKey) as? Bool ?? true
+            let wanted = defaults.object(forKey: Self.presentedKey) as? Bool ?? true
+            let unstable = defaults.integer(forKey: Self.restoreGuardKey)
+            if wanted, unstable > 0 {
+                isPresented = false // o contador fica: só zera numa abertura que sobrevive
+            } else {
+                if wanted { defaults.set(unstable + 1, forKey: Self.restoreGuardKey) }
+                isPresented = wanted
+            }
+            if wanted {
+                Task { [defaults] in
+                    try? await Task.sleep(for: Self.restoreStableAfter)
+                    defaults.set(0, forKey: Self.restoreGuardKey)
+                }
+            }
         }
         Task { await refreshNotificationAuthorization() }
+    }
+
+    /// Cena no segundo plano: a abertura foi limpa (zera a guarda de restauração).
+    func handleBackground() {
+        defaults.set(0, forKey: Self.restoreGuardKey)
     }
 
     func handleForeground() {
@@ -364,6 +394,7 @@ private struct SessionHostModifier: ViewModifier {
             }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { coordinator.handleForeground() }
+                if phase == .background { coordinator.handleBackground() }
             }
             .onChange(of: engine.snapshot?.sessionID) { _, id in
                 if id == nil { coordinator.isPresented = false }

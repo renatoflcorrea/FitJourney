@@ -488,3 +488,66 @@ struct HistoryPresentationTests {
         #expect(!ProgressCalculator.Metric.load.startsAtZero)
     }
 }
+
+/// Defesa contra crash em loop na abertura (build 1.0.0 (2)): abertura depois de outra que caiu com a tela cheia
+/// aberta volta minimizada; nada é apagado.
+@MainActor
+struct SessionRestoreGuardTests {
+    private func make(openSession: Bool = true, unstableLaunches: Int) throws -> (EngineFixture, SessionCoordinator, UserDefaults) {
+        let f = try EngineFixture()
+        let defaults = UserDefaults(suiteName: "restore-guard-\(UUID().uuidString)")!
+        if openSession { _ = try f.start(try f.makeRoutine()) }
+        defaults.set(true, forKey: SessionCoordinator.presentedKey)
+        defaults.set(unstableLaunches, forKey: SessionCoordinator.restoreGuardKey)
+        return (f, SessionCoordinator(engine: f.engine, defaults: defaults), defaults)
+    }
+
+    @Test func stableLaunchReopensFullScreenAndCountsUntilStable() throws {
+        let (f, coordinator, defaults) = try make(unstableLaunches: 0)
+        coordinator.restoreIfNeeded()
+        #expect(coordinator.isPresented)
+        #expect(f.engine.snapshot != nil)
+        #expect(defaults.integer(forKey: SessionCoordinator.restoreGuardKey) == 1)
+    }
+
+    @Test func launchAfterCrashRestoresMinimizedWithoutLosingSession() throws {
+        let (f, coordinator, defaults) = try make(unstableLaunches: 1)
+        coordinator.restoreIfNeeded()
+        #expect(!coordinator.isPresented)
+        #expect(f.engine.snapshot != nil) // acessório disponível
+        #expect(try f.base.sessions.inProgressSession() != nil)
+        #expect(defaults.integer(forKey: SessionCoordinator.restoreGuardKey) == 1) // não incrementa minimizada
+        coordinator.present()
+        #expect(coordinator.isPresented)
+    }
+
+    @Test func noSessionDoesNotTouchCounter() throws {
+        let (f, coordinator, defaults) = try make(openSession: false, unstableLaunches: 0)
+        coordinator.restoreIfNeeded()
+        #expect(!coordinator.isPresented)
+        #expect(defaults.integer(forKey: SessionCoordinator.restoreGuardKey) == 0)
+        withExtendedLifetime(f) {} // o container precisa viver até o fim
+    }
+
+    @Test func minimizedPreferenceDoesNotCount() throws {
+        let (f, coordinator, defaults) = try make(unstableLaunches: 0)
+        defaults.set(false, forKey: SessionCoordinator.presentedKey)
+        coordinator.restoreIfNeeded()
+        #expect(!coordinator.isPresented)
+        #expect(defaults.integer(forKey: SessionCoordinator.restoreGuardKey) == 0)
+        withExtendedLifetime(f) {} // o container precisa viver até o fim
+    }
+
+    @Test func backgroundCountsAsCleanExit() throws {
+        let (f, coordinator, defaults) = try make(unstableLaunches: 0)
+        coordinator.restoreIfNeeded()
+        #expect(defaults.integer(forKey: SessionCoordinator.restoreGuardKey) == 1)
+        coordinator.handleBackground()
+        #expect(defaults.integer(forKey: SessionCoordinator.restoreGuardKey) == 0)
+        // Próxima abertura reabre a tela cheia.
+        let next = SessionCoordinator(engine: f.engine, defaults: defaults) // mesmo relógio do fixture (sem "treino esquecido")
+        next.restoreIfNeeded()
+        #expect(next.isPresented)
+        withExtendedLifetime(f) {}
+    }
+}

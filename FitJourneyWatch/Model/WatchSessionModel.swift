@@ -143,6 +143,10 @@ final class WatchSessionModel {
     /// Espera por resposta antes de reenviar um comando; espera máxima por um snapshot pedido.
     @ObservationIgnored var resendInterval: TimeInterval = 5
     @ObservationIgnored var snapshotTimeout: TimeInterval = 10
+    /// Espera máxima pela confirmação do `finish` pelo iPhone. Vencida, o relógio encerra sozinho: grava o treino
+    /// no Saúde com o que registrou e mostra "Salvo no relógio" (o `finish` segue na fila até o iPhone responder).
+    /// Incidente do build 1.0.0 (2): o iPhone travou ao encerrar e o relógio ficou em "Salvando…" para sempre.
+    @ObservationIgnored var savingTimeout: TimeInterval = 20
     /// Janela de coalescência dos `adjustLoad` em rajada (0 = envia cada um na hora).
     @ObservationIgnored var loadCoalesceInterval: TimeInterval = 0.35
     /// Intervalo mínimo entre envios de métricas ao iPhone.
@@ -159,6 +163,10 @@ final class WatchSessionModel {
     @ObservationIgnored private var seenActiveSessionIDs: Set<UUID> = []
     @ObservationIgnored private var staleAcknowledgedSessionID: UUID?
     @ObservationIgnored private var savingDismissedSessionID: UUID?
+    /// `finish` enviado daqui e quando (base do `savingTimeout`).
+    @ObservationIgnored private var savingStarted: (sessionID: UUID, at: Date)?
+    /// Sessão cujo "Salvando…" venceu o `savingTimeout`: encerrada localmente, esperando o iPhone.
+    private(set) var savingTimedOutSessionID: UUID?
     /// Sessões iniciadas aqui ou com "gravar no relógio" pedido: o relógio grava o treino delas.
     @ObservationIgnored private var watchRecordedSessionIDs: Set<UUID> = []
     @ObservationIgnored private var recordingPaused = false
@@ -215,6 +223,12 @@ final class WatchSessionModel {
 
     /// Alerta insistente no fim do descanso: preferência do iPhone no snapshot (ausente = ligado).
     var restAlertRepeats: Bool { display?.restAlertRepeat ?? true }
+
+    /// "Salvando…" venceu o prazo: o relógio já encerrou e gravou localmente; a tela oferece OK.
+    var isSavingTimedOut: Bool {
+        guard let id = display?.sessionID else { return false }
+        return isSavingSession && savingTimedOutSessionID == id
+    }
 
     /// Finalizado aqui, ainda sem confirmação do iPhone: a tela mostra "Salvando…".
     var isSavingSession: Bool {
@@ -297,6 +311,7 @@ final class WatchSessionModel {
         if restAlert != nil, staleSessionSince != nil { clearRestAlert() }
         if loadEditor != nil, staleSessionSince != nil { loadEditor = nil }
         if pending.contains(where: { $0.lastSentAt == nil && ($0.holdUntil ?? .distantFuture) <= now }) { flushCoalescedCommands() }
+        finishLocallyIfSavingTimedOut()
         guard isPhoneReachable else { return }
         var resent = false
         for index in pending.indices where pending[index].ackedRevision == nil && pending[index].lastSentAt != nil {
@@ -421,6 +436,7 @@ final class WatchSessionModel {
             }
         case .rejected:
             let rejected = pending.remove(at: index)
+            if case .finish = rejected.command.kind { clearSavingTimeout() }
             if rejected.command.kind.isStart {
                 // Sessão não nasceu: tudo o que dependia dela cai junto.
                 pending.removeAll { $0.command.sessionID == rejected.command.sessionID }
@@ -739,7 +755,29 @@ final class WatchSessionModel {
     func finish(rpe: Int?) {
         guard let display else { return }
         send(.finish(rpe: rpe, applyLoadProposalIDs: display.loadProposals.map(\.prescriptionID)))
+        // Chamadas repetidas não rearmam o prazo; outra sessão (ou finish depois de rejeição) começa do zero.
+        if savingStarted?.sessionID != display.sessionID {
+            savingStarted = (display.sessionID, now)
+            savingTimedOutSessionID = nil
+        }
         haptics.play(.saved)
+    }
+
+    /// Sem confirmação do `finish` no prazo (iPhone travado, fora de alcance ou sem responder): encerra a gravação
+    /// do relógio com o snapshot otimista (já `finished`) — o treino vai para o Saúde — e libera a tela.
+    private func finishLocallyIfSavingTimedOut() {
+        guard let started = savingStarted, isSavingSession, let display, display.sessionID == started.sessionID,
+              savingTimedOutSessionID != started.sessionID, now.timeIntervalSince(started.at) >= savingTimeout else { return }
+        savingTimedOutSessionID = started.sessionID
+        // Treino encerrado e gravado aqui: se o `finish` for recusado depois, `beginRecordingIfNeeded` não pode abrir
+        // uma segunda `HKWorkoutSession` com o mesmo `ExternalUUID`.
+        watchRecordedSessionIDs.remove(started.sessionID)
+        if recordingSessionID == started.sessionID { endWorkout(final: display) }
+    }
+
+    private func clearSavingTimeout() {
+        savingStarted = nil
+        savingTimedOutSessionID = nil
     }
 
     func discard() { send(.discard) }
@@ -827,6 +865,7 @@ final class WatchSessionModel {
         var snapshot = confirmed
         for item in pending { snapshot = SessionReducer.apply(item.command, to: snapshot, digest: digest) }
         display = snapshot
+        if snapshot?.status != .finished { clearSavingTimeout() }
         didChangeDisplay(from: old, to: snapshot)
         handleConfirmedTerminal()
     }

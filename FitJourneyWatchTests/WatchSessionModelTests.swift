@@ -462,6 +462,71 @@ struct WatchSessionModelTests {
         #expect(r.model.summary == nil)
     }
 
+    /// Incidente do build 1.0.0 (2): o iPhone travou ao encerrar e o relógio ficou em "Salvando…" para sempre.
+    @Test func savingTimesOutAndFinishesWorkoutLocally() throws {
+        let r = make(completed: 2, recording: true)
+        r.model.finish(rpe: 8)
+        #expect(r.model.isSavingSession && !r.model.isSavingTimedOut)
+        r.clock.now = t0.addingTimeInterval(r.model.savingTimeout - 1)
+        r.model.retryStalePending()
+        #expect(!r.model.isSavingTimedOut)
+        #expect(r.health.ended == 0)
+
+        r.clock.now = t0.addingTimeInterval(r.model.savingTimeout + 1)
+        r.model.retryStalePending()
+        #expect(r.model.isSavingTimedOut)
+        #expect(r.health.ended == 1) // gravado no Saúde com o que o relógio registrou
+        #expect(r.health.lastFinal?.status == .finished)
+        #expect(r.health.lastFinal?.metrics.completedSets == 2)
+        #expect(sentCommands(r.transport).contains { if case .finish = $0.kind { true } else { false } }) // segue na fila
+
+        // O iPhone confirma depois: nada é gravado de novo.
+        r.model.receive(snapshot: terminal(from: r.snapshot, at: t0, revision: 6))
+        #expect(r.health.ended == 1)
+        #expect(!r.model.isSavingSession)
+    }
+
+    /// Timeout → iPhone recusa o `finish` → novo `finish`: nenhuma segunda gravação e o prazo recomeça.
+    @Test func savingTimeoutThenRejectionThenFinishAgain() throws {
+        let r = make(completed: 2, recording: true)
+        let began = r.health.began
+        r.model.finish(rpe: 8)
+        r.clock.now = t0.addingTimeInterval(r.model.savingTimeout + 1)
+        r.model.retryStalePending()
+        #expect(r.model.isSavingTimedOut)
+        #expect(r.health.ended == 1)
+
+        let command = try #require(sentCommands(r.transport).last { if case .finish = $0.kind { true } else { false } })
+        r.model.handle(reply(command, revision: 5, .rejected(.persistenceFailed)))
+        #expect(r.model.hasActiveSession)
+        #expect(!r.model.isSavingTimedOut)
+        #expect(r.health.began == began) // não abre outra HKWorkoutSession com o mesmo UUID
+        #expect(r.model.recordingSessionID == nil)
+
+        let restart = r.clock.now
+        r.model.finish(rpe: 8)
+        #expect(r.model.isSavingSession && !r.model.isSavingTimedOut)
+        r.clock.now = restart.addingTimeInterval(r.model.savingTimeout - 1)
+        r.model.retryStalePending()
+        #expect(!r.model.isSavingTimedOut) // prazo rearmado a partir do novo finish
+        r.clock.now = restart.addingTimeInterval(r.model.savingTimeout + 1)
+        r.model.retryStalePending()
+        #expect(r.model.isSavingTimedOut)
+        #expect(r.health.ended == 1)
+        #expect(r.health.began == began)
+    }
+
+    @Test func savingTimeoutUnlocksScreenWithoutWatchRecording() {
+        let r = make(completed: 1)
+        r.model.finish(rpe: 7)
+        r.clock.now = t0.addingTimeInterval(r.model.savingTimeout + 1)
+        r.model.retryStalePending()
+        #expect(r.model.isSavingTimedOut)
+        #expect(r.health.ended == 0)
+        r.model.dismissSaving()
+        #expect(!r.model.isSavingSession)
+    }
+
     @Test func rejectedFinishReturnsToActiveSession() throws {
         let r = make(completed: 2, recording: true)
         r.model.finish(rpe: 8)

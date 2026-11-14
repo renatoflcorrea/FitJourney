@@ -1721,6 +1721,16 @@
         }
       }
     },
+    "Salvo no relógio. O iPhone vai atualizar o histórico." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saved on the watch. Your iPhone will update the history."
+          }
+        }
+      }
+    },
     "Salvo no relógio. Será enviado ao iPhone quando conectar." : {
       "localizations" : {
         "en" : {
