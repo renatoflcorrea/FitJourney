@@ -12,9 +12,14 @@ enum ImportAnalysisPresentation {
         var steps: [FJAnalysisStep]
     }
 
+    /// A partir de quanto tempo a chamada é "lenta" (o subtítulo pede para manter o app aberto).
+    static let slowAfter: Duration = .seconds(60)
+
     /// Título, subtítulo e etapas derivados do estado da sessão. Nada de barra por tempo: sem fração real, só o orbe.
+    /// O subtítulo mostra o tempo decorrido (verdadeiro), sem prometer duração nem aviso ao terminar.
     static func make(kind: ImportSession.Kind, attachments: [AttachmentMetadata], providerName: String,
-                     programImport: ProgramImport?, nutritionImport: NutritionImport?, slow: Bool) -> Output {
+                     programImport: ProgramImport?, nutritionImport: NutritionImport?, slow: Bool,
+                     elapsed: Duration? = nil) -> Output {
         let isRevision = programImport != nil || nutritionImport != nil
         let count = attachments.count
         var steps: [FJAnalysisStep] = []
@@ -34,9 +39,18 @@ enum ImportAnalysisPresentation {
             steps.append(FJAnalysisStep(id: "match", title: kind == .program ? String(localized: "Casar com a sua biblioteca") : String(localized: "Conferir calorias e quantidades"),
                                         state: .pending))
         }
-        let subtitle = slow
-            ? String(localized: "Está demorando mais que o normal. Pode fechar: eu aviso quando terminar.")
-            : String(localized: "Enviados a \(providerName) · menos de 1 minuto")
+        let clock = elapsed.map { $0.formatted(.time(pattern: .minuteSecond)) }
+        let subtitle: String
+        switch (slow, clock) {
+        case let (true, clock?):
+            subtitle = String(localized: "Está demorando mais que o normal (\(clock)). Mantenha o FitJourney aberto.")
+        case (true, nil):
+            subtitle = String(localized: "Está demorando mais que o normal. Mantenha o FitJourney aberto.")
+        case let (false, clock?):
+            subtitle = String(localized: "Enviados a \(providerName) · \(clock)")
+        case (false, nil):
+            subtitle = String(localized: "Enviados a \(providerName)")
+        }
         return Output(title: title, subtitle: subtitle, steps: steps)
     }
 

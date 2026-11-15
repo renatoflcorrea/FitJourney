@@ -35,7 +35,7 @@ struct CopilotScreensTests {
         let output = ImportAnalysisPresentation.make(kind: .nutrition, attachments: single, providerName: "X",
                                                      programImport: nil, nutritionImport: nil, slow: true)
         #expect(output.title == "Lendo a.pdf…")
-        #expect(output.subtitle?.contains("demorando") == true)
+        #expect(output.subtitle?.contains("aberto") == true)
         #expect(output.steps[2].title.contains("refeições"))
     }
 

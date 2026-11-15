@@ -196,12 +196,19 @@ struct NutritionImport: Codable, Sendable, Hashable {
 // MARK: - Validação
 
 enum ImportValidation {
+    /// Extração no contrato v2 (atual) ou v1 (compatibilidade), já no modelo interno.
     static func program(_ json: String) -> DraftValidation.Outcome<ProgramImport> {
-        DraftValidation.validate(json, schema: ImportSchemas.programImportV1, as: ProgramImport.self) { $0.validationIssues() }
+        switch programDetailed(json) {
+        case let .valid(value): .valid(value)
+        case let .ruleIssues(_, issues), let .invalid(issues): .invalid(issues)
+        }
     }
 
     static func nutrition(_ json: String) -> DraftValidation.Outcome<NutritionImport> {
-        DraftValidation.validate(json, schema: ImportSchemas.nutritionImportV1, as: NutritionImport.self) { $0.validationIssues() }
+        switch nutritionDetailed(json) {
+        case let .valid(value): .valid(value)
+        case let .ruleIssues(_, issues), let .invalid(issues): .invalid(issues)
+        }
     }
 }
 

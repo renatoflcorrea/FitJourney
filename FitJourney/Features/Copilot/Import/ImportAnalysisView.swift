@@ -7,13 +7,24 @@ struct ImportAnalysisView: View {
 
     @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
     @State private var providerName = ""
-    @State private var slow = false
 
     var body: some View {
+        // Tempo decorrido derivado da data de início gravada na sessão (não de um timer em memória).
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let elapsed = session.analysisStartedAt.map { Duration.seconds(max(0, context.date.timeIntervalSince($0).rounded(.down))) }
+            content(elapsed: elapsed)
+        }
+        .task {
+            providerName = (coordinator?.providerInfo() ?? ImportProviderInfo()).name
+        }
+    }
+
+    private func content(elapsed: Duration?) -> some View {
         let output = ImportAnalysisPresentation.make(
             kind: session.kind, attachments: session.attachments, providerName: providerName,
-            programImport: session.programImport, nutritionImport: session.nutritionImport, slow: slow)
-        ScrollView {
+            programImport: session.programImport, nutritionImport: session.nutritionImport,
+            slow: (elapsed ?? .zero) >= ImportAnalysisPresentation.slowAfter, elapsed: elapsed)
+        return ScrollView {
             VStack(spacing: FJSpacing.l) {
                 FJAnalysisProgress(title: output.title, subtitle: output.subtitle, steps: output.steps, isActive: true,
                                    onCancel: { session.cancel() })
@@ -25,11 +36,6 @@ struct ImportAnalysisView: View {
                 }
             }
             .padding(FJSpacing.screenMargin)
-        }
-        .task {
-            providerName = (coordinator?.providerInfo() ?? ImportProviderInfo()).name
-            try? await Task.sleep(for: .seconds(60))
-            slow = true
         }
     }
 }

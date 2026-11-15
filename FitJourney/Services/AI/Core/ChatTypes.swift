@@ -144,6 +144,11 @@ enum ResponseFormat: Sendable, Hashable {
     case jsonSchema(name: String, schema: String, strict: Bool)
 }
 
+/// Esforço de raciocínio pedido ao provedor. Não troca o modelo nem limita a saída: só o quanto ele "pensa" antes de
+/// responder. Cada gateway mapeia quando o provedor aceita (Anthropic `output_config.effort`, OpenAI
+/// `reasoning_effort`, ChatGPT `reasoning.effort`) e ignora nos outros.
+enum ReasoningEffort: String, Codable, Sendable, Hashable { case low, medium, high }
+
 struct ChatRequest: Sendable, Hashable {
     var model: String
     var messages: [LLMMessage]
@@ -153,10 +158,13 @@ struct ChatRequest: Sendable, Hashable {
     var tools: [ToolSpec]
     var toolChoice: ToolChoice?
     var metadata: [String: String]
+    /// `nil` = padrão do gateway (o Coach não muda). A importação pede `.low`: é transcrição.
+    var effort: ReasoningEffort?
 
     init(model: String, messages: [LLMMessage], temperature: Double? = nil, maxTokens: Int? = nil,
          responseFormat: ResponseFormat = .text, tools: [ToolSpec] = [], toolChoice: ToolChoice? = nil,
-         metadata: [String: String] = [:]) {
+         metadata: [String: String] = [:], effort: ReasoningEffort? = nil) {
+        self.effort = effort
         self.model = model
         self.messages = messages
         self.temperature = temperature

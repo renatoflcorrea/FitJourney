@@ -112,7 +112,8 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
     /// repete sem ele.
     private func open(_ request: ChatRequest) async throws -> URLSession.AsyncBytes {
         var credentials = try await session.credentials()
-        var options = BodyOptions(strictTools: strictTools, reasoningSummary: reasoningSummary)
+        var options = BodyOptions(strictTools: strictTools, reasoningSummary: reasoningSummary,
+                                  reasoningEffort: request.effort != nil)
         var refreshed = false
         while true {
             do {
@@ -143,12 +144,17 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
         var strictTools: Bool
         var reasoningSummary: Bool
         var parallelToolCalls: Bool = true
+        /// Envia `reasoning.effort` (ligado quando o pedido traz `effort`).
+        var reasoningEffort: Bool = false
 
         /// Sem o(s) parâmetro(s) opcional(is) citado(s) **pelo nome** no erro; `nil` = nada a tirar.
         func dropping(citedIn message: String) -> BodyOptions? {
             let lower = message.lowercased()
             var copy = self
-            if lower.contains("reasoning") { copy.reasoningSummary = false }
+            if lower.contains("reasoning") {
+                // Primeiro tira só o esforço; se o erro voltar, tira o resumo também.
+                if copy.reasoningEffort { copy.reasoningEffort = false } else { copy.reasoningSummary = false }
+            }
             if lower.contains("parallel_tool_calls") { copy.parallelToolCalls = false }
             if lower.contains("strict") { copy.strictTools = false }
             return copy == self ? nil : copy
@@ -169,7 +175,8 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
         urlRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let body = try Self.body(for: request,
-                                 options: options ?? BodyOptions(strictTools: strictTools, reasoningSummary: reasoningSummary))
+                                 options: options ?? BodyOptions(strictTools: strictTools, reasoningSummary: reasoningSummary,
+                                                                 reasoningEffort: request.effort != nil))
         urlRequest.httpBody = Data(body.jsonString().utf8)
         return urlRequest
     }
@@ -224,9 +231,10 @@ struct ChatGPTResponsesGateway: ChatGateway, StructuredCompleting {
             "store": .bool(false),
             "stream": .bool(true),
         ]
-        if options.reasoningSummary {
-            body["reasoning"] = .object(["summary": .string("auto")])
-        }
+        var reasoning: [String: JSONValue] = [:]
+        if options.reasoningSummary { reasoning["summary"] = .string("auto") }
+        if options.reasoningEffort, let effort = request.effort { reasoning["effort"] = .string(effort.rawValue) }
+        if !reasoning.isEmpty { body["reasoning"] = .object(reasoning) }
         if !request.tools.isEmpty {
             body["tools"] = .array(try request.tools.map { spec in
                 var tool: [String: JSONValue] = [

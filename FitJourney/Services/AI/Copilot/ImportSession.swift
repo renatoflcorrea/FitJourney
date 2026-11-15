@@ -88,6 +88,11 @@ final class ImportSession: Identifiable {
     /// A sessão foi retomada sem os arquivos (eles não são guardados): escolha de novo para analisar.
     private(set) var needsReattach = false
     private(set) var createdAt: Date
+    /// Início da chamada em andamento (análise ou revisão), para o tempo decorrido na tela. Derivado de data, não de
+    /// timer; `nil` fora de `analyzing`.
+    private(set) var analysisStartedAt: Date?
+    /// Medições das chamadas desta sessão (T0: tempo até o primeiro evento, total, tamanho da saída). Sem conteúdo.
+    @ObservationIgnored private(set) var callMetrics: [ImportCallMetrics] = []
 
     /// Respostas a dúvidas da IA ainda não aplicadas (`reviseWithAI()`).
     var hasPendingRevision: Bool { !ambiguityAnswers.isEmpty }
@@ -110,6 +115,7 @@ final class ImportSession: Identifiable {
     @ObservationIgnored private let now: @MainActor () -> Date
     @ObservationIgnored private let preparer: AttachmentPreparer
     @ObservationIgnored private let rasterizer: PDFRasterizer
+    @ObservationIgnored private let beginBackground: @MainActor (String) -> @MainActor () -> Void
     @ObservationIgnored private var restoring = false
     @ObservationIgnored private var isDiscarded = false
 
@@ -119,7 +125,9 @@ final class ImportSession: Identifiable {
     init(kind: Kind, context: ModelContext, resolveChat: @escaping @MainActor () throws -> ResolvedChat,
          hasConsented: @escaping @MainActor () -> Bool = { CoachProfileStore().hasConsented },
          store: any ImportSessionStoring = FileImportSessionStore(), now: @escaping @MainActor () -> Date = { .now },
-         preparer: AttachmentPreparer = AttachmentPreparer(), rasterizer: PDFRasterizer = PDFRasterizer(), id: UUID = UUID()) {
+         preparer: AttachmentPreparer = AttachmentPreparer(), rasterizer: PDFRasterizer = PDFRasterizer(), id: UUID = UUID(),
+         beginBackground: @escaping @MainActor (String) -> @MainActor () -> Void = ImportSession.backgroundTask) {
+        self.beginBackground = beginBackground
         self.id = id
         self.kind = kind
         self.context = context
@@ -252,14 +260,23 @@ final class ImportSession: Identifiable {
         warnings = encoded.warnings
         failureMessage = nil
         phase = .analyzing
+        analysisStartedAt = now()
         persist()
 
         let task = Task { @MainActor in
-            await self.runExtraction(chat: chat, messages: [user], isRevision: false)
+            await self.runExtraction(isRevision: false) { try await self.extract(chat: chat, messages: [user]) }
         }
+        await run(task)
+    }
+
+    /// Espera a chamada com alguns segundos de folga em segundo plano (sair rápido do app não derruba o stream).
+    private func run(_ task: Task<Void, Never>) async {
         analysisTask = task
+        let background = beginBackground("FitJourney import")
         await task.value
+        background()
         analysisTask = nil
+        analysisStartedAt = nil
     }
 
     /// Cancela a análise/revisão em andamento: volta para a fase anterior sem perder os arquivos em memória.
@@ -293,8 +310,8 @@ final class ImportSession: Identifiable {
     /// - Parameter isRevision: revisão das dúvidas (a extração muda e os índices antigos deixam de valer);
     ///   senão, análise inicial (os bytes dos anexos são descartados ao terminar).
     ///   - answeredAmbiguityKeys: dúvidas respondidas que esta revisão aplica (`ImportStableKey.ambiguity`).
-    private func runExtraction(chat: ResolvedChat, messages: [LLMMessage], isRevision: Bool,
-                               answeredAmbiguityKeys: [String] = []) async {
+    private func runExtraction(isRevision: Bool, answeredAmbiguityKeys: [String] = [],
+                               operation: @MainActor () async throws -> Extracted) async {
         let previousPhase: Phase = (programImport != nil || nutritionImport != nil) ? .interviewing : .selecting
         let previousProgram = programImport
         // Seleção por chave estável (nome normalizado da ficha/variação), não por posição: a revisão pode reordenar.
@@ -302,15 +319,11 @@ final class ImportSession: Identifiable {
         let selectedKeys = Set(selected.compactMap { previousKeys.indices.contains($0) ? previousKeys[$0] : nil })
         let allWereSelected = selected.count == previousKeys.count
         do {
-            let json = try await extract(chat: chat, messages: messages)
+            let extracted = try await operation()
             try Task.checkCancellation()
-            switch kind {
-            case .program:
-                guard case let .valid(value) = ImportValidation.program(json) else { throw ExtractionFailure.invalid }
-                programImport = value
-            case .nutrition:
-                guard case let .valid(value) = ImportValidation.nutrition(json) else { throw ExtractionFailure.invalid }
-                nutritionImport = value
+            switch extracted {
+            case let .program(value): programImport = value
+            case let .nutrition(value): nutritionImport = value
             }
             let keys = groupKeys()
             let kept = Set(keys.indices.filter { selectedKeys.contains(keys[$0]) })
@@ -339,6 +352,12 @@ final class ImportSession: Identifiable {
     }
 
     private enum ExtractionFailure: Error { case invalid, noExtraction }
+
+    /// Extração validada, já no modelo interno (v1).
+    private enum Extracted {
+        case program(ProgramImport)
+        case nutrition(NutritionImport)
+    }
 
     static let positionFreeAnswerKeys: Set<String> = [
         ImportField.programName.key, ImportField.scheduleMode.key, ImportField.planName.key,
@@ -394,48 +413,171 @@ final class ImportSession: Identifiable {
         }
     }
 
-    /// Uma chamada + no máximo um reparo (sem reenviar os arquivos). Devolve o JSON validado.
-    private func extract(chat: ResolvedChat, messages: [LLMMessage]) async throws -> String {
-        let schema = kind == .program ? ImportSchemas.programImportV1 : ImportSchemas.nutritionImportV1
-        let tool = ToolSpec(name: CopilotPrompt.submitExtractionTool,
-                            description: kind == .program
-                                ? "Entrega o programa de treino extraído dos arquivos (JSON do contrato program-import-v1)."
-                                : "Entrega o plano alimentar extraído dos arquivos (JSON do contrato nutrition-import-v1).",
-                            parametersSchema: DraftValidation.toolParameters(fromContract: schema))
-        let system = LLMMessage.system(CopilotPrompt.importSystem(kind))
-        func call(_ conversation: [LLMMessage]) async throws -> String {
-            let request = ChatRequest(model: chat.model, messages: [system] + conversation, tools: [tool],
-                                      toolChoice: .tool(tool.name), metadata: ["module": "copilot-import"])
-            let completion = try await ChatStreamCollector.collect(chat.gateway.stream(request), model: chat.model)
-            switch completion.finishReason {
-            case .length: throw AIError.incomplete(.length)
-            case .refusal: throw AIError.incomplete(.refusal)
-            case .contentFilter: throw AIError.incomplete(.contentFilter)
-            default: break
-            }
-            if let call = completion.toolCalls.first(where: { $0.name == tool.name }) { return call.argumentsJSON }
-            if let json = StructuredDecoder.extractJSONObject(from: completion.content) { return json }
-            throw ExtractionFailure.noExtraction
-        }
-        func issues(_ json: String) -> [String] {
-            switch kind {
-            case .program: if case let .invalid(list) = ImportValidation.program(json) { return list }
-            case .nutrition: if case let .invalid(list) = ImportValidation.nutrition(json) { return list }
-            }
-            return []
-        }
+    /// Uma chamada (contrato v2, esforço baixo) + no máximo um reparo sem reenviar os arquivos. O trivial é
+    /// consertado no aparelho; o que decodifica mas quebra regra é reparado por remendo; só o que nem decodifica
+    /// pede o objeto inteiro de novo.
+    private func extract(chat: ResolvedChat, messages: [LLMMessage]) async throws -> Extracted {
         let first: String
         do {
-            first = try await call(messages)
+            first = try await call(chat: chat, stage: .extract, conversation: messages, tool: extractionTool())
         } catch ExtractionFailure.noExtraction {
             first = "{}"
         }
-        let problems = issues(first)
-        guard !problems.isEmpty else { return first }
         try Task.checkCancellation()
-        let repaired = try await call([.user(CopilotPrompt.repairMessage(json: first, issues: problems))])
-        guard issues(repaired).isEmpty else { throw ExtractionFailure.invalid }
-        return repaired
+        switch detailed(first) {
+        case let .valid(value):
+            return value
+        case let .ruleIssues(value, issues):
+            let fixed = localFix(value)
+            if ruleIssues(fixed).isEmpty { return fixed }
+            return try await patchRepair(chat: chat, base: fixed, issues: issues)
+        case let .invalid(issues):
+            if let base = lenient(first) {
+                return try await patchRepair(chat: chat, base: localFix(base), issues: issues)
+            }
+            let repaired = try await call(chat: chat, stage: .repair,
+                                          conversation: [.user(CopilotPrompt.importRepairMessage(json: first, issues: issues))],
+                                          tool: extractionTool())
+            guard case let .valid(value) = detailed(repaired) else { throw ExtractionFailure.invalid }
+            return value
+        }
+    }
+
+    private func extractionTool() -> ToolSpec {
+        let schema = kind == .program ? ImportSchemas.programImportV2 : ImportSchemas.nutritionImportV2
+        return ToolSpec(name: CopilotPrompt.submitExtractionTool,
+                        description: kind == .program
+                            ? "Entrega o programa de treino extraído dos arquivos (JSON do contrato program-import-v2)."
+                            : "Entrega o plano alimentar extraído dos arquivos (JSON do contrato nutrition-import-v2).",
+                        parametersSchema: DraftValidation.toolParameters(fromContract: schema))
+    }
+
+    private func patchTool() -> ToolSpec {
+        ToolSpec(name: CopilotPrompt.submitPatchTool,
+                 description: kind == .program
+                     ? "Entrega só as alterações na extração do programa (operações sobre os ids enviados)."
+                     : "Entrega só as alterações na extração da dieta (operações sobre os ids enviados).",
+                 parametersSchema: kind == .program ? ProgramImportPatch.toolParameters : NutritionImportPatch.toolParameters)
+    }
+
+    /// Uma chamada com a ferramenta pedida; devolve o JSON (argumentos da ferramenta ou objeto no texto). Mede e
+    /// registra o tempo até o primeiro evento, o total e o tamanho da saída (sem conteúdo).
+    private func call(chat: ResolvedChat, stage: ImportCallMetrics.Stage, conversation: [LLMMessage],
+                      tool: ToolSpec) async throws -> String {
+        let system = LLMMessage.system(CopilotPrompt.importSystem(kind))
+        // Esforço baixo: extrair é transcrever. Sem `maxTokens` (o padrão do gateway não corta a resposta) e sem
+        // trocar o modelo escolhido.
+        let request = ChatRequest(model: chat.model, messages: [system] + conversation, tools: [tool],
+                                  toolChoice: .tool(tool.name), metadata: ["module": "copilot-import"], effort: .low)
+        let clock = ContinuousClock()
+        let start = clock.now
+        var metrics = ImportCallMetrics(stage: stage, model: chat.model, timeToFirstEvent: nil, total: .zero,
+                                        inputCharacters: conversation.reduce(0) { $0 + $1.content.count },
+                                        outputCharacters: 0, usage: nil)
+        defer {
+            metrics.total = clock.now - start
+            callMetrics.append(metrics)
+            metrics.log()
+        }
+        let (completion, firstEvent) = try await ChatStreamCollector.collectTimed(chat.gateway.stream(request),
+                                                                                  model: chat.model, clock: clock)
+        metrics.timeToFirstEvent = firstEvent
+        metrics.usage = completion.usage
+        switch completion.finishReason {
+        case .length: throw AIError.incomplete(.length)
+        case .refusal: throw AIError.incomplete(.refusal)
+        case .contentFilter: throw AIError.incomplete(.contentFilter)
+        default: break
+        }
+        // Qualquer ferramenta: a revisão aceita também o objeto inteiro (modelo que ignore o remendo).
+        if let call = completion.toolCalls.first(where: { $0.name == tool.name }) ?? completion.toolCalls.first {
+            metrics.outputCharacters = call.argumentsJSON.count
+            return call.argumentsJSON
+        }
+        metrics.outputCharacters = completion.content.count
+        if let json = StructuredDecoder.extractJSONObject(from: completion.content) { return json }
+        throw ExtractionFailure.noExtraction
+    }
+
+    /// Reparo por remendo: manda a extração compacta com ids e os problemas; aplica as operações devolvidas.
+    private func patchRepair(chat: ResolvedChat, base: Extracted, issues: [String]) async throws -> Extracted {
+        try Task.checkCancellation()
+        let message = CopilotPrompt.repairPatchMessage(kind, snapshot: snapshot(base), issues: issues)
+        let json = try await call(chat: chat, stage: .repair, conversation: [.user(message)], tool: patchTool())
+        return try applyPatchOrObject(json, to: base)
+    }
+
+    /// Resposta de revisão/reparo: remendo (`operations`) aplicado sobre `base`, ou o objeto inteiro (v2/v1).
+    private func applyPatchOrObject(_ json: String, to base: Extracted) throws -> Extracted {
+        let object = StructuredDecoder.extractJSONObject(from: json) ?? json
+        if case let .object(root)? = try? JSONValue.parse(object), root["operations"] != nil {
+            let result: Extracted
+            do {
+                switch base {
+                case let .program(value):
+                    guard case let .valid(patch) = DraftValidation.validate(object, schema: ProgramImportPatch.toolParameters,
+                                                                            as: ProgramImportPatch.self, semantic: { _ in [] })
+                    else { throw ExtractionFailure.invalid }
+                    result = .program(ImportLocalRepair.fix(try patch.applied(to: value)))
+                case let .nutrition(value):
+                    guard case let .valid(patch) = DraftValidation.validate(object, schema: NutritionImportPatch.toolParameters,
+                                                                            as: NutritionImportPatch.self, semantic: { _ in [] })
+                    else { throw ExtractionFailure.invalid }
+                    result = .nutrition(ImportLocalRepair.fix(try patch.applied(to: value)))
+                }
+            } catch is ImportPatchError {
+                throw ExtractionFailure.invalid
+            }
+            guard ruleIssues(result).isEmpty else { throw ExtractionFailure.invalid }
+            return result
+        }
+        guard case let .valid(value) = detailed(object) else { throw ExtractionFailure.invalid }
+        return value
+    }
+
+    private func detailed(_ json: String) -> ImportOutcome<Extracted> {
+        switch kind {
+        case .program:
+            switch ImportValidation.programDetailed(json) {
+            case let .valid(value): .valid(.program(value))
+            case let .ruleIssues(value, issues): .ruleIssues(.program(value), issues)
+            case let .invalid(issues): .invalid(issues)
+            }
+        case .nutrition:
+            switch ImportValidation.nutritionDetailed(json) {
+            case let .valid(value): .valid(.nutrition(value))
+            case let .ruleIssues(value, issues): .ruleIssues(.nutrition(value), issues)
+            case let .invalid(issues): .invalid(issues)
+            }
+        }
+    }
+
+    private func lenient(_ json: String) -> Extracted? {
+        switch kind {
+        case .program: ImportValidation.lenientProgram(json).map(Extracted.program)
+        case .nutrition: ImportValidation.lenientNutrition(json).map(Extracted.nutrition)
+        }
+    }
+
+    private func localFix(_ value: Extracted) -> Extracted {
+        switch value {
+        case let .program(value): .program(ImportLocalRepair.fix(value))
+        case let .nutrition(value): .nutrition(ImportLocalRepair.fix(value))
+        }
+    }
+
+    private func ruleIssues(_ value: Extracted) -> [String] {
+        switch value {
+        case let .program(value): value.validationIssues() + value.compacted().validationIssues()
+        case let .nutrition(value): value.validationIssues()
+        }
+    }
+
+    private func snapshot(_ value: Extracted) -> String {
+        switch value {
+        case let .program(value): ImportSnapshot.program(value)
+        case let .nutrition(value): ImportSnapshot.nutrition(value)
+        }
     }
 
     private static func message(for error: any Error) -> String {
@@ -511,6 +653,26 @@ final class ImportSession: Identifiable {
         persist()
     }
 
+    /// Exercícios sem casamento no catálogo ainda pendentes (a tela mostra todos numa lista só).
+    var unmatchedExerciseQuestions: [ImportQuestion] { questions.filter { $0.gapKind == .unmatchedExercise } }
+
+    /// "Criar todos como novos": cada exercício sem casamento vira exercício novo com o nome lido do arquivo (o mesmo
+    /// do "Criar como novo" individual). Devolve as perguntas respondidas e o nome gravado, para o histórico.
+    @discardableResult
+    func createAllUnmatchedAsNew() throws -> [(question: ImportQuestion, name: String)] {
+        guard kind == .program, phase == .interviewing || phase == .reviewing else { throw ImportError.wrongPhase }
+        var created: [(question: ImportQuestion, name: String)] = []
+        var attempted: Set<String> = []
+        // Uma resposta pode decidir o mesmo exercício em outras fichas: relê as pendentes a cada passo.
+        while let question = unmatchedExerciseQuestions.first(where: { !attempted.contains($0.id) }) {
+            attempted.insert(question.id)
+            let name = question.suggestedText.nonEmpty ?? exerciseName(for: question.field) ?? question.prompt
+            try answer(.text(String(name.prefix(80))), for: question.id)
+            created.append((question, exerciseName(for: question.field) ?? name))
+        }
+        return created
+    }
+
     /// Pula uma pergunta opcional (fica o valor atual/padrão).
     func skip(_ questionID: String) throws {
         guard let question = questions.first(where: { $0.id == questionID }) else { throw ImportAnswerError.unknownQuestion }
@@ -534,33 +696,35 @@ final class ImportSession: Identifiable {
         guard hasConsented() else { throw ImportError.consentRequired }
         guard !ambiguityAnswers.isEmpty else { return }
         let chat = try resolveChat()
-        let json: String
+        let base: Extracted
         let ambiguities: [ImportAmbiguity]
         switch kind {
         case .program:
             guard let extraction = programImport else { throw ImportError.wrongPhase }
-            json = Self.encode(extraction)
+            base = .program(extraction)
             ambiguities = extraction.ambiguities
         case .nutrition:
             guard let extraction = nutritionImport else { throw ImportError.wrongPhase }
-            json = Self.encode(extraction)
+            base = .nutrition(extraction)
             ambiguities = extraction.ambiguities
         }
         let pairs = ambiguityAnswers.sorted { $0.key < $1.key }.compactMap { index, answer in
             ambiguities.indices.contains(index) ? (question: ambiguities[index].question, answer: answer) : nil
         }
         let confirmed = programImport.map { ProgramInterview.confirmedExercises(in: $0, decisions: exerciseDecisions) } ?? []
-        let message = CopilotPrompt.reviseMessage(json: json, answers: pairs, confirmed: confirmed)
+        // Só as alterações voltam (remendo sobre a extração compacta): sem reescrever tudo e sem cortar o JSON.
+        let message = CopilotPrompt.reviseMessage(kind, snapshot: snapshot(base), answers: pairs, confirmed: confirmed)
         let answeredKeys = ambiguityAnswers.keys.filter(ambiguities.indices.contains).map { ImportStableKey.ambiguity(ambiguities[$0]) }
         phase = .analyzing
+        analysisStartedAt = now()
         persist()
         let task = Task { @MainActor in
-            await self.runExtraction(chat: chat, messages: [.user(message)], isRevision: true,
-                                     answeredAmbiguityKeys: answeredKeys)
+            await self.runExtraction(isRevision: true, answeredAmbiguityKeys: answeredKeys) {
+                let json = try await self.call(chat: chat, stage: .revise, conversation: [.user(message)], tool: self.patchTool())
+                return try self.applyPatchOrObject(json, to: base)
+            }
         }
-        analysisTask = task
-        await task.value
-        analysisTask = nil
+        await run(task)
     }
 
     /// Vai para a revisão final (perguntas opcionais não respondidas ficam com o padrão).
@@ -733,6 +897,12 @@ final class ImportSession: Identifiable {
         }
     }
 
+    /// Em produção: `beginBackgroundTask` (alguns segundos a mais se o usuário sair do app durante a chamada).
+    static func backgroundTask(_ name: String) -> @MainActor () -> Void {
+        let token = BackgroundExecution.begin(name)
+        return { token.end() }
+    }
+
     static func importNote(files: Int) -> String {
         files == 1 ? String(localized: "Importado com IA de 1 arquivo.") : String(localized: "Importado com IA de \(files) arquivos.")
     }
@@ -742,12 +912,6 @@ final class ImportSession: Identifiable {
     private func persist() {
         guard !restoring, !isDiscarded, phase != .done else { return }
         try? store.save(state)
-    }
-
-    private static func encode<T: Encodable>(_ value: T) -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        return (try? encoder.encode(value)).map { String(decoding: $0, as: UTF8.self) } ?? "{}"
     }
 }
 
