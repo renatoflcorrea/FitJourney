@@ -332,7 +332,9 @@ struct CopilotImportSpeedTests {
         #expect(session.programImport?.routines[3].exercises.map(\.asWritten) == ["Puxada"])
         #expect(session.programImport?.ambiguities.isEmpty == true) // a dúvida respondida sai
         let request = try #require(gateway.requests.last)
-        #expect(request.tools.map(\.name) == ["submit_import_patch"])
+        // Remendo primeiro; o objeto inteiro fica disponível só para acrescentar ficha/dia (o remendo não cria).
+        #expect(request.tools.map(\.name) == ["submit_import_patch", "submit_extraction"])
+        #expect(request.toolChoice == .required)
         #expect(request.effort == .low)
         let message = try #require(request.messages.last?.content)
         #expect(message.contains("\"id\":\"r3e1\""))
@@ -397,7 +399,7 @@ struct CopilotImportSpeedTests {
         try await session.analyze()
         #expect(gateway.requests.count == 2)
         let repair = try #require(gateway.requests.last)
-        #expect(repair.tools.map(\.name) == ["submit_import_patch"])
+        #expect(repair.tools.map(\.name) == ["submit_import_patch", "submit_extraction"])
         #expect(repair.messages.last?.parts.isEmpty == true)
         #expect(repair.messages.last?.content.contains("asWritten: vazio") == true)
         #expect(session.programImport?.routines[0].exercises.count == 1)
@@ -430,7 +432,7 @@ struct CopilotImportSpeedTests {
         let counter = BackgroundCounter()
         let session = ImportSession(kind: .program, context: fixture.context,
                                     resolveChat: { ResolvedChat(gateway: gateway, model: "m") }, hasConsented: { true },
-                                    store: fixture.store, beginBackground: { _ in
+                                    store: fixture.store, beginBackground: { _, _ in
                                         counter.began += 1
                                         return { counter.ended += 1 }
                                     })

@@ -73,7 +73,8 @@ struct ProgramImportV2: Codable, Sendable, Hashable {
                 let path = "routines[\(r)].exercises[\(e)]"
                 if exercise.setGroups.reduce(0, { $0 + $1.count }) > 12 { issues.append("\(path).setGroups: no máximo 12 séries") }
                 for (g, group) in exercise.setGroups.enumerated() {
-                    guard let reps = group.reps else { continue }
+                    // Normalizado como em `repTarget` ("AMRAP", " 8 - 12 ").
+                    guard let reps = group.reps?.lowercased().filter({ !$0.isWhitespace }), !reps.isEmpty else { continue }
                     let numbers = reps.split(separator: "-").compactMap { Int($0) }
                     if reps != "amrap", numbers.isEmpty || numbers.contains(where: { !(1...100).contains($0) }) {
                         issues.append("\(path).setGroups[\(g)].reps: use 1 a 100, faixa \"8-12\" ou \"amrap\"")
@@ -231,8 +232,18 @@ struct NutritionImportV2: Codable, Sendable, Hashable {
         var name: String
         var quantity: Double?
         var unit: FoodUnit?
-        var macros: Macros?
+        var macros: SubstitutionMacros?
         var notes: String?
+    }
+
+    /// Valores de uma substituição (sem fibra: o app não guarda fibra nas trocas — contrato `substitutionMacros`).
+    struct SubstitutionMacros: Codable, Sendable, Hashable {
+        var kcal: Double?
+        var protein: Double?
+        var carbs: Double?
+        var fat: Double?
+
+        var isEmpty: Bool { kcal == nil && protein == nil && carbs == nil && fat == nil }
     }
 
     struct Macros: Codable, Sendable, Hashable {
@@ -298,8 +309,8 @@ extension NutritionImport.MealImport {
                                          asWritten: item.asWritten, name: item.name, quantity: item.quantity, unit: item.unit,
                                          macros: macros.isEmpty ? nil : macros, notes: item.notes, confidence: item.confidence,
                                          substitutions: item.substitutions.map { sub in
-                                             let macros = NutritionImportV2.Macros(kcal: sub.kcal, protein: sub.protein,
-                                                                                   carbs: sub.carbs, fat: sub.fat, fiber: nil)
+                                             let macros = NutritionImportV2.SubstitutionMacros(kcal: sub.kcal, protein: sub.protein,
+                                                                                               carbs: sub.carbs, fat: sub.fat)
                                              return NutritionImportV2.SubstitutionV2(name: sub.name, quantity: sub.quantity,
                                                                                      unit: sub.unit,
                                                                                      macros: macros.isEmpty ? nil : macros,
@@ -328,7 +339,7 @@ extension ImportValidation {
         if case .valid = v2 { return v2 }
         let v1 = detailed(json, schema: ImportSchemas.programImportV1, as: ProgramImport.self,
                           semantic: { _ in [] }, expand: { $0 }, rules: { $0.validationIssues() })
-        if case .invalid = v1 { return json.contains("\"setGroups\"") || !json.contains("\"sets\"") ? v2 : v1 }
+        if case .invalid = v1 { return ImportWireVersion.detect(json, kind: .program) == .v1 ? v1 : v2 }
         return v1
     }
 
@@ -338,7 +349,7 @@ extension ImportValidation {
         if case .valid = v2 { return v2 }
         let v1 = detailed(json, schema: ImportSchemas.nutritionImportV1, as: NutritionImport.self,
                           semantic: { _ in [] }, expand: { $0 }, rules: { $0.validationIssues() })
-        if case .invalid = v1 { return json.contains("\"macros\"") || !json.contains("\"kcal\"") ? v2 : v1 }
+        if case .invalid = v1 { return ImportWireVersion.detect(json, kind: .nutrition) == .v1 ? v1 : v2 }
         return v1
     }
 
@@ -373,6 +384,36 @@ extension ImportValidation {
         let value = expand(wire)
         let issues = wireIssues + rules(value)
         return issues.isEmpty ? .valid(value) : .ruleIssues(value, issues)
+    }
+}
+
+/// Versão do contrato de uma resposta que não passou em nenhum dos dois, pela estrutura do JSON decodificado (não
+/// por texto solto): treino v2 tem `setGroups` nos exercícios, v1 tem `sets`; dieta v2 tem `macros` nos itens, v1 tem
+/// `kcal`/`protein`… direto no item. Sem sinal, v2 (a saída atual).
+enum ImportWireVersion: Equatable {
+    case v1, v2
+
+    static func detect(_ json: String, kind: ImportSession.Kind) -> ImportWireVersion {
+        guard let object = StructuredDecoder.extractJSONObject(from: json), let root = try? JSONValue.parse(object) else { return .v2 }
+        var v1Votes = 0, v2Votes = 0
+        switch kind {
+        case .program:
+            for routine in root["routines"]?.arrayValue ?? [] {
+                for exercise in routine["exercises"]?.arrayValue ?? [] {
+                    if exercise["setGroups"] != nil { v2Votes += 1 } else if exercise["sets"] != nil { v1Votes += 1 }
+                }
+            }
+        case .nutrition:
+            let v1Keys = ["kcal", "protein", "carbs", "fat", "fiber"]
+            for day in root["days"]?.arrayValue ?? [] {
+                for meal in day["meals"]?.arrayValue ?? [] {
+                    for item in meal["items"]?.arrayValue ?? [] {
+                        if item["macros"] != nil { v2Votes += 1 } else if v1Keys.contains(where: { item[$0] != nil }) { v1Votes += 1 }
+                    }
+                }
+            }
+        }
+        return v1Votes > v2Votes ? .v1 : .v2
     }
 }
 

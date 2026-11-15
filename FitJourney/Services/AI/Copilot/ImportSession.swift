@@ -115,7 +115,10 @@ final class ImportSession: Identifiable {
     @ObservationIgnored private let now: @MainActor () -> Date
     @ObservationIgnored private let preparer: AttachmentPreparer
     @ObservationIgnored private let rasterizer: PDFRasterizer
-    @ObservationIgnored private let beginBackground: @MainActor (String) -> @MainActor () -> Void
+    /// Pede tempo em segundo plano; o segundo argumento roda se o sistema encerrar esse tempo (expiração).
+    @ObservationIgnored private let beginBackground: @MainActor (String, @escaping @MainActor () -> Void) -> @MainActor () -> Void
+    /// O tempo em segundo plano acabou durante a chamada: a análise foi cancelada e gravada como falha.
+    @ObservationIgnored private var backgroundExpired = false
     @ObservationIgnored private var restoring = false
     @ObservationIgnored private var isDiscarded = false
 
@@ -126,7 +129,7 @@ final class ImportSession: Identifiable {
          hasConsented: @escaping @MainActor () -> Bool = { CoachProfileStore().hasConsented },
          store: any ImportSessionStoring = FileImportSessionStore(), now: @escaping @MainActor () -> Date = { .now },
          preparer: AttachmentPreparer = AttachmentPreparer(), rasterizer: PDFRasterizer = PDFRasterizer(), id: UUID = UUID(),
-         beginBackground: @escaping @MainActor (String) -> @MainActor () -> Void = ImportSession.backgroundTask) {
+         beginBackground: @escaping @MainActor (String, @escaping @MainActor () -> Void) -> @MainActor () -> Void = ImportSession.backgroundTask) {
         self.beginBackground = beginBackground
         self.id = id
         self.kind = kind
@@ -272,12 +275,27 @@ final class ImportSession: Identifiable {
     /// Espera a chamada com alguns segundos de folga em segundo plano (sair rápido do app não derruba o stream).
     private func run(_ task: Task<Void, Never>) async {
         analysisTask = task
-        let background = beginBackground("FitJourney import")
+        backgroundExpired = false
+        let background = beginBackground("FitJourney import") { [weak self] in self?.expireBackground() }
         await task.value
         background()
         analysisTask = nil
         analysisStartedAt = nil
     }
+
+    /// O sistema encerrou o tempo em segundo plano: grava já uma fase segura (o app pode ser suspenso logo depois e
+    /// a restauração nunca fica em `.analyzing`) e cancela a chamada.
+    private func expireBackground() {
+        guard phase == .analyzing else { return }
+        backgroundExpired = true
+        failureMessage = Self.backgroundExpiredMessage
+        phase = .failed
+        analysisStartedAt = nil
+        persist()
+        analysisTask?.cancel()
+    }
+
+    static let backgroundExpiredMessage = String(localized: "A análise foi interrompida porque o app ficou em segundo plano. Tente de novo.")
 
     /// Cancela a análise/revisão em andamento: volta para a fase anterior sem perder os arquivos em memória.
     func cancel() {
@@ -341,7 +359,10 @@ final class ImportSession: Identifiable {
             refreshGaps()
             phase = questions.isEmpty ? .reviewing : .interviewing
         } catch {
-            if ChatCancellation.isCancellation(error) {
+            if backgroundExpired {
+                failureMessage = Self.backgroundExpiredMessage
+                phase = .failed
+            } else if ChatCancellation.isCancellation(error) {
                 phase = previousPhase
             } else {
                 failureMessage = Self.message(for: error)
@@ -427,13 +448,15 @@ final class ImportSession: Identifiable {
         switch detailed(first) {
         case let .valid(value):
             return value
-        case let .ruleIssues(value, issues):
+        case let .ruleIssues(value, _):
             let fixed = localFix(value)
-            if ruleIssues(fixed).isEmpty { return fixed }
-            return try await patchRepair(chat: chat, base: fixed, issues: issues)
+            let remaining = ruleIssues(fixed) // o reparo recebe só o que o conserto local não resolveu
+            if remaining.isEmpty { return fixed }
+            return try await repairKeepingBase(chat: chat, base: fixed, issues: remaining)
         case let .invalid(issues):
             if let base = lenient(first) {
-                return try await patchRepair(chat: chat, base: localFix(base), issues: issues)
+                let fixed = localFix(base)
+                return try await repairKeepingBase(chat: chat, base: fixed, issues: issues + ruleIssues(fixed))
             }
             let repaired = try await call(chat: chat, stage: .repair,
                                           conversation: [.user(CopilotPrompt.importRepairMessage(json: first, issues: issues))],
@@ -464,11 +487,19 @@ final class ImportSession: Identifiable {
     /// registra o tempo até o primeiro evento, o total e o tamanho da saída (sem conteúdo).
     private func call(chat: ResolvedChat, stage: ImportCallMetrics.Stage, conversation: [LLMMessage],
                       tool: ToolSpec) async throws -> String {
+        try await call(chat: chat, stage: stage, conversation: conversation, tools: [tool])
+    }
+
+    /// Com mais de uma ferramenta, o modelo escolhe (`required`); a resposta de qualquer uma é aceita.
+    private func call(chat: ResolvedChat, stage: ImportCallMetrics.Stage, conversation: [LLMMessage],
+                      tools: [ToolSpec]) async throws -> String {
+        guard let tool = tools.first else { throw ExtractionFailure.noExtraction }
         let system = LLMMessage.system(CopilotPrompt.importSystem(kind))
         // Esforço baixo: extrair é transcrever. Sem `maxTokens` (o padrão do gateway não corta a resposta) e sem
         // trocar o modelo escolhido.
-        let request = ChatRequest(model: chat.model, messages: [system] + conversation, tools: [tool],
-                                  toolChoice: .tool(tool.name), metadata: ["module": "copilot-import"], effort: .low)
+        let request = ChatRequest(model: chat.model, messages: [system] + conversation, tools: tools,
+                                  toolChoice: tools.count == 1 ? .tool(tool.name) : .required, metadata: ["module": "copilot-import"],
+                                  effort: .low)
         let clock = ContinuousClock()
         let start = clock.now
         var metrics = ImportCallMetrics(stage: stage, model: chat.model, timeToFirstEvent: nil, total: .zero,
@@ -499,12 +530,39 @@ final class ImportSession: Identifiable {
         throw ExtractionFailure.noExtraction
     }
 
+    /// Reparo de uma extração que já decodificou: uma chamada (remendo, ou objeto inteiro se precisar acrescentar
+    /// ficha/dia). Se falhar ou não melhorar, fica a extração consertada no aparelho — a entrevista e a revisão lidam
+    /// com as lacunas. Só cancelamento interrompe.
+    private func repairKeepingBase(chat: ResolvedChat, base: Extracted, issues: [String]) async throws -> Extracted {
+        do {
+            let repaired = try await patchRepair(chat: chat, base: base, issues: issues)
+            return ruleIssues(repaired).count <= ruleIssues(base).count ? repaired : base
+        } catch {
+            if ChatCancellation.isCancellation(error) || Task.isCancelled { throw error }
+            return base
+        }
+    }
+
     /// Reparo por remendo: manda a extração compacta com ids e os problemas; aplica as operações devolvidas.
     private func patchRepair(chat: ResolvedChat, base: Extracted, issues: [String]) async throws -> Extracted {
         try Task.checkCancellation()
-        let message = CopilotPrompt.repairPatchMessage(kind, snapshot: snapshot(base), issues: issues)
-        let json = try await call(chat: chat, stage: .repair, conversation: [.user(message)], tool: patchTool())
+        var message = CopilotPrompt.repairPatchMessage(kind, snapshot: snapshot(base), issues: issues)
+        if isEmpty(base) { message += "\n\n" + CopilotPrompt.wholeObjectNote(kind) }
+        let json = try await call(chat: chat, stage: .repair, conversation: [.user(message)], tools: correctionTools(for: base))
         return try applyPatchOrObject(json, to: base)
+    }
+
+    /// Sem fichas/dias o remendo não tem onde operar (não há `insertRoutine`/`insertDay`): só o objeto inteiro.
+    /// Com fichas/dias, o remendo e, para acrescentar ficha/dia, o objeto inteiro.
+    private func correctionTools(for base: Extracted) -> [ToolSpec] {
+        isEmpty(base) ? [extractionTool()] : [patchTool(), extractionTool()]
+    }
+
+    private func isEmpty(_ value: Extracted) -> Bool {
+        switch value {
+        case let .program(value): value.routines.isEmpty
+        case let .nutrition(value): value.days.isEmpty
+        }
     }
 
     /// Resposta de revisão/reparo: remendo (`operations`) aplicado sobre `base`, ou o objeto inteiro (v2/v1).
@@ -528,7 +586,7 @@ final class ImportSession: Identifiable {
             } catch is ImportPatchError {
                 throw ExtractionFailure.invalid
             }
-            guard ruleIssues(result).isEmpty else { throw ExtractionFailure.invalid }
+            // Regra pendente não descarta o resultado: quem chama compara com a base (a entrevista lida com o resto).
             return result
         }
         guard case let .valid(value) = detailed(object) else { throw ExtractionFailure.invalid }
@@ -728,14 +786,16 @@ final class ImportSession: Identifiable {
         }
         let confirmed = programImport.map { ProgramInterview.confirmedExercises(in: $0, decisions: exerciseDecisions) } ?? []
         // Só as alterações voltam (remendo sobre a extração compacta): sem reescrever tudo e sem cortar o JSON.
-        let message = CopilotPrompt.reviseMessage(kind, snapshot: snapshot(base), answers: pairs, confirmed: confirmed)
+        var message = CopilotPrompt.reviseMessage(kind, snapshot: snapshot(base), answers: pairs, confirmed: confirmed)
+        if isEmpty(base) { message += "\n\n" + CopilotPrompt.wholeObjectNote(kind) }
+        let tools = correctionTools(for: base)
         let answeredKeys = ambiguityAnswers.keys.filter(ambiguities.indices.contains).map { ImportStableKey.ambiguity(ambiguities[$0]) }
         phase = .analyzing
         analysisStartedAt = now()
         persist()
         let task = Task { @MainActor in
             await self.runExtraction(isRevision: true, answeredAmbiguityKeys: answeredKeys) {
-                let json = try await self.call(chat: chat, stage: .revise, conversation: [.user(message)], tool: self.patchTool())
+                let json = try await self.call(chat: chat, stage: .revise, conversation: [.user(message)], tools: tools)
                 return try self.applyPatchOrObject(json, to: base)
             }
         }
@@ -913,8 +973,8 @@ final class ImportSession: Identifiable {
     }
 
     /// Em produção: `beginBackgroundTask` (alguns segundos a mais se o usuário sair do app durante a chamada).
-    static func backgroundTask(_ name: String) -> @MainActor () -> Void {
-        let token = BackgroundExecution.begin(name)
+    static func backgroundTask(_ name: String, onExpire: @escaping @MainActor () -> Void) -> @MainActor () -> Void {
+        let token = BackgroundExecution.begin(name, onExpire: onExpire)
         return { token.end() }
     }
 

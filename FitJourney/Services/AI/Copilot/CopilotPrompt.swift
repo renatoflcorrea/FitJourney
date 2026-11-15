@@ -102,6 +102,7 @@ enum CopilotPrompt {
             (program), updateRoutine (id + routine), removeRoutine (id), replaceExercise (id + exercise completo, \
             com setGroups), insertExercise (id da ficha, after = exercício anterior ou null, exercise), removeExercise \
             (id). Campos que a operação não usa ficam null. Sem alterações: operations vazio.
+            Em updateProgram/updateRoutine o cabeçalho ecoa os valores atuais e muda só o pedido; null mantém o valor             atual (não apaga) e weekdays vazio mantém os dias. O remendo não cria fichas: se for preciso acrescentar             uma ficha, chame \(submitExtractionTool) com o objeto inteiro em vez do remendo.
             """
             : """
             Responda chamando \(submitPatchTool) só com as alterações, não com o objeto inteiro. Os ids (d0 = \
@@ -109,7 +110,17 @@ enum CopilotPrompt {
             (targets), updateDay (id + day), removeDay (id), replaceMeal (id + meal completa), insertMeal (id do dia, \
             after = refeição anterior ou null, meal), removeMeal (id). Campos que a operação não usa ficam null. Sem \
             alterações: operations vazio.
+            Em updatePlan/updateTargets/updateDay o cabeçalho ecoa os valores atuais e muda só o pedido; null mantém o \
+            valor atual (não apaga) e weekdays vazio mantém os dias. O remendo não cria dias: se for preciso acrescentar \
+            um dia, chame \(submitExtractionTool) com o objeto inteiro em vez do remendo.
             """
+    }
+
+    /// A extração não tem fichas/dias: o remendo não serve (não cria ficha/dia), só o objeto inteiro.
+    static func wholeObjectNote(_ kind: ImportSession.Kind) -> String {
+        kind == .program
+            ? "A extração não tem fichas: chame \(submitExtractionTool) com o objeto inteiro (não use o remendo)."
+            : "A extração não tem dias: chame \(submitExtractionTool) com o objeto inteiro (não use o remendo)."
     }
 
     /// Reparo por remendo: a extração (compacta, com ids) decodificou mas quebra regras do app.

@@ -1060,7 +1060,7 @@ extension ImportSchemas {
         "macros": {
           "anyOf": [
             {
-              "$ref": "#/$defs/macros"
+              "$ref": "#/$defs/substitutionMacros"
             },
             {
               "type": "null"
@@ -1129,6 +1129,51 @@ extension ImportSchemas {
         }
       },
       "description": "Valores nutricionais só se escritos no arquivo; null no item quando nenhum estiver escrito."
+    },
+    "substitutionMacros": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kcal",
+        "protein",
+        "carbs",
+        "fat"
+      ],
+      "properties": {
+        "kcal": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "protein": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "carbs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "fat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000
+        }
+      },
+      "description": "Valores da substituição só se escritos no arquivo (sem fibra: o app não guarda fibra nas trocas); null quando nenhum estiver escrito."
     }
   }
 }

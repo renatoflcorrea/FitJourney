@@ -29,6 +29,27 @@ enum ImportPatchID {
         default: return nil
         }
     }
+
+    enum Kind { case edit, remove, insert }
+
+    /// Recusa remendo ambíguo: o mesmo id em duas operações de alteração/remoção (ex.: substituir e remover o mesmo
+    /// exercício), ou inserção numa ficha/dia removido ou depois de um item removido.
+    static func rejectConflicts(_ operations: [(id: String?, after: String?, kind: Kind)]) throws(ImportPatchError) {
+        func key(_ id: String?) -> String? { id?.trimmingCharacters(in: .whitespaces).lowercased().nonEmpty }
+        var touched: Set<String> = []
+        var removed: Set<String> = []
+        for operation in operations where operation.kind != .insert {
+            guard let id = key(operation.id) else { continue }
+            guard touched.insert(id).inserted else { throw .invalid("operations: \(id) aparece em operações conflitantes") }
+            if operation.kind == .remove { removed.insert(id) }
+        }
+        for operation in operations where operation.kind == .insert {
+            if let id = key(operation.id), removed.contains(id) { throw .invalid("operations: inserção em \(id), que foi removido") }
+            if let after = key(operation.after), removed.contains(after) {
+                throw .invalid("operations: inserção depois de \(after), que foi removido")
+            }
+        }
+    }
 }
 
 // MARK: - Foto enviada à IA
@@ -136,23 +157,32 @@ struct ProgramImportPatch: Codable, Sendable, Hashable {
             }
             return (r, e)
         }
+        try ImportPatchID.rejectConflicts(operations.map { operation in
+            let kind: ImportPatchID.Kind = switch operation.op {
+            case .insertExercise: .insert
+            case .removeRoutine, .removeExercise: .remove
+            case .updateProgram, .updateRoutine, .replaceExercise: .edit
+            }
+            return (operation.id, operation.after, kind)
+        })
         for (index, operation) in operations.enumerated() {
             switch operation.op {
             case .updateProgram:
                 guard let header = operation.program else { throw .invalid("operations[\(index)].program: obrigatório") }
-                result.name = header.name
-                result.goal = header.goal
-                result.goalText = header.goalText
-                result.scheduleMode = header.scheduleMode
-                result.durationWeeks = header.durationWeeks
-                result.notes = header.notes
+                // Cabeçalho ecoa os valores atuais: `null` mantém (nunca apaga o que já foi lido).
+                result.name = header.name ?? result.name
+                result.goal = header.goal ?? result.goal
+                result.goalText = header.goalText ?? result.goalText
+                result.scheduleMode = header.scheduleMode ?? result.scheduleMode
+                result.durationWeeks = header.durationWeeks ?? result.durationWeeks
+                result.notes = header.notes ?? result.notes
             case .updateRoutine:
                 let r = try routineIndex(operation.id, index)
                 guard let header = operation.routine else { throw .invalid("operations[\(index)].routine: obrigatório") }
-                result.routines[r].name = header.name
-                result.routines[r].symbol = header.symbol
-                result.routines[r].weekdays = header.weekdays
-                result.routines[r].notes = header.notes
+                result.routines[r].name = header.name ?? result.routines[r].name
+                result.routines[r].symbol = header.symbol ?? result.routines[r].symbol
+                if !header.weekdays.isEmpty { result.routines[r].weekdays = header.weekdays }
+                result.routines[r].notes = header.notes ?? result.routines[r].notes
             case .removeRoutine:
                 removedRoutines.insert(try routineIndex(operation.id, index))
             case .replaceExercise:
@@ -195,12 +225,12 @@ struct ProgramImportPatch: Codable, Sendable, Hashable {
         ImportPatchSchema.make(contract: ImportSchemas.programImportV2, ops: Op.allCases.map(\.rawValue), extraDefs: { defs, root in
             var programProps: [String: JSONValue] = [:]
             for key in ["name", "goal", "goalText", "scheduleMode", "durationWeeks", "notes"] { programProps[key] = root[key] }
-            defs["programHeader"] = ImportPatchSchema.object(programProps)
+            defs["programHeader"] = ImportPatchSchema.object(programProps, description: ImportPatchSchema.headerDescription)
             var routineProps: [String: JSONValue] = [:]
             if case let .object(routine)? = defs["routine"], case let .object(props)? = routine["properties"] {
                 for key in ["name", "symbol", "weekdays", "notes"] { routineProps[key] = props[key] }
             }
-            defs["routineHeader"] = ImportPatchSchema.object(routineProps)
+            defs["routineHeader"] = ImportPatchSchema.object(routineProps, description: ImportPatchSchema.headerDescription)
             return [
                 "id": .object(["type": .array([.string("string"), .string("null")]),
                                "description": .string("Ficha (r0) ou exercício (r0e2) da extração enviada; em insertExercise, a ficha.")]),
@@ -265,22 +295,40 @@ struct NutritionImportPatch: Codable, Sendable, Hashable {
             }
             return (d, m)
         }
+        try ImportPatchID.rejectConflicts(operations.map { operation in
+            let kind: ImportPatchID.Kind = switch operation.op {
+            case .insertMeal: .insert
+            case .removeDay, .removeMeal: .remove
+            case .updatePlan, .updateTargets, .updateDay, .replaceMeal: .edit
+            }
+            return (operation.id, operation.after, kind)
+        })
         for (index, operation) in operations.enumerated() {
             switch operation.op {
             case .updatePlan:
                 guard let header = operation.plan else { throw .invalid("operations[\(index)].plan: obrigatório") }
-                result.name = header.name
-                result.goal = header.goal
-                result.notes = header.notes
+                // Cabeçalho ecoa os valores atuais: `null` mantém (nunca apaga o que já foi lido).
+                result.name = header.name ?? result.name
+                result.goal = header.goal ?? result.goal
+                result.notes = header.notes ?? result.notes
             case .updateTargets:
                 guard let targets = operation.targets else { throw .invalid("operations[\(index)].targets: obrigatório") }
-                result.targets = targets
+                var merged = result.targets
+                merged.kcal = targets.kcal ?? merged.kcal
+                merged.protein = targets.protein ?? merged.protein
+                merged.carbs = targets.carbs ?? merged.carbs
+                merged.fat = targets.fat ?? merged.fat
+                merged.fiber = targets.fiber ?? merged.fiber
+                merged.waterMilliliters = targets.waterMilliliters ?? merged.waterMilliliters
+                merged.confidence = targets.confidence
+                merged.source = targets.source ?? merged.source
+                result.targets = merged
             case .updateDay:
                 let d = try dayIndex(operation.id, index)
                 guard let header = operation.day else { throw .invalid("operations[\(index)].day: obrigatório") }
-                result.days[d].name = header.name
-                result.days[d].weekdays = header.weekdays
-                result.days[d].notes = header.notes
+                result.days[d].name = header.name ?? result.days[d].name
+                if !header.weekdays.isEmpty { result.days[d].weekdays = header.weekdays }
+                result.days[d].notes = header.notes ?? result.days[d].notes
             case .removeDay:
                 removedDays.insert(try dayIndex(operation.id, index))
             case .replaceMeal:
@@ -322,19 +370,20 @@ struct NutritionImportPatch: Codable, Sendable, Hashable {
         ImportPatchSchema.make(contract: ImportSchemas.nutritionImportV2, ops: Op.allCases.map(\.rawValue), extraDefs: { defs, root in
             var planProps: [String: JSONValue] = [:]
             for key in ["name", "goal", "notes"] { planProps[key] = root[key] }
-            defs["planHeader"] = ImportPatchSchema.object(planProps)
+            defs["planHeader"] = ImportPatchSchema.object(planProps, description: ImportPatchSchema.headerDescription)
             var dayProps: [String: JSONValue] = [:]
             if case let .object(day)? = defs["day"], case let .object(props)? = day["properties"] {
                 for key in ["name", "weekdays", "notes"] { dayProps[key] = props[key] }
             }
-            defs["dayHeader"] = ImportPatchSchema.object(dayProps)
+            defs["dayHeader"] = ImportPatchSchema.object(dayProps, description: ImportPatchSchema.headerDescription)
             return [
                 "id": .object(["type": .array([.string("string"), .string("null")]),
                                "description": .string("Dia (d0) ou refeição (d0m1) da extração enviada; em insertMeal, o dia.")]),
                 "after": .object(["type": .array([.string("string"), .string("null")]),
                                   "description": .string("insertMeal: id da refeição depois da qual inserir; null = no começo.")]),
                 "plan": ImportPatchSchema.refOrNull("planHeader"),
-                "targets": ImportPatchSchema.refOrNull("targets"),
+                "targets": .object(["anyOf": .array([.object(["$ref": .string("#/$defs/targets")]), .object(["type": .string("null")])]),
+                                    "description": .string("updateTargets: metas completas ecoando as atuais; null num campo mantém o valor atual.")]),
                 "day": ImportPatchSchema.refOrNull("dayHeader"),
                 "meal": ImportPatchSchema.refOrNull("meal"),
             ]
@@ -345,9 +394,15 @@ struct NutritionImportPatch: Codable, Sendable, Hashable {
 // MARK: - Schema da ferramenta
 
 enum ImportPatchSchema {
-    static func object(_ properties: [String: JSONValue]) -> JSONValue {
-        .object(["type": .string("object"), "additionalProperties": .bool(false),
-                 "required": .array(properties.keys.sorted().map(JSONValue.string)), "properties": .object(properties)])
+    static let headerDescription = "Cabeçalho completo: ecoe os valores atuais da extração enviada e mude só o que a correção pede. "
+        + "null mantém o valor atual (não apaga); weekdays vazio mantém os dias atuais."
+
+    static func object(_ properties: [String: JSONValue], description: String? = nil) -> JSONValue {
+        var object: [String: JSONValue] = ["type": .string("object"), "additionalProperties": .bool(false),
+                                           "required": .array(properties.keys.sorted().map(JSONValue.string)),
+                                           "properties": .object(properties)]
+        if let description { object["description"] = .string(description) }
+        return .object(object)
     }
 
     static func refOrNull(_ name: String) -> JSONValue {

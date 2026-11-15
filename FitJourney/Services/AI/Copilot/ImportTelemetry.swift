@@ -38,10 +38,14 @@ struct ImportCallMetrics: Sendable, Hashable {
 final class BackgroundExecution {
     private var identifier: UIBackgroundTaskIdentifier = .invalid
 
-    static func begin(_ name: String) -> BackgroundExecution {
+    /// - Parameter onExpire: roda na expiração, antes de devolver o tempo ao sistema (cancelar e gravar uma fase segura).
+    static func begin(_ name: String, onExpire: @escaping @MainActor () -> Void = {}) -> BackgroundExecution {
         let token = BackgroundExecution()
         token.identifier = UIApplication.shared.beginBackgroundTask(withName: name) { [token] in
-            token.end()
+            MainActor.assumeIsolated {
+                onExpire()
+                token.end()
+            }
         }
         return token
     }
