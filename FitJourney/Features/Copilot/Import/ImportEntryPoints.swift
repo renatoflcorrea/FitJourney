@@ -10,9 +10,10 @@ struct ImportWithAIButton: View {
     var fillsWidth = true
 
     @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
 
     var body: some View {
-        if let coordinator {
+        if let coordinator, aiAvailability.isOn {
             FJAIButton(title, prominence: prominence, fillsWidth: fillsWidth) {
                 coordinator.start(kind: kind, target: target)
             }
@@ -29,9 +30,10 @@ struct ImportWithAIMenuItem: View {
     var title: LocalizedStringKey = "Importar com IA"
 
     @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
 
     var body: some View {
-        if let coordinator {
+        if let coordinator, aiAvailability.isOn {
             Button(title, systemImage: "sparkles") { coordinator.start(kind: kind, target: target) }
         }
     }
@@ -43,9 +45,10 @@ struct ImportContinueCard: View {
 
     @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
 
     var body: some View {
-        if let coordinator {
+        if let coordinator, aiAvailability.isOn {
             let pending = coordinator.pending(kind: kind)
             Group {
                 if let first = pending.first {

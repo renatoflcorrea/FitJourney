@@ -6,12 +6,18 @@ import SwiftUI
 struct AdjustMealSheet: View {
     @Environment(\.dismiss) private var dismiss
 
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
+
     let meal: Meal
+    /// "Preencher com foto": abre o registro com IA já ligado a esta refeição. `nil` esconde o botão.
+    let onFillWithPhoto: (() -> Void)?
     let onSave: ([AdjustDraftItem]) -> Void
     @State private var drafts: [AdjustDraftItem]
 
-    init(meal: Meal, existing: [FoodEntry], onSave: @escaping ([AdjustDraftItem]) -> Void) {
+    init(meal: Meal, existing: [FoodEntry], onFillWithPhoto: (() -> Void)? = nil,
+         onSave: @escaping ([AdjustDraftItem]) -> Void) {
         self.meal = meal
+        self.onFillWithPhoto = onFillWithPhoto
         self.onSave = onSave
         _drafts = State(initialValue: AdjustDraftItem.drafts(for: meal, entries: existing))
     }
@@ -23,6 +29,15 @@ struct AdjustMealSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let onFillWithPhoto, aiAvailability.canReadImages {
+                    Section {
+                        FJAIButton("Preencher com foto", systemImage: "camera", prominence: .subtle, action: onFillWithPhoto)
+                            .listRowBackground(Color.clear)
+                            .listRowInsets(EdgeInsets())
+                    } footer: {
+                        Text("A IA estima o prato pela foto. Você revisa antes de registrar.")
+                    }
+                }
                 Section {
                     ForEach($drafts) { $item in
                         AdjustItemRow(item: $item)

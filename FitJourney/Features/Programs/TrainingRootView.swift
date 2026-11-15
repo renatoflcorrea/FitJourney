@@ -12,6 +12,7 @@ struct TrainingRootView: View {
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
     @Environment(ImportCoordinator.self) private var importCoordinator: ImportCoordinator?
     @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
 
     /// "Agora" da tela: atualizado ao aparecer, ao voltar ao primeiro plano e na virada do dia.
     @State private var now = Date.now
@@ -56,7 +57,7 @@ struct TrainingRootView: View {
                         SessionBlockBanner(addingTo: blockedAddingTo).listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
                     }
                 }
-                if importCoordinator?.pending(kind: .program).isEmpty == false {
+                if aiAvailability.isOn, importCoordinator?.pending(kind: .program).isEmpty == false {
                     Section { ImportContinueCard(kind: .program).listRowInsets(EdgeInsets()).listRowBackground(Color.clear) }
                 }
                 if !hasAnyProgram {
@@ -64,7 +65,7 @@ struct TrainingRootView: View {
                 } else if let active {
                     activeSection(active)
                     routinesSection(active)
-                    addRoutinesWithAISection(active)
+                    if aiAvailability.isOn { addRoutinesWithAISection(active) }
                 } else {
                     noActiveSection
                 }
@@ -188,10 +189,12 @@ struct TrainingRootView: View {
                         startAdding(to: active)
                     }
                 }
-                Divider()
-                ImportWithAIMenuItem(kind: .program)
-                if let active {
-                    ImportWithAIMenuItem(kind: .program, target: .existingProgram(active.id), title: "Adicionar fichas com IA")
+                if aiAvailability.isOn {
+                    Divider()
+                    ImportWithAIMenuItem(kind: .program)
+                    if let active {
+                        ImportWithAIMenuItem(kind: .program, target: .existingProgram(active.id), title: "Adicionar fichas com IA")
+                    }
                 }
             } label: {
                 Label("Novo", systemImage: "plus")
@@ -207,9 +210,11 @@ struct TrainingRootView: View {
                          message: "Crie seu primeiro programa com as fichas da semana.",
                          actionTitle: "Criar programa") { sheet = .newProgram }
                 .listRowBackground(Color.clear)
-            ImportWithAIButton(kind: .program, fillsWidth: false)
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+            if aiAvailability.isOn {
+                ImportWithAIButton(kind: .program, fillsWidth: false)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
             Button("Começar com um exemplo (ABC)") {
                 perform { try SampleProgramFactory.makeStarterABC(in: context, activate: true) }
             }
@@ -300,7 +305,7 @@ struct TrainingRootView: View {
                             perform { try RoutineActions(context: context).duplicate(routine) }
                         }
                         Button("Copiar para outro programa…", systemImage: "doc.on.doc") { sheet = .copyRoutine(routine) }
-                        if let coachHandoff {
+                        if let coachHandoff, aiAvailability.isOn {
                             Button("Editar com IA", systemImage: "sparkles") {
                                 let scope = CoachHandoff.routineDraft(routineName: routine.name, programName: program.name)
                                 coachHandoff.open(title: scope.title, draft: scope.draft)

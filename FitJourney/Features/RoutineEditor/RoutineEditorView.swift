@@ -10,6 +10,7 @@ struct RoutineEditorView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
 
     @State private var isSelecting = false
     @State private var selection: Set<UUID> = []
@@ -51,7 +52,7 @@ struct RoutineEditorView: View {
             ToolbarItem(placement: .secondaryAction) {
                 Button("Copiar para outro programa…", systemImage: "doc.on.doc") { copyingToProgram = true }
             }
-            if let coachHandoff, !routine.name.isEmpty {
+            if let coachHandoff, aiAvailability.isOn, !routine.name.isEmpty {
                 ToolbarItem(placement: .secondaryAction) {
                     Button("Editar com IA", systemImage: "sparkles") {
                         let scope = CoachHandoff.routineDraft(routineName: routine.name, programName: routine.program?.name)

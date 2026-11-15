@@ -34,6 +34,7 @@ private struct PlanEditorForm: View {
     @State private var errorMessage: String?
     @Environment(\.mealReminderScheduler) private var scheduler
     @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
 
     private var readOnly: Bool { plan.isPrevious && !isNew }
 
@@ -72,7 +73,7 @@ private struct PlanEditorForm: View {
         .navigationTitle(plan.name.isEmpty ? String(localized: "Novo plano") : plan.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if !readOnly, !isNew, let coachHandoff {
+            if !readOnly, !isNew, aiAvailability.isOn, let coachHandoff {
                 ToolbarItem(placement: .primaryAction) {
                     Menu("Opções", systemImage: "ellipsis.circle") {
                         Button("Editar com IA", systemImage: "sparkles") {

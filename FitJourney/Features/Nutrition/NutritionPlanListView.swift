@@ -40,6 +40,7 @@ struct NutritionPlanListView: View {
     @State private var planToActivate: NutritionPlan?
     @State private var errorMessage: String?
     @Environment(\.mealReminderScheduler) private var scheduler
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
     @Environment(\.scenePhase) private var scenePhase
     @State private var authorization: RestNotificationAuthorization = .authorized
     @State private var hasReminders = false
@@ -65,8 +66,10 @@ struct NutritionPlanListView: View {
                              message: "Crie sua dieta com metas e refeições. Os registros avulsos funcionam sem plano.",
                              actionTitle: "Criar dieta", area: .nutrition) { showNewPlan = true }
                     .listRowBackground(Color.clear)
-                ImportWithAIButton(kind: .nutrition, fillsWidth: false)
-                    .listRowBackground(Color.clear)
+                if aiAvailability.isOn {
+                    ImportWithAIButton(kind: .nutrition, fillsWidth: false)
+                        .listRowBackground(Color.clear)
+                }
             }
             if let active {
                 Section("Plano ativo") {
@@ -105,7 +108,7 @@ struct NutritionPlanListView: View {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button("Novo plano", systemImage: "plus") { showNewPlan = true }
-                    ImportWithAIMenuItem(kind: .nutrition)
+                    if aiAvailability.isOn { ImportWithAIMenuItem(kind: .nutrition) }
                 } label: {
                     Label("Novo plano", systemImage: "plus")
                 }

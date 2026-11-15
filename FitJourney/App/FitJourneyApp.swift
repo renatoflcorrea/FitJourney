@@ -29,7 +29,7 @@ struct FitJourneyApp: App {
     @State private var importCoordinator: ImportCoordinator
     @State private var coachHandoff = CoachHandoff()
     /// "IA disponível" (provedor pronto + chave/login): esconde recursos de IA sem configuração (SPEC §7.x).
-    @State private var aiAvailability = AIAvailability()
+    @State private var aiAvailability: AIAvailability
     /// Atividade ao Vivo + Dynamic Island da sessão (P6.4). Também atende os botões +15 s/Pular
     /// (`LiveActivityIntentRouter`), inclusive quando o sistema acorda o app só para o intent.
     private let liveActivity: LiveActivityController
@@ -64,6 +64,16 @@ struct FitJourneyApp: App {
         } else {
             storeDemoHealth = StoreDemoHealthModifier(reader: nil, authorization: nil)
         }
+        #endif
+        #if DEBUG
+        // Capturas: com `-fj.seedDemo YES` a IA vem configurada em memória (como no Coach); `-fj.demoNoAI YES` a deixa desligada.
+        if StoreDemo.isEnabled, !UserDefaults.standard.bool(forKey: "fj.demoNoAI") {
+            aiAvailability = AIAvailability(defaults: StoreDemo.coachDefaults, secrets: StoreDemo.coachSecrets)
+        } else {
+            aiAvailability = AIAvailability()
+        }
+        #else
+        aiAvailability = AIAvailability()
         #endif
         modelContainer = container
         // Coach: respostas que ficaram `.streaming` quando o app morreu viram `.stopped`.

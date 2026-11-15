@@ -17,6 +17,7 @@ private enum DaySheet: Identifiable {
     case adjust(Meal)
     case newPlan
     case calendar
+    case mealLog
 
     var id: String {
         switch self {
@@ -24,6 +25,7 @@ private enum DaySheet: Identifiable {
         case .adjust(let meal): "adjust-\(meal.id)"
         case .newPlan: "newPlan"
         case .calendar: "calendar"
+        case .mealLog: "mealLog"
         }
     }
 }
@@ -34,6 +36,7 @@ struct NutritionDayView: View {
     @Environment(\.mealReminderScheduler) private var scheduler
     @Environment(ImportCoordinator.self) private var importCoordinator: ImportCoordinator?
     @Environment(CoachHandoff.self) private var coachHandoff: CoachHandoff?
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
     @State private var model = NutritionDayModel()
     @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @State private var sheet: DaySheet?
@@ -42,11 +45,15 @@ struct NutritionDayView: View {
     @State private var showFavorites = false
     @State private var toggledMeals: Set<UUID> = []
     @State private var entryToDelete: FoodEntry?
+    /// Registro com IA: a sessão sobrevive ao "Continuar depois"; o Desfazer vale até sair da tela ou por 12 s.
+    @State private var mealSession: MealLogSession?
+    @State private var mealStartsWithCamera = false
+    @State private var lastUndo: MealLogUndo?
 
     var body: some View {
         ScrollView {
             LazyVStack(spacing: FJSpacing.cardGap) {
-                if importCoordinator?.pending(kind: .nutrition).isEmpty == false {
+                if aiAvailability.isOn, importCoordinator?.pending(kind: .nutrition).isEmpty == false {
                     ImportContinueCard(kind: .nutrition)
                 }
                 dayNavigator
@@ -65,6 +72,7 @@ struct NutritionDayView: View {
             .padding(.bottom, FJSpacing.xl)
         }
         .fjScreenBackground()
+        .safeAreaInset(edge: .bottom, spacing: 0) { mealLogInset }
         .navigationTitle("Dieta")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -73,8 +81,10 @@ struct NutritionDayView: View {
             ToolbarItem(placement: .secondaryAction) {
                 Button("Plano", systemImage: "list.bullet.clipboard") { showPlans = true }
             }
-            ToolbarItem(placement: .secondaryAction) {
-                ImportWithAIMenuItem(kind: .nutrition)
+            if aiAvailability.isOn {
+                ToolbarItem(placement: .secondaryAction) {
+                    ImportWithAIMenuItem(kind: .nutrition)
+                }
             }
             ToolbarItem(placement: .secondaryAction) {
                 Button("Histórico", systemImage: "calendar") { showHistory = true }
@@ -91,8 +101,16 @@ struct NutritionDayView: View {
             case .log(let entry):
                 LogFoodSheet(day: model.registrationDate, editing: entry)
             case .adjust(let meal):
-                AdjustMealSheet(meal: meal, existing: model.entries(for: meal)) { drafts in
+                AdjustMealSheet(meal: meal, existing: model.entries(for: meal), onFillWithPhoto: {
+                    openMealLog(camera: true, prefill: meal.name.isEmpty ? "" : "\(meal.name): ")
+                }) { drafts in
                     model.saveAdjusted(meal, drafts: drafts)
+                }
+            case .mealLog:
+                if let mealSession {
+                    MealLogSheet(session: mealSession, startWithCamera: mealStartsWithCamera,
+                                 onChangeDay: changeMealLogDay, onApplied: mealLogApplied,
+                                 onDiscard: { self.mealSession = nil })
                 }
             case .newPlan:
                 NewPlanSheet()
@@ -117,7 +135,90 @@ struct NutritionDayView: View {
         .onReceive(NotificationCenter.default.publisher(for: .fjImportWillUndo)) { _ in showPlans = false }
         .onChange(of: coachHandoff?.request) { _, request in if request != nil { sheet = nil } }
         .task { openImportedPlan() }
+        #if DEBUG
+        // Capturas/QA (`-fj.seedDemo YES -fj.demoMealLog sheet|review`): abre a folha do registro com IA.
+        .task {
+            guard StoreDemo.isEnabled, let mode = UserDefaults.standard.string(forKey: "fj.demoMealLog") else { return }
+            try? await Task.sleep(for: .milliseconds(800))
+            openMealLog(camera: false, prefill: mode == "review" ? String(localized: "Café: 2 ovos mexidos e 1 pão francês com manteiga, café com leite.\nÀ tarde tomei um açaí com granola.") : "")
+            if mode == "review", let session = mealSession { try? await session.analyze() }
+        }
+        #endif
         .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in model.dayChanged() }
+    }
+
+    // MARK: Registro com IA
+
+    /// Barra "O que você comeu?" (só com IA; some em dia futuro) e o aviso de Desfazer, acima da tab bar.
+    private var mealLogInset: some View {
+        VStack(spacing: FJSpacing.s) {
+            if let lastUndo {
+                MealLogUndoBanner(message: MealLogPresentation.undoMessage(mealCount: lastUndo.mealCount), onUndo: undoMealLog)
+                    .task(id: lastUndo.id) {
+                        try? await Task.sleep(for: .seconds(12))
+                        if self.lastUndo?.id == lastUndo.id { self.lastUndo = nil }
+                    }
+            }
+            if model.phase != .future {
+                MealLogComposerBar(draftSummary: draftSummary,
+                                   onText: { openMealLog(camera: false) },
+                                   onCamera: { openMealLog(camera: true) })
+                    .visibleWhenAIAvailable()
+            }
+        }
+    }
+
+    private var draftSummary: String? {
+        guard let mealSession, mealSession.day == Calendar.autoupdatingCurrent.startOfDay(for: model.registrationDate) else { return nil }
+        if let review = mealSession.review, mealSession.phase.hasDraft {
+            let count = review.includedMeals.count
+            return count == 1 ? String(localized: "Continuar rascunho · 1 refeição")
+                : String(localized: "Continuar rascunho · \(count) refeições")
+        }
+        return nil
+    }
+
+    private func openMealLog(camera: Bool, prefill: String = "") {
+        let day = Calendar.autoupdatingCurrent.startOfDay(for: model.registrationDate)
+        if let existing = mealSession, existing.day == day {
+            if existing.text.isEmpty { existing.text = prefill }
+        } else {
+            mealSession = MealLogSessionFactory.make(day: day, context: context, availability: aiAvailability,
+                                                     network: importCoordinator?.network, text: prefill)
+        }
+        mealStartsWithCamera = camera
+        sheet = .mealLog
+    }
+
+    /// Outro dia no seletor da folha: nova sessão com o mesmo texto e as mesmas fotos.
+    private func changeMealLogDay(_ date: Date) {
+        guard let old = mealSession else { return }
+        let photos = old.photos
+        let session = MealLogSessionFactory.make(day: date, context: context, availability: aiAvailability,
+                                                 network: importCoordinator?.network, text: old.text)
+        mealSession = session
+        guard !photos.isEmpty else { return }
+        Task {
+            try? await session.addPhotos(photos.map { RawAttachment(filename: "foto.jpg", data: $0.jpegData, typeHint: "public.jpeg") })
+        }
+    }
+
+    private func mealLogApplied(_ undo: MealLogUndo) {
+        mealSession = nil
+        lastUndo = undo
+        if let day = Calendar.autoupdatingCurrent.dateInterval(of: .day, for: undo.day)?.start, day != model.date { model.jump(to: day) }
+    }
+
+    private func undoMealLog() {
+        guard let undo = lastUndo else { return }
+        do {
+            try MealLogApplier(context: context).undo(undo)
+            lastUndo = nil
+            model.reload()
+            model.afterChange?()
+        } catch {
+            model.errorMessage = error.localizedDescription
+        }
     }
 
     /// Depois de importar a dieta com IA: abre Plano, onde o plano criado aparece (inativo, a menos que tenha sido ativado).
@@ -162,7 +263,7 @@ struct NutritionDayView: View {
                     FJEmptyState("Cadastre sua dieta", systemImage: "fork.knife",
                                  message: "Monte refeições e metas para marcar como feitas com 1 toque. Você pode registrar comidas avulsas mesmo sem plano.",
                                  actionTitle: "Criar dieta", area: .nutrition) { sheet = .newPlan }
-                    ImportWithAIButton(kind: .nutrition, fillsWidth: false)
+                    if aiAvailability.isOn { ImportWithAIButton(kind: .nutrition, fillsWidth: false) }
                 }
             }
         case .outsideVigency(let name):

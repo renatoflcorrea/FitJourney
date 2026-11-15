@@ -11,6 +11,7 @@ struct TodayView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(SessionCoordinator.self) private var sessionCoordinator: SessionCoordinator?
     @Environment(ImportCoordinator.self) private var importCoordinator: ImportCoordinator?
+    @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
     @Query(filter: #Predicate<TrainingProgram> { $0.isActive }) private var activePrograms: [TrainingProgram]
     /// Só para saber se existe algum programa (primeiro uso x "nenhum ativo"); busca no máximo um.
     @Query(TodayView.anyProgramDescriptor) private var anyProgram: [TrainingProgram]
@@ -139,7 +140,7 @@ struct TodayView: View {
                     FJEmptyState("Monte seu primeiro programa", systemImage: "dumbbell",
                                  message: "Fichas A, B, C… com os exercícios de cada dia. O app sugere o treino de hoje.")
                     VStack(spacing: FJSpacing.s) {
-                        if importCoordinator != nil {
+                        if importCoordinator != nil, aiAvailability.isOn {
                             Text("Tem a ficha do seu personal em PDF ou foto? Eu monto para você.")
                                 .font(FJFont.label)
                                 .foregroundStyle(FJColor.textSecondary)
@@ -148,7 +149,7 @@ struct TodayView: View {
                             FJSecondaryButton("Criar do zero", systemImage: "plus") { createFromScratch = true }
                             FJSecondaryButton("Usar exemplo ABC", systemImage: "dumbbell") { useStarter() }
                         } else {
-                            FJPrimaryButton("Começar com um exemplo (ABC)", systemImage: "sparkles") { useStarter() }
+                            FJPrimaryButton("Começar com um exemplo (ABC)", systemImage: "dumbbell") { useStarter() }
                             FJSecondaryButton("Criar do zero", systemImage: "plus") { createFromScratch = true }
                         }
                     }
