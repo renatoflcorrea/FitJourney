@@ -104,7 +104,10 @@ final class MealLogSession: Identifiable {
 
     @ObservationIgnored private var prepared: [PreparedAttachment] = []
     @ObservationIgnored private var lastDraft: FoodLogDraft?
-    @ObservationIgnored private var lastUserText: String?
+    /// Texto e quantidade de fotos da última análise, para refazer a mensagem na correção.
+    @ObservationIgnored private var lastInput: (text: String, photoCount: Int)?
+    /// Muda a cada `discard()`: uma análise antiga que termina depois não mexe mais no estado.
+    @ObservationIgnored private var generation = 0
     @ObservationIgnored private var analysisTask: Task<Void, Never>?
     @ObservationIgnored private let context: ModelContext
     @ObservationIgnored private let resolveChat: @MainActor () throws -> ResolvedChat
@@ -202,29 +205,37 @@ final class MealLogSession: Identifiable {
             phase = .offline
             return
         }
+        // Já em análise antes do primeiro `await`: `canAnalyze` fica falso e um segundo toque não dispara outra chamada.
+        let previous = phase
+        phase = .analyzing
+        analysisStartedAt = now()
+        let generation = generation
         let parts: [LLMContentPart]
         do {
             parts = try await Task.detached(priority: .userInitiated) {
                 try AttachmentEncoder.encode(toSend, capabilities: AttachmentCapabilities(supportsImages: true, supportsPDF: false)).parts
             }.value
-        } catch let error as AttachmentError {
-            throw MealLogError.attachment(error)
+        } catch {
+            if generation == self.generation {
+                phase = previous
+                analysisStartedAt = nil
+            }
+            if let error = error as? AttachmentError { throw MealLogError.attachment(error) }
+            throw error
         }
+        guard generation == self.generation else { return } // descartada enquanto preparava as fotos
 
         let planned = (try? plannedMeals()) ?? []
         let shared = sharesNutrition()
-        let isToday = day == today
-        let userText = MealLogPrompt.userMessage(text: trimmed, day: day, now: isToday ? now() : nil, photoCount: toSend.count,
-                                                 plan: shared ? planned : nil, language: language, calendar: calendar)
-        lastUserText = userText
-        let referenceMinutes = isToday ? minutes(of: now()) : nil
+        let userText = userMessage(text: trimmed, photoCount: toSend.count, plan: shared ? planned : nil)
+        lastInput = (trimmed, toSend.count)
         await run(chat: chat, messages: [.user(userText, parts: parts)], planned: planned, shared: shared,
-                  referenceMinutes: referenceMinutes, isCorrection: false)
+                  referenceMinutes: referenceMinutes(), previous: previous, isCorrection: false)
     }
 
     /// Refaz só o rascunho a partir de uma correção por texto ("o arroz era integral, sem feijão"), sem reenviar fotos.
     func correct(_ instruction: String) async throws {
-        guard phase.hasDraft, let draft = lastDraft, let userText = lastUserText else { throw MealLogError.noDraft }
+        guard phase.hasDraft, var draft = lastDraft, let input = lastInput else { throw MealLogError.noDraft }
         let trimmed = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { throw MealLogError.emptyInput }
         guard trimmed.count <= Self.maxTextLength else { throw MealLogError.textTooLong(max: Self.maxTextLength) }
@@ -234,12 +245,29 @@ final class MealLogSession: Identifiable {
             phase = .offline
             return
         }
-        let message = userText + "\n\n" + MealLogPrompt.correctionMessage(draftJSON: Self.encode(draft), instruction: trimmed,
-                                                                          language: language)
-        let planned = review?.planned ?? ((try? plannedMeals()) ?? [])
-        let today = calendar.startOfDay(for: now())
-        await run(chat: chat, messages: [.user(message)], planned: planned, shared: review?.planWasShared ?? sharesNutrition(),
-                  referenceMinutes: day == today ? minutes(of: now()) : nil, isCorrection: true)
+        // "Dieta" reavaliada agora: revogada depois da análise, a correção não leva plano nem ids do plano.
+        let shared = sharesNutrition()
+        let planned = (try? plannedMeals()) ?? review?.planned ?? []
+        if !shared {
+            for m in draft.meals.indices {
+                draft.meals[m].plannedMealId = nil
+                for i in draft.meals[m].items.indices { draft.meals[m].items[i].plannedItemId = nil }
+            }
+        }
+        let message = userMessage(text: input.text, photoCount: input.photoCount, plan: shared ? planned : nil) + "\n\n"
+            + MealLogPrompt.correctionMessage(draftJSON: Self.encode(draft), instruction: trimmed, language: language)
+        await run(chat: chat, messages: [.user(message)], planned: planned, shared: shared,
+                  referenceMinutes: referenceMinutes(), previous: phase, isCorrection: true)
+    }
+
+    private func userMessage(text: String, photoCount: Int, plan: [MealLogPlannedMeal]?) -> String {
+        let isToday = day == calendar.startOfDay(for: now())
+        return MealLogPrompt.userMessage(text: text, day: day, now: isToday ? now() : nil, photoCount: photoCount, plan: plan,
+                                         language: language, calendar: calendar)
+    }
+
+    private func referenceMinutes() -> Int? {
+        day == calendar.startOfDay(for: now()) ? minutes(of: now()) : nil
     }
 
     /// Cancela a análise em andamento: volta para a composição (ou para o rascunho, numa correção) sem perder nada.
@@ -255,33 +283,38 @@ final class MealLogSession: Identifiable {
 
     /// Larga as fotos e o rascunho (fechar a folha com "Descartar").
     func discard() {
+        generation += 1 // a análise/correção cancelada não volta a mexer no estado (ex.: `.ready` sem `review`)
         analysisTask?.cancel()
+        analysisTask = nil
         prepared = []
         photos = []
         review = nil
         lastDraft = nil
-        lastUserText = nil
+        lastInput = nil
         text = ""
+        analysisStartedAt = nil
         phase = .composing
     }
 
     private func run(chat: ResolvedChat, messages: [LLMMessage], planned: [MealLogPlannedMeal], shared: Bool,
-                     referenceMinutes: Int?, isCorrection: Bool) async {
-        let previous = phase
+                     referenceMinutes: Int?, previous: Phase, isCorrection: Bool) async {
         phase = .analyzing
-        analysisStartedAt = now()
+        if analysisStartedAt == nil { analysisStartedAt = now() }
         let language = language
         let timeout = timeout
+        let generation = generation
         let task = Task { @MainActor in
             do {
                 let draft = try await Self.withTimeout(timeout) {
                     try await Self.extract(chat: chat, messages: messages, language: language)
                 }
                 try Task.checkCancellation()
+                guard generation == self.generation else { return }
                 self.accept(draft, planned: planned, shared: shared, referenceMinutes: referenceMinutes)
             } catch {
+                guard generation == self.generation else { return }
                 if ChatCancellation.isCancellation(error) {
-                    self.phase = isCorrection ? previous : .composing
+                    self.phase = isCorrection && self.review != nil ? previous : .composing
                 } else {
                     self.phase = Self.phase(for: error)
                 }
@@ -290,7 +323,7 @@ final class MealLogSession: Identifiable {
         }
         analysisTask = task
         await task.value
-        analysisTask = nil
+        if generation == self.generation { analysisTask = nil }
     }
 
     private func accept(_ draft: FoodLogDraft, planned: [MealLogPlannedMeal], shared: Bool, referenceMinutes: Int?) {
@@ -371,12 +404,8 @@ final class MealLogSession: Identifiable {
             if let json = StructuredDecoder.extractJSONObject(from: completion.content) { return json }
             throw ExtractionFailure.noExtraction
         }
-        let first: String
-        do {
-            first = try await call(messages)
-        } catch ExtractionFailure.noExtraction {
-            first = "{}"
-        }
+        // Sem ferramenta nem JSON: falha direto (um reparo de "{}" sem o texto do usuário só inventaria um registro).
+        let first = try await call(messages)
         switch DraftValidation.foodLog(first) {
         case let .valid(draft): return draft
         case let .invalid(problems):

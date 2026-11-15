@@ -42,6 +42,8 @@ enum FoodLogJSON {
 final class MealLogFakeGateway: ChatGateway, StructuredCompleting, @unchecked Sendable {
     enum Reply {
         case tool(String)
+        /// Resposta em texto, sem ferramenta nem JSON.
+        case text(String)
         case failure(AIError)
         /// Nunca termina (cancelamento/timeout).
         case hang
@@ -69,6 +71,10 @@ final class MealLogFakeGateway: ChatGateway, StructuredCompleting, @unchecked Se
             case let .tool(json)?:
                 continuation.yield(.toolCall(id: "call_1", name: MealLogPrompt.submitTool, argumentsJSON: json))
                 continuation.yield(.finished(reason: .toolCalls))
+                continuation.finish()
+            case let .text(text)?:
+                continuation.yield(.delta(text))
+                continuation.yield(.finished(reason: .stop))
                 continuation.finish()
             case let .failure(error)?:
                 continuation.finish(throwing: error)
@@ -810,5 +816,160 @@ struct PhotoLibrarySaverTests {
         let denied = FakeLibrary(.denied)
         #expect(try await PhotoLibrarySaver(library: denied).save(imageData: Data([1])) == .notAuthorized)
         #expect(!denied.requested && denied.saved.isEmpty)
+    }
+}
+
+// MARK: - Correções da revisão
+
+@Suite("Registro com IA · sinônimos e respostas rápidas")
+struct MealLogReviewFixTests {
+    private func plannedMeal(_ name: String, _ minutes: Int) -> MealLogPlannedMeal {
+        MealLogPlannedMeal(id: UUID(), name: name, minutesFromMidnight: minutes, status: .pending, items: [])
+    }
+
+    private func candidate(_ slot: MealLogSlot, label: String? = nil, plannedID: UUID? = nil) -> MealLogCandidate {
+        MealLogCandidate(slot: slot, label: label, minutesFromMidnight: nil, plannedMealID: plannedID, asPlanned: false,
+                         items: [.init(name: "Iogurte", quantity: 170, unit: .grams)])
+    }
+
+    @Test("'lanche' não casa com 'Lanche da manhã' quando o lanche da tarde já foi usado")
+    func genericSynonymNeedsExactName() {
+        let morning = plannedMeal("Lanche da manhã", 10 * 60)
+        let afternoon = plannedMeal("Lanche da tarde", 16 * 60)
+        let result = MealLogMatcher.match([candidate(.other, plannedID: afternoon.id), candidate(.afternoonSnack)],
+                                          planned: [morning, afternoon])
+        #expect(result[0].plannedMealID == afternoon.id)
+        #expect(result[1].plannedMealID == nil)
+        #expect(result[1].decision == .offPlan)
+    }
+
+    @Test("sinônimos como palavras inteiras: 'Almoço reforçado' casa; 'Cafezinho' e 'Lanchinho' não")
+    func wholeWords() {
+        let lunch = plannedMeal("Almoço reforçado", 12 * 60 + 30)
+        #expect(MealLogMatcher.match([candidate(.lunch)], planned: [lunch])[0].plannedMealID == lunch.id)
+        #expect(MealLogMatcher.match([candidate(.breakfast)], planned: [plannedMeal("Cafezinho", 15 * 60)])[0].plannedMealID == nil)
+        #expect(MealLogMatcher.match([candidate(.afternoonSnack)], planned: [plannedMeal("Lanchinho", 16 * 60)])[0].plannedMealID == nil)
+        let plain = plannedMeal("Lanche", 16 * 60)
+        #expect(MealLogMatcher.match([candidate(.afternoonSnack)], planned: [plain])[0].plannedMealID == plain.id)
+        #expect(MealLogSlot.nameMatches("lanche da manha", synonym: "lanche") == false)
+        #expect(MealLogSlot.nameMatches("cafe da manha", synonym: "cafe da manha"))
+    }
+
+    @Test("rótulo genérico com duas refeições parecidas não escolhe ao acaso")
+    func ambiguousLabel() {
+        let morning = plannedMeal("Lanche da manhã", 10 * 60)
+        let afternoon = plannedMeal("Lanche da tarde", 16 * 60)
+        #expect(MealLogMatcher.match([candidate(.other, label: "lanche")], planned: [morning, afternoon])[0].plannedMealID == nil)
+    }
+
+    private func item(_ unit: FoodUnit, quantity: Double = 200) -> MealLogReviewItem {
+        MealLogReviewItem(name: "Suco", quantity: quantity, unit: unit, values: NutrientValues(kcal: 100, carbs: 24),
+                          kcalRange: MealLogRange(min: 80, max: 120), confidence: .medium)
+    }
+
+    @Test("resposta rápida: mesma unidade escala; volume para volume converte; troca não convertível pede revisão")
+    func quickAnswerUnits() {
+        var same = item(.milliliters)
+        same.applyAnswer(quantity: 300, unit: .milliliters)
+        #expect(same.values.kcal == 150)
+
+        var cup = item(.milliliters, quantity: 240)
+        cup.applyAnswer(quantity: 2, unit: .cup)
+        #expect(cup.unit == .cup && cup.quantity == 2)
+        #expect(cup.values.kcal == 200)
+        #expect(cup.kcalRange == MealLogRange(min: 160, max: 240))
+
+        var grams = item(.milliliters)
+        grams.applyAnswer(quantity: 150, unit: .grams)
+        #expect(grams.unit == .grams && grams.quantity == 150)
+        #expect(grams.values.kcal == nil && grams.values.carbs == nil)
+        #expect(grams.kcalRange == nil)
+        #expect(grams.confidence == .low)
+        #expect(grams.note?.isEmpty == false)
+    }
+}
+
+@MainActor
+@Suite("Registro com IA · sessão (correções da revisão)")
+struct MealLogSessionFixTests {
+    private func session(_ fixture: MealLogPlanFixture, gateway: MealLogFakeGateway, shares: @escaping @MainActor () -> Bool = { false })
+        -> MealLogSession {
+        let now = fixture.calendar.date(byAdding: .minute, value: 13 * 60, to: fixture.today)!
+        return MealLogSession(day: fixture.today, context: fixture.context,
+                              resolveChat: { ResolvedChat(gateway: gateway, model: "gpt-5") },
+                              isAIAvailable: { true }, hasConsented: { true }, sharesNutrition: shares,
+                              now: { now }, calendar: fixture.calendar, language: AppLanguageCode.portuguese)
+    }
+
+    private var lunchJSON: String {
+        FoodLogJSON.draft(meals: [FoodLogJSON.meal("lunch", label: "Almoço", items: [FoodLogJSON.item("Arroz", quantity: 150, kcal: 185)])])
+    }
+
+    @Test("toque duplo em Analisar: a segunda chamada não dispara")
+    func doubleTap() async throws {
+        let fixture = try MealLogPlanFixture()
+        let gateway = MealLogFakeGateway([.hang, .hang])
+        let session = session(fixture, gateway: gateway)
+        session.text = "almoço"
+        try await session.addPhotos([RawAttachment(filename: "a.jpg", data: AttachmentFixtures.jpegWithMetadata(width: 2000, height: 1500))])
+        let first = Task { try await session.analyze() }
+        await Task.yield()
+        #expect(session.phase == .analyzing)
+        #expect(!session.canAnalyze)
+        await #expect(throws: MealLogError.wrongPhase) { try await session.analyze() }
+        for _ in 0 ..< 200 where gateway.requests.isEmpty { try await Task.sleep(for: .milliseconds(5)) }
+        session.cancel()
+        try await first.value
+        #expect(gateway.requests.count == 1)
+    }
+
+    @Test("resposta sem ferramenta nem JSON falha direto, sem reparo de '{}'")
+    func noExtraction() async throws {
+        let fixture = try MealLogPlanFixture()
+        let gateway = MealLogFakeGateway([.text("Desculpe, não sei."), .tool(lunchJSON)])
+        let session = session(fixture, gateway: gateway)
+        session.text = "almoço"
+        try await session.analyze()
+        guard case .providerError = session.phase else { Issue.record("esperado erro: \(session.phase)"); return }
+        #expect(gateway.requests.count == 1)
+        #expect(session.text == "almoço")
+    }
+
+    @Test("correção depois de revogar Dieta não leva o plano nem ids do plano")
+    func correctionAfterRevoking() async throws {
+        let fixture = try MealLogPlanFixture()
+        final class Flag: @unchecked Sendable { var on = true }
+        let shares = Flag()
+        let json = FoodLogJSON.draft(meals: [FoodLogJSON.meal("lunch", plannedMealId: fixture.lunch.id.uuidString,
+                                                              items: [FoodLogJSON.item("Arroz", quantity: 150, kcal: 185)])])
+        let gateway = MealLogFakeGateway([.tool(json), .tool(lunchJSON)])
+        let session = session(fixture, gateway: gateway, shares: { shares.on })
+        session.text = "almoço"
+        try await session.analyze()
+        #expect(gateway.requests[0].messages.last?.content.contains(fixture.lunch.id.uuidString) == true)
+        shares.on = false
+        try await session.correct("era arroz integral")
+        let message = try #require(gateway.requests[1].messages.last?.content)
+        #expect(!message.contains(fixture.lunch.id.uuidString))
+        #expect(!message.contains("Frango grelhado"))
+        #expect(message.contains("Plano: não enviado"))
+        #expect(session.review?.planWasShared == false)
+    }
+
+    @Test("descartar durante a correção não deixa rascunho pronto sem review")
+    func discardDuringCorrection() async throws {
+        let fixture = try MealLogPlanFixture()
+        let gateway = MealLogFakeGateway([.tool(lunchJSON), .hang])
+        let session = session(fixture, gateway: gateway)
+        session.text = "almoço"
+        try await session.analyze()
+        #expect(session.phase == .ready)
+        let correction = Task { try await session.correct("sem arroz") }
+        for _ in 0 ..< 200 where gateway.requests.count < 2 { try await Task.sleep(for: .milliseconds(5)) }
+        session.discard()
+        try await correction.value
+        #expect(session.phase == .composing)
+        #expect(session.review == nil)
+        #expect(session.analysisStartedAt == nil)
     }
 }

@@ -413,12 +413,7 @@ struct MealLogReviewView: View {
         answers[question.id] = reply
         guard let mealID, let itemID = question.itemID, let parsed = MealLogAnswer.parse(reply) else { return }
         updateItem(meal: mealID, item: itemID) { item in
-            if let unit = parsed.unit, unit != item.unit {
-                item.unit = unit
-                item.quantity = parsed.quantity
-            } else {
-                item.setQuantity(parsed.quantity)
-            }
+            item.applyAnswer(quantity: parsed.quantity, unit: parsed.unit)
         }
     }
 

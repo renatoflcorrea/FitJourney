@@ -26,6 +26,18 @@ enum MealLogSlot: String, Codable, Sendable, Hashable, CaseIterable {
         }
     }
 
+    /// Sinônimos que são prefixo de outra refeição ("lanche" ⊂ "lanche da manhã", "cafe" ⊂ "cafe da manha"): só casam
+    /// com o nome exato do plano.
+    static let genericSynonyms: Set<String> = ["lanche", "cafe", "snack"]
+
+    /// Nome do plano (normalizado) casa com o sinônimo: igual, ou começando por ele como palavras inteiras
+    /// ("almoco reforcado"), exceto os genéricos.
+    static func nameMatches(_ normalizedName: String, synonym: String) -> Bool {
+        if normalizedName == synonym { return true }
+        guard !genericSynonyms.contains(synonym) else { return false }
+        return normalizedName.hasPrefix(synonym + " ")
+    }
+
     /// Horário típico (minutos desde a meia-noite), usado quando não há horário nem plano.
     var typicalMinutes: Int {
         switch self {
@@ -236,16 +248,19 @@ enum MealLogMatcher {
         let available = planned.filter { !used.contains($0.id) }
         if let label = candidate.label.map(MealLogText.normalize), !label.isEmpty {
             if let exact = available.first(where: { MealLogText.normalize($0.name) == label }) { return exact }
-            if let close = available.first(where: { MealLogText.namesMatch($0.name, label) }) { return close }
+            // Parecido ("lanche" ~ "Lanche da manhã") só vale sem ambiguidade; senão o horário decide.
+            let close = available.filter { MealLogText.namesMatch($0.name, label) }
+            if close.count == 1 { return close[0] }
         }
-        // Refeição típica ("almoço") contra o nome do plano: o sinônimo mais longo primeiro ("lanche da tarde" antes de "lanche").
+        // Refeição típica ("almoço") contra o nome do plano: o sinônimo mais longo primeiro ("lanche da tarde" antes de
+        // "lanche"). Palavras inteiras; sinônimos genéricos ("lanche", "cafe", "snack") só com o nome exato.
         for synonym in candidate.slot.synonyms.sorted(by: { $0.count > $1.count }) {
-            let matches = available.filter { MealLogText.normalize($0.name).hasPrefix(synonym) || MealLogText.normalize($0.name) == synonym }
+            let matches = available.filter { MealLogSlot.nameMatches(MealLogText.normalize($0.name), synonym: synonym) }
             if matches.count == 1 { return matches[0] }
-            if matches.count > 1, let minutes = candidate.minutesFromMidnight {
+            if matches.count > 1 {
+                let minutes = candidate.minutesFromMidnight ?? candidate.slot.typicalMinutes
                 return matches.min { abs($0.minutesFromMidnight - minutes) < abs($1.minutesFromMidnight - minutes) }
             }
-            if let first = matches.first { return first }
         }
         return nil
     }
@@ -302,6 +317,36 @@ struct MealLogReviewItem: Sendable, Hashable, Identifiable {
             kcalRange = kcalRange?.scaled(by: factor)
         }
         quantity = newValue
+    }
+
+    /// Mililitros por unidade de volume (colher de sopa 15 ml, xícara 240 ml); `nil` = sem conversão confiável.
+    static func millilitersPerUnit(_ unit: FoodUnit) -> Double? {
+        switch unit {
+        case .milliliters: 1
+        case .tablespoon: 15
+        case .cup: 240
+        case .grams, .unit, .slice, .serving: nil
+        }
+    }
+
+    /// Resposta rápida ("300 ml"): mesma unidade → escala; unidade de volume para outra de volume → converte e escala;
+    /// troca não convertível (ex.: "1 copo" → gramas) → kcal, macros e faixa ficam desconhecidos e o item pede revisão
+    /// (nunca mantém valores de outra porção).
+    mutating func applyAnswer(quantity newQuantity: Double, unit newUnit: FoodUnit?) {
+        guard newQuantity > 0 else { return }
+        guard let newUnit, newUnit != unit else { setQuantity(newQuantity); return }
+        if let old = quantity, old > 0, let from = Self.millilitersPerUnit(unit), let to = Self.millilitersPerUnit(newUnit) {
+            let factor = (newQuantity * to) / (old * from)
+            values = values.scaled(by: factor)
+            kcalRange = kcalRange?.scaled(by: factor)
+        } else {
+            values = NutrientValues()
+            kcalRange = nil
+            confidence = .low
+            note = String(localized: "Unidade trocada: informe kcal e macros.")
+        }
+        unit = newUnit
+        quantity = newQuantity
     }
 }
 

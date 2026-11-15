@@ -159,16 +159,17 @@ enum MealLogPresentation {
     }
 
     /// Texto de cada fase sem rascunho (proposta §7). `nil` para composing, analyzing e as com rascunho.
-    static func stateCopy(for phase: MealLogSession.Phase) -> StateCopy? {
+    /// - Parameter canRetakePhoto: houve foto na análise e o modelo lê imagens; senão "Tirar outra" não aparece.
+    static func stateCopy(for phase: MealLogSession.Phase, canRetakePhoto: Bool = true) -> StateCopy? {
         switch phase {
         case let .noFood(reason):
             StateCopy(title: String(localized: "Não encontrei comida nesta foto"),
                       message: cleaned(reason) ?? String(localized: "Tente uma foto do prato inteiro, de cima e com boa luz, ou descreva por texto."),
-                      symbol: "fork.knife.circle", offersRetake: true)
+                      symbol: "fork.knife.circle", offersRetake: canRetakePhoto)
         case let .unreadable(reason):
             StateCopy(title: String(localized: "Não consegui ler o que você enviou"),
                       message: cleaned(reason) ?? String(localized: "A foto está escura, tremida ou cortada. Tire outra ou descreva por texto."),
-                      symbol: "eye.slash", offersRetake: true)
+                      symbol: "eye.slash", offersRetake: canRetakePhoto)
         case .offline:
             StateCopy(title: String(localized: "Sem internet"),
                       message: String(localized: "O texto e as fotos continuam aqui. Tente de novo quando voltar a conexão ou registre à mão."),

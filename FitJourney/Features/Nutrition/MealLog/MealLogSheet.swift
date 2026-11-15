@@ -130,7 +130,8 @@ struct MealLogSheet: View {
         case .ready, .lowConfidence:
             MealLogReviewView(session: session, errorMessage: $errorMessage, onApply: apply)
         case .noFood, .unreadable, .offline, .timedOut, .providerError:
-            MealLogStateView(phase: session.phase, onRetry: retryAnalysis, onBack: { session.retry() },
+            MealLogStateView(phase: session.phase, canRetakePhoto: !session.photos.isEmpty && availability.canReadImages,
+                             onRetry: retryAnalysis, onBack: { session.retry() },
                              onRetake: retake, onDescribe: { session.retry() })
         }
     }
@@ -375,9 +376,12 @@ struct MealLogSheet: View {
     private func captured(_ data: Data) {
         notice = nil
         Task {
-            let outcome = try? await PhotoLibrarySaver().save(imageData: data)
-            if outcome != .saved {
-                notice = String(localized: "A foto não foi salva em Fotos (sem permissão). A análise segue normalmente.")
+            do {
+                if try await PhotoLibrarySaver().save(imageData: data) == .notAuthorized {
+                    notice = String(localized: "A foto não foi salva em Fotos (sem permissão). A análise segue normalmente.")
+                }
+            } catch {
+                notice = String(localized: "Não foi possível salvar a foto em Fotos. A análise segue normalmente.")
             }
         }
         ingest(count: 1) { [RawAttachment(filename: "foto.jpg", data: data, typeHint: "public.jpeg")] }

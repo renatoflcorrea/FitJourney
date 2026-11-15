@@ -39,13 +39,15 @@ struct MealLogAnalyzingView: View {
 /// Fases sem rascunho: sem internet, nada de comida, ilegível, tempo esgotado, erro do provedor.
 struct MealLogStateView: View {
     let phase: MealLogSession.Phase
+    /// Houve foto na análise e o modelo lê imagens ("Tirar outra" só nesse caso).
+    var canRetakePhoto = true
     let onRetry: () -> Void
     let onBack: () -> Void
     let onRetake: () -> Void
     let onDescribe: () -> Void
 
     var body: some View {
-        let copy = MealLogPresentation.stateCopy(for: phase)
+        let copy = MealLogPresentation.stateCopy(for: phase, canRetakePhoto: canRetakePhoto)
         ScrollView {
             VStack(spacing: FJSpacing.l) {
                 Spacer(minLength: FJSpacing.xl)

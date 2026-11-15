@@ -663,14 +663,29 @@ final class ImportSession: Identifiable {
         guard kind == .program, phase == .interviewing || phase == .reviewing else { throw ImportError.wrongPhase }
         var created: [(question: ImportQuestion, name: String)] = []
         var attempted: Set<String> = []
+        var firstError: (any Error)?
         // Uma resposta pode decidir o mesmo exercício em outras fichas: relê as pendentes a cada passo.
         while let question = unmatchedExerciseQuestions.first(where: { !attempted.contains($0.id) }) {
             attempted.insert(question.id)
-            let name = question.suggestedText.nonEmpty ?? exerciseName(for: question.field) ?? question.prompt
-            try answer(.text(String(name.prefix(80))), for: question.id)
-            created.append((question, exerciseName(for: question.field) ?? name))
+            // Só o nome lido do arquivo (nunca o texto da pergunta); sem nome, fica pendente para resposta individual.
+            guard let name = question.suggestedText.nonEmpty ?? exerciseName(for: question.field)?.nonEmpty
+                ?? exerciseAsWritten(for: question.field)?.nonEmpty else { continue }
+            do {
+                try answer(.text(String(name.prefix(80))), for: question.id)
+                created.append((question, exerciseName(for: question.field) ?? name))
+            } catch {
+                // Uma falha não desfaz nem esconde as que já foram criadas: a pergunta fica pendente.
+                firstError = firstError ?? error
+            }
         }
+        if created.isEmpty, let firstError { throw firstError }
         return created
+    }
+
+    private func exerciseAsWritten(for field: ImportField) -> String? {
+        guard case let .exercise(r, e) = field, let extraction = programImport, extraction.routines.indices.contains(r),
+              extraction.routines[r].exercises.indices.contains(e) else { return nil }
+        return extraction.routines[r].exercises[e].asWritten.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// Pula uma pergunta opcional (fica o valor atual/padrão).

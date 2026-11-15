@@ -21014,6 +21014,26 @@
           }
         }
       }
+    },
+    "Não foi possível salvar a foto em Fotos. A análise segue normalmente.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't save the photo to Photos. The analysis continues as normal."
+          }
+        }
+      }
+    },
+    "Unidade trocada: informe kcal e macros.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unit changed: enter kcal and macros."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

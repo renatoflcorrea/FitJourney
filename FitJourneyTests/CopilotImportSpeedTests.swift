@@ -454,14 +454,27 @@ struct CopilotImportSpeedTests {
         let session = fixture.session(.program, gateway: ScriptedImportGateway([.extraction(json)]))
         try await session.add([fixture.pdf()])
         try await session.analyze()
-        let pending = session.unmatchedExerciseQuestions.count
-        #expect(pending >= 2)
+        // "Remada cavalinho" casa com o catálogo pelo nome: não é pergunta de exercício novo.
+        #expect(!session.unmatchedExerciseQuestions.contains { $0.field == .exercise(routine: 0, exercise: 1) })
+        #expect(!session.unmatchedExerciseQuestions.isEmpty)
         let created = try session.createAllUnmatchedAsNew()
-        #expect(created.count >= 2)
-        #expect(created.allSatisfy { !$0.name.isEmpty })
+        // "Remada cavalinho" está no catálogo (t-bar-row): não vira exercício novo (seria duplicata).
+        // A abdutora da ficha B é o mesmo exercício da A ("abdutora maq 3"): decidida junto, sem criar outro.
+        #expect(created.count == 2)
+        #expect(created.map(\.name) == ["Abdutora máq. 3", "Panturrilha sentado máq."])
         #expect(session.unmatchedExerciseQuestions.isEmpty)
+        let extraction = try #require(session.programImport)
+        let abductorA = extraction.routines[0].exercises[0]
+        let abductorB = extraction.routines[1].exercises[1]
+        #expect(abductorB.displayName == abductorA.displayName)
+        #expect(abductorB.catalogKey == abductorA.catalogKey)
+        let keyA = try #require(ProgramInterview.exerciseKey(abductorA))
+        let keyB = try #require(ProgramInterview.exerciseKey(abductorB))
+        #expect(session.exerciseDecisions[keyA] != nil)
+        #expect(session.exerciseDecisions[keyB] == session.exerciseDecisions[keyA])
         let draft = try session.programDraft()
         #expect(draft.routines[0].exercises[2].catalogKey == "bench-press")
+        #expect(draft.routines[1].exercises[1].name == draft.routines[0].exercises[0].name)
     }
 
     // MARK: T3 — esforço nos gateways
