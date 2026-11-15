@@ -19,12 +19,13 @@ Termos: "deve" = requisito da v1; "fase 2" = entra depois da v1; "futuro" = fora
 | O5b | App do Apple Watch para controlar a sessão (iniciar, ficha, séries, descanso, pausa, finalizar) | v1 (ciclo 4b) |
 | O5 | Apple Health: gravar treinos, ler frequência cardíaca, gráfico por sessão com os exercícios marcados, distinguir força x aeróbico | v1 (ciclo 4) |
 | O6b | Copiloto de IA: importar treino/dieta de PDF/foto/texto com entrevista e editar por conversa com cartões de alteração | ciclo 7 |
+| O6c | Registrar refeições com IA: o dia inteiro por texto livre ou uma refeição por foto do prato (estimativa de itens, quantidades, kcal e macros), com revisão antes de salvar e vínculo ao plano (feita/ajustada/fora da dieta). Proposta: `design/proposals/ai-meal-log.md` | v1.1 |
 | O6 | Coach IA em aba própria (chat), com acesso a todo o histórico, que propõe treinos/dietas como rascunho aplicável | fase 2 |
 | O7 | Plugin/app do ChatGPT (objetivo, calorias ingeridas/gastas) | futuro |
 | O8 | Versão Android | futuro |
 | O9 | Interoperar com o HealthProject (`/Users/renato/Code/HealthProject`) | futuro |
 
-Fora de escopo: rede social, marketplace de personal, catálogo licenciado de alimentos/código de barras, cálculo de calorias por foto, prescrição médica, diagnóstico. O app **registra e organiza**; sugestões da IA são sempre rascunhos que o usuário revisa.
+Fora de escopo: rede social, marketplace de personal, catálogo licenciado de alimentos/código de barras, prescrição médica, diagnóstico. O app **registra e organiza**; sugestões da IA são sempre rascunhos que o usuário revisa.
 
 ---
 
@@ -222,6 +223,13 @@ Objetivo: montar e editar treinos e dietas **conversando com a IA**, inclusive a
 - Camada de IA ganha **anexos multimodais** (`LLMMessage` com partes: texto, imagem base64, PDF/documento) para OpenAI (Chat Completions/Responses com `image_url`/`input_file`), Anthropic (`image`/`document`) e ChatGPT login (Responses `input_image`/`input_file`). Provedor sem suporte a PDF → converter páginas em imagens no aparelho (PDFKit) **apenas para enviar** (não é OCR).
 - Extração com JSON Schema estrito (ferramenta `submit_extraction`), validação local e reparo; estado do import persistido (retomável se o app fechar).
 - Privacidade: anexos nunca vão para log/backup; redimensionar e remover metadados EXIF/GPS das fotos antes de enviar.
+
+### 7.x Registro de refeições com IA (O6c)
+
+- Entrada: barra "O que você comeu?" (texto + câmera) na aba Dieta e "Preencher com foto" no ajuste de uma refeição. **Recursos de IA só aparecem com a IA configurada** (regra geral do app; sem IA, a Dieta segue com o registro manual).
+- Texto do dia ou até 4 fotos (câmera ou galeria) → rascunho `food-log-draft-v1` → revisão editável (itens, quantidades, kcal/macros com faixa de incerteza, vínculo à refeição do plano) → "Registrar" (save único, com Desfazer). Nada é salvo sem confirmação; itens ficam marcados como estimados pela IA.
+- Vínculo: com "Dieta" liberada em Coach e IA o plano do dia vai ao provedor; sem isso o vínculo é feito no aparelho por horário e nome, e o app oferece liberar "Dieta" uma vez, sem insistir. "Feita" grava os valores do plano (descarta a estimativa); para registrar o que a foto mostra, "Ajustada".
+- Fotos: reduzidas e sem EXIF/GPS antes do envio; **não ficam guardadas no registro** (aviso breve na revisão). Foto tirada pela câmera do app é salva automaticamente em Fotos (permissão só de adicionar); também é possível escolher uma foto já existente da galeria.
 
 ## 8. Futuro (arquitetura deve permitir)
 
