@@ -28,6 +28,8 @@ struct FitJourneyApp: App {
     /// Copiloto de IA: importações em andamento (a folha única) e a ponte "Editar com IA" → conversa do Coach.
     @State private var importCoordinator: ImportCoordinator
     @State private var coachHandoff = CoachHandoff()
+    /// "IA disponível" (provedor pronto + chave/login): esconde recursos de IA sem configuração (SPEC §7.x).
+    @State private var aiAvailability = AIAvailability()
     /// Atividade ao Vivo + Dynamic Island da sessão (P6.4). Também atende os botões +15 s/Pular
     /// (`LiveActivityIntentRouter`), inclusive quando o sistema acorda o app só para o intent.
     private let liveActivity: LiveActivityController
@@ -134,6 +136,7 @@ struct FitJourneyApp: App {
                 .environment(dataTransfer)
                 .environment(importCoordinator)
                 .environment(coachHandoff)
+                .environment(aiAvailability)
                 .environment(\.mealReminderScheduler, mealReminders)
                 .task {
                     await categoryRegistry.apply()

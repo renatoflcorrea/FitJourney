@@ -184,8 +184,9 @@ struct NutritionStore {
     }
 
     /// Marca a refeição como feita: 1 entrada por item, como planejado.
+    /// `save: false` deixa o save para o chamador (registro de várias refeições num save só).
     @discardableResult
-    func markMealDone(_ meal: Meal, on date: Date, at time: Date? = nil) throws -> [FoodEntry] {
+    func markMealDone(_ meal: Meal, on date: Date, at time: Date? = nil, save: Bool = true) throws -> [FoodEntry] {
         try clearMeal(meal, on: date, save: false)
         let when = entryTime(time, meal: meal, on: date)
         let entries = meal.sortedItems.map { item in
@@ -197,7 +198,7 @@ struct NutritionStore {
             context.insert(entry)
             return entry
         }
-        try context.save()
+        if save { try context.save() }
         return entries
     }
 
@@ -223,7 +224,8 @@ struct NutritionStore {
 
     /// Ajuste preservando grau de estimativa, observação e o item do plano de origem.
     @discardableResult
-    func logAdjustedMeal(_ meal: Meal, on date: Date, adjusted: [AdjustedMealItem], at time: Date? = nil) throws -> [FoodEntry] {
+    func logAdjustedMeal(_ meal: Meal, on date: Date, adjusted: [AdjustedMealItem], at time: Date? = nil,
+                         save: Bool = true) throws -> [FoodEntry] {
         try clearMeal(meal, on: date, save: false)
         let when = entryTime(time, meal: meal, on: date)
         let entries = adjusted.map { item in
@@ -237,7 +239,7 @@ struct NutritionStore {
             context.insert(entry)
             return entry
         }
-        try context.save()
+        if save { try context.save() }
         return entries
     }
 
@@ -375,14 +377,19 @@ struct NutritionStore {
         item.updatedAt = date
     }
 
-    /// Apaga o registro da refeição (feita/ajustada/pulada). Avulsos vinculados (registro parcial) ficam.
-    private func clearMeal(_ meal: Meal, on date: Date, save: Bool) throws {
+    /// Entradas do registro da refeição no dia (feita/ajustada/pulada) — as que `markMealDone`, `logAdjustedMeal`,
+    /// `skipMeal` e `resetMeal` substituem. Avulsos vinculados (registro parcial, sem status) não entram.
+    func recordedEntries(for meal: Meal, on date: Date) throws -> [FoodEntry] {
         let mealID: UUID? = meal.id
         let (start, end) = dayBounds(date)
-        let existing = try context.fetch(FetchDescriptor<FoodEntry>(
+        return try context.fetch(FetchDescriptor<FoodEntry>(
             predicate: #Predicate { $0.mealID == mealID && $0.mealStatusRaw != nil && $0.date >= start && $0.date < end }
         ))
-        for entry in existing { context.delete(entry) }
+    }
+
+    /// Apaga o registro da refeição (feita/ajustada/pulada). Avulsos vinculados (registro parcial) ficam.
+    private func clearMeal(_ meal: Meal, on date: Date, save: Bool) throws {
+        for entry in try recordedEntries(for: meal, on: date) { context.delete(entry) }
         if save { try context.save() }
     }
 

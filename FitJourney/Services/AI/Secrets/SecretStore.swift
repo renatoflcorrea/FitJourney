@@ -61,6 +61,7 @@ struct KeychainSecretStore: SecretStore {
             guard status == errSecSuccess || status == errSecItemNotFound else {
                 throw SecretStoreError.keychain(status: status)
             }
+            if status == errSecSuccess { AIAvailability.postChange() }
             return
         }
         let attributes: [String: Any] = [
@@ -75,6 +76,8 @@ struct KeychainSecretStore: SecretStore {
             status = SecItemAdd(insert as CFDictionary, nil)
         }
         guard status == errSecSuccess else { throw SecretStoreError.keychain(status: status) }
+        // Chave ou login novo: a disponibilidade da IA é reavaliada (`AIAvailability`).
+        AIAvailability.postChange()
     }
 
     private func baseQuery(for key: SecretKey) -> [String: Any] {

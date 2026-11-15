@@ -54,13 +54,13 @@
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O FitJourney usa a câmera para fotografar exercícios."
+            "value" : "O FitJourney usa a câmera para fotografar exercícios, refeições e planos de treino ou dieta."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "FitJourney uses the camera to photograph exercises."
+            "value" : "FitJourney uses the camera to photograph exercises, meals and workout or diet plans."
           }
         }
       }
@@ -77,6 +77,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "FitJourney accesses the local network only if you set up the Coach with an AI server on your computer (e.g., Ollama)."
+          }
+        }
+      }
+    },
+    "NSPhotoLibraryAddUsageDescription" : {
+      "localizations" : {
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O FitJourney salva em Fotos as fotos de refeições que você tira no app."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FitJourney saves the meal photos you take in the app to Photos."
           }
         }
       }

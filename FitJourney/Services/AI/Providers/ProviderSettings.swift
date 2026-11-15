@@ -137,5 +137,6 @@ struct ProviderSettingsStore {
 
     func save(_ settings: ProviderSettings) {
         defaults.set(try? JSONEncoder().encode(settings), forKey: Self.key)
+        AIAvailability.postChange()
     }
 }
