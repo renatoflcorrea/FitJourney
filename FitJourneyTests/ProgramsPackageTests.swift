@@ -156,3 +156,49 @@ struct ProgramSessionGuardTests {
         #expect(next.routine === b)
     }
 }
+
+@MainActor
+struct ProgramRenameTests {
+    @Test func renameTrimsAndPersists() throws {
+        let f = try PersistenceFixture()
+        let (program, _, _) = try f.makeProgram(name: "ABC")
+        let before = program.updatedAt
+
+        try f.programs.rename(program, to: "  Força 5x5 \n")
+        #expect(program.name == "Força 5x5")
+        #expect(program.updatedAt >= before)
+
+        // Persistido: relido do banco.
+        let id = program.id
+        let fetched = try #require(try f.context.fetch(FetchDescriptor<TrainingProgram>(predicate: #Predicate { $0.id == id })).first)
+        #expect(fetched.name == "Força 5x5")
+        #expect(!f.context.hasChanges)
+    }
+
+    @Test func emptyOrBlankNameIsRefusedAndKeepsOldName() throws {
+        let f = try PersistenceFixture()
+        let (program, _, _) = try f.makeProgram(name: "ABC")
+
+        #expect(throws: ProgramStoreError.emptyName) { try f.programs.rename(program, to: "") }
+        #expect(throws: ProgramStoreError.emptyName) { try f.programs.rename(program, to: "   \n\t ") }
+        #expect(program.name == "ABC")
+        #expect(ProgramStore.normalizedName("  ") == nil)
+        #expect(ProgramStore.normalizedName(" x ") == "x")
+    }
+
+    @Test func renameReachesTheWatchDigest() throws {
+        let f = try PersistenceFixture()
+        let (program, _, _) = try f.makeProgram(name: "ABC")
+        try f.programs.rename(program, to: "Novo nome")
+        #expect(try ProgramDigestBuilder.make(context: f.context)?.name == "Novo nome")
+    }
+
+    @Test func renameWorksDuringAnActiveSession() throws {
+        let f = try PersistenceFixture()
+        let (program, routine, _) = try f.makeProgram(name: "ABC")
+        let session = try f.sessions.start(routine: routine)
+        try f.programs.rename(program, to: "Depois")
+        #expect(program.name == "Depois")
+        #expect(session.routineName == "A")
+    }
+}

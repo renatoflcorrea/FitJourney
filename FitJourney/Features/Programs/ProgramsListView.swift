@@ -4,6 +4,7 @@ import SwiftUI
 /// Programas (push a partir de Treinos): Ativo, Anteriores e Arquivados.
 struct ProgramsListView: View {
     @Query(sort: \TrainingProgram.startDate, order: .reverse) private var programs: [TrainingProgram]
+    @State private var renaming: TrainingProgram?
 
     private var active: [TrainingProgram] { programs.filter(\.isActive) }
     private var previous: [TrainingProgram] { programs.filter { !$0.isActive && !$0.isArchived } }
@@ -28,11 +29,20 @@ struct ProgramsListView: View {
         }
         .navigationTitle("Programas")
         .navigationBarTitleDisplayMode(.inline)
+        .renameProgramAlert(program: $renaming)
     }
 
     private func rows(_ list: [TrainingProgram]) -> some View {
         ForEach(list) { program in
             NavigationLink(value: program) { ProgramRow(program: program) }
+                .contextMenu {
+                    Button("Renomear", systemImage: "character.cursor.ibeam") { renaming = program }
+                }
+                .swipeActions(edge: .leading) {
+                    Button("Renomear", systemImage: "character.cursor.ibeam") { renaming = program }
+                        .tint(FJColor.training)
+                }
+                .accessibilityAction(named: Text("Renomear")) { renaming = program }
         }
     }
 }
@@ -48,6 +58,7 @@ struct ProgramDetailView: View {
     @State private var confirmReactivate = false
     @State private var confirmDelete = false
     @State private var editing: TrainingProgram?
+    @State private var renaming: TrainingProgram?
     @State private var errorMessage: String?
     @State private var blockedBySession = false
     /// Nome do destino quando "Adicionar ficha de outro programa" é barrado por treino em andamento.
@@ -152,6 +163,7 @@ struct ProgramDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    Button("Renomear", systemImage: "character.cursor.ibeam") { renaming = program }
                     Button("Adicionar ficha de outro programa", systemImage: "square.and.arrow.down.on.square") {
                         startAdding()
                     }
@@ -168,6 +180,7 @@ struct ProgramDetailView: View {
         .sheet(item: $editing) { ProgramEditorSheet(program: $0) }
         .sheet(item: $copying) { CopyRoutineSheet(routine: $0).tint(FJColor.training) }
         .addRoutinesSheet(destination: $addingTo)
+        .renameProgramAlert(program: $renaming)
         .fjHaptic(.warning, trigger: blockTrigger)
         .confirmationDialog(
             Text("Ativar \(program.name)? \(currentActive?.name ?? String(localized: "O programa atual")) vai para o histórico."),

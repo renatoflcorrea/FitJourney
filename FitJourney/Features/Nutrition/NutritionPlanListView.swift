@@ -65,7 +65,7 @@ struct NutritionPlanListView: View {
                              message: "Crie sua dieta com metas e refeições. Os registros avulsos funcionam sem plano.",
                              actionTitle: "Criar dieta", area: .nutrition) { showNewPlan = true }
                     .listRowBackground(Color.clear)
-                ImportWithAIButton(kind: .nutrition)
+                ImportWithAIButton(kind: .nutrition, fillsWidth: false)
                     .listRowBackground(Color.clear)
             }
             if let active {

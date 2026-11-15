@@ -24,6 +24,7 @@ struct TrainingRootView: View {
     @State private var sheet: Sheet?
     @State private var routineToDelete: Routine?
     @State private var confirmArchive = false
+    @State private var renaming: TrainingProgram?
     @State private var errorMessage: String?
 
     private enum Sheet: Identifiable {
@@ -63,6 +64,7 @@ struct TrainingRootView: View {
                 } else if let active {
                     activeSection(active)
                     routinesSection(active)
+                    addRoutinesWithAISection(active)
                 } else {
                     noActiveSection
                 }
@@ -132,6 +134,7 @@ struct TrainingRootView: View {
                 }
             }
             .addRoutinesSheet(destination: $addingTo)
+            .renameProgramAlert(program: $renaming)
             .fjHaptic(.warning, trigger: blockTrigger)
             .confirmationDialog(
                 Text("Excluir \(routineToDelete?.name ?? "")?"),
@@ -204,13 +207,14 @@ struct TrainingRootView: View {
                          message: "Crie seu primeiro programa com as fichas da semana.",
                          actionTitle: "Criar programa") { sheet = .newProgram }
                 .listRowBackground(Color.clear)
-            ImportWithAIButton(kind: .program)
+            ImportWithAIButton(kind: .program, fillsWidth: false)
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             Button("Começar com um exemplo (ABC)") {
                 perform { try SampleProgramFactory.makeStarterABC(in: context, activate: true) }
             }
             .frame(maxWidth: .infinity, minHeight: FJSize.minTap)
+            .listRowBackground(Color.clear)
         }
     }
 
@@ -238,6 +242,7 @@ struct TrainingRootView: View {
                     Spacer(minLength: FJSpacing.s)
                     Menu {
                         Button("Editar programa", systemImage: "pencil") { sheet = .editProgram(program) }
+                        Button("Renomear", systemImage: "character.cursor.ibeam") { renaming = program }
                         Button("Duplicar", systemImage: "plus.square.on.square") { duplicate(program) }
                         Button("Arquivar", systemImage: "archivebox", role: .destructive) { confirmArchive = true }
                     } label: {
@@ -316,14 +321,23 @@ struct TrainingRootView: View {
                     perform { try RoutineActions(context: context).move(in: program, from: source, to: destination) }
                 }
             }
-            ImportWithAIButton(kind: .program, target: .existingProgram(program.id), title: "Adicionar fichas com IA",
-                               fillsWidth: false)
-                .listRowBackground(Color.clear)
         } header: {
             FJSectionHeader("Fichas", subtitle: program.scheduleMode == .sequential ? "A ordem define a sequência." : nil,
                             actionTitle: "Adicionar") { sheet = .addRoutine(program) }
                 .textCase(nil)
                 .listRowInsets(EdgeInsets())
+        }
+    }
+
+    /// Seção própria, sem fundo: dentro da seção das fichas, a última linha (transparente) tirava o arredondamento
+    /// de baixo do grupo, que terminava com cantos quadrados.
+    private func addRoutinesWithAISection(_ program: TrainingProgram) -> some View {
+        Section {
+            ImportWithAIButton(kind: .program, target: .existingProgram(program.id), title: "Adicionar fichas com IA",
+                               fillsWidth: false)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: FJSpacing.m, leading: 0, bottom: FJSpacing.m, trailing: 0))
         }
     }
 

@@ -16,6 +16,8 @@ struct ImportWithAIButton: View {
             FJAIButton(title, prominence: prominence, fillsWidth: fillsWidth) {
                 coordinator.start(kind: kind, target: target)
             }
+            // Sem `fillsWidth` o botão ocupa só o conteúdo: centraliza na largura em vez de ficar à esquerda.
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 }

@@ -176,6 +176,9 @@ func userMessage(for error: Error) -> String {
     if case ProgramStoreError.sessionInProgress(let name) = error {
         return String(localized: "Finalize ou descarte o treino em andamento (\(name)) antes de mudar de programa.")
     }
+    if case ProgramStoreError.emptyName = error {
+        return String(localized: "O nome do programa não pode ficar vazio.")
+    }
     return error.localizedDescription
 }
 

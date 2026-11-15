@@ -5,6 +5,8 @@ import SwiftData
 enum ProgramStoreError: Error, Equatable {
     /// Há um treino em andamento que impede a operação (DESIGN §5.5): finalize ou descarte antes.
     case sessionInProgress(routineName: String)
+    /// O nome do programa não pode ficar vazio (depois de tirar os espaços das pontas).
+    case emptyName
 }
 
 /// Operações de programas/fichas que mantêm invariantes (ex.: um único programa ativo).
@@ -117,6 +119,23 @@ struct ProgramStore {
         context.insert(program)
         if activate { try self.activate(program) } else { try context.save() }
         return program
+    }
+
+    /// Nome pronto para gravar: sem espaços e quebras nas pontas; `nil` se ficar vazio. A UI usa o mesmo critério
+    /// para habilitar "Salvar".
+    static func normalizedName(_ name: String) -> String? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    /// Renomeia o programa. Nome vazio lança `.emptyName` sem mexer em nada. Não depende de treino em andamento (a
+    /// sessão guarda o nome da ficha, não o do programa). O `save` dispara o digest do WatchLink, que leva o nome ao relógio.
+    func rename(_ program: TrainingProgram, to name: String) throws {
+        guard let normalized = Self.normalizedName(name) else { throw ProgramStoreError.emptyName }
+        guard normalized != program.name else { return }
+        program.name = normalized
+        program.updatedAt = .now
+        try context.save()
     }
 
     /// Ativa o programa e desativa qualquer outro (exatamente um ativo). Desarquiva se preciso.

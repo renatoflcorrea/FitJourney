@@ -156,11 +156,14 @@ struct NutritionDayView: View {
     @ViewBuilder private var timeline: some View {
         switch model.coverage {
         case .noPlan:
+            // `FJCard` não empilha os filhos: sem o `VStack`, cada um virava um cartão próprio dentro do `LazyVStack`.
             FJCard {
-                FJEmptyState("Cadastre sua dieta", systemImage: "fork.knife",
-                             message: "Monte refeições e metas para marcar como feitas com 1 toque. Você pode registrar comidas avulsas mesmo sem plano.",
-                             actionTitle: "Criar dieta", area: .nutrition) { sheet = .newPlan }
-                ImportWithAIButton(kind: .nutrition)
+                VStack(spacing: FJSpacing.m) {
+                    FJEmptyState("Cadastre sua dieta", systemImage: "fork.knife",
+                                 message: "Monte refeições e metas para marcar como feitas com 1 toque. Você pode registrar comidas avulsas mesmo sem plano.",
+                                 actionTitle: "Criar dieta", area: .nutrition) { sheet = .newPlan }
+                    ImportWithAIButton(kind: .nutrition, fillsWidth: false)
+                }
             }
         case .outsideVigency(let name):
             FJBanner("Fora da vigência do plano", message: "\(name) não cobre este dia. Registros avulsos continuam funcionando.",

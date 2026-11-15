@@ -19674,6 +19674,36 @@
           }
         }
       }
+    },
+    "Renomear" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename"
+          }
+        }
+      }
+    },
+    "Renomear programa" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rename program"
+          }
+        }
+      }
+    },
+    "O nome do programa não pode ficar vazio." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The program name can't be empty."
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
