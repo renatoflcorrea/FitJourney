@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Etapa 3: entrevista, uma pergunta por vez (DESIGN §4.15.5). As respostas atualizam a extração no aparelho, sem
+/// Etapa 3: entrevista, uma pergunta por vez (DESIGN §4.15.5); exercícios fora do catálogo vêm numa lista só. As respostas atualizam a extração no aparelho, sem
 /// chamar a IA; só as dúvidas que a própria IA levantou vão numa chamada de texto ("Revisar com IA").
 struct ImportInterviewView: View {
     let session: ImportSession
@@ -10,6 +10,7 @@ struct ImportInterviewView: View {
     @State private var isRevising = false
     @State private var freeText = ""
     @State private var showFreeText = false
+    @State private var expandedUnmatched: String?
     @FocusState private var freeFocused: Bool
 
     private var current: ImportQuestion? { session.questions.first }
@@ -31,7 +32,11 @@ struct ImportInterviewView: View {
                     ForEach(session.warnings, id: \.self) { warning in
                         FJBanner(LocalizedStringKey(warning), tone: .attention)
                     }
-                    if let current {
+                    if let current, current.gapKind == .unmatchedExercise, session.unmatchedExerciseQuestions.count > 1 {
+                        unmatchedBatchBlock(session.unmatchedExerciseQuestions)
+                            .id("unmatched-batch")
+                            .transition(.opacity)
+                    } else if let current {
                         questionBlock(current)
                             .id(current.id)
                             .transition(.opacity)
@@ -128,6 +133,51 @@ struct ImportInterviewView: View {
         .id(question.id)
     }
 
+    /// Exercícios fora do catálogo numa lista só (U4): "Criar todos como novos" ou escolher um por um.
+    private func unmatchedBatchBlock(_ questions: [ImportQuestion]) -> some View {
+        VStack(alignment: .leading, spacing: FJSpacing.m) {
+            Text("\(questions.count) exercícios não estão no catálogo")
+                .font(FJFont.cardTitle)
+                .accessibilityAddTraits(.isHeader)
+            Text("Crie todos como novos com o nome lido do arquivo, ou toque em um para escolher no catálogo.")
+                .font(FJFont.label).foregroundStyle(FJColor.textSecondary)
+            FJPrimaryButton("Criar todos como novos", systemImage: "plus.circle", area: .coach) { createAllAsNew() }
+                .disabled(isRevising)
+            ForEach(questions, id: \.id) { question in
+                VStack(alignment: .leading, spacing: FJSpacing.s) {
+                    Button {
+                        expandedUnmatched = expandedUnmatched == question.id ? nil : question.id
+                    } label: {
+                        HStack {
+                            Text(verbatim: question.suggestedText ?? question.prompt)
+                                .font(FJFont.body)
+                                .foregroundStyle(FJColor.textPrimary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: expandedUnmatched == question.id ? "chevron.up" : "chevron.down")
+                                .foregroundStyle(FJColor.textSecondary)
+                                .accessibilityHidden(true)
+                        }
+                        .frame(minHeight: FJSize.minTap)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(Text("Escolher este exercício"))
+                    if expandedUnmatched == question.id {
+                        if let source = question.source {
+                            FJSourceLabel(file: source.file, page: source.page)
+                        }
+                        QuestionControlView(question: question, isBusy: isRevising,
+                                            onAnswer: { answer in respond(question, answer) }, onFreeText: {})
+                    }
+                }
+                .padding(.horizontal, FJSpacing.m)
+                .padding(.vertical, FJSpacing.xs)
+                .background(FJColor.surface, in: FJRadius.shape(FJRadius.card))
+            }
+        }
+        .fjAnimation(FJMotion.structure, value: expandedUnmatched)
+    }
+
     private func freeTextField(_ question: ImportQuestion) -> some View {
         HStack(alignment: .bottom, spacing: FJSpacing.s) {
             TextField("Responder…", text: $freeText, axis: .vertical)
@@ -174,9 +224,29 @@ struct ImportInterviewView: View {
                                                    answer: ImportAnswerSummary.text(question: question, answer: summarized)))
             freeText = ""
             showFreeText = false
+            reviseIfLastAnswer()
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func createAllAsNew() {
+        errorMessage = nil
+        do {
+            for (question, name) in try session.createAllUnmatchedAsNew() {
+                ui.history.append(InterviewHistoryItem(id: question.id, prompt: ImportInterviewView.shortPrompt(question),
+                                                       answer: ImportAnswerSummary.text(question: question, answer: .text(name))))
+            }
+            expandedUnmatched = nil
+            reviseIfLastAnswer()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// U5: respondida a última pergunta com dúvidas da IA pendentes, aplica já (remendo curto), sem pedir outro toque.
+    private func reviseIfLastAnswer() {
+        if session.questions.isEmpty, session.hasPendingRevision, !isRevising { revise() }
     }
 
     private func skip(_ question: ImportQuestion) {

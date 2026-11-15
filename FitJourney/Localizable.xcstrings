@@ -1090,6 +1090,16 @@
         }
       }
     },
+    "%lld exercícios não estão no catálogo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld exercises aren't in the catalog"
+          }
+        }
+      }
+    },
     "%lld exercícios · %lld séries" : {
       "localizations" : {
         "en" : {
@@ -5729,6 +5739,16 @@
         }
       }
     },
+    "Criar todos como novos" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create all as new"
+          }
+        }
+      }
+    },
     "Crie seu primeiro programa com as fichas da semana." : {
       "localizations" : {
         "en" : {
@@ -5745,6 +5765,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Create your diet with goals and meals. Standalone entries work without a plan."
+          }
+        }
+      }
+    },
+    "Crie todos como novos com o nome lido do arquivo, ou toque em um para escolher no catálogo." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Create them all as new with the name read from the file, or tap one to pick from the catalog."
           }
         }
       }
@@ -7196,12 +7226,22 @@
         }
       }
     },
-    "Enviados a %@ · menos de 1 minuto" : {
+    "Enviados a %@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sent to %@ · less than 1 minute"
+            "value" : "Sent to %@"
+          }
+        }
+      }
+    },
+    "Enviados a %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sent to %1$@ · %2$@"
           }
         }
       }
@@ -7382,6 +7422,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Choose an option."
+          }
+        }
+      }
+    },
+    "Escolher este exercício" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose this exercise"
           }
         }
       }
@@ -7756,12 +7806,22 @@
         }
       }
     },
-    "Está demorando mais que o normal. Pode fechar: eu aviso quando terminar." : {
+    "Está demorando mais que o normal (%@). Mantenha o FitJourney aberto." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This is taking longer than usual. You can close it: I will let you know when it finishes."
+            "value" : "This is taking longer than usual (%@). Keep FitJourney open."
+          }
+        }
+      }
+    },
+    "Está demorando mais que o normal. Mantenha o FitJourney aberto." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This is taking longer than usual. Keep FitJourney open."
           }
         }
       }

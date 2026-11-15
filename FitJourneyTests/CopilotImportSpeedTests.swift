@@ -441,6 +441,29 @@ struct CopilotImportSpeedTests {
         #expect(session.analysisStartedAt == nil)
     }
 
+    // MARK: U4 — exercícios sem casamento em lote
+
+    @Test("criar todos como novos: uma ação resolve todos os exercícios fora do catálogo (e as repetições em outras fichas)")
+    func createAllUnmatchedAsNew() async throws {
+        let json = ImportJSON.program(mode: "sequential", routines: [
+            ImportJSON.routine("A", exercises: [ImportJSON.exercise("Abdutora máq. 3"), ImportJSON.exercise("Remada cavalinho"),
+                                                ImportJSON.exercise("Supino reto", key: "bench-press")]),
+            ImportJSON.routine("B", exercises: [ImportJSON.exercise("Panturrilha sentado máq."), ImportJSON.exercise("abdutora maq 3")]),
+        ])
+        let fixture = try ImportFixture()
+        let session = fixture.session(.program, gateway: ScriptedImportGateway([.extraction(json)]))
+        try await session.add([fixture.pdf()])
+        try await session.analyze()
+        let pending = session.unmatchedExerciseQuestions.count
+        #expect(pending >= 2)
+        let created = try session.createAllUnmatchedAsNew()
+        #expect(created.count >= 2)
+        #expect(created.allSatisfy { !$0.name.isEmpty })
+        #expect(session.unmatchedExerciseQuestions.isEmpty)
+        let draft = try session.programDraft()
+        #expect(draft.routines[0].exercises[2].catalogKey == "bench-press")
+    }
+
     // MARK: T3 — esforço nos gateways
 
     @Test("esforço: Anthropic output_config.effort, OpenAI reasoning_effort (só modelo de raciocínio), ChatGPT reasoning.effort")

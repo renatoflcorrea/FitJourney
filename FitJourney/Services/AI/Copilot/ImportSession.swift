@@ -653,6 +653,26 @@ final class ImportSession: Identifiable {
         persist()
     }
 
+    /// Exercícios sem casamento no catálogo ainda pendentes (a tela mostra todos numa lista só).
+    var unmatchedExerciseQuestions: [ImportQuestion] { questions.filter { $0.gapKind == .unmatchedExercise } }
+
+    /// "Criar todos como novos": cada exercício sem casamento vira exercício novo com o nome lido do arquivo (o mesmo
+    /// do "Criar como novo" individual). Devolve as perguntas respondidas e o nome gravado, para o histórico.
+    @discardableResult
+    func createAllUnmatchedAsNew() throws -> [(question: ImportQuestion, name: String)] {
+        guard kind == .program, phase == .interviewing || phase == .reviewing else { throw ImportError.wrongPhase }
+        var created: [(question: ImportQuestion, name: String)] = []
+        var attempted: Set<String> = []
+        // Uma resposta pode decidir o mesmo exercício em outras fichas: relê as pendentes a cada passo.
+        while let question = unmatchedExerciseQuestions.first(where: { !attempted.contains($0.id) }) {
+            attempted.insert(question.id)
+            let name = question.suggestedText.nonEmpty ?? exerciseName(for: question.field) ?? question.prompt
+            try answer(.text(String(name.prefix(80))), for: question.id)
+            created.append((question, exerciseName(for: question.field) ?? name))
+        }
+        return created
+    }
+
     /// Pula uma pergunta opcional (fica o valor atual/padrão).
     func skip(_ questionID: String) throws {
         guard let question = questions.first(where: { $0.id == questionID }) else { throw ImportAnswerError.unknownQuestion }
