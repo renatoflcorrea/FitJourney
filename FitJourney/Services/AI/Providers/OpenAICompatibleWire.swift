@@ -14,9 +14,11 @@ struct OAIChatRequest: Encodable {
     var maxCompletionTokens: Int?
     var tools: [OAITool]?
     var toolChoice: JSONValue?
+    var reasoningEffort: String?
 
     enum CodingKeys: String, CodingKey {
         case model, messages, stream, temperature, tools
+        case reasoningEffort = "reasoning_effort"
         case streamOptions = "stream_options"
         case responseFormat = "response_format"
         case maxTokens = "max_tokens"

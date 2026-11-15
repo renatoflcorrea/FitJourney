@@ -156,6 +156,10 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
             } catch AIError.badRequest(status: 400, let message) {
                 // Só repete quando o erro cita o parâmetro recusado; qualquer outro 400 sobe como está.
                 let lower = message.lowercased()
+                if candidate.effort != nil, lower.contains("reasoning") {
+                    candidate.effort = nil
+                    continue
+                }
                 if strictTools, !candidate.tools.isEmpty, !relaxedTools, lower.contains("strict") {
                     strictTools = false
                     relaxedTools = true
@@ -197,6 +201,10 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
         if let limit = request.maxTokens {
             let parameter = configuration.quirks.tokenParameter ?? ModelCapabilities.tokenParameter(for: request.model)
             if parameter == "max_completion_tokens" { wire.maxCompletionTokens = limit } else { wire.maxTokens = limit }
+        }
+        // Só modelos de raciocínio (gpt-5.x, série o) aceitam `reasoning_effort`; um 400 que o cite tira o campo.
+        if let effort = request.effort, !ModelCapabilities.acceptsTemperature(request.model) {
+            wire.reasoningEffort = effort.rawValue
         }
         if !request.tools.isEmpty {
             wire.tools = try request.tools.map { spec in

@@ -268,7 +268,7 @@ struct AnthropicMessagesGateway: ChatGateway, StructuredCompleting {
         var outputConfig: [String: JSONValue] = [:]
         if AnthropicModelSupport.supportsAdaptiveThinking(request.model) {
             body["thinking"] = .object(["type": .string("adaptive"), "display": .string("summarized")])
-            outputConfig["effort"] = .string(Self.effort)
+            outputConfig["effort"] = .string(request.effort?.rawValue ?? Self.effort)
         }
         if AnthropicModelSupport.supportsServerFallbacks(request.model) {
             urlRequest.setValue(Self.fallbackBeta, forHTTPHeaderField: "anthropic-beta")

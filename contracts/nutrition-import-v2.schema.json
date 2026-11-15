@@ -1,0 +1,543 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fitjourney.app/contracts/nutrition-import-v2.schema.json",
+  "title": "NutritionImportV2",
+  "description": "Extração compacta de plano alimentar a partir de arquivos — FitJourney v2. Itens sem source (vale o da refeição) e valores nutricionais num objeto opcional; o app expande para o nutrition-import-v1. Copie o que está escrito; não invente.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "goal",
+    "notes",
+    "confidence",
+    "source",
+    "targets",
+    "days",
+    "ambiguities"
+  ],
+  "properties": {
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Nome do plano se escrito."
+    },
+    "goal": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Objetivo como escrito."
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "O que estava ambíguo, ilegível ou foi inferido (curto). null se nada."
+    },
+    "confidence": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "description": "Confiança na leitura: high = legível e explícito; medium = inferido do contexto; low = ilegível, ambíguo ou adivinhado."
+    },
+    "source": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/source"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "targets": {
+      "$ref": "#/$defs/targets"
+    },
+    "days": {
+      "type": "array",
+      "maxItems": 7,
+      "items": {
+        "$ref": "#/$defs/day"
+      },
+      "description": "Variações do plano (um item se o plano é igual todo dia)."
+    },
+    "ambiguities": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/ambiguity"
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "page"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Nome do arquivo exatamente como no rótulo [Arquivo: …]."
+        },
+        "page": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "Página (1-based) quando houver; null em imagens/texto."
+        }
+      },
+      "description": "Onde o item foi lido."
+    },
+    "ambiguity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "question",
+        "options"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Caminho do item, ex.: routines[0].exercises[2].sets."
+        },
+        "question": {
+          "type": "string",
+          "description": "Pergunta curta em pt-BR para o usuário."
+        },
+        "options": {
+          "type": "array",
+          "maxItems": 6,
+          "items": {
+            "type": "string"
+          },
+          "description": "Respostas possíveis (vazio = resposta livre)."
+        }
+      },
+      "description": "Dúvida que só o usuário resolve (ex.: \"3x12\" = 3 séries de 12 ou 12 séries de 3?)."
+    },
+    "targets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kcal",
+        "protein",
+        "carbs",
+        "fat",
+        "fiber",
+        "waterMilliliters",
+        "confidence",
+        "source"
+      ],
+      "properties": {
+        "kcal": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "protein": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 2000
+        },
+        "carbs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 3000
+        },
+        "fat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "fiber": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 500
+        },
+        "waterMilliliters": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 20000
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "description": "Confiança na leitura: high = legível e explícito; medium = inferido do contexto; low = ilegível, ambíguo ou adivinhado."
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "description": "Metas diárias quando escritas (gramas para macros); null se ausentes."
+    },
+    "day": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "weekdays",
+        "notes",
+        "confidence",
+        "source",
+        "meals"
+      ],
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Nome da variação (ex.: \"Dia de treino\", \"Segunda e quarta\")."
+        },
+        "weekdays": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "type": "string",
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ]
+          },
+          "description": "Dias em que vale; vazio = todos os dias ou não indicado."
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "O que estava ambíguo, ilegível ou foi inferido (curto). null se nada."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "description": "Confiança na leitura: high = legível e explícito; medium = inferido do contexto; low = ilegível, ambíguo ou adivinhado."
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "meals": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/meal"
+          }
+        }
+      }
+    },
+    "meal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "time",
+        "notes",
+        "confidence",
+        "source",
+        "items"
+      ],
+      "properties": {
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Nome da refeição (Café da manhã, Almoço…)."
+        },
+        "time": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "Horário HH:MM se escrito; null se não houver."
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "O que estava ambíguo, ilegível ou foi inferido (curto). null se nada."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "description": "Confiança na leitura: high = legível e explícito; medium = inferido do contexto; low = ilegível, ambíguo ou adivinhado."
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/source"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 30,
+          "items": {
+            "$ref": "#/$defs/item"
+          }
+        }
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asWritten",
+        "name",
+        "quantity",
+        "unit",
+        "macros",
+        "notes",
+        "confidence",
+        "substitutions"
+      ],
+      "properties": {
+        "asWritten": {
+          "type": "string",
+          "description": "Item exatamente como escrito (ex.: \"2 fatias pão integral\")."
+        },
+        "name": {
+          "type": "string",
+          "description": "Nome do alimento em pt-BR."
+        },
+        "quantity": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000,
+          "description": "Quantidade numérica; null se não escrita."
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "grams",
+            "milliliters",
+            "unit",
+            "tablespoon",
+            "cup",
+            "slice",
+            "serving",
+            null
+          ]
+        },
+        "macros": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/macros"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "O que estava ambíguo, ilegível ou foi inferido (curto). null se nada."
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ],
+          "description": "Confiança na leitura: high = legível e explícito; medium = inferido do contexto; low = ilegível, ambíguo ou adivinhado."
+        },
+        "substitutions": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/substitution"
+          },
+          "description": "Opções de troca escritas para o item."
+        }
+      },
+      "description": "Valores nutricionais só se escritos no arquivo; não estime."
+    },
+    "substitution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "quantity",
+        "unit",
+        "macros",
+        "notes"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "unit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "grams",
+            "milliliters",
+            "unit",
+            "tablespoon",
+            "cup",
+            "slice",
+            "serving",
+            null
+          ]
+        },
+        "macros": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/macros"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "O que estava ambíguo, ilegível ou foi inferido (curto). null se nada."
+        }
+      }
+    },
+    "macros": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kcal",
+        "protein",
+        "carbs",
+        "fat",
+        "fiber"
+      ],
+      "properties": {
+        "kcal": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "protein": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "carbs": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "fat": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "fiber": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 500
+        }
+      },
+      "description": "Valores nutricionais só se escritos no arquivo; null no item quando nenhum estiver escrito."
+    }
+  }
+}
