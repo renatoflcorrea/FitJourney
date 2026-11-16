@@ -1,6 +1,6 @@
 # Status
 
-**Data**: 2026-11-13 · **Ciclo**: 7 concluído (pedidos do teste em aparelho)
+**Data**: 2026-11-16 · **Fase**: lançamento na App Store (build 6 no TestFlight, versão 1.0.0 aguardando reenvio pelo dono)
 
 ## Feito
 - SPEC.md v0.1, docs/PLANO.md, docs/ia.md (provedores portados do fireplaice), AGENTS.md/CLAUDE.md, agentes em `.claude/agents/` (supervisor Opus, design Fable, núcleo Opus, telas/revisão/QA Sonnet).
@@ -59,14 +59,6 @@
 
 - P1.5 (12/11): copiar fichas para outro programa (só cópia) — DESIGN §4.2.1; folhas "Copiar ficha" e "Adicionar fichas", dias no semanal, nome "(2)", bloqueio por treino no destino, `ProgramStore.copyRoutines` atômico, `cloneRoutine` compartilhado com Duplicar. Integrado, testes verdes. **Instalação pendente** (aparelhos "unavailable"). Pendências: título "Adicionar fichas" trunca com o botão "Adicionar (n)"; Q-CF2 (excluir ficha no detalhe do programa/desfazer), Q-CF3 (marcar todas).
 
-## Retomar aqui (nova sessão)
-- **Primeiro passo**: instalar nos aparelhos (W4 + P1.5 ainda não instalados; C7.4 já instalado): `make device TEAM=<TEAM> DEVICE_ID=<iphone-udid> WATCH_ID=<watch-udid>` com o iPhone desbloqueado e visível (`xcrun devicectl list devices`); se o relógio falhar no túnel, repetir só `xcrun devicectl device install app --device <watch-udid> build/device/Build/Products/Debug-watchos/FitJourneyWatch.app`.
-- **Nenhum pedido do usuário pendente** além da instalação. Aguardando retorno dos testes em aparelho (importar com exercício novo, editor de carga no relógio, copiar fichas).
-- Não verificado em aparelho: `startWatchApp`/adoção da gravação remota; intensidade da vibração e alerta com pulso abaixado; chamadas reais aos provedores no copiloto; reinício por `exit(0)` e troca de `AppleLanguages` no relógio.
-- Opcionais: índice por `messageID` no `CopilotChangeStore`; `canUndo` no `FJChangeCard`; API de edição inline no `ImportSession`; perguntas de design Q-RA1 (som do alerta), Q-RA2 (pulso abaixado sem gravação), Q-CP1..7 (padrões adotados) em DESIGN §10.
-- Manutenção: rodar `/cartographer:cartographer` (mapa atualizado só parcialmente pelos agentes desde P6.7); republicar o protótipo (artifact KVLeypFG56VoBAsVn2dqqh está na v4, sem os frames 33/34 do alerta); limpar worktrees antigos em `.claude/worktrees/` (todos já integrados).
-- Processo: worktree + simulador próprio por agente (nunca `shutdown all`); review-code antes de integrar; conflitos em `.xcstrings` por união de chaves (`python3 scripts/xcmerge.py <arquivo>` durante o merge, usa os stages 1/2/3 do git); supervisor usa o simulador `FJ-main`.
-
 ## Loja (13/11) — kit da App Store
 - `work/store/`: `store.json` (en-US + pt-BR, Saúde e fitness + Estilo de vida, 1.0.0), telas cruas (`raw/`), 7 capturas de iPhone por idioma (`png/`), 3 do relógio (`watch/`), header e busca (`creatives/`, fontes em `creatives/src/build.py`). `check.py` OK.
 - Ganchos DEBUG de demonstração: `-fj.seedDemo` (`App/StoreDemo.swift`), `-fj.demoRoute`, `-fj.demoScrollY`, `-fj.sessionDemo mid`, relógio `-FJWStore`; scripts `scripts/store-screens.sh` e `store-watch-screens.sh`.
@@ -77,5 +69,25 @@
 
 ## Complicação do relógio e ícone em vidro (13/11)
 - Novo target `FitJourneyWatchWidgets` (WidgetKit, watchOS 26): complicação de atalho (circular, canto, retangular, inline), sem dados nem App Group. Arte em vidro nos mostradores de cor cheia; glifo chapado `StairGlyph` nos acentuados.
-- Opção de ícone em vidro em `design/icon/glass/` (gerador `make_icon_glass.swift` e `make_complication_glass.swift`); ainda não adotada no app.
-- Pendente: validar a complicação em relógio real; novo build para a loja.
+- Ícone em vidro em `design/icon/glass/` (gerador `make_icon_glass.swift` e `make_complication_glass.swift`), adotado no app (claro/escuro/tingido), no relógio, no site e no glifo da Live Activity.
+- Pendente: validar a complicação em relógio real.
+
+## Loja e TestFlight (13–16/11)
+- Nome na loja: "FitJourney: Gym & Diet Log" (en) / "FitJourney: Treino e Dieta" (pt); nome na tela inicial continua "FitJourney"; bundle inalterado. App ASC 6834532428. Ficha enviada pela API (`~/.claude/skills/app-store-launch/scripts/asc.py`, estado em `work/store/.asc-state.json`). Páginas de suporte/privacidade publicadas no CV_Website.
+- Só iPhone (`TARGETED_DEVICE_FAMILY "1"` no app e widgets); `UIBackgroundModes workout-processing` removido do iPhone.
+- Repositório no GitHub `git@github.com:renatoflcorrea/FitJourney.git` (histórico limpo de Team ID/UDIDs). Push só com pedido.
+- Build 3: crash em loop no Release (caminhos de relacionamento em `#Predicate`/`SortDescriptor`/`@Query` são removidos no Release) — corrigido filtrando em memória; `SwiftDataKeyPathGuardTests` impede regressão. Relógio: timeout de 20 s no "Salvando". Guarda de restauração da sessão (`fj.session.restoreGuard`).
+- Versão 1.0.0 foi **rejeitada** (build 3): a Apple pediu um vídeo do app.
+- Build 4: cantos da lista de fichas, botão de IA centralizado (Treinos/Dieta), renomear programa, **registro de refeições com IA** (texto do dia, foto do prato; foto não é guardada; câmera salva no Fotos; SPEC §7.x, O6c; proposta em `design/proposals/ai-meal-log.md`), **importação v2 mais rápida** (contratos compactos, correções por remendo, esforço baixo, perguntas de exercício numa lista; `design/proposals/ai-import-speed.md`), tudo de IA só aparece com IA configurada (`AIAvailability`).
+- Build 5 (`7afcd9b`): respiro entre o cabeçalho "Fichas" e a lista.
+- Build 6 (`6381ef3`): relógio — `WatchButtonStyle` (largura total exata; `.glass`/`.glassProminent` recuavam a forma) em todas as telas; descanso com "+ reps"/"+15 s" a 2/3 da altura e alinhados ao "Pular", "Próxima: carga" maior e em largura total; nota do treino (RPE) pela Coroa e por − / + (sem ScrollView). Conferido no simulador; testes do relógio verdes.
+- Build 6 processado e **anexado** à versão 1.0.0 (PREPARE_FOR_SUBMISSION). Não reenviado.
+
+## Retomar aqui (nova sessão)
+- **Do dono**: instalar o build 6 pelo TestFlight, gravar o vídeo pedido pela Apple, responder na revisão e clicar "Enviar para revisão" (nunca enviar por ele).
+- Commits locais ainda sem push: `7afcd9b`, `64f5c81`, `6381ef3` e este status.
+- Validar em aparelho: botões e nota do treino no relógio; registro por foto (câmera, Fotos, análise real); tempo real da importação v2; complicação no mostrador; efeito de tirar o modo de fundo do iPhone.
+- Não alterados no relógio (perguntar se quer no mesmo padrão): "Iniciar" na barra inferior da ficha (posição do sistema); grade da página de controles.
+- Fluxo de build: `scratchpad` não persiste — archive com `-allowProvisioningUpdates` e chave da API (`~/.appstoreconnect/config.json`, args num array bash), conferir UIDeviceFamily [1], CFBundleVersion e o `.appex` da complicação; depois `asc.py builds` até VALID e `asc.py attach-build work/store/store.json <n>`.
+- Opcionais: Cartographer e `docs/ia.md` (registro de refeições/importação v2); extras do registro (toque longo no "+", chip no Coach); progresso parcial por streaming na importação.
+- Processo: worktree + simulador próprio por agente (nunca `shutdown all`); review-code antes de integrar; conflitos em `.xcstrings` por união de chaves (`python3 scripts/xcmerge.py`).
