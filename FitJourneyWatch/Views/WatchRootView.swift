@@ -93,10 +93,9 @@ struct StaleSessionView: View {
             VStack(spacing: 8) {
                 Text("Treino em aberto desde \(since.formatted(date: .omitted, time: .shortened))")
                     .font(.headline).multilineTextAlignment(.center)
-                Button("Continuar") { model.keepStaleSessionGoing() }
-                    .buttonStyle(.glassProminent).tint(WF.trainingFill)
-                Button("Finalizar") { model.finish(rpe: nil) }.buttonStyle(.glass)
-                Button("Descartar", role: .destructive) { model.discard() }.buttonStyle(.glass)
+                WatchPrimaryButton(title: "Continuar") { model.keepStaleSessionGoing() }
+                Button("Finalizar") { model.finish(rpe: nil) }.buttonStyle(WatchButtonStyle())
+                Button("Descartar", role: .destructive) { model.discard() }.buttonStyle(WatchButtonStyle(kind: .destructive))
             }
         }
     }
@@ -112,12 +111,12 @@ struct SavingView: View {
                 Image(systemName: "iphone.slash").font(.system(size: 30)).foregroundStyle(WF.textSecondary).accessibilityHidden(true)
                 Text("Salvo no relógio").font(.headline)
                 Text("Será enviado ao iPhone quando conectar.").font(.footnote).foregroundStyle(WF.textSecondary).multilineTextAlignment(.center)
-                Button("OK") { model.dismissSaving() }.buttonStyle(.glass)
+                Button("OK") { model.dismissSaving() }.buttonStyle(WatchButtonStyle())
             } else if model.isSavingTimedOut {
                 // iPhone alcançável mas sem confirmar no prazo: o relógio já encerrou e gravou.
                 Image(systemName: "checkmark.circle").font(.system(size: 30)).foregroundStyle(WF.textSecondary).accessibilityHidden(true)
                 Text("Salvo no relógio. O iPhone vai atualizar o histórico.").font(.footnote).multilineTextAlignment(.center)
-                Button("OK") { model.dismissSaving() }.buttonStyle(.glass)
+                Button("OK") { model.dismissSaving() }.buttonStyle(WatchButtonStyle())
             } else {
                 ProgressView()
                 Text("Salvando…").font(.headline)

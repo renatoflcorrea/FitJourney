@@ -213,29 +213,30 @@ struct RestView: View {
             progressBar
             nextLoadChip
             if skipFirst { skipButton }
+            // Mesma largura total do "Pular": as bordas externas coincidem com as dele.
             ViewThatFits(in: .horizontal) {
                 HStack(spacing: 5) { secondaryButtons }
                 VStack(spacing: 5) { secondaryButtons }
             }
-            .buttonStyle(.glass)
+            .buttonStyle(WatchButtonStyle(height: WatchLayout.restSecondaryHeight))
             .font(.footnote.weight(.semibold))
         }
     }
 
-    /// "Próxima: 26,0 kg ±" — chip de vidro fino que abre o editor da próxima série (W4). Visível com a altura de
-    /// uma linha (o descanso é a tela mais apertada); a área de toque cresce para cima, sobre o tempo e a barra, que
-    /// não são tocáveis, até 44 pt.
+    /// "Próxima: 26,0 kg ±" — botão de vidro em largura total que abre o editor da próxima série (W4); a área de
+    /// toque ainda cresce um pouco para cima, sobre o tempo e a barra, que não são tocáveis.
     @ViewBuilder private var nextLoadChip: some View {
         if let next, let load = effectiveLoad(of: next.set, in: next.exercise) {
             let unset = isLoadUnset(next.set)
             Button { editLoad(next.set.id) } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Text(unset ? "Próxima: definir carga" : "Próxima: \(WatchFormat.load(load))")
-                        .lineLimit(1).minimumScaleFactor(0.8)
-                    Image(systemName: "plusminus").font(.caption2.weight(.bold)).foregroundStyle(WF.training)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    Image(systemName: "plusminus").font(.footnote.weight(.bold)).foregroundStyle(WF.training)
                 }
-                .font(.footnote.weight(.medium))
-                .padding(.horizontal, 10).padding(.vertical, 3)
+                .font(.body.weight(.semibold))
+                .padding(.horizontal, 10)
+                .frame(maxWidth: .infinity, minHeight: WatchLayout.restNextLoadHeight)
                 .padding(.top, WatchLayout.chipTouchExtension)
                 .contentShape(.rect)
                 .padding(.top, -WatchLayout.chipTouchExtension)
@@ -250,9 +251,9 @@ struct RestView: View {
     }
 
     @ViewBuilder private var secondaryButtons: some View {
-        Button { showingReps = true } label: { Text("+ reps").frame(maxWidth: .infinity, minHeight: 40) }
+        Button { showingReps = true } label: { Text("+ reps") }
             .accessibilityLabel("Registrar repetições")
-        Button { model.extendRest() } label: { Text("+15 s").frame(maxWidth: .infinity, minHeight: 40) }
+        Button { model.extendRest() } label: { Text("+15 s") }
             .accessibilityLabel("Mais quinze segundos")
     }
 
@@ -310,9 +311,9 @@ struct RepsSheet: View {
                 }
             HStack(spacing: 5) {
                 Button("Limpar") { if let set = lastCompleted { model.updateReps(setID: set.id, reps: nil) }; dismiss() }
-                    .buttonStyle(.glass)
+                    .buttonStyle(WatchButtonStyle())
                 Button("Salvar") { if let set = lastCompleted { model.updateReps(setID: set.id, reps: Int(reps)) }; dismiss() }
-                    .buttonStyle(.glassProminent).tint(WF.trainingFill)
+                    .buttonStyle(WatchButtonStyle(kind: .primary))
                     .handGestureShortcut(.primaryAction)
             }
         }

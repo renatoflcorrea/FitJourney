@@ -76,7 +76,46 @@ enum WatchLayout {
     static var loadEditorFontSize: CGFloat { isLargeCase ? 48 : 42 }
     /// Quanto a área de toque do chip "Próxima: 26 kg" do descanso sobe além do que se vê (até ≈ 44 pt).
     static let chipTouchExtension: CGFloat = 20
+    /// "+ reps" / "+15 s" do descanso: ~2/3 da altura antiga (40), o texto é curto.
+    static let restSecondaryHeight: CGFloat = 28
+    /// Botão "Próxima: 26 kg" do descanso.
+    static var restNextLoadHeight: CGFloat { isLargeCase ? 36 : 32 }
     static var timerFontSize: CGFloat { isLargeCase ? 54 : 48 }
+}
+
+/// Estilo de botão do relógio que ocupa **exatamente** a largura que recebe.
+///
+/// `.glass`/`.glassProminent` do sistema recuam a forma para dentro do quadro do botão: um "Concluir" ficava mais
+/// estreito que o botão de carga logo acima, e dois botões lado a lado somavam mais largura que o botão de baixo.
+/// Aqui o vidro é desenhado no próprio quadro, então tudo o que é de largura total tem a mesma borda em todas as telas.
+struct WatchButtonStyle: ButtonStyle {
+    enum Kind { case primary, secondary, destructive }
+    var kind: Kind = .secondary
+    /// Altura mínima do botão (o padrão é a do botão principal).
+    var height: CGFloat = WatchLayout.primaryButtonHeight
+
+    func makeBody(configuration: Configuration) -> some View {
+        StyledLabel(configuration: configuration, kind: kind, height: height)
+    }
+
+    private struct StyledLabel: View {
+        @Environment(\.isEnabled) private var isEnabled
+        let configuration: Configuration
+        let kind: Kind
+        let height: CGFloat
+
+        var body: some View {
+            configuration.label
+                .fontWeight(.semibold)
+                .foregroundStyle(kind == .destructive ? WF.destructive : WF.textPrimary)
+                .padding(.horizontal, 8)
+                .frame(maxWidth: .infinity, minHeight: height)
+                .contentShape(.capsule)
+                .glassEffect(kind == .primary ? .regular.tint(WF.trainingFill).interactive() : .regular.interactive(),
+                             in: .capsule)
+                .opacity(isEnabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+        }
+    }
 }
 
 /// Botão principal em largura total (Concluir, Iniciar, Começar, Salvar…): vidro laranja.
@@ -89,15 +128,14 @@ struct WatchPrimaryButton: View {
     var body: some View {
         Button(action: action) {
             Label {
-                Text(title).fontWeight(.semibold)
+                Text(title)
             } icon: {
                 if let systemImage { Image(systemName: systemImage) }
             }
             .labelStyle(.titleAndIcon)
-            .frame(maxWidth: .infinity, minHeight: WatchLayout.primaryButtonHeight - 12)
+            .lineLimit(1).minimumScaleFactor(0.7)
         }
-        .buttonStyle(.glassProminent)
-        .tint(WF.trainingFill)
+        .buttonStyle(WatchButtonStyle(kind: .primary))
         .handGestureShortcut(.primaryAction)
         .accessibilityLabel(Text(accessibilityLabel ?? title))
     }

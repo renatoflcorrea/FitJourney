@@ -122,17 +122,17 @@ struct LoadEditorView: View {
     private var stepButtons: some View {
         HStack(spacing: 8) {
             Button { step(up: false) } label: {
-                Image(systemName: "minus").font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                Image(systemName: "minus").font(.title3.weight(.semibold))
             }
             .disabled(!draft.canDecrement)
             .accessibilityLabel("Diminuir carga")
             Button { step(up: true) } label: {
-                Image(systemName: "plus").font(.title3.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+                Image(systemName: "plus").font(.title3.weight(.semibold))
             }
             .disabled(!draft.canIncrement)
             .accessibilityLabel("Aumentar carga")
         }
-        .buttonStyle(.glass)
+        .buttonStyle(WatchButtonStyle(height: 44))
     }
 
     private func step(up: Bool) {

@@ -64,37 +64,70 @@ struct SessionRoutinePage: View {
     }
 }
 
-/// Finalizar: RPE 1–10 pela Coroa + "Sem nota".
+/// Finalizar: RPE 1–10 pela Coroa ou pelos − / + ao lado do número, + "Sem nota".
+///
+/// Sem ScrollView: dentro dela a Coroa rolava a tela e a nota não mudava (mesma regra do editor de carga).
 struct FinishView: View {
     @Environment(WatchSessionModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     @State private var rpe: Double = 7
+    @FocusState private var crownFocused: Bool
+
+    private var value: Int { Int(rpe.rounded()) }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 4) {
-                Text("Como foi o treino?").font(.footnote).foregroundStyle(WF.textSecondary)
-                VStack(spacing: 2) {
-                    Text("\(Int(rpe))").font(WF.number(52)).foregroundStyle(WF.training)
-                    Text(WatchFormat.rpeLabel(Int(rpe))).font(.footnote.weight(.semibold))
+        VStack(spacing: 4) {
+            Text("Como foi o treino?").font(.footnote).foregroundStyle(WF.textSecondary)
+                .lineLimit(1).minimumScaleFactor(0.8)
+            HStack(spacing: 6) {
+                stepButton(up: false)
+                VStack(spacing: 0) {
+                    Text("\(value)").font(WF.number(44)).foregroundStyle(WF.training)
+                        .minimumScaleFactor(0.6).lineLimit(1)
+                        .contentTransition(.numericText(value: rpe))
+                    Text(WatchFormat.rpeLabel(value)).font(.footnote.weight(.semibold))
+                        .lineLimit(1).minimumScaleFactor(0.7)
                 }
+                .frame(maxWidth: .infinity)
+                .focusable()
+                .focused($crownFocused)
+                .digitalCrownRotation($rpe, from: 1, through: 10, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Esforço percebido")
-                .accessibilityValue("\(Int(rpe)), \(WatchFormat.rpeLabel(Int(rpe)))")
+                .accessibilityValue("\(value), \(WatchFormat.rpeLabel(value))")
                 .accessibilityAdjustableAction { direction in
                     switch direction {
-                    case .increment: rpe = min(10, rpe + 1)
-                    case .decrement: rpe = max(1, rpe - 1)
+                    case .increment: step(up: true)
+                    case .decrement: step(up: false)
                     @unknown default: break
                     }
                 }
-                WatchPrimaryButton(title: "Salvar") { save(Int(rpe)) }
-                Button("Sem nota") { save(nil) }.buttonStyle(.glass)
+                stepButton(up: true)
             }
-            .accessibilityElement(children: .contain)
+            Spacer(minLength: 0)
+            WatchPrimaryButton(title: "Salvar") { save(value) }
+            Button("Sem nota") { save(nil) }
+                .buttonStyle(WatchButtonStyle(height: 36))
         }
-        .focusable()
-        .digitalCrownRotation($rpe, from: 1, through: 10, by: 1, sensitivity: .low, isContinuous: false, isHapticFeedbackEnabled: true)
+        .accessibilityElement(children: .contain)
+        .onAppear { crownFocused = true }
+    }
+
+    private func stepButton(up: Bool) -> some View {
+        Button { step(up: up) } label: {
+            Image(systemName: up ? "plus" : "minus").font(.headline.weight(.semibold))
+                .frame(width: 36, height: 36)
+                .contentShape(.circle)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.interactive(), in: .circle)
+        .disabled(up ? value >= 10 : value <= 1)
+        .opacity((up ? value >= 10 : value <= 1) ? 0.4 : 1)
+        .accessibilityHidden(true) // o número já é ajustável pelo VoiceOver
+    }
+
+    private func step(up: Bool) {
+        rpe = Double(min(10, max(1, value + (up ? 1 : -1))))
     }
 
     private func save(_ value: Int?) {

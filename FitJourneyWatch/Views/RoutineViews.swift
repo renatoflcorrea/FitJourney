@@ -198,8 +198,7 @@ struct HealthPermissionView: View {
                 Text("Permitir Saúde").font(.headline)
                 Text("Para mostrar frequência cardíaca e calorias e gravar o treino.")
                     .font(.footnote).foregroundStyle(WF.textSecondary).multilineTextAlignment(.center)
-                Button("Continuar") { Task { await onContinue() } }
-                    .buttonStyle(.glassProminent).tint(WF.trainingFill)
+                WatchPrimaryButton(title: "Continuar") { Task { await onContinue() } }
             }
         }
     }
