@@ -330,6 +330,8 @@ struct TrainingRootView: View {
             FJSectionHeader("Fichas", subtitle: program.scheduleMode == .sequential ? "A ordem define a sequência." : nil,
                             actionTitle: "Adicionar") { sheet = .addRoutine(program) }
                 .textCase(nil)
+                // Sem inset, o subtítulo encostava na lista; o respiro iguala o das outras seções do app.
+                .padding(.bottom, FJSpacing.m)
                 .listRowInsets(EdgeInsets())
         }
     }
