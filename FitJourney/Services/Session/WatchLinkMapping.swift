@@ -115,6 +115,7 @@ enum SessionSnapshotBuilder {
             }
         }()
         let proposals = session.status == .inProgress ? ((try? store.loadProposals(for: session)) ?? []) : []
+        let repProposals = session.status == .inProgress ? ((try? store.repTargetProposals(for: session)) ?? []) : []
         let workoutType = HealthSessionTimeline.make(session: session, context: store.context).workoutType
 
         var snapshot = SessionSnapshot(
@@ -191,6 +192,10 @@ enum SessionSnapshotBuilder {
         snapshot.workoutType = workoutType.rawValue
         snapshot.restAlertRepeat = restAlertRepeat ? nil : false
         snapshot.language = language
+        snapshot.repTargetProposals = repProposals.isEmpty ? nil : repProposals.map {
+            SessionSnapshot.RepTargetProposal(prescriptionID: $0.prescriptionID, exerciseName: localized($0.exerciseName),
+                                              from: $0.from.map(WatchRepTarget.init), to: WatchRepTarget($0.to))
+        }
         return snapshot
     }
 

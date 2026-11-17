@@ -2219,6 +2219,16 @@
         }
       }
     },
+    "A carga e o alvo de repetições deste treino viram o ponto de partida do próximo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This workout's load and target reps become the starting point for the next one"
+          }
+        }
+      }
+    },
     "A chave do provedor foi recusada. Confira a chave em Ajustes.": {
       "localizations": {
         "en": {
@@ -3587,6 +3597,16 @@
         }
       }
     },
+    "Alvo de repetições do exercício": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exercise target reps"
+          }
+        }
+      }
+    },
     "Amanhã, %@": {
       "localizations": {
         "en": {
@@ -4353,6 +4373,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "Update current load"
+          }
+        }
+      }
+    },
+    "Atualizar ficha": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update routine"
           }
         }
       }
@@ -19331,6 +19361,16 @@
           "stringUnit": {
             "state": "translated",
             "value": "foods"
+          }
+        }
+      }
+    },
+    "alvo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "target"
           }
         }
       }

@@ -25,7 +25,7 @@ struct WatchLoadMemoryTests {
         SessionCommand(sessionID: s.sessionID, issuedAt: t0, origin: .watch, kind: kind)
     }
 
-    @Test func adjustingLoadPropagatesToFollowingUneditedSets() throws {
+    @Test func adjustingLoadPropagatesToAllPendingSets() throws {
         let base = snapshot() // supino 4 × 26 kg
         let sets = base.exercises[0].sets
         var s = try #require(SessionReducer.apply(command(.adjustLoad(setID: sets[0].id, delta: 2.5), base), to: base))
@@ -34,15 +34,43 @@ struct WatchLoadMemoryTests {
         // Outro exercício não muda.
         #expect(s.exercises[1].sets[0].plannedLoad == WatchLoad(value: 15))
 
-        // Editar a 3ª à mão leva a 4ª junto; depois, ajustar a 2ª não mexe nas duas (a 3ª foi editada, a 4ª já
-        // mostra outra carga).
+        // 17/11 "mesma carga em todas": editar a 3ª leva todas as pendentes (inclusive as anteriores e a já ajustada).
         s = try #require(SessionReducer.apply(command(.updateSet(setID: sets[2].id, reps: nil, load: WatchLoad(value: 30),
                                                                  durationSeconds: nil, distanceMeters: nil), s), to: s))
+        #expect(s.exercises[0].sets[0].load == WatchLoad(value: 30))
+        #expect(s.exercises[0].sets[1].plannedLoad == WatchLoad(value: 30))
         #expect(s.exercises[0].sets[3].plannedLoad == WatchLoad(value: 30))
         s = try #require(SessionReducer.apply(command(.adjustLoad(setID: sets[1].id, delta: 2.5), s), to: s))
-        #expect(s.exercises[0].sets[1].load == WatchLoad(value: 31))
-        #expect(s.exercises[0].sets[2].load == WatchLoad(value: 30))
-        #expect(s.exercises[0].sets[3].plannedLoad == WatchLoad(value: 30))
+        #expect(s.exercises[0].sets[1].load == WatchLoad(value: 32.5))
+        #expect(s.exercises[0].sets[0].load == WatchLoad(value: 32.5))
+        #expect(s.exercises[0].sets[2].load == WatchLoad(value: 32.5))
+        #expect(s.exercises[0].sets[3].plannedLoad == WatchLoad(value: 32.5))
+        // Concluída não muda.
+        s = try #require(SessionReducer.apply(command(.completeSet(setID: sets[0].id, reps: nil, load: nil,
+                                                                   durationSeconds: nil, distanceMeters: nil), s), to: s))
+        s = try #require(SessionReducer.apply(command(.adjustLoad(setID: sets[3].id, delta: 2.5), s), to: s))
+        #expect(s.exercises[0].sets[0].load == WatchLoad(value: 32.5))
+        #expect(s.exercises[0].sets[1].load == WatchLoad(value: 35))
+    }
+
+    @Test func enteringRepsSetsTargetOfPendingSets() throws {
+        var s = snapshot()
+        let sets = s.exercises[0].sets
+        s = try #require(SessionReducer.apply(command(.completeSet(setID: sets[0].id, reps: nil, load: nil,
+                                                                   durationSeconds: nil, distanceMeters: nil), s), to: s))
+        s = try #require(SessionReducer.apply(command(.completeSet(setID: sets[1].id, reps: nil, load: nil,
+                                                                   durationSeconds: nil, distanceMeters: nil), s), to: s))
+        let before = s.exercises[0].sets[0].repTarget
+        s = try #require(SessionReducer.apply(command(.updateSet(setID: sets[1].id, reps: 13, load: nil,
+                                                                 durationSeconds: nil, distanceMeters: nil), s), to: s))
+        let now = s.exercises[0].sets
+        #expect(now[1].reps == nil && now[1].repTarget == .fixed(reps: 13) && now[1].targetText == "13")
+        #expect(now[2].repTarget == .fixed(reps: 13) && now[3].repTarget == .fixed(reps: 13))
+        #expect(now[0].repTarget == before) // concluída antes: intocada
+        // Limpar não mexe nos alvos.
+        s = try #require(SessionReducer.apply(command(.updateSet(setID: sets[1].id, reps: nil, load: nil,
+                                                                 durationSeconds: nil, distanceMeters: nil), s), to: s))
+        #expect(s.exercises[0].sets[2].repTarget == .fixed(reps: 13))
     }
 
     @Test func definingFirstLoadFillsFollowingSetsWithoutLoad() throws {

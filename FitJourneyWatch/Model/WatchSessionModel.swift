@@ -629,7 +629,9 @@ final class WatchSessionModel {
         haptics.play(.setCompleted)
     }
 
-    /// Registra reps realizadas (botão "+ reps"): mantém a carga exibida. Reps são opcionais (D2).
+    /// Botão "+ reps" (decisão 17/11): na sessão em andamento o número vira o **alvo** de reps da série e das
+    /// pendentes do exercício (o iPhone grava `repTarget`, não reps feitas); `nil` ("Limpar") só limpa as reps,
+    /// sem mexer nos alvos. Mantém a carga exibida.
     func updateReps(setID: UUID, reps: Int?) {
         guard let set = display?.exercises.flatMap(\.sets).first(where: { $0.id == setID }) else { return }
         send(.updateSet(setID: setID, reps: reps, load: set.load, durationSeconds: set.durationSeconds, distanceMeters: set.distanceMeters))
@@ -754,7 +756,7 @@ final class WatchSessionModel {
 
     func finish(rpe: Int?) {
         guard let display else { return }
-        send(.finish(rpe: rpe, applyLoadProposalIDs: display.loadProposals.map(\.prescriptionID)))
+        send(.finish(rpe: rpe, applyLoadProposalIDs: display.defaultProposalIDs))
         // Chamadas repetidas não rearmam o prazo; outra sessão (ou finish depois de rejeição) começa do zero.
         if savingStarted?.sessionID != display.sessionID {
             savingStarted = (display.sessionID, now)

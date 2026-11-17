@@ -18,7 +18,7 @@ struct LoadMemoryPolicyTests {
         ])
         let proposals = CurrentLoadPolicy.proposals(for: [entry])
         #expect(proposals.map(\.prescriptionID) == [p1, p2])
-        #expect(proposals.allSatisfy { $0.isFirstDefinition })
+        #expect(proposals.allSatisfy { $0.isFirstDefinition && $0.to == .kg(12) }) // carga final (17/11)
     }
 
     @Test func unsetUsedLoadAndPendingSetsAreNotFirstDefinitions() {
@@ -122,7 +122,7 @@ struct LoadMemorySessionTests {
         #expect(snap.exercises[1].sets[0].plannedLoad == WatchLoad(value: 0, isBodyweight: true))
     }
 
-    @Test func propagationRespectsPyramidsManualEditsAndWarmups() throws {
+    @Test func propagationOverwritesPyramidsEditsAndEarlierSetsButNotWarmups() throws {
         let f = try EngineFixture()
         let (_, routine, item) = try f.base.makeProgram() // aquecimento 20 kg + 3 × 30 kg
         let pyramid = item.sortedSets.filter { $0.kind == .working }
@@ -135,13 +135,16 @@ struct LoadMemorySessionTests {
         f.apply(.adjustLoad(setID: sets[0].id, delta: 2.5), at: 10, session: session)
         #expect(try f.sets(0)[1].plannedLoad == WatchLoad(value: 30))
 
-        // Edição manual da 3ª série fica; a 2ª ajustada não mexe na de 35 kg (pirâmide).
+        // 17/11: editar a 3ª leva a 2ª (anterior) e a 4ª (pirâmide); ajustar a 2ª sobrescreve a 3ª já editada.
         f.apply(.updateSet(setID: sets[2].id, reps: nil, load: WatchLoad(value: 31), durationSeconds: nil, distanceMeters: nil),
                 at: 20, session: session)
+        sets = try f.sets(0)
+        #expect(sets[1].plannedLoad == WatchLoad(value: 31) && sets[3].plannedLoad == WatchLoad(value: 31))
         f.apply(.adjustLoad(setID: sets[1].id, delta: 2.5), at: 30, session: session)
         sets = try f.sets(0)
-        #expect(sets[2].load == WatchLoad(value: 31))
-        #expect(sets[3].plannedLoad == WatchLoad(value: 35))
+        #expect(sets[2].load == WatchLoad(value: 33.5))
+        #expect(sets[3].plannedLoad == WatchLoad(value: 33.5))
+        #expect(sets[0].load == WatchLoad(value: 22.5)) // aquecimento intocado
     }
 
     @Test func adjustingPropagatesToFollowingUneditedSets() throws {
