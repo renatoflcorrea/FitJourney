@@ -55,13 +55,14 @@ struct SessionEngineReviewTests {
         let f = try EngineFixture()
         let session = try f.start(try f.makeRoutine())
         let set = try f.sets(0)[1].id
-        f.apply(.updateSet(setID: set, reps: 10, load: WatchLoad(value: 30), durationSeconds: nil, distanceMeters: nil),
+        f.apply(.updateSet(setID: set, reps: 12, load: WatchLoad(value: 30), durationSeconds: nil, distanceMeters: nil),
                 at: 300, session: session)
         #expect(f.apply(.updateSet(setID: set, reps: 5, load: nil, durationSeconds: nil, distanceMeters: nil),
                         at: 200, session: session, phoneAt: 310).isApplied)
         #expect(f.apply(.adjustLoad(setID: set, delta: 5), at: 250, session: session, phoneAt: 320).isApplied)
         var line = try f.sets(0)[1]
-        #expect(line.reps == 10 && line.load == WatchLoad(value: 30))
+        // 17/11: reps na sessão em andamento viram alvo (reps feitas ficam vazias).
+        #expect(line.reps == nil && line.repTarget == .fixed(reps: 12) && line.load == WatchLoad(value: 30))
 
         f.apply(complete(set), at: 400, session: session)
         f.apply(.uncompleteSet(setID: set), at: 350, session: session, phoneAt: 410)

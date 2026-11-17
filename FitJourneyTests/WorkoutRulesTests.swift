@@ -80,9 +80,10 @@ struct CurrentLoadPolicyTests {
             .init(prescriptionID: p3, kind: .working, currentLoad: nil, usedLoad: .kg(32), isCompleted: true),
         ])
         let proposals = CurrentLoadPolicy.proposals(for: [entry])
-        #expect(proposals.map(\.prescriptionID) == [p1, p3])
+        // 17/11: carga ajustada → a mesma carga final (última concluída) em todas as válidas.
+        #expect(proposals.map(\.prescriptionID) == [p1, p2, p3])
         #expect(proposals.first?.from == .kg(30))
-        #expect(proposals.first?.to == .kg(32))
+        #expect(proposals.allSatisfy { $0.to == .kg(32) })
     }
 
     @Test func noProposalWhenAWorkingSetIsPending() {

@@ -64,8 +64,13 @@ enum SessionReducer {
             guard let location = locate(setID, in: s) else { return s }
             let shownBefore = shownLoad(s.exercises[location.e].sets[location.s])
             defer { propagateLoad(&s, from: location, previous: shownBefore) }
+            // Reps novas viram alvo (mesma regra do iPhone, `SessionStore.updateSet`, 17/11).
+            let entersTarget = reps.map { enteredReps in
+                enteredReps != s.exercises[location.e].sets[location.s].reps && entersRepTarget(s, at: location)
+            } ?? false
+            if entersTarget, let reps { retarget(&s, from: location, reps: reps) }
             mutate(&s, location) {
-                $0.reps = reps
+                $0.reps = entersTarget ? nil : reps
                 $0.load = load
                 $0.durationSeconds = duration
                 $0.distanceMeters = distance
@@ -303,22 +308,41 @@ enum SessionReducer {
 
     private static func isWorking(_ kind: WatchSetKind) -> Bool { kind != .warmup && kind != .feeder }
 
-    /// Mesma regra do iPhone (`SessionStore.propagateLoad`, P2.8): a carga nova da série vai para as seguintes
-    /// pendentes do mesmo exercício que mostravam a mesma carga planejada e não foram editadas.
+    /// Mesma regra do iPhone (`SessionStore.propagateLoad`, 17/11 "mesma carga em todas"): a carga nova da série
+    /// vai para **todas** as pendentes do mesmo exercício e grupo (válida × aquecimento/preparatória), antes ou
+    /// depois, editadas ou não (sobrescreve `load` se registrada, senão `plannedLoad`). Concluídas não mudam.
     private static func propagateLoad(_ s: inout SessionSnapshot, from location: Location, previous: WatchLoad?) {
         let source = s.exercises[location.e].sets[location.s]
         guard let new = definedLoad(source.load) else { return }
         if let previous, equivalent(previous, new) { return }
-        let working = isWorking(source.kind)
-        for index in s.exercises[location.e].sets.indices where index > location.s {
-            let other = s.exercises[location.e].sets[index]
-            guard !other.isCompleted, other.load == nil, isWorking(other.kind) == working else { continue }
-            let matches: Bool = switch (definedLoad(other.plannedLoad), previous) {
-            case (nil, nil): true
-            case let (planned?, previous?): equivalent(planned, previous)
-            default: false
+        for index in peerIndices(s, of: location) {
+            if s.exercises[location.e].sets[index].load != nil {
+                s.exercises[location.e].sets[index].load = new
+            } else {
+                s.exercises[location.e].sets[index].plannedLoad = new
             }
-            if matches { s.exercises[location.e].sets[index].plannedLoad = new }
+        }
+    }
+
+    /// Séries pendentes do mesmo exercício e grupo, menos a própria.
+    private static func peerIndices(_ s: SessionSnapshot, of location: Location) -> [Int] {
+        let sets = s.exercises[location.e].sets
+        let working = isWorking(sets[location.s].kind)
+        return sets.indices.filter { $0 != location.s && !sets[$0].isCompleted && isWorking(sets[$0].kind) == working }
+    }
+
+    /// Reps digitadas viram alvo: exercício de repetições e série não AMRAP (a sessão já está em andamento).
+    private static func entersRepTarget(_ s: SessionSnapshot, at location: Location) -> Bool {
+        let kind = s.exercises[location.e].measurementKind
+        return (kind == .repsAndLoad || kind == .repsOnly) && s.exercises[location.e].sets[location.s].repTarget != .amrap
+    }
+
+    /// Alvo `.fixed(reps)` na série e nas pendentes do grupo (AMRAP fica), com o texto do alvo ("10").
+    private static func retarget(_ s: inout SessionSnapshot, from location: Location, reps: Int) {
+        for index in [location.s] + peerIndices(s, of: location)
+        where s.exercises[location.e].sets[index].repTarget != .amrap {
+            s.exercises[location.e].sets[index].repTarget = .fixed(reps: reps)
+            s.exercises[location.e].sets[index].targetText = "\(reps)"
         }
     }
 

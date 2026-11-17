@@ -446,12 +446,15 @@ final class SessionEngine {
             let proposals = try store.loadProposals(for: session).filter {
                 ids.contains($0.prescriptionID) || $0.isFirstDefinition
             }
+            // Alvos de reps (17/11): os mesmos `prescriptionID`s confirmados (o relógio manda todos = padrão).
+            let repProposals = try store.repTargetProposals(for: session).filter { ids.contains($0.prescriptionID) }
             // Mesmo resultado antes ou depois de `finish` (duração por datas; histórico exclui a sessão).
             summary = try store.summary(for: session, at: at)
             session.holdSetID = nil
             session.holdStartedAt = nil
             session.restTotalSeconds = nil
-            try store.finish(session, at: at, sessionRPE: rpe, mood: mood, notes: notes, applying: proposals)
+            try store.finish(session, at: at, sessionRPE: rpe, mood: mood, notes: notes, applying: proposals,
+                             applyingRepTargets: repProposals)
             try record(command, in: session, at: at)
             terminal = SessionSnapshotBuilder.make(session: session, store: store, restAlertRepeat: RestPreference.alertRepeatEnabled(preferences))
         } catch {

@@ -450,17 +450,24 @@ struct SessionSetRow: View {
         )
     }
 
-    /// Reps realizadas: opcionais, começam vazias (D2).
+    /// Alvo de reps do exercício (decisão 17/11): mostra o alvo numérico da série e o número digitado vira o alvo
+    /// dela e das pendentes (não grava reps feitas). AMRAP: reps realizadas, opcionais (D2).
+    @ViewBuilder
     private var repsField: some View {
-        FJOptionalNumberField("Repetições realizadas", prompt: "+ reps", value: repsBinding, unit: "reps")
-            .frame(maxWidth: .infinity, alignment: .leading)
+        if SessionPresentation.repsEntersTarget(entry) {
+            FJOptionalNumberField("Alvo de repetições do exercício", prompt: "alvo", value: repsBinding, unit: "reps")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            FJOptionalNumberField("Repetições realizadas", prompt: "+ reps", value: repsBinding, unit: "reps")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var repsBinding: Binding<Int?> {
         Binding(
-            get: { entry.reps },
+            get: { SessionPresentation.repsFieldValue(entry) },
             set: { newValue in
-                guard newValue != entry.reps else { return }
+                guard newValue != SessionPresentation.repsFieldValue(entry) else { return }
                 coordinator.send(.updateSet(setID: entry.id, reps: newValue, load: entry.load,
                                             durationSeconds: entry.durationSeconds, distanceMeters: entry.distanceMeters))
             }

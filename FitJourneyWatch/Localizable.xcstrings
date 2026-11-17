@@ -301,6 +301,16 @@
         }
       }
     },
+    "Alvo de repetições" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Target reps"
+          }
+        }
+      }
+    },
     "Antebraço" : {
       "localizations" : {
         "en" : {

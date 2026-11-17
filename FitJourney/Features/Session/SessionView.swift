@@ -546,7 +546,7 @@ struct SessionSetEditSheet: View {
         self.exercise = exercise
         self.set = set
         _load = State(initialValue: SessionPresentation.displayLoad(set)?.value ?? 0)
-        _reps = State(initialValue: set.reps)
+        _reps = State(initialValue: SessionPresentation.repsFieldValue(set))
         _seconds = State(initialValue: set.durationSeconds ?? 0)
         _distanceKm = State(initialValue: (set.distanceMeters ?? 0) / 1_000)
         _holdTarget = State(initialValue: Double(set.targetHoldSeconds ?? set.targetDurationSeconds ?? 0))
@@ -587,7 +587,12 @@ struct SessionSetEditSheet: View {
                             }
                             switch exercise.measurementKind {
                             case .repsAndLoad, .repsOnly:
-                                FJOptionalNumberField("Repetições realizadas", prompt: "+ reps", value: $reps, unit: "reps")
+                                if SessionPresentation.repsEntersTarget(set) {
+                                    // 17/11: o número vira o alvo do exercício (esta série e as pendentes).
+                                    FJOptionalNumberField("Alvo de repetições do exercício", prompt: "alvo", value: $reps, unit: "reps")
+                                } else {
+                                    FJOptionalNumberField("Repetições realizadas", prompt: "+ reps", value: $reps, unit: "reps")
+                                }
                             case .isometric:
                                 NumberStepperField("Sustentação", value: $seconds, unit: "s", step: 1, range: 0...3_600)
                                 NumberStepperField("Alvo da sustentação", value: $holdTarget, unit: "s", step: 5, range: holdRange)
@@ -669,7 +674,9 @@ struct SessionSetEditSheet: View {
         default: set.durationSeconds
         }
         let distance: Double? = exercise.measurementKind == .timeOrDistance && distanceKm > 0 ? distanceKm * 1_000 : set.distanceMeters
-        coordinator.send(.updateSet(setID: set.id, reps: reps, load: newLoad, durationSeconds: duration, distanceMeters: distance))
+        // Campo de reps sem mudança mantém as reps registradas (não reenvia o alvo mostrado, que achataria as outras).
+        let sentReps = reps == SessionPresentation.repsFieldValue(set) ? set.reps : reps
+        coordinator.send(.updateSet(setID: set.id, reps: sentReps, load: newLoad, durationSeconds: duration, distanceMeters: distance))
         if kind != (set.kind == .unknown ? .working : set.kind) {
             coordinator.send(.changeSetKind(setID: set.id, kind: kind))
         }

@@ -192,19 +192,26 @@ struct SessionFinishView: View {
         }
     }
 
+    /// Uma linha por exercício (17/11: a carga e o alvo de reps propostos valem para todas as séries válidas).
     @ViewBuilder
     private func proposalsCard(_ summary: SessionSummary) -> some View {
-        if !summary.loadProposals.isEmpty {
+        let groups = PrescriptionUpdateGroup.make(load: summary.loadProposals, reps: summary.repTargetProposals)
+        if !groups.isEmpty {
             FJCard {
                 VStack(alignment: .leading, spacing: FJSpacing.s) {
-                    FJSectionHeader("Atualizar carga atual",
-                                    subtitle: "Usa a carga das séries concluídas como ponto de partida do próximo treino")
-                    ForEach(summary.loadProposals) { proposal in
-                        if proposal.isFirstDefinition {
+                    if summary.repTargetProposals.isEmpty {
+                        FJSectionHeader("Atualizar carga atual",
+                                        subtitle: "Usa a carga das séries concluídas como ponto de partida do próximo treino")
+                    } else {
+                        FJSectionHeader("Atualizar ficha",
+                                        subtitle: "A carga e o alvo de repetições deste treino viram o ponto de partida do próximo")
+                    }
+                    ForEach(groups) { group in
+                        if group.isAutomatic {
                             // Ficha sem carga: a primeira carga definida é guardada sempre (P2.8).
                             Label {
                                 VStack(alignment: .leading, spacing: FJSpacing.xxs) {
-                                    Text(proposalText(proposal)).font(FJFont.body)
+                                    Text(proposalText(group)).font(FJFont.body)
                                     Text("Primeira carga definida — salva automaticamente")
                                         .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
                                 }
@@ -213,8 +220,14 @@ struct SessionFinishView: View {
                             }
                             .frame(minHeight: FJSize.minTap, alignment: .leading)
                         } else {
-                            Toggle(isOn: binding(for: proposal.id)) {
-                                Text(proposalText(proposal)).font(FJFont.body)
+                            Toggle(isOn: binding(for: group.confirmableIDs)) {
+                                VStack(alignment: .leading, spacing: FJSpacing.xxs) {
+                                    Text(proposalText(group)).font(FJFont.body)
+                                    if group.isFirstDefinition {
+                                        Text("Primeira carga definida — salva automaticamente")
+                                            .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                                    }
+                                }
                             }
                             .frame(minHeight: FJSize.minTap)
                         }
@@ -224,18 +237,29 @@ struct SessionFinishView: View {
         }
     }
 
-    private func proposalText(_ proposal: LoadUpdateProposal) -> String {
-        let to = SessionPresentation.loadText(WatchLoad(proposal.to)) ?? ""
-        guard let from = Load.defined(proposal.from), let fromText = SessionPresentation.loadText(WatchLoad(from)) else {
-            return "\(proposal.exerciseName): \(to)"
+    /// "Supino: 30 kg → 32 kg · alvo 10 → 12 repetições".
+    private func proposalText(_ group: PrescriptionUpdateGroup) -> String {
+        var parts: [String] = []
+        if let to = group.toLoad.flatMap({ SessionPresentation.loadText(WatchLoad($0)) }) {
+            if let from = Load.defined(group.fromLoad).flatMap({ SessionPresentation.loadText(WatchLoad($0)) }) {
+                parts.append("\(from) → \(to)")
+            } else {
+                parts.append(to)
+            }
         }
-        return "\(proposal.exerciseName): \(fromText) → \(to)"
+        if let to = group.toRepTarget {
+            let target = group.fromRepTarget.map { "\($0.displayText) → \(to.displayText)" } ?? to.displayText
+            parts.append(String(localized: "alvo \(target) repetições"))
+        }
+        return "\(group.exerciseName): \(parts.joined(separator: " · "))"
     }
 
-    private func binding(for id: UUID) -> Binding<Bool> {
+    private func binding(for ids: [UUID]) -> Binding<Bool> {
         Binding(
-            get: { applied.contains(id) },
-            set: { if $0 { applied.insert(id) } else { applied.remove(id) } }
+            get: { ids.allSatisfy(applied.contains) },
+            set: { isOn in
+                if isOn { applied.formUnion(ids) } else { applied.subtract(ids) }
+            }
         )
     }
 
@@ -255,7 +279,7 @@ struct SessionFinishView: View {
     private func load() {
         do {
             let loaded = try engine.currentSummary()
-            let ids = Set(loaded?.loadProposals.map(\.id) ?? [])
+            let ids = Set((loaded?.loadProposals.map(\.id) ?? []) + (loaded?.repTargetProposals.map(\.id) ?? []))
             let isFirst = summary == nil
             applied = isFirst ? ids : applied.intersection(ids).union(ids.subtracting(knownProposals))
             knownProposals = ids
@@ -275,7 +299,9 @@ struct SessionFinishView: View {
     private func save() {
         isSaving = true
         // Preserva a ordem do resumo para um comando determinístico.
-        let ids = (summary?.loadProposals ?? []).map(\.id).filter(applied.contains)
+        var seen = Set<UUID>()
+        let ids = ((summary?.loadProposals ?? []).map(\.id) + (summary?.repTargetProposals ?? []).map(\.id))
+            .filter { applied.contains($0) && seen.insert($0).inserted }
         // `notes: nil` mantém a nota da sessão; só envia se o usuário a mudou aqui.
         let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
         let finishNotes: String? = trimmed == initialNotes.trimmingCharacters(in: .whitespacesAndNewlines) ? nil : trimmed

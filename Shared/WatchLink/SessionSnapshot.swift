@@ -52,6 +52,9 @@ struct SessionSnapshot: Codable, Sendable, Hashable {
     var restAlertRepeat: Bool? = nil
     /// Idioma efetivo do app no iPhone (`AppLanguageCode`: "pt-BR" | "en"); ausente = sem mudança no relógio.
     var language: String? = nil
+    /// Propostas de novo alvo de repetições na ficha (decisão 17/11) se a sessão terminasse agora. Confirmadas
+    /// pelos mesmos `prescriptionID`s de `finish(applyLoadProposalIDs:)`. `nil` = nenhuma (ou iPhone antigo).
+    var repTargetProposals: [RepTargetProposal]? = nil
 
     /// Tamanho da janela de `appliedCommandIDs`.
     static let appliedCommandWindow = 64
@@ -133,6 +136,22 @@ struct SessionSnapshot: Codable, Sendable, Hashable {
         var to: WatchLoad
 
         var id: UUID { prescriptionID }
+    }
+
+    struct RepTargetProposal: Codable, Sendable, Hashable, Identifiable {
+        var prescriptionID: UUID
+        var exerciseName: String
+        var from: WatchRepTarget?
+        var to: WatchRepTarget
+
+        var id: UUID { prescriptionID }
+    }
+
+    /// `prescriptionID`s de todas as propostas (carga e alvo de reps), sem repetir, na ordem — o padrão do `finish`.
+    var defaultProposalIDs: [UUID] {
+        var seen = Set<UUID>()
+        return (loadProposals.map(\.prescriptionID) + (repTargetProposals ?? []).map(\.prescriptionID))
+            .filter { seen.insert($0).inserted }
     }
 
     // MARK: Relógio (mesma regra do `SessionClock` do app)

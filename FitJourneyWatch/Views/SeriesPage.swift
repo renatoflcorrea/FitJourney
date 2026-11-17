@@ -285,7 +285,9 @@ struct RestDoneView: View {
     }
 }
 
-/// "+ reps": seletor pela Coroa para a última série concluída; começa no piso da faixa; "Limpar" volta a não informado.
+/// "+ reps": seletor pela Coroa do **alvo de repetições** (decisão 17/11) a partir da última série concluída — o número
+/// vira o alvo dela e das pendentes do exercício; começa nas reps registradas ou no alvo (piso da faixa). "Limpar"
+/// limpa reps registradas e não mexe nos alvos.
 struct RepsSheet: View {
     @Environment(WatchSessionModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -295,12 +297,17 @@ struct RepsSheet: View {
         model.display?.exercises.flatMap(\.sets).filter(\.isCompleted).max { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
     }
 
+    /// AMRAP registra as reps feitas; os demais alvos viram o número escolhido.
+    private var title: LocalizedStringKey {
+        lastCompleted?.repTarget == .amrap ? "Repetições" : "Alvo de repetições"
+    }
+
     var body: some View {
         VStack(spacing: 6) {
-            Text("Repetições").font(.footnote).foregroundStyle(WF.textSecondary)
+            Text(title).font(.footnote).foregroundStyle(WF.textSecondary)
             Text("\(Int(reps))").font(WF.number(48))
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Repetições")
+                .accessibilityLabel(title)
                 .accessibilityValue("\(Int(reps))")
                 .accessibilityAdjustableAction { direction in
                     switch direction {

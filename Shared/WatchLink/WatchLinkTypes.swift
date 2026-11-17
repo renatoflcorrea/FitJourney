@@ -12,6 +12,7 @@ import Foundation
 // - v2: IDs determinísticos; comandos de nota/dor/série/cardio; `finish` com humor/nota; snapshot com
 //   `appliedCommandIDs`, `restTotalSeconds`, `focusedExerciseID`, rodada do grupo, alvos de cardio;
 //   mensagens `liveMetrics`, `workoutStatus` e `recordingRequest`. v1 recebe `.incompatible`.
+//   17/11: `SessionSnapshot.repTargetProposals` (opcional — versões anteriores ignoram/omitem; sem subir a versão).
 
 enum WatchLinkProtocol {
     static let schemaVersion = 2

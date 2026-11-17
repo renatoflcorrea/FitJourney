@@ -20,6 +20,8 @@ struct SessionSummary: Sendable, Hashable {
     var personalRecords: [PersonalRecord]
     /// Propostas de atualização de carga atual (R-T2) — padrão: todas marcadas.
     var loadProposals: [LoadUpdateProposal]
+    /// Propostas de novo alvo de repetições na ficha (decisão 17/11) — mesma confirmação, padrão: marcadas.
+    var repTargetProposals: [RepTargetUpdateProposal] = []
 }
 
 /// Ciclo de vida da sessão de treino. Persiste a cada mudança; relógio só por datas.
@@ -225,10 +227,21 @@ struct SessionStore {
     }
 
     /// Edita valores realizados (antes ou depois de concluir). Em sessão encerrada marca "editado".
+    ///
+    /// **Reps na sessão em andamento (decisão 17/11):** um número de reps novo (diferente do registrado) numa
+    /// série de repetições vira o **alvo** (`.fixed(N)`) dela e de todas as pendentes do mesmo grupo
+    /// (`retarget`), e `reps` fica `nil` — concluída sem reps = feita dentro do alvo, então ela lê como N.
+    /// `reps == nil` (limpar) só limpa as reps, sem mexer nos alvos. Alvo AMRAP não vira número: a série AMRAP
+    /// registra as reps feitas. Sessão encerrada (histórico): grava as reps feitas, como sempre.
     func updateSet(_ log: SetLog, reps: Int?, load: Load?, durationSeconds: Double? = nil,
                    distanceMeters: Double? = nil, at date: Date = .now) throws {
         let shown = displayedLoad(log)
-        log.reps = reps
+        if let reps, reps != log.reps, entersRepTarget(log) {
+            retarget(log, reps: reps, at: date)
+            log.reps = nil
+        } else {
+            log.reps = reps
+        }
         log.load = load
         propagateLoad(from: log, previous: shown, at: date)
         log.durationSeconds = durationSeconds
@@ -239,7 +252,7 @@ struct SessionStore {
 
     /// Soma `delta` (na unidade da carga) à carga exibida da série: a registrada, senão a planejada, senão a
     /// última carga usada no exercício (P2.8), e só então zero (peso corporal em exercícios sem carga).
-    /// Carga absoluta nunca fica negativa. As séries seguintes pendentes acompanham (`propagateLoad`).
+    /// Carga absoluta nunca fica negativa. As séries pendentes do exercício acompanham (`propagateLoad`).
     func adjustLoad(_ log: SetLog, by delta: Double, at date: Date = .now) throws {
         let kind = log.sessionExercise?.measurementKind ?? .repsAndLoad
         let shown = displayedLoad(log)
@@ -469,7 +482,8 @@ struct SessionStore {
             personalRecords: WorkoutMetrics.personalRecords(
                 session: performedByExercise,
                 history: try historyBests(exerciseIDs: Set(performedByExercise.keys), excluding: session)),
-            loadProposals: try loadProposals(for: session)
+            loadProposals: try loadProposals(for: session),
+            repTargetProposals: try repTargetProposals(for: session)
         )
     }
 
@@ -483,17 +497,40 @@ struct SessionStore {
                     let prescription = log.prescriptionID.flatMap { prescriptions[$0] }
                     return CurrentLoadPolicy.SetEntry(prescriptionID: prescription?.id, kind: log.kind,
                                                       currentLoad: prescription?.effectiveLoad,
-                                                      usedLoad: log.load, isCompleted: log.isCompleted)
+                                                      usedLoad: log.load, isCompleted: log.isCompleted,
+                                                      completedAt: log.completedAt)
                 },
-                isEligible: exercise.status != .skipped && exercise.substitutedFromName == nil
+                isEligible: exercise.status != .skipped && exercise.substitutedFromName == nil,
+                sessionExerciseID: exercise.id
             )
         }
         return CurrentLoadPolicy.proposals(for: entries)
     }
 
-    /// Finaliza: grava fim, RPE/humor/nota e aplica as propostas de carga confirmadas pelo usuário.
+    /// Propostas de novo alvo de repetições na ficha (decisão 17/11) segundo `RepTargetPolicy`.
+    func repTargetProposals(for session: WorkoutSession) throws -> [RepTargetUpdateProposal] {
+        let prescriptions = try prescriptionsByID(for: session)
+        let entries = session.sortedExercises.map { exercise in
+            RepTargetPolicy.ExerciseEntry(
+                exerciseName: exercise.name,
+                sets: exercise.sortedSets.map { log in
+                    let prescription = log.prescriptionID.flatMap { prescriptions[$0] }
+                    return RepTargetPolicy.SetEntry(prescriptionID: prescription?.id, kind: log.kind,
+                                                    prescribed: prescription?.repTarget, session: log.repTarget,
+                                                    isCompleted: log.isCompleted, updatedAt: log.updatedAt)
+                },
+                isEligible: exercise.status != .skipped && exercise.substitutedFromName == nil
+                    && Self.usesRepTarget(exercise.measurementKind),
+                sessionExerciseID: exercise.id
+            )
+        }
+        return RepTargetPolicy.proposals(for: entries)
+    }
+
+    /// Finaliza: grava fim, RPE/humor/nota e aplica as propostas de carga e de alvo de reps confirmadas pelo usuário.
     func finish(_ session: WorkoutSession, at date: Date = .now, sessionRPE: Int? = nil, mood: Int? = nil,
-                notes: String? = nil, applying proposals: [LoadUpdateProposal] = []) throws {
+                notes: String? = nil, applying proposals: [LoadUpdateProposal] = [],
+                applyingRepTargets repProposals: [RepTargetUpdateProposal] = []) throws {
         guard session.status == .inProgress else { throw SessionStoreError.sessionNotInProgress }
         var clock = session.clock
         clock.finish(at: date)
@@ -507,13 +544,18 @@ struct SessionStore {
             exercise.status = .partial
         }
 
-        if !proposals.isEmpty {
-            let ids = Set(proposals.map(\.prescriptionID))
+        if !proposals.isEmpty || !repProposals.isEmpty {
+            let ids = Set(proposals.map(\.prescriptionID) + repProposals.map(\.prescriptionID))
             let prescriptions = try context.fetch(FetchDescriptor<SetPrescription>(predicate: #Predicate { ids.contains($0.id) }))
             let byID = Dictionary(prescriptions.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
             for proposal in proposals {
                 guard let prescription = byID[proposal.prescriptionID] else { continue }
                 prescription.currentLoad = proposal.to
+                prescription.updatedAt = date
+            }
+            for proposal in repProposals {
+                guard let prescription = byID[proposal.prescriptionID] else { continue }
+                prescription.repTarget = proposal.to
                 prescription.updatedAt = date
             }
         }
@@ -535,25 +577,54 @@ struct SessionStore {
         log.load ?? Load.defined(log.plannedLoad)
     }
 
-    /// Propaga a carga nova de uma série às **seguintes pendentes do mesmo exercício** que ainda mostram a carga
-    /// planejada que esta série mostrava (`previous`) e não foram editadas (sem `load` registrada), do mesmo
-    /// grupo (válida × aquecimento/preparatória). Pirâmides (cargas planejadas diferentes) ficam intactas.
-    /// Só com a sessão em andamento (corrigir uma sessão passada não mexe nas outras séries). Idempotente: mesma carga → nada muda.
+    /// Propaga a carga nova de uma série (decisão 17/11, "mesma carga em todas") a **todas as pendentes do mesmo
+    /// exercício e do mesmo grupo** (válida × aquecimento/preparatória — `SessionSetPropagation`), antes ou depois
+    /// dela, com carga planejada diferente (pirâmide vira carga única) ou já editada: sobrescreve `load` se
+    /// registrada, senão `plannedLoad`. Concluídas nunca mudam. Só com a sessão em andamento (corrigir uma sessão
+    /// passada não mexe nas outras séries). Idempotente: carga mostrada igual à anterior → nada muda (concluir com
+    /// a carga exibida não achata a pirâmide).
     private func propagateLoad(from log: SetLog, previous: Load?, at date: Date) {
         guard let new = Load.defined(log.load), let exercise = log.sessionExercise,
               exercise.session?.status == .inProgress else { return }
         if let previous, previous.isEquivalent(to: new) { return }
-        let working = log.kind.isWorking
-        for other in exercise.sets ?? [] where other.sortIndex > log.sortIndex && !other.isCompleted
-            && other.load == nil && other.kind.isWorking == working {
-            let planned = Load.defined(other.plannedLoad)
-            let matches: Bool = switch (planned, previous) {
-            case (nil, nil): true
-            case let (planned?, previous?): planned.isEquivalent(to: previous)
-            default: false
+        for other in peers(of: log) {
+            if other.load != nil {
+                guard other.load != new else { continue }
+                other.load = new
+            } else {
+                guard other.plannedLoad != new else { continue }
+                other.plannedLoad = new
             }
-            guard matches else { continue }
-            other.plannedLoad = new
+            other.updatedAt = date
+        }
+    }
+
+    /// Séries que acompanham `log` na sessão (pendentes, mesmo exercício e grupo).
+    private func peers(of log: SetLog) -> [SetLog] {
+        let sets = log.sessionExercise?.sets ?? []
+        let ids = Set(SessionSetPropagation.peers(
+            of: log.id, in: sets.map { .init(id: $0.id, kind: $0.kind, isCompleted: $0.isCompleted) }))
+        return sets.filter { ids.contains($0.id) }
+    }
+
+    /// Exercícios cujo alvo é de repetições (carga e reps, ou peso corporal).
+    static func usesRepTarget(_ kind: MeasurementKind) -> Bool {
+        kind == .repsAndLoad || kind == .repsOnly
+    }
+
+    /// Reps digitadas viram alvo: sessão em andamento, exercício de repetições, série não AMRAP.
+    private func entersRepTarget(_ log: SetLog) -> Bool {
+        guard let exercise = log.sessionExercise, exercise.session?.status == .inProgress,
+              Self.usesRepTarget(exercise.measurementKind) else { return false }
+        return log.repTarget != .amrap
+    }
+
+    /// Novo alvo `.fixed(reps)` na série e nas pendentes do mesmo grupo (as AMRAP ficam como estão).
+    private func retarget(_ log: SetLog, reps: Int, at date: Date) {
+        let target = RepTarget.fixed(reps: reps)
+        log.repTarget = target
+        for other in peers(of: log) where other.repTarget != .amrap && other.repTarget != target {
+            other.repTarget = target
             other.updatedAt = date
         }
     }

@@ -73,6 +73,20 @@ enum SessionPresentation {
         return planned
     }
 
+    /// O número digitado no campo de reps vira o alvo do exercício (decisão 17/11) — exceto AMRAP, que registra
+    /// as reps feitas.
+    static func repsEntersTarget(_ set: SessionSnapshot.ExerciseSet) -> Bool {
+        set.repTarget != .amrap
+    }
+
+    /// Valor do campo de reps na sessão: reps registradas (AMRAP ou sessões antigas), senão o alvo numérico
+    /// (`.fixed`) da série; faixa sem número digitado = vazio.
+    static func repsFieldValue(_ set: SessionSnapshot.ExerciseSet) -> Int? {
+        if let reps = set.reps { return reps }
+        guard repsEntersTarget(set), case .fixed(let n) = set.repTarget else { return nil }
+        return n
+    }
+
     /// "8–12" → "8 a 12"; "45 s" → "45 segundos"; "20 min" → "20 minutos"; "AMRAP" → "máximo de repetições".
     static func spokenTarget(_ text: String) -> String {
         if text.uppercased() == "AMRAP" { return String(localized: "máximo de repetições") }

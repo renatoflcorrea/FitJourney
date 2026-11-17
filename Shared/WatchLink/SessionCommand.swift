@@ -75,7 +75,8 @@ struct SessionCommand: Codable, Sendable, Hashable, Identifiable {
         case reorderExercise(exerciseID: UUID, toIndex: Int)
         case pause
         case resume
-        /// Finaliza com RPE de sessão (1–10), as propostas de carga confirmadas (`prescriptionID`s),
+        /// Finaliza com RPE de sessão (1–10), as propostas de carga e de alvo de reps confirmadas (`prescriptionID`s;
+        /// um ID confirma as duas da mesma série prescrita),
         /// humor/energia (1–5) e nota da sessão (`nil` = mantém a já anotada).
         case finish(rpe: Int?, applyLoadProposalIDs: [UUID], mood: Int? = nil, notes: String? = nil)
         /// Descarta a sessão (nada fica no histórico).
