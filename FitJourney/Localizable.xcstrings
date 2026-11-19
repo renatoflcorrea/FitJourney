@@ -21084,6 +21084,56 @@
           }
         }
       }
+    },
+    "a assinatura do OpenCode Go não está ativa; confira em opencode.ai": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "your OpenCode Go subscription isn't active; check opencode.ai"
+          }
+        }
+      }
+    },
+    "este modelo pode treinar com seus dados; escolha outro em Ajustes de IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "this model may train on your data; choose another in AI Settings"
+          }
+        }
+      }
+    },
+    "Limite da assinatura atingido": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subscription limit reached"
+          }
+        }
+      }
+    },
+    "Limite de uso da sua assinatura atingido. Tente de novo em cerca de %@ ou troque de provedor em Ajustes de IA.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You've reached your subscription's usage limit. Try again in about %@ or switch providers in AI Settings."
+          }
+        }
+      }
+    },
+    "Limite de uso da sua assinatura atingido. Tente de novo mais tarde ou troque de provedor em Ajustes de IA.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You've reached your subscription's usage limit. Try again later or switch providers in AI Settings."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

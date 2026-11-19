@@ -7,6 +7,7 @@ import Foundation
 /// pedido (Authorization, x-api-key e os cabeçalhos marcados como sensíveis) e do `Redactor`
 /// antes de virarem mensagem.
 struct HTTPClient: Sendable {
+    enum ErrorDialect: Sendable, Hashable { case standard, openCode }
     struct Timeouts: Sendable, Hashable {
         var chat: TimeInterval
         static let standard = Timeouts(chat: 120)
@@ -52,28 +53,35 @@ struct HTTPClient: Sendable {
     let retryPolicy: RetryPolicy
     /// 403 vira `badRequest(status: 403)` em vez de `unauthorized` (o ChatGPT distingue token vencido de bloqueio).
     private let forbiddenKeepsStatus: Bool
+    private let errorDialect: ErrorDialect
 
     init(session: URLSession = HTTPClient.sharedSession, sensitiveHeaderNames: Set<String> = [],
-         retryPolicy: RetryPolicy = .standard, forbiddenKeepsStatus: Bool = false) {
+         retryPolicy: RetryPolicy = .standard, forbiddenKeepsStatus: Bool = false, errorDialect: ErrorDialect = .standard) {
         self.session = session
         self.sensitiveHeaderNames = Set(sensitiveHeaderNames.map { $0.lowercased() })
         self.retryPolicy = retryPolicy
         self.forbiddenKeepsStatus = forbiddenKeepsStatus
+        self.errorDialect = errorDialect
     }
 
     func addingSensitiveHeaders(_ names: some Sequence<String>) -> HTTPClient {
         HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames.union(names.map { $0.lowercased() }),
-                   retryPolicy: retryPolicy, forbiddenKeepsStatus: forbiddenKeepsStatus)
+                   retryPolicy: retryPolicy, forbiddenKeepsStatus: forbiddenKeepsStatus, errorDialect: errorDialect)
     }
 
     func withRetryPolicy(_ policy: RetryPolicy) -> HTTPClient {
         HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames, retryPolicy: policy,
-                   forbiddenKeepsStatus: forbiddenKeepsStatus)
+                   forbiddenKeepsStatus: forbiddenKeepsStatus, errorDialect: errorDialect)
     }
 
     func keepingForbiddenStatus() -> HTTPClient {
         HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames, retryPolicy: retryPolicy,
-                   forbiddenKeepsStatus: true)
+                   forbiddenKeepsStatus: true, errorDialect: errorDialect)
+    }
+
+    func withErrorDialect(_ dialect: ErrorDialect) -> HTTPClient {
+        HTTPClient(session: session, sensitiveHeaderNames: sensitiveHeaderNames, retryPolicy: retryPolicy,
+                   forbiddenKeepsStatus: forbiddenKeepsStatus, errorDialect: dialect)
     }
 
     func data(for request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -115,7 +123,7 @@ struct HTTPClient: Sendable {
             }
             if validateStatus || (300 ..< 400).contains(http.statusCode) {
                 try Self.validate(http, data: data, request: request, sensitiveHeaders: sensitiveHeaderNames,
-                                  forbiddenKeepsStatus: forbiddenKeepsStatus)
+                                  forbiddenKeepsStatus: forbiddenKeepsStatus, errorDialect: errorDialect)
             }
             return (data, http)
         } catch {
@@ -136,7 +144,7 @@ struct HTTPClient: Sendable {
                     if body.count > 64_000 { break }
                 }
                 try Self.validate(http, data: body, request: request, sensitiveHeaders: sensitiveHeaderNames,
-                                  forbiddenKeepsStatus: forbiddenKeepsStatus)
+                                  forbiddenKeepsStatus: forbiddenKeepsStatus, errorDialect: errorDialect)
                 throw AIError.network(code: URLError.badServerResponse.rawValue, retryable: false)
             }
             return (bytes, http)
@@ -157,7 +165,7 @@ struct HTTPClient: Sendable {
     }
 
     static func validate(_ response: HTTPURLResponse, data: Data, request: URLRequest? = nil,
-                         sensitiveHeaders: Set<String> = [], forbiddenKeepsStatus: Bool = false) throws {
+                         sensitiveHeaders: Set<String> = [], forbiddenKeepsStatus: Bool = false, errorDialect: ErrorDialect = .standard) throws {
         let status = response.statusCode
         guard !(200 ..< 300).contains(status) else { return }
 
@@ -171,6 +179,20 @@ struct HTTPClient: Sendable {
             if !credential.isEmpty { safeBody = safeBody.replacingOccurrences(of: credential, with: "<redacted>") }
         }
         let message = errorMessage(from: Data(safeBody.utf8))
+        if errorDialect == .openCode {
+            let lower = safeBody.lowercased()
+            if status == 403 && (lower.contains("free tier") || lower.contains("within opencode")) {
+                throw AIError.notConfigured(reason: String(localized: "modelos “-free” só funcionam dentro do OpenCode; escolha outro modelo"))
+            }
+            if status == 402 {
+                throw AIError.notConfigured(reason: String(localized: "a assinatura do OpenCode Go não está ativa; confira em opencode.ai"))
+            }
+            if status == 429 {
+                let wait = response.value(forHTTPHeaderField: "Retry-After").flatMap { TimeInterval($0.trimmingCharacters(in: .whitespaces)) }
+                if let wait, wait >= 0, wait <= 20 { throw AIError.rateLimited(retryAfter: wait) }
+                throw AIError.usageLimitReached(retryAfter: wait)
+            }
+        }
         switch status {
         case 300 ..< 400:
             throw AIError.badRequest(status: status, message: "redirecionamento recusado")

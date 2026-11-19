@@ -58,6 +58,7 @@ struct ProviderQuirks: Sendable, Hashable {
     var includeStreamUsage: Bool = true
     /// Envia `strict: true` nas ferramentas.
     var strictTools: Bool = true
+    var errorDialect: HTTPClient.ErrorDialect = .standard
 }
 
 /// Diferenças por família de modelo, independentes do provedor que hospeda.

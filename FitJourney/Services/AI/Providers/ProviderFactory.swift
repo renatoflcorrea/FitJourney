@@ -42,7 +42,7 @@ enum ProviderFactory {
             return EndpointConfiguration(provider: .openCode, baseURL: OpenCodeGo.baseURL, auth: .bearer(key),
                 extraHeaders: ["User-Agent": "FitJourney/\(version)", "x-opencode-session": sessionID ?? OpenCodeGo.sessionID(installationID: OpenCodeGo.installationID())],
                 timeouts: HTTPClient.Timeouts(chat: 180),
-                quirks: ProviderQuirks(tokenParameter: "max_tokens", includeStreamUsage: true, strictTools: false))
+                quirks: ProviderQuirks(tokenParameter: "max_tokens", includeStreamUsage: true, strictTools: false, errorDialect: .openCode))
         case .anthropic:
             // `strict` desligado: validamos localmente (schema + Codable) e evitamos 400 por
             // palavras-chave de schema que o modo estrito da Anthropic não aceite.
@@ -82,6 +82,9 @@ enum ProviderFactory {
 
     static func makeChat(settings: ProviderSettings, secrets: any SecretStore,
                          client: HTTPClient = HTTPClient()) throws -> ResolvedChat {
+        if settings.provider == .openCode && OpenCodeModelCatalog.trainsOnData(model: settings.model, cache: OpenCodeModelCache().load()) {
+            throw AIError.notConfigured(reason: String(localized: "este modelo pode treinar com seus dados; escolha outro em Ajustes de IA"))
+        }
         guard settings.provider == .chatGPT else {
             let key = try secrets.string(for: ProviderCatalog.descriptor(for: settings.provider).secretKey)
             return try makeChat(settings: settings, apiKey: key, client: client)

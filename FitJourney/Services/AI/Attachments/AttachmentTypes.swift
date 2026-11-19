@@ -91,7 +91,7 @@ struct AttachmentCapabilities: Sendable, Hashable {
     /// - OpenRouter: imagem e PDF (`file`, o OpenRouter converte quando o modelo não lê PDF).
     /// - Compatível (URL própria): imagem sim (o usuário escolheu o modelo), PDF não.
     /// - ChatGPT (login): imagem sim; PDF **não verificado** no endpoint não oficial → rasteriza.
-    static func resolve(provider: AIProviderID, model: String) -> AttachmentCapabilities {
+    static func resolve(provider: AIProviderID, model: String, openCodeModels: OpenCodeModelCache.Snapshot? = nil) -> AttachmentCapabilities {
         let slug = (model.split(separator: "/").last.map(String.init) ?? model).lowercased()
         switch provider {
         case .anthropic:
@@ -107,8 +107,7 @@ struct AttachmentCapabilities: Sendable, Hashable {
         case .chatGPT:
             return AttachmentCapabilities(supportsImages: true, supportsPDF: false)
         case .openCode:
-            let vision = OpenCodeGo.staticVisionModels.contains(slug) || OpenCodeGo.visionPrefixes.contains { slug.hasPrefix($0) }
-            return AttachmentCapabilities(supportsImages: vision && !OpenCodeGo.textOnlyModels.contains(slug), supportsPDF: false)
+            return OpenCodeModelCatalog.capabilities(model: model, cache: openCodeModels ?? OpenCodeModelCache().load())
         }
     }
 }
