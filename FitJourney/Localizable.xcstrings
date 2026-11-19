@@ -22390,6 +22390,96 @@
           }
         }
       }
+    },
+    "Experimentar com um exemplo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try with a sample"
+          }
+        }
+      }
+    },
+    "Ficha fictícia, criada para demonstração.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A fictional sheet made for demonstration."
+          }
+        }
+      }
+    },
+    "Adicionar as outras 3 fichas do exemplo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add the other 3 sample sheets"
+          }
+        }
+      }
+    },
+    "Plano alimentar de exemplo.pdf": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample meal plan.pdf"
+          }
+        }
+      }
+    },
+    "Ficha de exemplo.jpg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample workout sheet.jpg"
+          }
+        }
+      }
+    },
+    "Ficha de exemplo · costas.jpg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample workout sheet · back.jpg"
+          }
+        }
+      }
+    },
+    "Ficha de exemplo · pernas.jpg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample workout sheet · legs.jpg"
+          }
+        }
+      }
+    },
+    "Ficha de exemplo · ombros.jpg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample workout sheet · shoulders.jpg"
+          }
+        }
+      }
+    },
+    "Café da manhã: 2 ovos mexidos, 1 pão francês com manteiga e café com leite. À tarde, um açaí de 300 ml com granola.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breakfast: 2 scrambled eggs, a bread roll with butter and coffee with milk. In the afternoon, a 300 ml açaí bowl with granola."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
