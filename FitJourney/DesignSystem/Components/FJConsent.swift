@@ -91,8 +91,14 @@ private struct FJDisclosureSymbol: View {
     let systemImage: String
     let tint: Color
     @ScaledMetric(relativeTo: .body) private var side: CGFloat = 32
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
+        // Decorativo: em tamanhos de acessibilidade sai, para o texto usar a largura toda.
+        if !dynamicTypeSize.isAccessibilitySize { symbol }
+    }
+
+    private var symbol: some View {
         Image(systemName: systemImage)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(tint)
@@ -179,6 +185,10 @@ struct FJRecipientCard: View {
     private let identifier: String
 
     @ScaledMetric(relativeTo: .body) private var iconSide: CGFloat = 36
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Em tamanhos de acessibilidade o símbolo (decorativo) sai e o texto usa a largura toda.
+    private var showsIcons: Bool { !dynamicTypeSize.isAccessibilitySize }
 
     init(hops: [FJRecipientHop], note: LocalizedStringKey? = nil) {
         self.init(hops: hops, noteText: note.map { Text($0) })
@@ -219,12 +229,14 @@ struct FJRecipientCard: View {
 
     private func hopRow(_ hop: FJRecipientHop) -> some View {
         HStack(alignment: .top, spacing: FJSpacing.m) {
-            Image(systemName: hop.kind.systemImage)
-                .font(.body.weight(.semibold))
-                .foregroundStyle(FJColor.coach)
-                .frame(width: iconSide, height: iconSide)
-                .background(FJColor.coach.opacity(0.12), in: Circle())
-                .accessibilityHidden(true)
+            if showsIcons {
+                Image(systemName: hop.kind.systemImage)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(FJColor.coach)
+                    .frame(width: iconSide, height: iconSide)
+                    .background(FJColor.coach.opacity(0.12), in: Circle())
+                    .accessibilityHidden(true)
+            }
             VStack(alignment: .leading, spacing: FJSpacing.xxs) {
                 VStack(alignment: .leading, spacing: FJSpacing.xxs) {
                     Text(verbatim: hop.name)
@@ -261,7 +273,7 @@ struct FJRecipientCard: View {
         Rectangle()
             .fill(FJColor.separator)
             .frame(width: 2, height: FJSpacing.l)
-            .padding(.leading, iconSide / 2 - 1)
+            .padding(.leading, showsIcons ? iconSide / 2 - 1 : 0)
             .padding(.vertical, FJSpacing.xs)
             .accessibilityHidden(true)
     }
