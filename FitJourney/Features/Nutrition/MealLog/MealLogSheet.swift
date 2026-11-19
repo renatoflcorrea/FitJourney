@@ -28,6 +28,8 @@ struct MealLogSheet: View {
     @State private var showCamera = false
     @State private var cameraDenied = false
     @State private var showConsent = false
+    @State private var consentRecipient: AIRecipient?
+    @State private var pendingCorrection: String?
     @State private var showCloseDialog = false
     @State private var showCorrection = false
     @State private var showAISettings = false
@@ -75,9 +77,12 @@ struct MealLogSheet: View {
                       matching: .images)
         .onChange(of: photoItems) { _, items in loadPhotos(items) }
         .sheet(isPresented: $showConsent) {
-            MealLogConsentSheet(providerName: providerName) {
-                MealLogPreferences().grantConsent()
-                analyze()
+            MealLogConsentSheet(providerName: consentRecipient?.displayName ?? providerName) {
+                if let recipient = consentRecipient { AIConsentStore().grant(.mealLog, for: recipient) }
+                if let instruction = pendingCorrection {
+                    pendingCorrection = nil
+                    correct(instruction)
+                } else { analyze() }
             }
         }
         .sheet(isPresented: $showCorrection) {
@@ -329,7 +334,9 @@ struct MealLogSheet: View {
         Task {
             do {
                 try await session.analyze()
-            } catch MealLogError.consentRequired {
+            } catch let MealLogError.consentRequired(recipient) {
+                consentRecipient = recipient
+                pendingCorrection = nil
                 showConsent = true
             } catch {
                 errorMessage = error.localizedDescription
@@ -345,7 +352,12 @@ struct MealLogSheet: View {
     private func correct(_ instruction: String) {
         errorMessage = nil
         Task {
-            do { try await session.correct(instruction) } catch { errorMessage = error.localizedDescription }
+            do { try await session.correct(instruction) }
+            catch let MealLogError.consentRequired(recipient) {
+                consentRecipient = recipient
+                pendingCorrection = instruction
+                showConsent = true
+            } catch { errorMessage = error.localizedDescription }
         }
     }
 

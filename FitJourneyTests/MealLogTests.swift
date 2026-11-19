@@ -594,8 +594,9 @@ struct MealLogPreferencesTests {
         #expect(!prefs.sharesNutrition)
         prefs.enableDietSharing()
         #expect(prefs.sharesNutrition)
-        let sharing = CoachProfileStore(defaults: defaults).load().sharing
-        #expect(sharing.nutrition && !sharing.health && !sharing.profile && !sharing.workouts)
+        let recipient = AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load())
+        #expect(AIConsentStore(defaults: defaults).categories(for: recipient) == [.nutrition])
+        #expect(!CoachProfileStore(defaults: defaults).hasConsented)
     }
 }
 
@@ -760,7 +761,7 @@ struct MealLogSessionTests {
         await #expect(throws: MealLogError.aiUnavailable) { try await unavailable.analyze() }
         let noConsent = session(fixture, gateway: gateway, consented: false)
         noConsent.text = "x"
-        await #expect(throws: MealLogError.consentRequired) { try await noConsent.analyze() }
+        await #expect(throws: MealLogError.consentRequired(AIRecipientResolver.resolve(settings: ProviderSettingsStore().load()))) { try await noConsent.analyze() }
         await #expect(throws: MealLogError.emptyInput) { try await session(fixture, gateway: gateway).analyze() }
         let future = MealLogSession(day: fixture.calendar.date(byAdding: .day, value: 1, to: fixture.today)!, context: fixture.context,
                                     resolveChat: { ResolvedChat(gateway: gateway, model: "gpt-5") }, isAIAvailable: { true },

@@ -48,6 +48,12 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
                     state.finish(into: continuation)
                     continuation.finish()
                 } catch {
+                    if configuration.provider == .openRouter,
+                       case let AIError.server(status, message) = error,
+                       HTTPClient.isOpenRouterNoHost(message) {
+                        continuation.finish(throwing: AIError.badRequest(status: status, message: HTTPClient.openRouterNoHostMessage))
+                        return
+                    }
                     continuation.finish(throwing: HTTPClient.normalize(error))
                 }
             }
@@ -125,6 +131,13 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
             decoded = try JSONDecoder().decode(OAIChatResponse.self, from: data)
         } catch {
             throw AIError.decoding(context: "chat completion", message: "\(error)")
+        }
+        if let error = decoded.error {
+            let message = Redactor.redact(error.message ?? "stream error")
+            if configuration.provider == .openRouter, HTTPClient.isOpenRouterNoHost(message) {
+                throw AIError.badRequest(status: 200, message: HTTPClient.openRouterNoHostMessage)
+            }
+            throw AIError.server(status: 200, message: message)
         }
         let choice = decoded.choices?.first
         var tools = ToolCallAccumulator()

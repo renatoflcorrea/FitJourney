@@ -28,7 +28,7 @@ struct ToolboxFixture {
         let profile = profile
         let today = today
         let access = healthAccess
-        return FitnessToolbox(context: context, profile: { profile }, now: { today }, calendar: calendar,
+        return FitnessToolbox(context: context, profile: { profile }, sharing: { profile.sharing }, now: { today }, calendar: calendar,
                               health: healthReader, healthAccess: { access })
     }
 

@@ -802,7 +802,7 @@ struct ChatGPTCoachLoopTests {
             ])),
         ], host: host)
         let store = signedIn()
-        let service = CoachConversationService(context: fixture.context, toolbox: fixture.toolbox()) {
+        let service = CoachConversationService(context: fixture.context, toolbox: fixture.toolbox(), requireConsent: { _ in }) {
             ResolvedChat(gateway: try chatGPTGateway(host: host, store: store), model: "gpt-6-luna")
         }
         let conversation = try service.createConversation()
@@ -843,7 +843,7 @@ struct ChatGPTCoachLoopTests {
         StubURLProtocol.enqueue([.json("{}", status: 401)], host: host)
         StubURLProtocol.enqueue([.json(#"{"error":"invalid_grant"}"#, status: 400)], host: authHost)
         let store = signedIn()
-        let service = CoachConversationService(context: fixture.context, toolbox: fixture.toolbox()) {
+        let service = CoachConversationService(context: fixture.context, toolbox: fixture.toolbox(), requireConsent: { _ in }) {
             ResolvedChat(gateway: try chatGPTGateway(host: host, store: store, oauthHost: authHost), model: "m")
         }
         let conversation = try service.createConversation()

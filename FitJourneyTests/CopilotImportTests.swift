@@ -199,7 +199,7 @@ struct CopilotImportTests {
         let gateway = ScriptedImportGateway([.extraction(ImportJSON.fourRoutines)])
         let session = fixture.session(.program, gateway: gateway)
         try await session.add([fixture.pdf()])
-        await #expect(throws: ImportError.consentRequired) { try await session.analyze() }
+        await #expect(throws: ImportError.consentRequired(AIRecipientResolver.resolve(settings: ProviderSettingsStore().load()))) { try await session.analyze() }
         #expect(gateway.requests.isEmpty)
         #expect(session.phase == .selecting)
     }

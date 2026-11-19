@@ -31,7 +31,10 @@ struct CoachWelcomeView: View {
         .navigationTitle("Coach")
         .navigationBarTitleDisplayMode(.inline)
         .fjScreenBackground()
-        .onAppear(perform: onChange)
+        .onAppear {
+            sharing = store.load().sharing
+            onChange()
+        }
     }
 
     private var header: some View {
@@ -72,8 +75,9 @@ struct CoachWelcomeView: View {
     }
 
     private var privacyCard: some View {
-        FJBanner("Privacidade",
-                 message: "O histórico que você escolher é enviado ao provedor de IA que você configurar. Nada vai a servidor do FitJourney. A chave fica só no Keychain deste aparelho.",
+        let recipient = AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load())
+        return FJBanner("Privacidade",
+                 message: "Suas mensagens, o histórico da conversa e os dados que você escolher são enviados para \(recipient.displayName). Nada vai a servidor do FitJourney. A chave fica só no Keychain deste aparelho.",
                  tone: .neutral, systemImage: "lock.shield.fill")
     }
 

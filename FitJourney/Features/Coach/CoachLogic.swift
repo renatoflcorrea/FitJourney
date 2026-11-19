@@ -92,8 +92,8 @@ enum CoachGate: Equatable {
     case ready
 
     static func evaluate(hasConsented: Bool, readiness: ProviderReadiness) -> CoachGate {
-        if !hasConsented { return .needsConsent }
-        return readiness.isReady ? .ready : .needsProvider
+        if !readiness.isReady { return .needsProvider }
+        return hasConsented ? .ready : .needsConsent
     }
 }
 

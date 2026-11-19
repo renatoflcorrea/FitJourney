@@ -18,6 +18,7 @@ struct ImportFilesView: View {
     @State private var showCamera = false
     @State private var showPaste = false
     @State private var showConsent = false
+    @State private var consentRecipient: AIRecipient?
     @State private var showSettings = false
     @State private var cameraDenied = false
     @State private var preparing = 0
@@ -74,8 +75,9 @@ struct ImportFilesView: View {
             }
         }
         .sheet(isPresented: $showConsent) {
-            ImportConsentSheet(providerName: providerName) {
-                CoachProfileStore(defaults: coordinator?.defaults ?? .standard).grantConsent(sharing: CoachProfile.Sharing())
+            ImportConsentSheet(providerName: consentRecipient?.displayName ?? providerName) {
+                let defaults = coordinator?.defaults ?? .standard
+                if let recipient = consentRecipient { AIConsentStore(defaults: defaults).grant(.importFiles, for: recipient) }
                 NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
                 analyze()
             }
@@ -216,7 +218,8 @@ struct ImportFilesView: View {
         Task {
             do {
                 try await session.analyze()
-            } catch ImportError.consentRequired {
+            } catch let ImportError.consentRequired(recipient) {
+                consentRecipient = recipient
                 showConsent = true
             } catch {
                 errorMessage = error.localizedDescription

@@ -22,8 +22,7 @@ struct CoachProfile: Codable, Sendable, Hashable {
     /// Preferências alimentares e alergias.
     var foodPreferences: String?
 
-    /// O que o usuário aceita enviar ao provedor (SPEC §7, privacidade). **Tudo nasce desligado**;
-    /// a UI pede consentimento na primeira abertura (`CoachProfileStore.grantConsent(sharing:)`).
+    /// Preferências legadas, usadas somente como pré-seleção na primeira tela do Coach.
     var sharing: Sharing = Sharing()
 
     struct Sharing: Codable, Sendable, Hashable {
@@ -81,14 +80,17 @@ struct CoachProfileStore {
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
     /// O usuário já passou pela tela de consentimento (aceitando ou não compartilhar dados).
-    var hasConsented: Bool { defaults.object(forKey: Self.consentKey) as? Date != nil }
+    var hasConsented: Bool {
+        AIConsentStore(defaults: defaults).isGranted(.coach, for: AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load()))
+    }
 
     /// Registra o consentimento e o que o usuário escolheu compartilhar.
     func grantConsent(sharing: CoachProfile.Sharing, at date: Date = .now) {
         var profile = load()
         profile.sharing = sharing
         save(profile)
-        defaults.set(date, forKey: Self.consentKey)
+        let recipient = AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load())
+        AIConsentStore(defaults: defaults).grant(.coach, for: recipient, categories: sharing.categories, at: date)
     }
 
     /// Revoga: desliga todo compartilhamento e volta a pedir consentimento.
@@ -97,6 +99,8 @@ struct CoachProfileStore {
         profile.sharing = .none
         save(profile)
         defaults.removeObject(forKey: Self.consentKey)
+        let recipient = AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load())
+        AIConsentStore(defaults: defaults).revokeAll(for: recipient)
     }
 
     func load() -> CoachProfile {
