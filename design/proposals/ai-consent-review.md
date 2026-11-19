@@ -584,3 +584,10 @@ Testes: lógica de apresentação (ordem, limite de 8, "Ver todos (n)", linha de
 - **Q-AC6:** a URL própria continua aceitando endereços na internet, com o aviso.
 - **Q-AC7:** o app pede de novo quando muda o criador do modelo.
 - A chave do OpenCode Go vai nas notas de revisão. A China continental foi removida da disponibilidade pela API.
+
+### Ajuste do dono (19/11/2026): aceite com cara de termo
+
+- A folha "Antes de enviar" e a tela de consentimento do Coach ganham, logo acima de Permitir / Não permitir, a frase: "Ao tocar em Permitir, você concorda com o envio descrito acima e com a [Política de Privacidade do FitJourney]." / "By tapping Allow, you agree to the sharing described above and to the [FitJourney Privacy Policy]." O link abre `https://renatocorrea.com.br/FitJourney/pt/privacy/#ia` (pt) ou `/en/privacy/#ai` (en), conforme o idioma do app, com id `aiConsent.appPolicyLink`.
+- Ajustes › Sobre: o texto de privacidade é corrigido. Hoje ele diz que "só o Coach envia texto", o que está errado, porque importação e registro de refeição também enviam. A tela ganha a linha "Política de privacidade" (id `about.privacyPolicy`), que abre a mesma página.
+- A tela "O que é enviado e para quem" ganha o mesmo link no rodapé.
+- Não haverá tela de termos no primeiro uso do app. O aceite acontece no momento do envio, com o destinatário nomeado, como a Apple pede.
