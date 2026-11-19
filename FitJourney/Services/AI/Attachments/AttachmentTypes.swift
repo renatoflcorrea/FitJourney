@@ -91,17 +91,19 @@ struct AttachmentCapabilities: Sendable, Hashable {
     /// - OpenRouter: imagem e PDF (`file`, o OpenRouter converte quando o modelo não lê PDF).
     /// - Compatível (URL própria): imagem sim (o usuário escolheu o modelo), PDF não.
     /// - ChatGPT (login): imagem sim; PDF **não verificado** no endpoint não oficial → rasteriza.
-    static func resolve(provider: AIProviderID, model: String, openCodeModels: OpenCodeModelCache.Snapshot? = nil) -> AttachmentCapabilities {
+    static func resolve(provider: AIProviderID, model: String, openCodeModels: OpenCodeModelCache.Snapshot? = nil, modelCache: ModelCache.Snapshot? = nil) -> AttachmentCapabilities {
         let slug = (model.split(separator: "/").last.map(String.init) ?? model).lowercased()
         switch provider {
         case .anthropic:
             return AttachmentCapabilities(supportsImages: true, supportsPDF: true)
         case .openAI:
             let vision = !slug.hasPrefix("gpt-3.5")
-            let pdf = ["gpt-4o", "gpt-4.1", "gpt-5", "o1", "o3", "o4"].contains { slug.hasPrefix($0) }
+            let pdf = ["gpt-4o", "gpt-4.1", "gpt-5", "gpt-6", "o1", "o3", "o4"].contains { slug.hasPrefix($0) }
             return AttachmentCapabilities(supportsImages: vision, supportsPDF: pdf)
         case .openRouter:
-            return AttachmentCapabilities(supportsImages: true, supportsPDF: true)
+            let snapshot = modelCache ?? ModelCache().load(.openRouter)
+            let vision = snapshot.map { $0.models.contains(model) } ?? true
+            return AttachmentCapabilities(supportsImages: vision, supportsPDF: vision)
         case .custom:
             return AttachmentCapabilities(supportsImages: true, supportsPDF: false)
         case .chatGPT:

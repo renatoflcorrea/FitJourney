@@ -64,7 +64,10 @@ enum OpenCodeModelCatalog {
             let b = ($1.inputPrice ?? .infinity, $1.outputPrice ?? .infinity, $1.id)
             return a < b
         }.map(\.id)
-        return Array((first + rest).prefix(max(0, limit)))
+        var choices = first + rest
+        if let preferred = ModelDefaults.preferred(in: choices, provider: .openCode),
+           let index = choices.firstIndex(of: preferred) { choices.remove(at: index); choices.insert(preferred, at: 0) }
+        return Array(choices.prefix(max(0, limit)))
     }
     static func capabilities(model: String, cache: OpenCodeModelCache.Snapshot?) -> AttachmentCapabilities {
         let slug = (model.split(separator: "/").last.map(String.init) ?? model).lowercased()
@@ -93,10 +96,10 @@ actor OpenCodeModelLister {
         self.clock = clock
         self.sessionID = OpenCodeGo.sessionID(installationID: OpenCodeGo.installationID(defaults: defaults))
     }
-    func discover() async -> OpenCodeDiscovery {
+    func discover(refresh: Bool = false) async -> OpenCodeDiscovery {
         let cached = cache.load()
         let age = cached.map { clock().timeIntervalSince($0.fetchedAt) }
-        if let cached, let age, age >= 0, age < OpenCodeModelCache.ttl { return (cached.models, false) }
+        if !refresh, let cached, let age, age >= 0, age < OpenCodeModelCache.ttl { return (cached.models, false) }
         let fallback = cached?.models ?? OpenCodeGo.suggestedModels.map {
             OpenCodeModel(id: $0, name: $0, readsImages: true, structuredOutput: false, inputPrice: nil, outputPrice: nil, trainsOnData: false, zeroDataRetention: false)
         }

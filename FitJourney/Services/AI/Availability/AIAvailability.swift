@@ -75,7 +75,7 @@ final class AIAvailability {
         return Snapshot(readiness: readiness, provider: settings.provider, providerName: descriptor.displayShortName,
                         model: settings.model, modelSupportsImages: settings.provider == .openCode
                             ? OpenCodeModelCatalog.capabilities(model: settings.model, cache: OpenCodeModelCache(defaults: defaults).load()).supportsImages
-                            : AttachmentCapabilities.resolve(provider: settings.provider, model: settings.model).supportsImages)
+                            : AttachmentCapabilities.resolve(provider: settings.provider, model: settings.model, modelCache: ModelCache(defaults: defaults).load(settings.provider)).supportsImages)
     }
 
     /// Avisa que a configuração de IA mudou (de qualquer thread).

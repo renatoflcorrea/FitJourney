@@ -39,7 +39,9 @@ struct ProviderSettings: Codable, Sendable, Hashable {
 
     func model(for provider: AIProviderID) -> String {
         let chosen = models[provider]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return chosen.isEmpty ? ProviderCatalog.descriptor(for: provider).defaultModel : chosen
+        if !chosen.isEmpty { return chosen }
+        let cached = ModelCache().load(provider)?.models ?? []
+        return ModelDefaults.preferred(in: cached, provider: provider) ?? ProviderCatalog.descriptor(for: provider).defaultModel
     }
 
     func baseURL(for provider: AIProviderID) -> URL? {

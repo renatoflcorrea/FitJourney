@@ -56,12 +56,18 @@ struct KeychainSecretStore: SecretStore {
     }
 
     func set(_ value: String?, for key: SecretKey) throws {
+        let previous = try string(for: key)
+        let normalized = value?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let changed = previous != ((normalized?.isEmpty ?? true) ? nil : normalized)
         guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty else {
             let status = SecItemDelete(baseQuery(for: key) as CFDictionary)
             guard status == errSecSuccess || status == errSecItemNotFound else {
                 throw SecretStoreError.keychain(status: status)
             }
-            if status == errSecSuccess { AIAvailability.postChange() }
+            if status == errSecSuccess {
+                if changed { clearModelCache(for: key) }
+                AIAvailability.postChange()
+            }
             return
         }
         let attributes: [String: Any] = [
@@ -76,8 +82,16 @@ struct KeychainSecretStore: SecretStore {
             status = SecItemAdd(insert as CFDictionary, nil)
         }
         guard status == errSecSuccess else { throw SecretStoreError.keychain(status: status) }
-        // Chave ou login novo: a disponibilidade da IA é reavaliada (`AIAvailability`).
+        // A lista anterior pertence à credencial anterior, não à conta recém-configurada.
+        if changed { clearModelCache(for: key) }
         AIAvailability.postChange()
+    }
+
+    private func clearModelCache(for key: SecretKey) {
+        for provider in AIProviderID.allCases where key == .apiKey(provider) {
+            ModelCache().clear(provider)
+            if provider == .openCode { UserDefaults.standard.removeObject(forKey: OpenCodeModelCache.key) }
+        }
     }
 
     private func baseQuery(for key: SecretKey) -> [String: Any] {

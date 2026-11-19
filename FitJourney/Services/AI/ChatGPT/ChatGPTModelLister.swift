@@ -38,14 +38,16 @@ actor ChatGPTModelLister {
     }
 
     /// Cache fresco, depois a rede, depois cache vencido, depois a lista estática. Nunca vazia.
-    func models() async -> [String] {
+    func models(refresh: Bool = false) async -> [String] {
         guard let credentials = try? await session.credentials() else { return Self.fallbackModels }
         let cached = cache?.accountID == credentials.accountID ? cache : nil
-        if let cached, case let age = clock().timeIntervalSince(cached.fetchedAt), age >= 0, age < ttl {
+        if !refresh, let cached, case let age = clock().timeIntervalSince(cached.fetchedAt), age >= 0, age < ttl {
             return cached.models
         }
         do {
-            let listed = Self.parse(try await fetch(credentials))
+            var listed = Self.parse(try await fetch(credentials))
+            if let preferred = ModelDefaults.preferred(in: listed, provider: .chatGPT),
+               let index = listed.firstIndex(of: preferred) { listed.remove(at: index); listed.insert(preferred, at: 0) }
             guard !listed.isEmpty else { return cached?.models ?? Self.fallbackModels }
             cache = (credentials.accountID, listed, clock())
             return listed
