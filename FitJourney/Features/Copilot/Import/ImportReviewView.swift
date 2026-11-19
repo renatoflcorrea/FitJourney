@@ -288,6 +288,7 @@ struct ImportReviewView: View {
             Toggle("Ativar agora", isOn: Binding(get: { ui.activate && !sessionInProgress }, set: { ui.activate = $0 }))
                 .disabled(sessionInProgress)
                 .frame(minHeight: FJSize.minTap)
+                .accessibilityIdentifier("import.review.activate")
             if sessionInProgress {
                 Text("Há um treino em andamento. Cria sem ativar; ative depois de finalizar o treino.")
                     .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
@@ -327,6 +328,7 @@ struct ImportReviewView: View {
                         isLoading: isApplying) {
             if wantsActivation, hasOtherActive { confirmActivate = true } else { apply() }
         }
+        .accessibilityIdentifier("import.review.create")
         .padding(.horizontal, FJSpacing.screenMargin)
         .padding(.vertical, FJSpacing.s)
         .background(FJColor.background)

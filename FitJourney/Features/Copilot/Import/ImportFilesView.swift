@@ -17,15 +17,13 @@ struct ImportFilesView: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showCamera = false
     @State private var showPaste = false
-    @State private var showConsent = false
-    @State private var consentRecipient: AIRecipient?
+    @State private var consent = AIConsentPromptState()
     @State private var showSettings = false
     @State private var cameraDenied = false
     @State private var preparing = 0
     @State private var errorMessage: String?
 
     private var isOnline: Bool { coordinator?.network.isOnline ?? true }
-    private var providerName: String { providerInfo?.name ?? "" }
     private var needsSetup: Bool { providerInfo?.readiness == .needsSetup }
     private var providerReady: Bool { providerInfo?.readiness == .ready }
     private var maxFiles: Int { AttachmentPreparer.maxFiles }
@@ -74,13 +72,12 @@ struct ImportFilesView: View {
                 do { try session.addPastedText(text) } catch { errorMessage = error.localizedDescription }
             }
         }
-        .sheet(isPresented: $showConsent) {
-            ImportConsentSheet(providerName: consentRecipient?.displayName ?? providerName) {
-                let defaults = coordinator?.defaults ?? .standard
-                if let recipient = consentRecipient { AIConsentStore(defaults: defaults).grant(.importFiles, for: recipient) }
-                NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
-                analyze()
-            }
+        .sheet(item: $consent.prompt) { prompt in
+            AIConsentSheet(request: prompt.request, recipient: prompt.recipient, defaults: coordinator?.defaults ?? .standard,
+                           onAllow: {
+                               consent.allow()
+                               analyze()
+                           }, onDeny: { consent.deny() })
         }
         .navigationDestination(isPresented: $showSettings) {
             AISettingsView(secrets: coordinator?.secrets ?? KeychainSecretStore(), defaults: coordinator?.defaults ?? .standard)
@@ -125,11 +122,15 @@ struct ImportFilesView: View {
         return VStack(alignment: .leading, spacing: FJSpacing.xs) {
             LazyVGrid(columns: columns, spacing: FJSpacing.s) {
                 sourceButton("PDF ou arquivo", systemImage: "doc") { showFileImporter = true }
+                    .accessibilityIdentifier("import.source.files")
                 sourceButton("Fotos", systemImage: "photo.on.rectangle") { showPhotos = true }
+                    .accessibilityIdentifier("import.source.photos")
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     sourceButton("Câmera", systemImage: "camera", action: openCamera)
+                        .accessibilityIdentifier("import.source.camera")
                 }
                 sourceButton("Colar texto", systemImage: "doc.on.clipboard") { showPaste = true }
+                    .accessibilityIdentifier("import.source.paste")
             }
             .disabled(isFull)
             if isFull {
@@ -165,10 +166,11 @@ struct ImportFilesView: View {
                     .font(FJFont.numberCaption)
                     .foregroundStyle(FJColor.textSecondary)
                 FJFlowLayout(spacing: FJSpacing.m) {
-                    ForEach(session.attachments) { attachment in
+                    ForEach(Array(session.attachments.enumerated()), id: \.element.id) { index, attachment in
                         FJAttachmentThumb(
                             name: attachment.filename, kind: Self.thumbKind(attachment.kind), detail: Self.detail(attachment),
                             pageCount: attachment.pageCount, onRemove: { session.remove(attachment.id) })
+                            .accessibilityIdentifier("import.attachment.\(index)")
                     }
                     ForEach(0..<preparing, id: \.self) { index in
                         FJAttachmentThumb(name: String(localized: "Preparando…"), kind: .image, state: .preparing)
@@ -182,14 +184,26 @@ struct ImportFilesView: View {
         }
     }
 
+    @ViewBuilder
     private var privacy: some View {
-        VStack(alignment: .leading, spacing: FJSpacing.xs) {
-            FJBanner("Os arquivos inteiros vão para \(providerName) para serem lidos",
-                     message: "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitJourney.",
-                     tone: .neutral, systemImage: "lock.fill")
-            Text("Localização e dados da câmera são removidos das fotos antes do envio.")
-                .font(FJFont.caption)
-                .foregroundStyle(FJColor.textSecondary)
+        if consent.denied {
+            // Não permitir: nada foi enviado, os arquivos continuam aqui e "Analisar" pergunta de novo.
+            let notice = AIConsentPresentation.importDenied(kind: session.kind)
+            FJBanner(CoachMarkdown.literal(notice.title), message: CoachMarkdown.literal(notice.message),
+                     tone: .neutral, systemImage: "hand.raised.fill")
+                .accessibilityIdentifier("import.denied")
+        } else if let recipient = providerInfo?.recipient, providerReady {
+            let notice = AIConsentPresentation.importNotice(recipient)
+            VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                FJBanner(CoachMarkdown.literal(notice.title), message: CoachMarkdown.literal(notice.message),
+                         tone: .neutral, systemImage: "lock.fill")
+                Text("Localização e dados da câmera são removidos das fotos antes do envio.")
+                    .font(FJFont.caption)
+                    .foregroundStyle(FJColor.textSecondary)
+                    .padding(.horizontal, FJSpacing.l)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("import.privacyNote")
         }
     }
 
@@ -199,11 +213,13 @@ struct ImportFilesView: View {
             if needsSetup {
                 FJBanner("Falta configurar a IA", message: "Escolha o provedor e informe a chave. Os arquivos escolhidos ficam aqui.",
                          tone: .attention, actionTitle: "Configurar") { showSettings = true }
+                    .accessibilityIdentifier("import.setup")
             } else {
                 FJAIButton(count == 0 ? "Escolha um arquivo" : (count == 1 ? "Analisar 1 arquivo" : "Analisar \(count) arquivos")) {
                     analyze()
                 }
                 .disabled(!canAnalyze)
+                .accessibilityIdentifier("import.analyze")
             }
         }
         .padding(.horizontal, FJSpacing.screenMargin)
@@ -219,8 +235,7 @@ struct ImportFilesView: View {
             do {
                 try await session.analyze()
             } catch let ImportError.consentRequired(recipient) {
-                consentRecipient = recipient
-                showConsent = true
+                consent.ask(.importFiles(kind: session.kind, fileCount: count), recipient: recipient)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -328,47 +343,6 @@ struct ImportFilesView: View {
 
     static func detail(_ attachment: AttachmentMetadata) -> String {
         ByteCountFormatter.string(fromByteCount: Int64(attachment.byteCount), countStyle: .file)
-    }
-}
-
-// MARK: - Consentimento
-
-/// Aviso específico do import + consentimento do Coach (Q-CP6: os quatro compartilhamentos continuam desligados).
-struct ImportConsentSheet: View {
-    let providerName: String
-    let onAccept: () -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: FJSpacing.l) {
-                    FJAIBadge(style: .hero)
-                        .frame(maxWidth: .infinity)
-                    Text("Antes de analisar")
-                        .font(FJFont.sectionTitle)
-                        .accessibilityAddTraits(.isHeader)
-                    FJBanner("O arquivo inteiro vai para \(providerName)",
-                             message: "Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado ao provedor de IA que você configurou. Nada vai a servidor do FitJourney.",
-                             tone: .attention, systemImage: "lock.shield.fill")
-                    Text("Aceitar vale como consentimento do Coach. Importar não lê o seu histórico: os compartilhamentos do Coach continuam desligados.")
-                        .font(FJFont.label)
-                        .foregroundStyle(FJColor.textSecondary)
-                    VStack(spacing: FJSpacing.s) {
-                        FJPrimaryButton("Concordar e analisar", systemImage: "checkmark", area: .coach) {
-                            dismiss()
-                            onAccept()
-                        }
-                        Button("Agora não") { dismiss() }
-                            .frame(minHeight: FJSize.minTap)
-                    }
-                }
-                .padding(FJSpacing.screenMargin)
-            }
-            .fjScreenBackground()
-            .navigationBarTitleDisplayMode(.inline)
-        }
-        .presentationDetents([.medium, .large])
     }
 }
 

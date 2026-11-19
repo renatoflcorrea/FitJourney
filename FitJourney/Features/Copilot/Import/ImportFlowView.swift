@@ -18,6 +18,7 @@ struct ImportFlowView: View {
     var body: some View {
         stack
             .tint(FJColor.coach)
+            .accessibilityIdentifier("import.sheet")
             .interactiveDismissDisabled(session.phase != .selecting || !session.attachments.isEmpty)
             .confirmationDialog(closeTitle, isPresented: $confirmClose, titleVisibility: .visible) {
                 closeActions
@@ -46,6 +47,7 @@ struct ImportFlowView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancelar") { requestClose() }
+                            .accessibilityIdentifier("import.cancel")
                     }
                 }
         }
@@ -132,12 +134,15 @@ struct ImportProviderInfo {
 
     let name: String
     let readiness: Readiness
+    /// Quem recebe os arquivos (provedor + criador do modelo + host), para o aviso e a folha de consentimento.
+    let recipient: AIRecipient
 
     init(defaults: UserDefaults = .standard, secrets: any SecretStore = KeychainSecretStore()) {
         let settings = ProviderSettingsStore(defaults: defaults).load()
         let descriptor = ProviderCatalog.descriptor(for: settings.provider)
         let hasKey = descriptor.hasCredential(in: secrets)
         name = descriptor.displayShortName
+        recipient = AIRecipientResolver.resolve(settings: settings)
         readiness = ProviderReadiness.evaluate(settings, hasAPIKey: hasKey).isReady ? .ready : .needsSetup
     }
 }

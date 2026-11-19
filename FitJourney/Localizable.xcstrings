@@ -1,6 +1,26 @@
 {
   "sourceLanguage": "pt-BR",
   "strings": {
+    "Do app Saúde, por dia: treinos, minutos, FC média e em repouso, energia ativa e passos (até 31 dias).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From Apple Health, per day: workouts, minutes, average and resting heart rate, active energy and steps (up to 31 days)."
+          }
+        }
+      }
+    },
+    "Política de privacidade": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy Policy"
+          }
+        }
+      }
+    },
     "modelos “-free” só funcionam dentro do OpenCode; escolha outro modelo": {
       "localizations": {
         "en": {
@@ -2781,36 +2801,6 @@
         }
       }
     },
-    "Aceitar e continuar": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accept and continue"
-          }
-        }
-      }
-    },
-    "Aceitar vale como consentimento do Coach. Importar não lê o seu histórico: os compartilhamentos do Coach continuam desligados.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accepting counts as Coach consent. Importing does not read your history: the Coach sharing options stay off."
-          }
-        }
-      }
-    },
-    "Aceitar vale como consentimento do Coach. Os compartilhamentos do Coach continuam desligados.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accepting counts as Coach consent. Coach sharing stays off."
-          }
-        }
-      }
-    },
     "Adiciona tempo ao descanso do treino em andamento.": {
       "localizations": {
         "en": {
@@ -3777,16 +3767,6 @@
         }
       }
     },
-    "Antes de analisar": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Before analyzing"
-          }
-        }
-      }
-    },
     "Ao iniciar um treino no iPhone, o FitJourney abre no relógio já gravando (frequência cardíaca e calorias do relógio). Exige o app no Apple Watch e o Saúde conectado. O app Exercício da Apple não é aberto.": {
       "localizations": {
         "en": {
@@ -4113,16 +4093,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "The selected routines are copied to %@. The originals do not change."
-          }
-        }
-      }
-    },
-    "As fotos saem reduzidas e sem localização. Nada vai a servidor do FitJourney, e o seu histórico não é enviado.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Photos are resized and have no location. Nothing goes to a FitJourney server, and your history is not sent."
           }
         }
       }
@@ -5349,16 +5319,6 @@
         }
       }
     },
-    "Concordar e analisar": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Agree and analyze"
-          }
-        }
-      }
-    },
     "Condicionamento": {
       "localizations": {
         "en": {
@@ -5565,16 +5525,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Confirm and apply"
-          }
-        }
-      }
-    },
-    "Consentimento pendente. O Coach pergunta na próxima abertura.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Consent pending. The Coach will ask the next time you open it."
           }
         }
       }
@@ -7656,26 +7606,6 @@
         }
       }
     },
-    "Enviados a %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sent to %@"
-          }
-        }
-      }
-    },
-    "Enviados a %@ · %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sent to %1$@ · %2$@"
-          }
-        }
-      }
-    },
     "Enviar": {
       "localizations": {
         "en": {
@@ -7812,16 +7742,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choose at most %lld photos."
-          }
-        }
-      }
-    },
-    "Escolha o provedor de IA e informe sua chave de API para começar a conversar.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose the AI provider and enter your API key to start chatting."
           }
         }
       }
@@ -10008,16 +9928,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Age"
-          }
-        }
-      }
-    },
-    "Idade, objetivo, restrições…": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Age, goal, restrictions…"
           }
         }
       }
@@ -13029,16 +12939,6 @@
         }
       }
     },
-    "O Coach para de compartilhar seus dados e volta a pedir consentimento na próxima abertura. Conversas já enviadas ao provedor não podem ser recolhidas por aqui.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The Coach stops sharing your data and asks for consent again the next time you open it. Conversations already sent to the provider can't be recalled from here."
-          }
-        }
-      }
-    },
     "O Coach terminou de responder.": {
       "localizations": {
         "en": {
@@ -13135,16 +13035,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "The backup file is corrupted or incomplete."
-          }
-        }
-      }
-    },
-    "O arquivo inteiro vai para %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The whole file goes to %@"
           }
         }
       }
@@ -13429,32 +13319,12 @@
         }
       }
     },
-    "O que compartilhar": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What to share"
-          }
-        }
-      }
-    },
     "O que estava salvo mudou desde a sugestão. Este é o antes → depois atualizado: confira e confirme.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "What was saved has changed since the suggestion. This is the updated before → after: check it and confirm."
-          }
-        }
-      }
-    },
-    "O que o Coach pode ler": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What the Coach can read"
           }
         }
       }
@@ -13505,16 +13375,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "What did you eat?"
-          }
-        }
-      }
-    },
-    "O que você ligar pode ser enviado ao provedor quando o Coach consultar seu histórico. Desligado, o Coach nem enxerga.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Whatever you turn on may be sent to the provider when the Coach looks up your history. When off, the Coach can't see it at all."
           }
         }
       }
@@ -13881,16 +13741,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "The files stay here; analyze when it is back."
-          }
-        }
-      }
-    },
-    "Os arquivos inteiros vão para %@ para serem lidos": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The whole files go to %@ to be read"
           }
         }
       }
@@ -14565,16 +14415,6 @@
         }
       }
     },
-    "Planos e registro alimentar": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Meal plans and food log"
-          }
-        }
-      }
-    },
     "Player de vídeo": {
       "localizations": {
         "en": {
@@ -14861,16 +14701,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Programs and routines"
-          }
-        }
-      }
-    },
-    "Programas e histórico de séries": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Programs and set history"
           }
         }
       }
@@ -16221,16 +16051,6 @@
         }
       }
     },
-    "Resumo do app Saúde (passos, FC, sono)": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Health app summary (steps, HR, sleep)"
-          }
-        }
-      }
-    },
     "Retomada": {
       "localizations": {
         "en": {
@@ -16327,26 +16147,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Revoke"
-          }
-        }
-      }
-    },
-    "Revogar consentimento": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Revoke consent"
-          }
-        }
-      }
-    },
-    "Revogar consentimento?": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Revoke consent?"
           }
         }
       }
@@ -16637,16 +16437,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "No connection to the provider. Check your internet."
-          }
-        }
-      }
-    },
-    "Sem consentimento, nada é compartilhado. Aceite na aba Coach para escolher o que compartilhar.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Without consent, nothing is shared. Accept in the Coach tab to choose what to share."
           }
         }
       }
@@ -17141,12 +16931,12 @@
         }
       }
     },
-    "Seus treinos, dieta e dados de saúde ficam neste iPhone. Nada é enviado a servidores do FitJourney. Só o Coach envia texto ao provedor de IA que você escolher, e apenas o que você permitir em Coach e IA.": {
+    "Seus treinos, dieta e dados de saúde ficam neste iPhone. O Coach, a importação e o registro de refeições podem enviar dados ao provedor de IA que você escolher, somente depois de você permitir. Nada é enviado a servidores do FitJourney.": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your workouts, diet and health data stay on this iPhone. Nothing is sent to FitJourney servers. Only the Coach sends text to the AI provider you choose, and only what you allow in Coach & AI."
+            "value": "Your workouts, diet and health data stay on this iPhone. The Coach, import and meal logging can send data to the AI provider you choose, only after you allow it. Nothing is sent to FitJourney servers."
           }
         }
       }
@@ -18367,42 +18157,12 @@
         }
       }
     },
-    "Tudo começa desligado. Você pode mudar depois em Ajustes de IA.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Everything starts off. You can change it later in AI Settings."
-          }
-        }
-      }
-    },
     "Tudo lido com clareza": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Everything read clearly"
-          }
-        }
-      }
-    },
-    "Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado ao provedor de IA que você configurou. Nada vai a servidor do FitJourney.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Everything written in it (name, phone, your trainer’s notes) will be sent to the AI provider you set up. Nothing goes to a FitJourney server."
-          }
-        }
-      }
-    },
-    "Tudo o que estiver escrito neles será enviado. Depois da importação eles não ficam guardados no FitJourney.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Everything written in them will be sent. After the import they are not kept in FitJourney."
           }
         }
       }
@@ -21251,12 +21011,1292 @@
         }
       }
     },
-    "Suas mensagens, o histórico da conversa e os dados que você escolher são enviados para %@. Nada vai a servidor do FitJourney. A chave fica só no Keychain deste aparelho.": {
+    "%@ repassa ao serviço que executa o modelo (%@).": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Your messages, conversation history and the data you choose are sent to %@. Nothing goes to a FitJourney server. Your key stays in this device’s Keychain."
+            "value": "%@ forwards them to the service that runs the model (%@)."
+          }
+        }
+      }
+    },
+    "A análise foi interrompida porque o app ficou em segundo plano. Tente de novo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The analysis stopped because the app went to the background. Try again."
+          }
+        }
+      }
+    },
+    "A data e a hora do registro": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The date and time of the entry"
+          }
+        }
+      }
+    },
+    "Ao tocar em Permitir, você concorda com o envio descrito acima e com a %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By tapping Allow, you agree to the sharing described above and to the %@."
+          }
+        }
+      }
+    },
+    "Arquivos, fotos e texto que você escolher, e suas respostas": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files, photos and text you choose, and your answers"
+          }
+        }
+      }
+    },
+    "As fotos não ficam guardadas no registro.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photos aren't kept in your log."
+          }
+        }
+      }
+    },
+    "As fotos que você escolher (até 4)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The photos you choose (up to 4)"
+          }
+        }
+      }
+    },
+    "As refeições planejadas do dia": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's planned meals"
+          }
+        }
+      }
+    },
+    "Assim a IA compara o que você comeu com as refeições planejadas do dia.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This lets the AI compare what you ate with the day's planned meals."
+          }
+        }
+      }
+    },
+    "Café: 2 ovos mexidos e 1 pão francês com manteiga, café com leite.\nÀ tarde tomei um açaí com granola.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breakfast: 2 scrambled eggs and a bread roll with butter, coffee with milk.\nIn the afternoon I had an açaí bowl with granola."
+          }
+        }
+      }
+    },
+    "Configure um provedor para ver para quem os dados iriam.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up a provider to see who would receive your data."
+          }
+        }
+      }
+    },
+    "Consentimento de IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AI Consent"
+          }
+        }
+      }
+    },
+    "Criou o modelo %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created the %@ model."
+          }
+        }
+      }
+    },
+    "Criou o modelo escolhido.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created the chosen model."
+          }
+        }
+      }
+    },
+    "Criou o modelo google/gemini-3-flash.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Created the google/gemini-3-flash model."
+          }
+        }
+      }
+    },
+    "Desligar vale para os próximos envios. O que já foi enviado fica com quem recebeu, conforme a política de privacidade dele.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turning off applies to future requests. Data already sent stays with the recipient, under its privacy policy."
+          }
+        }
+      }
+    },
+    "Do app Saúde, por dia: treinos, minutos, FC média e em repouso, energia ativa e passos.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From Apple Health, per day: workouts, minutes, average and resting heart rate, active energy and steps."
+          }
+        }
+      }
+    },
+    "Envia agora e lembra a sua escolha para %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sends now and remembers your choice for %@."
+          }
+        }
+      }
+    },
+    "Enviados para %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sent to %@"
+          }
+        }
+      }
+    },
+    "Enviados para %@ · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sent to %@ · %@"
+          }
+        }
+      }
+    },
+    "Enviando para %@. Esta conversa não lê o seu histórico.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending to %@. This conversation doesn't read your history."
+          }
+        }
+      }
+    },
+    "Enviando para %@. Esta conversa pode ler: %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending to %@. This conversation can read: %@."
+          }
+        }
+      }
+    },
+    "Enviar a dieta para %@?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send the meal plan file to %@?"
+          }
+        }
+      }
+    },
+    "Enviar a ficha para %@?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send the workout sheet to %@?"
+          }
+        }
+      }
+    },
+    "Enviar a ficha para a OpenAI?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send the workout sheet to OpenAI?"
+          }
+        }
+      }
+    },
+    "Enviar a ficha para o OpenCode?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send the workout sheet to OpenCode?"
+          }
+        }
+      }
+    },
+    "Enviar a refeição para %@?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send your meal to %@?"
+          }
+        }
+      }
+    },
+    "Enviar suas mensagens para %@?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Send your messages to %@?"
+          }
+        }
+      }
+    },
+    "Escolha o provedor de IA e informe sua chave de API. Antes de enviar qualquer coisa, o Coach mostra o que vai e para quem.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose the AI provider and enter your API key. Before sending anything, the Coach shows what will be sent and to whom."
+          }
+        }
+      }
+    },
+    "Esquecer os outros provedores": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forget Other Providers"
+          }
+        }
+      }
+    },
+    "Executa o modelo %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs the %@ model."
+          }
+        }
+      }
+    },
+    "Executa o modelo claude-haiku-5-5.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs the claude-haiku-5-5 model."
+          }
+        }
+      }
+    },
+    "Executa o modelo escolhido.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs the chosen model."
+          }
+        }
+      }
+    },
+    "Executa o modelo gpt-6-luna.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Runs the gpt-6-luna model."
+          }
+        }
+      }
+    },
+    "Idade, sexo, altura, peso, nível, objetivo, restrições e lesões, equipamentos e preferências alimentares.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Age, sex, height, weight, level, goal, restrictions and injuries, equipment and food preferences."
+          }
+        }
+      }
+    },
+    "Inclui o que você escrever e o nome de fichas ou planos ao usar Editar com IA.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Includes what you type, and routine or plan names when you use Edit with AI."
+          }
+        }
+      }
+    },
+    "Lembra a sua escolha para %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remembers your choice for %@."
+          }
+        }
+      }
+    },
+    "Ligue o Coach acima para escolher o que ele pode ler. Dieta também vale para o registro de refeições.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Turn on the Coach above to choose what it can read. Diet also applies to meal logging."
+          }
+        }
+      }
+    },
+    "Nada do seu histórico vai sem você ligar acima.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None of your history is sent unless you turn it on above."
+          }
+        }
+      }
+    },
+    "Nada foi enviado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was sent"
+          }
+        }
+      }
+    },
+    "Nada foi enviado. Sem permissão, a correção não é aplicada; ajuste os itens à mão.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was sent. Without permission, the correction isn't applied; adjust the items yourself."
+          }
+        }
+      }
+    },
+    "Nada permitido": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing allowed"
+          }
+        }
+      }
+    },
+    "Nada é enviado. Os outros recursos do app funcionam normalmente.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing is sent. The rest of the app works as usual."
+          }
+        }
+      }
+    },
+    "Nomes de exercícios do catálogo do app": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exercise names from the app's catalog"
+          }
+        }
+      }
+    },
+    "Não permitir": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Don't Allow"
+          }
+        }
+      }
+    },
+    "Não vão: seu histórico, sua dieta e dados do Saúde.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not sent: your history, your diet or Health data."
+          }
+        }
+      }
+    },
+    "Não vão: seu histórico, sua dieta, dados do Saúde e a localização das fotos.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not sent: your history, your diet, Health data or photo locations."
+          }
+        }
+      }
+    },
+    "Não vão: seu plano alimentar, seus treinos nem dados do app Saúde.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not sent: your meal plan, your workouts or Apple Health data."
+          }
+        }
+      }
+    },
+    "Não vão: seus treinos nem dados do app Saúde.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not sent: your workouts or Apple Health data."
+          }
+        }
+      }
+    },
+    "Não vão: seus treinos, sua dieta, dados do app Saúde nem a localização das fotos.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not sent: your workouts, your diet, Apple Health data or photo locations."
+          }
+        }
+      }
+    },
+    "O Coach está desligado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Coach is off"
+          }
+        }
+      }
+    },
+    "O Coach não faz diagnóstico nem substitui médico, nutricionista ou educador físico.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Coach doesn't diagnose and doesn't replace a doctor, dietitian or trainer."
+          }
+        }
+      }
+    },
+    "O Coach responde com um serviço de IA de outra empresa. Tudo o que ele propõe é um rascunho que você revisa antes de salvar.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Coach answers using an AI service from another company. Everything it proposes is a draft you review before saving."
+          }
+        }
+      }
+    },
+    "O Coach também pode ler": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Coach Can Also Read"
+          }
+        }
+      }
+    },
+    "O Coach também pode ler, se você ligar:": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Coach can also read, if you turn on:"
+          }
+        }
+      }
+    },
+    "O FitJourney não sabe quem opera este servidor nem como ele trata os dados.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney doesn't know who runs this server or how it handles your data."
+          }
+        }
+      }
+    },
+    "O FitJourney não tem servidor. O que você permitir vai direto deste iPhone para quem recebe.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney has no server. What you allow goes straight from this iPhone to the recipient."
+          }
+        }
+      }
+    },
+    "O FitJourney não tem servidor: nada passa pelo desenvolvedor.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney has no server: nothing goes through the developer."
+          }
+        }
+      }
+    },
+    "O FitJourney não tem servidor: nada passa pelo desenvolvedor. Você pode mudar isso em Ajustes › IA.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney has no server: nothing goes through the developer. You can change this in Settings › AI."
+          }
+        }
+      }
+    },
+    "O FitJourney para de enviar dados para %@ e volta a perguntar antes do próximo envio. O que já foi enviado fica com quem recebeu.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney stops sending data to %@ and will ask again before the next request. Data already sent stays with the recipient."
+          }
+        }
+      }
+    },
+    "O arquivo que você escolheu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file you chose"
+          }
+        }
+      }
+    },
+    "O histórico desta conversa, que começou com %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This conversation's history, which started with %@"
+          }
+        }
+      }
+    },
+    "O que é enviado": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's Shared"
+          }
+        }
+      }
+    },
+    "O que é enviado e para quem": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's shared and with whom"
+          }
+        }
+      }
+    },
+    "O texto que você escreveu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The text you wrote"
+          }
+        }
+      }
+    },
+    "OpenAI (ChatGPT)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI (ChatGPT)"
+          }
+        }
+      }
+    },
+    "Os %lld arquivos que você escolheu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The %lld files you chose"
+          }
+        }
+      }
+    },
+    "Os arquivos não ficam guardados no app.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files aren't kept in the app."
+          }
+        }
+      }
+    },
+    "Os arquivos vão para %@ para serem lidos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your files go to %@ to be read"
+          }
+        }
+      }
+    },
+    "Os controles de dados da sua conta ChatGPT valem para estes envios.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your ChatGPT account's data controls apply to these requests."
+          }
+        }
+      }
+    },
+    "Os dados são tratados conforme a política de privacidade de quem recebe e os termos da sua conta.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your data is handled under the recipient's privacy policy and your account terms."
+          }
+        }
+      }
+    },
+    "Outros provedores já autorizados": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other Providers You've Allowed"
+          }
+        }
+      }
+    },
+    "Para casar a ficha com a sua biblioteca. Não são dados seus.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To match the sheet to your library. This isn't your data."
+          }
+        }
+      }
+    },
+    "Para estimar itens, porções e calorias, o FitJourney usa um serviço de IA de outra empresa.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To estimate items, portions and calories, FitJourney uses an AI service from another company."
+          }
+        }
+      }
+    },
+    "Para ler a ficha, o FitJourney usa um serviço de IA de outra empresa. Nada é enviado sem a sua permissão.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To read the sheet, FitJourney uses an AI service from another company. Nothing is sent without your permission."
+          }
+        }
+      }
+    },
+    "Para ler o arquivo, o FitJourney usa um serviço de IA de outra empresa. Nada é enviado sem a sua permissão.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To read the file, FitJourney uses an AI service from another company. Nothing is sent without your permission."
+          }
+        }
+      }
+    },
+    "Para quem": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recipient"
+          }
+        }
+      }
+    },
+    "Para separar as refeições do dia.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To place meals in your day."
+          }
+        }
+      }
+    },
+    "Permissões": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permissions"
+          }
+        }
+      }
+    },
+    "Permitido. A IA vai comparar com o plano.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed. The AI will compare with your plan."
+          }
+        }
+      }
+    },
+    "Permitido. Enviando para %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed. Sending to %@."
+          }
+        }
+      }
+    },
+    "Permitido. O Coach envia para %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allowed. The Coach sends to %@."
+          }
+        }
+      }
+    },
+    "Permitir": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow"
+          }
+        }
+      }
+    },
+    "Permitir que %@ veja sua dieta?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let %@ see your diet?"
+          }
+        }
+      }
+    },
+    "Planos alimentares e o que você registrou (até 31 dias). Também vale para o Coach.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meal plans and what you logged (up to 31 days). Also used by the Coach."
+          }
+        }
+      }
+    },
+    "Planos alimentares e o que você registrou (até 31 dias). Também vale para o registro de refeições.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Meal plans and what you logged (up to 31 days). Also used by meal logging."
+          }
+        }
+      }
+    },
+    "Política de Privacidade do FitJourney": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FitJourney Privacy Policy"
+          }
+        }
+      }
+    },
+    "Política de privacidade da OpenAI": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI Privacy Policy"
+          }
+        }
+      }
+    },
+    "Política de privacidade do OpenCode": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenCode Privacy Policy"
+          }
+        }
+      }
+    },
+    "Política de privacidade do OpenRouter": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenRouter Privacy Policy"
+          }
+        }
+      }
+    },
+    "Política de privacidade: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacy Policy: %@"
+          }
+        }
+      }
+    },
+    "Porque você permitiu Dieta para %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Because you allowed Diet for %@."
+          }
+        }
+      }
+    },
+    "Programas, fichas e treinos feitos, com séries e cargas (até 1 ano por exercício).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programs, routines and completed workouts, with sets and loads (up to 1 year per exercise)."
+          }
+        }
+      }
+    },
+    "Programas, fichas e treinos feitos, com séries e cargas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programs, routines and completed workouts, with sets and loads."
+          }
+        }
+      }
+    },
+    "Quem executa este modelo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who runs this model"
+          }
+        }
+      }
+    },
+    "Quem executa este modelo: %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Who runs this model: %@"
+          }
+        }
+      }
+    },
+    "Recebe e repassa a um serviço que executa o modelo e não guarda seus dados.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receives the request and forwards it to a service that runs the model and doesn't store your data."
+          }
+        }
+      }
+    },
+    "Recebe e repassa ao serviço que executa o modelo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Receives the request and forwards it to the service that runs the model."
+          }
+        }
+      }
+    },
+    "Reduzidas e sem localização nem dados da câmera.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resized, with location and camera data removed."
+          }
+        }
+      }
+    },
+    "Registrar refeições": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log Meals"
+          }
+        }
+      }
+    },
+    "Rever": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review"
+          }
+        }
+      }
+    },
+    "Revogar tudo para %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoke Everything for %@"
+          }
+        }
+      }
+    },
+    "Revogar tudo para %@?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Revoke everything for %@?"
+          }
+        }
+      }
+    },
+    "Sem permissão, a IA não aplica suas respostas. Você ainda pode pular as dúvidas e revisar à mão.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Without permission, the AI won't apply your answers. You can still skip the questions and review it yourself."
+          }
+        }
+      }
+    },
+    "Sem permissão, a IA não lê seus arquivos. Você ainda pode criar a dieta à mão.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Without permission, the AI won't read your files. You can still create the meal plan yourself."
+          }
+        }
+      }
+    },
+    "Sem permissão, a IA não lê seus arquivos. Você ainda pode criar o programa à mão.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Without permission, the AI won't read your files. You can still create the program yourself."
+          }
+        }
+      }
+    },
+    "Sem permissão, registre os itens à mão pelo +.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Without permission, log items yourself with +."
+          }
+        }
+      }
+    },
+    "Servidor na sua rede local, configurado por você.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A server on your local network that you set up."
+          }
+        }
+      }
+    },
+    "Servidor que você configurou.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A server you set up."
+          }
+        }
+      }
+    },
+    "Sua escolha vale para %@; trocar de provedor pergunta de novo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your choice applies to %@; switching providers asks again."
+          }
+        }
+      }
+    },
+    "Sua escolha vale para as próximas análises de refeições com %@; trocar de provedor pergunta de novo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your choice applies to future meal analyses with %@; switching providers asks again."
+          }
+        }
+      }
+    },
+    "Sua escolha vale para as próximas importações com %@; trocar de provedor pergunta de novo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your choice applies to future imports with %@; switching providers asks again."
+          }
+        }
+      }
+    },
+    "Suas mensagens e a conversa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your messages and the conversation"
+          }
+        }
+      }
+    },
+    "Suas mensagens e o histórico da conversa": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your messages and the conversation history"
+          }
+        }
+      }
+    },
+    "Suas respostas às dúvidas da importação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answers to the import questions"
+          }
+        }
+      }
+    },
+    "Suas respostas às perguntas da importação": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answers to the import questions"
+          }
+        }
+      }
+    },
+    "Só se a IA precisar perguntar algo. Os arquivos não são reenviados.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only if the AI needs to ask something. The files aren't sent again."
+          }
+        }
+      }
+    },
+    "Só vai o que estiver ligado, e só quando o Coach consultar o seu histórico. Dieta também vale para o registro de refeições.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only what's on is sent, and only when the Coach looks up your history. Diet also applies to meal logging."
+          }
+        }
+      }
+    },
+    "Texto, fotos, data e hora": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text, photos, date and time"
+          }
+        }
+      }
+    },
+    "Tudo o que estiver escrito neles é enviado. Depois da importação eles não ficam guardados no FitJourney.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything written in them is sent. After the import, they aren't kept in FitJourney."
+          }
+        }
+      }
+    },
+    "Tudo o que estiver escrito ou visível nele, inclusive nomes, telefones e observações.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything written or visible in it, including names, phone numbers and notes."
+          }
+        }
+      }
+    },
+    "Tudo o que estiver escrito ou visível nele, inclusive nomes, telefones e observações. Fotos vão reduzidas e sem localização.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything written or visible in it, including names, phone numbers and notes. Photos are resized, with location removed."
+          }
+        }
+      }
+    },
+    "Tudo o que estiver escrito ou visível neles, inclusive nomes, telefones e observações. Fotos vão reduzidas e sem localização.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything written or visible in them, including names, phone numbers and notes. Photos are resized, with location removed."
+          }
+        }
+      }
+    },
+    "Você pode desligar em Ajustes › Coach e IA › O que é enviado e para quem.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can turn this off in Settings › Coach & AI › What's shared and with whom."
+          }
+        }
+      }
+    },
+    "Voltar a um destes provedores restaura o que você permitiu.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switching back to one of these providers restores what you allowed."
+          }
+        }
+      }
+    },
+    "a OpenAI (conta ChatGPT)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI (ChatGPT account)"
+          }
+        }
+      }
+    },
+    "lendo %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "reading %@"
+          }
+        }
+      }
+    },
+    "o servidor em %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "the server at %@"
+          }
+        }
+      }
+    },
+    "sem ler o seu histórico": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "not reading your history"
           }
         }
       }

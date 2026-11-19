@@ -144,6 +144,7 @@ struct ConversationListView: View {
 
     @State private var errorMessage: String?
     @State private var conversationToDelete: ChatConversation?
+    @State private var consentRevision = 0
 
     var body: some View {
         List {
@@ -153,18 +154,28 @@ struct ConversationListView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
-            ForEach(conversations) { conversation in
-                NavigationLink(value: conversation) {
-                    ConversationRow(conversation: conversation, isRunning: service.runningConversationID == conversation.id)
+            Section {
+                ForEach(conversations) { conversation in
+                    NavigationLink(value: conversation) {
+                        ConversationRow(conversation: conversation, isRunning: service.runningConversationID == conversation.id)
+                    }
+                    .swipeActions(allowsFullSwipe: false) {
+                        Button("Apagar", systemImage: "trash", role: .destructive) { conversationToDelete = conversation }
+                    }
+                    .contextMenu {
+                        Button("Apagar", systemImage: "trash", role: .destructive) { conversationToDelete = conversation }
+                    }
                 }
-                .swipeActions(allowsFullSwipe: false) {
-                    Button("Apagar", systemImage: "trash", role: .destructive) { conversationToDelete = conversation }
-                }
-                .contextMenu {
-                    Button("Apagar", systemImage: "trash", role: .destructive) { conversationToDelete = conversation }
+            } footer: {
+                if !conversations.isEmpty {
+                    let _ = consentRevision
+                    let recipient = AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load())
+                    Text(verbatim: AIConsentPresentation.conversationListFooter(
+                        recipient: recipient, categories: AIConsentStore(defaults: defaults).categories(for: recipient)))
                 }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .aiConsentChanged)) { _ in consentRevision += 1 }
         .overlay {
             if conversations.isEmpty {
                 FJEmptyState("Converse com o Coach", systemImage: "sparkles",
@@ -183,6 +194,7 @@ struct ConversationListView: View {
                 } label: {
                     Label("Ajustes de IA", systemImage: "slider.horizontal.3")
                 }
+                .accessibilityIdentifier("coach.settings")
             }
             ToolbarItem(placement: .secondaryAction) {
                 NavigationLink {
