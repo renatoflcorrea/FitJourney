@@ -9547,7 +9547,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chart of %@ for %@"
+            "value": "F %lld g"
           }
         }
       }
@@ -9667,7 +9667,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stored in this device's Keychain, outside backups. The app never shows the saved key."
+            "value": "Chart of %@ for %@"
           }
         }
       }
@@ -9677,7 +9677,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "G %lld g"
+            "value": "Stored in this device's Keychain, outside backups. The app never shows the saved key."
           }
         }
       }
@@ -16366,7 +16366,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No access to save to Health"
+            "value": "Selection"
           }
         }
       }
@@ -16386,7 +16386,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Selection"
+            "value": "No access to save to Health"
           }
         }
       }

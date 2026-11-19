@@ -12,7 +12,10 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 dd="${TMPDIR:-/tmp}/fj-demo-dd"
 cd "$root"
 
-xcrun simctl list devices | grep -q " $sim (" || xcrun simctl clone "iPhone 18 Pro" "$sim" >/dev/null
+devices=$(xcrun simctl list devices)
+udid=$(print -r -- "$devices" | awk -v n="$sim" '$0 ~ "^ +"n" \\(" {gsub(/[()]/,"",$2); print $2; exit}')
+[[ -n "$udid" ]] || udid=$(xcrun simctl clone "iPhone 18 Pro" "$sim")
+sim=$udid
 xcrun simctl boot "$sim" 2>/dev/null || true
 xcrun simctl bootstatus "$sim" -b >/dev/null
 xcrun simctl uninstall "$sim" br.com.renatocorrea.fitjourney 2>/dev/null || true
@@ -23,21 +26,25 @@ mkdir -p "$local_storage/File Provider Storage"
 cp "$pdfs"/*_Workout.pdf "$local_storage/File Provider Storage/"
 
 xcodegen generate --quiet
-xcodebuild -project FitJourney.xcodeproj -scheme FitJourneyUITests -destination "platform=iOS Simulator,name=$sim" \
+xcodebuild -project FitJourney.xcodeproj -scheme FitJourneyUITests -destination "platform=iOS Simulator,id=$sim" \
   -derivedDataPath "$dd" CODE_SIGNING_ALLOWED=NO -quiet build-for-testing
 
-xcrun simctl io "$sim" recordVideo --codec h264 --force "$out" &
-rec=$!
-sleep 2
+# O Xcode grava a tela de cada teste de UI no .xcresult (um segundo gravador com simctl é interrompido).
+results="$dd/review-demo.xcresult"
+rm -rf "$results"
 set +e
 TEST_RUNNER_FJ_OPENCODE_KEY="$(cat "$keyfile")" xcodebuild -project FitJourney.xcodeproj -scheme FitJourneyUITests \
-  -destination "platform=iOS Simulator,name=$sim" -derivedDataPath "$dd" CODE_SIGNING_ALLOWED=NO \
-  -only-testing:FitJourneyUITests/ReviewDemoUITests/testReviewDemoFlow test-without-building 2>&1 | grep -v -i 'opencode_key' | tail -20
-status=${pipestatus[1]}
+  -destination "platform=iOS Simulator,id=$sim" -derivedDataPath "$dd" CODE_SIGNING_ALLOWED=NO -collect-test-diagnostics never \
+  -resultBundlePath "$results" -only-testing:FitJourneyUITests/ReviewDemoUITests/testReviewDemoFlow test-without-building 2>&1 \
+  | grep -v -i 'opencode_key' | grep -E 'Test Case|error:|Executed|failed' | tail -20
+rc=${pipestatus[1]}
 set -e
-sleep 1
-kill -INT $rec; wait $rec 2>/dev/null || true
+attachments=$(mktemp -d)
+xcrun xcresulttool export attachments --path "$results" --output-path "$attachments" >/dev/null
+video=$(python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(next((a['exportedFileName'] for t in d for a in t.get('attachments',[]) if a['exportedFileName'].endswith('.mp4')), ''))" "$attachments/manifest.json")
+[[ -n "$video" ]] && cp "$attachments/$video" "$out"
+rm -rf "$attachments"
 xcrun simctl status_bar "$sim" clear
 xcrun simctl shutdown "$sim"
-echo "vídeo: $out (teste: $status)"
-exit $status
+echo "vídeo: $out (teste: $rc)"
+exit $rc

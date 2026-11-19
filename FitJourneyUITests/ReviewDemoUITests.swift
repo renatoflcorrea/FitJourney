@@ -21,7 +21,16 @@ final class ReviewDemoUITests: XCTestCase {
     @discardableResult
     private func tap(_ id: String, timeout: TimeInterval = 15, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let target = element(id)
-        XCTAssertTrue(target.waitForExistence(timeout: timeout), "missing \(id)", file: file, line: line)
+        // Listas são preguiçosas: o que está fora da tela só existe depois de rolar.
+        var found = target.waitForExistence(timeout: min(timeout, 4))
+        var swipes = 0
+        while !found, swipes < 6 {
+            app.swipeUp()
+            swipes += 1
+            found = target.waitForExistence(timeout: 1.5)
+        }
+        if !found { found = target.waitForExistence(timeout: timeout) }
+        XCTAssertTrue(found, "missing \(id)", file: file, line: line)
         if !target.isHittable { app.swipeUp() }
         target.tap()
         return target
@@ -65,16 +74,20 @@ final class ReviewDemoUITests: XCTestCase {
         openCode.tap()
         pause()
         let field = tap("settings.ai.key.field")
-        field.typeText(key)
+        field.typeText(key + "\n")
         pause(0.8)
         tap("settings.ai.key.save")
+        // Chave gravada no Keychain: aparece "Remover chave".
+        XCTAssertTrue(element("settings.ai.key.remove").waitForExistence(timeout: 10), "the key was not saved")
         // A lista de modelos da conta carrega com a chave (o padrão gpt-6-luna lê imagens).
+        app.swipeDown()
         XCTAssertTrue(element("settings.ai.model.gpt-6-luna").waitForExistence(timeout: 30))
-        pause(2)
+        pause(2.5)
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        pause(0.8)
-        let done = app.buttons["Done"].firstMatch
-        if done.waitForExistence(timeout: 3) { done.tap() } else { app.swipeDown(velocity: .fast) }
+        pause(1.2)
+        let close = app.buttons["OK"].firstMatch
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        close.tap()
         pause()
 
         // 2. Treinos › + › Importar com IA › PDF ou arquivo › as 4 fichas em "No meu iPhone"
