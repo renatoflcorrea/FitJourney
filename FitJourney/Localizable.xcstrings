@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "pt-BR",
   "strings": {
+    "modelos “-free” só funcionam dentro do OpenCode; escolha outro modelo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“-free” models only work inside OpenCode; choose another model"
+          }
+        }
+      }
+    },
     "": {
       "localizations": {}
     },
