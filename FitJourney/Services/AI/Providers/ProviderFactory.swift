@@ -13,7 +13,7 @@ struct ResolvedChat: Sendable {
 /// O roteador por tarefa do fireplaice (`GatewayRouter`) não foi portado: o FitJourney tem uma
 /// única tarefa (chat do Coach) e um único provedor ativo por vez.
 enum ProviderFactory {
-    static func endpoint(settings: ProviderSettings, apiKey: String?) throws -> EndpointConfiguration {
+    static func endpoint(settings: ProviderSettings, apiKey: String?, sessionID: String? = nil) throws -> EndpointConfiguration {
         let provider = settings.provider
         let key = apiKey?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         switch ProviderReadiness.evaluate(settings, hasAPIKey: !key.isEmpty) {
@@ -34,6 +34,15 @@ enum ProviderFactory {
                 provider: .openRouter, baseURL: url, auth: .bearer(key),
                 extraHeaders: ["X-Title": "FitJourney"],
                 quirks: ProviderQuirks(tokenParameter: "max_tokens"))
+        case .openCode:
+            guard !OpenCodeGo.isFreeModel(settings.model) else {
+                throw AIError.notConfigured(reason: String(localized: "modelos “-free” só funcionam dentro do OpenCode; escolha outro modelo"))
+            }
+            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+            return EndpointConfiguration(provider: .openCode, baseURL: OpenCodeGo.baseURL, auth: .bearer(key),
+                extraHeaders: ["User-Agent": "FitJourney/\(version)", "x-opencode-session": sessionID ?? OpenCodeGo.sessionID(installationID: OpenCodeGo.installationID())],
+                timeouts: HTTPClient.Timeouts(chat: 180),
+                quirks: ProviderQuirks(tokenParameter: "max_tokens", includeStreamUsage: true, strictTools: false, errorDialect: .openCode))
         case .anthropic:
             // `strict` desligado: validamos localmente (schema + Codable) e evitamos 400 por
             // palavras-chave de schema que o modo estrito da Anthropic não aceite.
@@ -60,7 +69,7 @@ enum ProviderFactory {
         let configuration = try endpoint(settings: settings, apiKey: apiKey)
         let gateway: any ChatGateway & StructuredCompleting = switch settings.provider {
         case .anthropic: AnthropicMessagesGateway(configuration: configuration, client: client)
-        case .openAI, .openRouter, .custom, .chatGPT: OpenAICompatibleChatGateway(configuration: configuration, client: client)
+        case .openAI, .openRouter, .custom, .chatGPT, .openCode: OpenAICompatibleChatGateway(configuration: configuration, client: client)
         }
         return ResolvedChat(gateway: gateway, model: settings.model, contextBudgetTokens: settings.contextBudgetTokens)
     }
@@ -73,6 +82,9 @@ enum ProviderFactory {
 
     static func makeChat(settings: ProviderSettings, secrets: any SecretStore,
                          client: HTTPClient = HTTPClient()) throws -> ResolvedChat {
+        if settings.provider == .openCode && OpenCodeModelCatalog.trainsOnData(model: settings.model, cache: OpenCodeModelCache().load()) {
+            throw AIError.notConfigured(reason: String(localized: "este modelo pode treinar com seus dados; escolha outro em Ajustes de IA"))
+        }
         guard settings.provider == .chatGPT else {
             let key = try secrets.string(for: ProviderCatalog.descriptor(for: settings.provider).secretKey)
             return try makeChat(settings: settings, apiKey: key, client: client)

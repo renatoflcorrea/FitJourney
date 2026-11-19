@@ -11,7 +11,7 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
 
     init(configuration: EndpointConfiguration, client: HTTPClient = HTTPClient()) {
         self.configuration = configuration
-        self.client = client.addingSensitiveHeaders(configuration.sensitiveHeaderNames)
+        self.client = client.addingSensitiveHeaders(configuration.sensitiveHeaderNames).withErrorDialect(configuration.quirks.errorDialect)
     }
 
     // MARK: - Streaming

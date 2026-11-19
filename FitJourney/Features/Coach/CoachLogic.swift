@@ -26,6 +26,9 @@ struct CoachErrorPresentation: Equatable {
         case .rateLimited:
             title = String(localized: "Limite de uso atingido")
             action = .retry
+        case .usageLimitReached:
+            title = String(localized: "Limite da assinatura atingido")
+            action = .none
         case .network:
             title = String(localized: "Sem conexão")
             action = .retry

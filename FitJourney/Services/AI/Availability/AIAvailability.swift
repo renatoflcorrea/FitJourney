@@ -27,7 +27,8 @@ final class AIAvailability {
 
     var isAvailable: Bool { readiness.isReady }
     /// O modelo configurado lê fotos (câmera/galeria do registro com IA).
-    var supportsImages: Bool { isAvailable && AttachmentCapabilities.resolve(provider: provider, model: model).supportsImages }
+    var supportsImages: Bool { isAvailable && modelSupportsImages }
+    private(set) var modelSupportsImages: Bool
 
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private let secrets: any SecretStore
@@ -42,6 +43,7 @@ final class AIAvailability {
         provider = snapshot.provider
         providerName = snapshot.providerName
         model = snapshot.model
+        modelSupportsImages = snapshot.modelSupportsImages
         observers = ObserverBag(center: center)
         for name in [Notification.Name.aiSettingsDidChange, UIApplication.didBecomeActiveNotification] {
             observers.observe(name) { [weak self] in self?.refresh() }
@@ -55,6 +57,7 @@ final class AIAvailability {
         if provider != snapshot.provider { provider = snapshot.provider }
         if providerName != snapshot.providerName { providerName = snapshot.providerName }
         if model != snapshot.model { model = snapshot.model }
+        if modelSupportsImages != snapshot.modelSupportsImages { modelSupportsImages = snapshot.modelSupportsImages }
     }
 
     struct Snapshot: Equatable {
@@ -62,6 +65,7 @@ final class AIAvailability {
         var provider: AIProviderID
         var providerName: String
         var model: String
+        var modelSupportsImages: Bool
     }
 
     static func evaluate(defaults: UserDefaults, secrets: any SecretStore) -> Snapshot {
@@ -69,7 +73,9 @@ final class AIAvailability {
         let descriptor = ProviderCatalog.descriptor(for: settings.provider)
         let readiness = ProviderReadiness.evaluate(settings, hasAPIKey: descriptor.hasCredential(in: secrets))
         return Snapshot(readiness: readiness, provider: settings.provider, providerName: descriptor.displayShortName,
-                        model: settings.model)
+                        model: settings.model, modelSupportsImages: settings.provider == .openCode
+                            ? OpenCodeModelCatalog.capabilities(model: settings.model, cache: OpenCodeModelCache(defaults: defaults).load()).supportsImages
+                            : AttachmentCapabilities.resolve(provider: settings.provider, model: settings.model).supportsImages)
     }
 
     /// Avisa que a configuração de IA mudou (de qualquer thread).

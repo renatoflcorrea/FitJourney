@@ -299,6 +299,62 @@ struct AIAnthropicGatewayTests {
 
 @Suite("AI · Catálogo, configurações e fábrica")
 struct AIProviderConfigurationTests {
+    @Test("OpenCode Go: descritor e sessão determinística")
+    func openCodeDescriptorAndSession() throws {
+        let descriptor = ProviderCatalog.descriptor(for: .openCode)
+        #expect(descriptor.defaultBaseURL == URL(string: "https://opencode.ai/inference/go/openai/v1"))
+        #expect(descriptor.requiresAPIKey)
+        #expect(descriptor.defaultModel == "gpt-6-luna")
+        #expect(descriptor.keyHelpURL == URL(string: "https://opencode.ai/auth"))
+        #expect(OpenCodeGo.sessionID(installationID: "test-seed") == "db7be5bd90cff8d")
+        let id = OpenCodeGo.sessionID(installationID: "test-seed")
+        #expect(id.range(of: #"^[0-9a-f]+$"#, options: .regularExpression) != nil)
+    }
+
+    @Test("OpenCode Go: installation ID persiste nos defaults isolados")
+    func openCodeInstallationIDPersists() throws {
+        let defaults = try #require(UserDefaults(suiteName: "opencode-tests-\(UUID().uuidString)"))
+        let first = OpenCodeGo.installationID(defaults: defaults)
+        #expect(OpenCodeGo.installationID(defaults: defaults) == first)
+        #expect(defaults.string(forKey: OpenCodeGo.installationIDKey) == first)
+    }
+
+    @Test("OpenCode Go: configurações JSON e fábrica")
+    func openCodeSettingsAndFactory() throws {
+        var settings = ProviderSettings(provider: .openCode)
+        settings.model = "foo"
+        let decoded = try JSONDecoder().decode(ProviderSettings.self, from: JSONEncoder().encode(settings))
+        #expect(decoded == settings)
+        #expect(try ProviderFactory.makeChat(settings: ProviderSettings(provider: .openCode), apiKey: "test-key-not-real").gateway is OpenAICompatibleChatGateway)
+        #expect(throws: AIError.self) { try ProviderFactory.makeChat(settings: ProviderSettings(provider: .openCode), apiKey: nil) }
+        #expect(throws: AIError.self) { try ProviderFactory.makeChat(settings: ProviderSettings(provider: .openCode, models: [.openCode: "foo-free"]), apiKey: "test-key-not-real") }
+    }
+
+    @Test("OpenCode Go: instalação e cabeçalhos/fio")
+    func openCodeRequestWire() async throws {
+        let defaults = try #require(UserDefaults(suiteName: "opencode-wire-\(UUID().uuidString)"))
+        let host = StubURLProtocol.uniqueHost()
+        StubURLProtocol.enqueue([.sse(sseBody([#"{"model":"gpt-6-luna","choices":[{"index":0,"delta":{"content":"ok"},"finish_reason":"stop"}]}"#]))], host: host)
+        let configuration = EndpointConfiguration(provider: .openCode, baseURL: URL(string: "https://\(host)/v1")!, auth: .bearer("test-key-not-real"), extraHeaders: ["User-Agent": "FitJourney/1", "x-opencode-session": OpenCodeGo.sessionID(installationID: OpenCodeGo.installationID(defaults: defaults))], quirks: ProviderQuirks(tokenParameter: "max_tokens", includeStreamUsage: true, strictTools: false))
+        let gateway = OpenAICompatibleChatGateway(configuration: configuration, client: HTTPClient(session: StubURLProtocol.makeSession(), retryPolicy: .none))
+        _ = try await collect(gateway.stream(ChatRequest(model: "gpt-6-luna", messages: [.user("oi")], maxTokens: 321, tools: [sampleTool])))
+        let request = try #require(StubURLProtocol.requests(host: host).first)
+        #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer test-key-not-real")
+        #expect(request.value(forHTTPHeaderField: "User-Agent")?.hasPrefix("FitJourney/") == true)
+        #expect(request.value(forHTTPHeaderField: "x-opencode-session") == OpenCodeGo.sessionID(installationID: OpenCodeGo.installationID(defaults: defaults)))
+        let body = try #require(StubURLProtocol.bodies(host: host).first)
+        #expect(body["max_tokens"] == .number(321))
+        #expect(body["stream_options"]?["include_usage"] == .bool(true))
+        #expect(body["tools"]?.arrayValue?.first?["function"]?["strict"] == nil)
+    }
+
+    @Test("Redactor remove chave OpenCode")
+    func redactsOpenCodeKey() {
+        let output = Redactor.redact("chave oc_sk_abc123def456")
+        #expect(!output.contains("oc_sk_abc123def456"))
+        #expect(output.contains("<redacted>"))
+    }
+
     @Test("todo provedor tem descritor e modelo padrão (exceto custom, que sugere um)")
     func catalogCoversAll() {
         for id in AIProviderID.allCases {

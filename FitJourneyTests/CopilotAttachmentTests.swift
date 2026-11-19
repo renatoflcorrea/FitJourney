@@ -118,6 +118,10 @@ struct CopilotAttachmentTests {
         #expect(!AttachmentCapabilities.resolve(provider: .openAI, model: "gpt-3.5-turbo").supportsImages)
         #expect(!AttachmentCapabilities.resolve(provider: .chatGPT, model: "gpt-6").supportsPDF)
         #expect(!AttachmentCapabilities.resolve(provider: .custom, model: "llava").supportsPDF)
+        #expect(AttachmentCapabilities.resolve(provider: .openCode, model: "gpt-6-luna")
+            == AttachmentCapabilities(supportsImages: true, supportsPDF: false))
+        #expect(!AttachmentCapabilities.resolve(provider: .openCode, model: "glm-5.3").supportsImages)
+        #expect(!AttachmentCapabilities.resolve(provider: .openCode, model: "modelo-desconhecido").supportsImages)
     }
 
     // MARK: Codificação

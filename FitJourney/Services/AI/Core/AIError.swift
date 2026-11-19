@@ -12,6 +12,7 @@ enum AIError: Error, Sendable, Hashable {
     case signInRequired
     /// 429, com o atraso sugerido pelo servidor.
     case rateLimited(retryAfter: TimeInterval?)
+    case usageLimitReached(retryAfter: TimeInterval?)
     /// Demais 4xx: o pedido está errado.
     case badRequest(status: Int, message: String)
     /// 5xx ou erro do provedor no meio do stream (ex.: `overloaded_error`).
@@ -41,29 +42,36 @@ extension AIError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .notConfigured(reason):
-            String(localized: "Coach não configurado: \(reason)")
+            return String(localized: "Coach não configurado: \(reason)")
         case .unauthorized:
-            String(localized: "A chave do provedor foi recusada. Confira a chave em Ajustes.")
+            return String(localized: "A chave do provedor foi recusada. Confira a chave em Ajustes.")
         case .signInRequired:
-            String(localized: "O login do ChatGPT expirou ou foi recusado. Entre de novo em Ajustes de IA.")
+            return String(localized: "O login do ChatGPT expirou ou foi recusado. Entre de novo em Ajustes de IA.")
         case let .rateLimited(retryAfter):
             if let retryAfter {
-                String(localized: "Limite de uso do provedor atingido. Tente de novo em \(Int(retryAfter.rounded())) s.")
+                return String(localized: "Limite de uso do provedor atingido. Tente de novo em \(Int(retryAfter.rounded())) s.")
             } else {
-                String(localized: "Limite de uso do provedor atingido. Tente de novo em instantes.")
+                return String(localized: "Limite de uso do provedor atingido. Tente de novo em instantes.")
+            }
+        case let .usageLimitReached(retryAfter):
+            if let retryAfter, retryAfter.isFinite, retryAfter >= 0 {
+                let duration = Duration.seconds(retryAfter).formatted(.units(allowed: [.hours, .minutes, .seconds], width: .abbreviated, maximumUnitCount: 1))
+                return String(localized: "Limite de uso da sua assinatura atingido. Tente de novo em cerca de \(duration) ou troque de provedor em Ajustes de IA.")
+            } else {
+                return String(localized: "Limite de uso da sua assinatura atingido. Tente de novo mais tarde ou troque de provedor em Ajustes de IA.")
             }
         case let .badRequest(status, message):
-            String(localized: "O provedor recusou o pedido (\(status)): \(message)")
+            return String(localized: "O provedor recusou o pedido (\(status)): \(message)")
         case let .server(status, message):
-            String(localized: "O provedor está com problemas (\(status)): \(message)")
+            return String(localized: "O provedor está com problemas (\(status)): \(message)")
         case .network:
-            String(localized: "Sem conexão com o provedor. Verifique a internet.")
+            return String(localized: "Sem conexão com o provedor. Verifique a internet.")
         case .decoding:
-            String(localized: "Não foi possível ler a resposta do provedor.")
+            return String(localized: "Não foi possível ler a resposta do provedor.")
         case .cancelled:
-            String(localized: "Interrompido.")
+            return String(localized: "Interrompido.")
         case let .incomplete(reason):
-            reason.localizedDescription
+            return reason.localizedDescription
         }
     }
 }
@@ -83,6 +91,7 @@ extension AIError.IncompleteReason {
 /// Remove padrões de credenciais conhecidos de textos que podem ir para log/UI.
 enum Redactor {
     private static let patterns: [String] = [
+        #"oc_sk_[A-Za-z0-9_-]{8,}"#,
         #"sk-ant-[A-Za-z0-9._-]{8,}"#,
         #"sk-or-[A-Za-z0-9._-]{8,}"#,
         #"sk-[A-Za-z0-9._-]{8,}"#,

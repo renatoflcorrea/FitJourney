@@ -355,7 +355,8 @@
         "anthropic",
         "openRouter",
         "custom",
-        "chatGPT"
+        "chatGPT",
+        "openCode"
       ]
     },
     "videoProvider": {
