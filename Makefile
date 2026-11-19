@@ -2,7 +2,7 @@ SCHEME    = FitJourney
 DEST      = generic/platform=iOS Simulator
 TEST_DEST ?= platform=iOS Simulator,name=iPhone 17 Pro
 
-.PHONY: project build test clean watch-build watch-test device
+.PHONY: project build test uitest clean watch-build watch-test device
 
 project:
 	xcodegen generate --quiet
@@ -12,6 +12,10 @@ build: project
 
 test: project
 	xcodebuild -project FitJourney.xcodeproj -scheme $(SCHEME) -destination '$(TEST_DEST)' CODE_SIGNING_ALLOWED=NO -quiet test
+
+# Testes de UI (esquema próprio). O fluxo de demonstração só roda com TEST_RUNNER_FJ_OPENCODE_KEY no ambiente.
+uitest: project
+	xcodebuild -project FitJourney.xcodeproj -scheme FitJourneyUITests -destination '$(TEST_DEST)' CODE_SIGNING_ALLOWED=NO -quiet test
 
 WATCH_TEST_DEST ?= platform=watchOS Simulator,name=Apple Watch Series 11 (46mm)
 

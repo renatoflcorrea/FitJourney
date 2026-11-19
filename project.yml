@@ -94,6 +94,17 @@ targets:
       base:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: br.com.renatocorrea.fitjourney.tests
+  FitJourneyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [FitJourneyUITests]
+    dependencies:
+      - target: FitJourney
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: br.com.renatocorrea.fitjourney.uitests
+        TEST_TARGET_NAME: FitJourney
   FitJourneyWatch:
     type: application
     platform: watchOS
@@ -189,3 +200,13 @@ schemes:
       # Testes rodam na língua de desenvolvimento (pt-BR), independente do idioma do simulador.
       language: pt-BR
       region: BR
+  # Testes de UI (lentos; o fluxo de demonstração precisa de chave): make uitest / scripts/record-review-demo.sh
+  FitJourneyUITests:
+    build:
+      targets:
+        FitJourney: all
+        FitJourneyUITests: [test]
+    test:
+      targets: [FitJourneyUITests]
+      language: en
+      region: US
