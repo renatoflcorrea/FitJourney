@@ -1,39 +1,111 @@
 import SwiftUI
 
-/// Primeira abertura: o que o Coach faz, aviso de privacidade, o que compartilhar e configuração do provedor.
+/// Primeira abertura da aba Coach (DESIGN §4.16): sem provedor pronto, as boas-vindas com "Configurar provedor e
+/// chave" (ainda não há a quem pedir); com o provedor pronto, o consentimento como tela da aba, nomeando quem recebe,
+/// com os quatro toggles (pré-selecionados dos toggles antigos; nada vale até Permitir). Não permitir mostra
+/// "O Coach está desligado" + Rever (a escolha negada não é gravada).
 struct CoachWelcomeView: View {
     let gate: CoachGate
     let secrets: any SecretStore
     let defaults: UserDefaults
     let onChange: () -> Void
 
-    @State private var sharing = CoachProfile.Sharing()
-
-    private var store: CoachProfileStore { CoachProfileStore(defaults: defaults) }
+    @State private var recipient: AIRecipient?
+    @State private var categories: Set<AIDataCategory> = []
+    @State private var denied = false
 
     var body: some View {
+        Group {
+            if gate == .needsConsent, let recipient {
+                if denied {
+                    coachOff
+                } else {
+                    consent(recipient)
+                }
+            } else {
+                setup
+            }
+        }
+        .navigationTitle("Coach")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if gate == .needsConsent {
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink {
+                        AISettingsView(secrets: secrets, defaults: defaults)
+                    } label: {
+                        Label("Ajustes de IA", systemImage: "slider.horizontal.3")
+                    }
+                    .accessibilityIdentifier("coach.settings")
+                }
+            }
+        }
+        .fjScreenBackground()
+        .onAppear {
+            reload()
+            onChange()
+        }
+        .onChange(of: gate) { reload() }
+    }
+
+    private func reload() {
+        let next = AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load())
+        if next != recipient || categories.isEmpty {
+            categories = AIConsentPresentation.initialCoachCategories(
+                stored: AIConsentStore(defaults: defaults).categories(for: next),
+                legacy: CoachProfileStore(defaults: defaults).load().sharing)
+        }
+        if next.key != recipient?.key { denied = false }
+        recipient = next
+    }
+
+    // MARK: Consentimento (provedor pronto)
+
+    private func consent(_ recipient: AIRecipient) -> some View {
+        AIConsentContentView(
+            content: AIConsentPresentation.content(for: .coach(previous: nil), recipient: recipient),
+            categories: $categories,
+            onAllow: {
+                let content = AIConsentPresentation.content(for: .coach(previous: nil), recipient: recipient)
+                AIConsentPresentation.grant(.coach(previous: nil), for: recipient, categories: categories,
+                                            store: AIConsentStore(defaults: defaults))
+                AccessibilityNotification.Announcement(content.allowedAnnouncement).post()
+                onChange()
+            },
+            onDeny: { denied = true })
+    }
+
+    private var coachOff: some View {
+        ContentUnavailableView {
+            Label("O Coach está desligado", systemImage: "sparkles")
+        } description: {
+            Text("Nada é enviado. Os outros recursos do app funcionam normalmente.")
+        } actions: {
+            Button("Rever") { denied = false }
+                .buttonStyle(.fjPrimary(.coach, fillsWidth: false))
+                .accessibilityIdentifier("coach.off.review")
+        }
+    }
+
+    // MARK: Sem provedor
+
+    private var setup: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: FJSpacing.sectionGap) {
                 header
                 capabilities
-                if gate == .needsConsent {
-                    privacyCard
-                    sharingCard
-                } else {
-                    FJBanner("Falta configurar o provedor",
-                             message: "Escolha o provedor de IA e informe sua chave de API para começar a conversar.",
-                             tone: .attention, systemImage: "key.fill")
+                FJBanner("Falta configurar o provedor",
+                         message: "Escolha o provedor de IA e informe sua chave de API. Antes de enviar qualquer coisa, o Coach mostra o que vai e para quem.",
+                         tone: .attention, systemImage: "key.fill")
+                NavigationLink {
+                    AISettingsView(secrets: secrets, defaults: defaults)
+                } label: {
+                    Label("Configurar provedor e chave", systemImage: "key")
                 }
-                actions
+                .buttonStyle(.fjPrimary(.coach))
+                .accessibilityIdentifier("coach.setup")
             }
             .padding(FJSpacing.screenMargin)
-        }
-        .navigationTitle("Coach")
-        .navigationBarTitleDisplayMode(.inline)
-        .fjScreenBackground()
-        .onAppear {
-            sharing = store.load().sharing
-            onChange()
         }
     }
 
@@ -73,79 +145,20 @@ struct CoachWelcomeView: View {
         }
         .accessibilityElement(children: .combine)
     }
-
-    private var privacyCard: some View {
-        let recipient = AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load())
-        return FJBanner("Privacidade",
-                 message: "Suas mensagens, o histórico da conversa e os dados que você escolher são enviados para \(recipient.displayName). Nada vai a servidor do FitJourney. A chave fica só no Keychain deste aparelho.",
-                 tone: .neutral, systemImage: "lock.shield.fill")
-    }
-
-    private var sharingCard: some View {
-        VStack(alignment: .leading, spacing: FJSpacing.s) {
-            FJSectionHeader("O que compartilhar", subtitle: "Tudo começa desligado. Você pode mudar depois em Ajustes de IA.")
-            VStack(spacing: 0) {
-                SharingToggles(sharing: $sharing)
-            }
-            .padding(.horizontal, FJSpacing.l)
-            .padding(.vertical, FJSpacing.xs)
-            .background(FJColor.surface, in: FJRadius.shape(FJRadius.card))
-        }
-    }
-
-    private var actions: some View {
-        VStack(spacing: FJSpacing.m) {
-            if gate == .needsConsent {
-                FJPrimaryButton("Aceitar e continuar", systemImage: "checkmark", area: .coach) {
-                    store.grantConsent(sharing: sharing)
-                    onChange()
-                }
-            }
-            let link = NavigationLink {
-                AISettingsView(secrets: secrets, defaults: defaults)
-            } label: {
-                Label("Configurar provedor e chave", systemImage: "key")
-            }
-            if gate == .needsProvider {
-                link.buttonStyle(.fjPrimary(.coach))
-            } else {
-                link.buttonStyle(.fjSecondary())
-            }
-        }
-    }
-}
-
-/// Os quatro toggles de compartilhamento (boas-vindas e Ajustes de IA).
-struct SharingToggles: View {
-    @Binding var sharing: CoachProfile.Sharing
-
-    var body: some View {
-        Toggle(isOn: $sharing.profile) { label("Perfil", "Idade, objetivo, restrições…", "person.crop.circle") }
-        Divider()
-        Toggle(isOn: $sharing.workouts) { label("Treinos", "Programas e histórico de séries", "dumbbell") }
-        Divider()
-        Toggle(isOn: $sharing.nutrition) { label("Dieta", "Planos e registro alimentar", "fork.knife") }
-        Divider()
-        Toggle(isOn: $sharing.health) { label("Saúde", "Do app Saúde, por dia: treinos, minutos, FC média e em repouso, energia ativa e passos (até 31 dias).", "heart") }
-    }
-
-    private func label(_ title: LocalizedStringKey, _ detail: LocalizedStringKey, _ symbol: String) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: FJSpacing.xxs) {
-                Text(title)
-                Text(detail).font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
-            }
-        } icon: {
-            Image(systemName: symbol).foregroundStyle(FJArea.coach.color)
-        }
-        .padding(.vertical, FJSpacing.xs)
-    }
 }
 
 #if DEBUG
-#Preview("Boas-vindas") {
+#Preview("Boas-vindas — consentimento") {
     NavigationStack {
         CoachWelcomeView(gate: .needsConsent, secrets: InMemorySecretStore(),
+                         defaults: CoachPreviewData.defaults(consented: false), onChange: {})
+    }
+    .tint(FJColor.coach)
+}
+
+#Preview("Boas-vindas — sem provedor") {
+    NavigationStack {
+        CoachWelcomeView(gate: .needsProvider, secrets: InMemorySecretStore(),
                          defaults: CoachPreviewData.defaults(consented: false), onChange: {})
     }
     .tint(FJColor.coach)

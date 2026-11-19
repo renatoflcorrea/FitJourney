@@ -17,11 +17,16 @@ struct CoachChatView: View {
     @State private var reviewProgram: TrainingProgram?
     @State private var reviewPlan: NutritionPlan?
     @State private var nearBottom = true
+    @State private var consentPrompt: AIConsentPromptState.Prompt?
+    @State private var showPrivacy = false
+    /// Muda quando o consentimento muda (Ajustes, folha): redesenha a linha "Enviando para…".
+    @State private var consentRevision = 0
 
     private var isRunningHere: Bool { service.runningConversationID == conversation.id }
     private var otherConversationRunning: Bool { service.isRunning && !isRunningHere }
     private var messages: [ChatMessage] { conversation.visibleMessages(including: .shared) }
     private var hasConsent: Bool { CoachProfileStore(defaults: defaults).hasConsented }
+    private var currentRecipient: AIRecipient { AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load()) }
     private var canSend: Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !service.isRunning
     }
@@ -30,6 +35,7 @@ struct CoachChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: FJSpacing.m) {
+                    destinationLine
                     if messages.isEmpty { suggestions }
                     ForEach(messages) { message in
                         MessageRow(message: message, defaults: defaults, isActive: isRunningHere,
@@ -39,7 +45,8 @@ struct CoachChatView: View {
                                    onOpenProgram: { reviewProgram = $0 }, onOpenPlan: { reviewPlan = $0 })
                             .id(message.id)
                     }
-                    if let error = service.lastError, service.lastErrorConversationID == conversation.id { errorBanner(error) }
+                    if let error = service.lastError, service.lastErrorConversationID == conversation.id,
+                       service.lastConsentRequired == nil { errorBanner(error) }
                     Color.clear.frame(height: 1).id("bottom")
                 }
                 .padding(FJSpacing.screenMargin)
@@ -63,6 +70,18 @@ struct CoachChatView: View {
         .navigationBarTitleDisplayMode(.inline)
         .fjScreenBackground()
         .navigationDestination(isPresented: $showSettings) { AISettingsView(secrets: secrets, defaults: defaults) }
+        .navigationDestination(isPresented: $showPrivacy) { AIPrivacyView(secrets: secrets, defaults: defaults) }
+        .sheet(item: $consentPrompt) { prompt in
+            // Destino mudou (provedor trocado): pede de novo; o texto digitado fica no campo para tentar de novo.
+            AIConsentSheet(request: prompt.request, recipient: prompt.recipient, defaults: defaults,
+                           onAllow: { focused = true }, onDeny: {})
+        }
+        .onChange(of: service.lastConsentRequired) { _, required in
+            guard required != nil, service.lastErrorConversationID == conversation.id else { return }
+            service.clearError()
+            askConsent()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .aiConsentChanged)) { _ in consentRevision += 1 }
         .navigationDestination(item: $reviewProgram) { ProgramReviewView(program: $0) }
         .navigationDestination(item: $reviewPlan) { PlanReviewView(plan: $0) }
         .onAppear {
@@ -169,6 +188,7 @@ struct CoachChatView: View {
             TextField("Pergunte ao Coach", text: $text, axis: .vertical)
                 .lineLimit(1 ... 5)
                 .focused($focused)
+                .accessibilityIdentifier("coach.composer.field")
                 .padding(.horizontal, FJSpacing.m)
                 .padding(.vertical, FJSpacing.s + 2)
                 .frame(minHeight: FJSize.minTap)
@@ -181,6 +201,7 @@ struct CoachChatView: View {
                 FJIconButton(systemImage: "arrow.up", label: "Enviar") { send(text) }
                     .opacity(canSend ? 1 : 0.4)
                     .disabled(!canSend)
+                    .accessibilityIdentifier("coach.composer.send")
             }
         }
     }
@@ -190,9 +211,9 @@ struct CoachChatView: View {
     private func send(_ value: String) {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !service.isRunning else { return }
-        // Defesa: consentimento revogado em outro lugar → a aba revalida o gate em vez de enviar.
+        // Sem permissão do Coach para o destino atual (provedor trocado ou revogado): pede antes de enviar.
         guard hasConsent else {
-            NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
+            askConsent()
             return
         }
         text = ""
@@ -202,10 +223,40 @@ struct CoachChatView: View {
     /// Refaz a resposta que parou ou falhou, com a mesma mensagem do usuário (nada é duplicado).
     private func retry(_ message: ChatMessage) {
         guard hasConsent else {
-            NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
+            askConsent()
             return
         }
         Task { await service.regenerate(after: message, in: conversation) }
+    }
+
+    private func askConsent() {
+        let previous = AIConsentPresentation.conversationRecipient(
+            providerRaw: conversation.providerRaw, model: conversation.modelID,
+            current: ProviderSettingsStore(defaults: defaults).load())
+        consentPrompt = AIConsentPromptState.Prompt(recipient: currentRecipient, request: .coach(previous: previous))
+    }
+
+    /// 1ª linha da conversa: para quem vai e o que esta conversa pode ler · Alterar.
+    @ViewBuilder private var destinationLine: some View {
+        let _ = consentRevision
+        let recipient = currentRecipient
+        if hasConsent {
+            let categories = AIConsentStore(defaults: defaults).categories(for: recipient)
+            HStack(alignment: .firstTextBaseline, spacing: FJSpacing.s) {
+                Image(systemName: "lock.fill")
+                    .foregroundStyle(FJColor.textSecondary)
+                    .accessibilityHidden(true)
+                Text(verbatim: AIConsentPresentation.conversationHeader(recipient: recipient, categories: categories))
+                    .foregroundStyle(FJColor.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button("Alterar") { showPrivacy = true }
+                    .fontWeight(.semibold)
+                    .frame(minHeight: FJSize.minTap)
+                    .accessibilityIdentifier("coach.destination.change")
+            }
+            .font(FJFont.caption)
+            .padding(.horizontal, FJSpacing.xs)
+        }
     }
 
     private func scrollToBottom(_ proxy: ScrollViewProxy, animated: Bool = true) {
