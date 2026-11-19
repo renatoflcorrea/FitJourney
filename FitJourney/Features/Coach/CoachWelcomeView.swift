@@ -126,7 +126,7 @@ struct SharingToggles: View {
         Divider()
         Toggle(isOn: $sharing.nutrition) { label("Dieta", "Planos e registro alimentar", "fork.knife") }
         Divider()
-        Toggle(isOn: $sharing.health) { label("Saúde", "Resumo do app Saúde (passos, FC, sono)", "heart") }
+        Toggle(isOn: $sharing.health) { label("Saúde", "Do app Saúde, por dia: treinos, minutos, FC média e em repouso, energia ativa e passos (até 31 dias).", "heart") }
     }
 
     private func label(_ title: LocalizedStringKey, _ detail: LocalizedStringKey, _ symbol: String) -> some View {

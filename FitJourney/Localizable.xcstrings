@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "pt-BR",
   "strings": {
+    "Do app Saúde, por dia: treinos, minutos, FC média e em repouso, energia ativa e passos (até 31 dias).": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From Apple Health, per day: workouts, minutes, average and resting heart rate, active energy and steps (up to 31 days)."
+          }
+        }
+      }
+    },
     "Política de privacidade": {
       "localizations": {
         "en": {
