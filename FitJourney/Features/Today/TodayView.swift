@@ -66,6 +66,7 @@ struct TodayView: View {
                         Image(systemName: "person.crop.circle")
                     }
                     .accessibilityLabel(Text("Ajustes"))
+                    .accessibilityIdentifier("settings.open")
                 }
             }
             .sheet(isPresented: $showSettings) { SettingsRootView() }
@@ -145,7 +146,7 @@ struct TodayView: View {
                                 .font(FJFont.label)
                                 .foregroundStyle(FJColor.textSecondary)
                                 .multilineTextAlignment(.center)
-                            ImportWithAIButton(kind: .program, prominence: .prominent)
+                            ImportWithAIButton(kind: .program, prominence: .prominent, identifier: "today.import")
                             FJSecondaryButton("Criar do zero", systemImage: "plus") { createFromScratch = true }
                             FJSecondaryButton("Usar exemplo ABC", systemImage: "dumbbell") { useStarter() }
                         } else {

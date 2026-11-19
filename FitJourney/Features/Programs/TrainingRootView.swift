@@ -191,14 +191,16 @@ struct TrainingRootView: View {
                 }
                 if aiAvailability.isOn {
                     Divider()
-                    ImportWithAIMenuItem(kind: .program)
+                    ImportWithAIMenuItem(kind: .program, identifier: "training.add.import")
                     if let active {
-                        ImportWithAIMenuItem(kind: .program, target: .existingProgram(active.id), title: "Adicionar fichas com IA")
+                        ImportWithAIMenuItem(kind: .program, target: .existingProgram(active.id), title: "Adicionar fichas com IA",
+                                             identifier: "training.add.importRoutines")
                     }
                 }
             } label: {
                 Label("Novo", systemImage: "plus")
             }
+            .accessibilityIdentifier("training.add")
         }
     }
 
@@ -211,7 +213,7 @@ struct TrainingRootView: View {
                          actionTitle: "Criar programa") { sheet = .newProgram }
                 .listRowBackground(Color.clear)
             if aiAvailability.isOn {
-                ImportWithAIButton(kind: .program, fillsWidth: false)
+                ImportWithAIButton(kind: .program, fillsWidth: false, identifier: "training.empty.import")
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
             }
@@ -341,7 +343,7 @@ struct TrainingRootView: View {
     private func addRoutinesWithAISection(_ program: TrainingProgram) -> some View {
         Section {
             ImportWithAIButton(kind: .program, target: .existingProgram(program.id), title: "Adicionar fichas com IA",
-                               fillsWidth: false)
+                               fillsWidth: false, identifier: "programEditor.importRoutines")
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .listRowInsets(EdgeInsets(top: FJSpacing.m, leading: 0, bottom: FJSpacing.m, trailing: 0))

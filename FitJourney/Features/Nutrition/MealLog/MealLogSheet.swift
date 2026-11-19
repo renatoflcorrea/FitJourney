@@ -27,8 +27,7 @@ struct MealLogSheet: View {
     @State private var showPhotoPicker = false
     @State private var showCamera = false
     @State private var cameraDenied = false
-    @State private var showConsent = false
-    @State private var consentRecipient: AIRecipient?
+    @State private var consent = AIConsentPromptState()
     @State private var pendingCorrection: String?
     @State private var showCloseDialog = false
     @State private var showCorrection = false
@@ -41,6 +40,8 @@ struct MealLogSheet: View {
 
     private var isOnline: Bool { importCoordinator?.network.isOnline ?? true }
     private var providerName: String { availability?.providerName ?? "" }
+    /// Quem recebe agora (o aviso fixo diz para quem vão o texto e as fotos).
+    private var recipient: AIRecipient { AIRecipientResolver.resolve(settings: ProviderSettingsStore().load()) }
     private var hasContent: Bool {
         !session.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !session.photos.isEmpty || session.review != nil
     }
@@ -76,14 +77,20 @@ struct MealLogSheet: View {
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: max(1, remainingPhotos),
                       matching: .images)
         .onChange(of: photoItems) { _, items in loadPhotos(items) }
-        .sheet(isPresented: $showConsent) {
-            MealLogConsentSheet(providerName: consentRecipient?.displayName ?? providerName) {
-                if let recipient = consentRecipient { AIConsentStore().grant(.mealLog, for: recipient) }
+        .sheet(item: $consent.prompt) { prompt in
+            AIConsentSheet(request: prompt.request, recipient: prompt.recipient, onAllow: {
+                consent.allow()
                 if let instruction = pendingCorrection {
                     pendingCorrection = nil
                     correct(instruction)
                 } else { analyze() }
-            }
+            }, onDeny: {
+                consent.deny()
+                if pendingCorrection != nil {
+                    pendingCorrection = nil
+                    errorMessage = String(localized: "Nada foi enviado. Sem permissão, a correção não é aplicada; ajuste os itens à mão.")
+                }
+            })
         }
         .sheet(isPresented: $showCorrection) {
             MealLogCorrectionSheet { instruction in correct(instruction) }
@@ -161,6 +168,7 @@ struct MealLogSheet: View {
         .safeAreaInset(edge: .bottom) {
             FJAIButton("Analisar", prominence: .prominent, action: analyze)
                 .disabled(!session.canAnalyze || !isOnline)
+                .accessibilityIdentifier("mealLog.analyze")
                 .padding(.horizontal, FJSpacing.screenMargin)
                 .padding(.vertical, FJSpacing.s)
                 .background(FJColor.background)
@@ -189,6 +197,7 @@ struct MealLogSheet: View {
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 150)
                     .accessibilityLabel(Text("O que você comeu"))
+                    .accessibilityIdentifier("mealLog.field")
                 if session.text.isEmpty {
                     Text(session.photos.isEmpty ? "O que você comeu?" : "Algo que a foto não mostra? (opcional)")
                         .font(FJFont.body)
@@ -248,8 +257,10 @@ struct MealLogSheet: View {
                 LazyVGrid(columns: columns, spacing: FJSpacing.s) {
                     if MealCamera.isAvailable {
                         sourceButton("Câmera", systemImage: "camera", action: openCamera)
+                            .accessibilityIdentifier("mealLog.camera")
                     }
                     sourceButton("Galeria", systemImage: "photo.on.rectangle") { showPhotoPicker = true }
+                        .accessibilityIdentifier("mealLog.photos")
                 }
                 .disabled(remainingPhotos == 0)
             } else {
@@ -287,7 +298,7 @@ struct MealLogSheet: View {
                 .foregroundStyle(FJColor.textSecondary)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: FJSpacing.xs) {
-                Text("O texto e as fotos vão para \(providerName)")
+                Text(verbatim: AIConsentPresentation.mealLogNotice(recipient))
                     .font(.subheadline.weight(.semibold))
                 Text("As fotos saem reduzidas e sem localização. Seu histórico não é enviado.")
                     .font(FJFont.caption)
@@ -301,6 +312,13 @@ struct MealLogSheet: View {
     }
 
     @ViewBuilder private var banners: some View {
+        if consent.denied {
+            // Não permitir: nada foi enviado; o texto e as fotos continuam aqui e o registro à mão segue pelo +.
+            let notice = AIConsentPresentation.mealLogDenied
+            FJBanner(CoachMarkdown.literal(notice.title), message: CoachMarkdown.literal(notice.message),
+                     tone: .neutral, systemImage: "hand.raised.fill")
+                .accessibilityIdentifier("mealLog.denied")
+        }
         if !isOnline {
             FJBanner("Sem internet", message: "O texto fica guardado. Analise quando a conexão voltar ou registre à mão.",
                      systemImage: "wifi.slash")
@@ -335,9 +353,8 @@ struct MealLogSheet: View {
             do {
                 try await session.analyze()
             } catch let MealLogError.consentRequired(recipient) {
-                consentRecipient = recipient
                 pendingCorrection = nil
-                showConsent = true
+                consent.ask(.mealLog(sharesDiet: AIConsentStore().categories(for: recipient).contains(.nutrition)), recipient: recipient)
             } catch {
                 errorMessage = error.localizedDescription
             }
@@ -354,9 +371,8 @@ struct MealLogSheet: View {
         Task {
             do { try await session.correct(instruction) }
             catch let MealLogError.consentRequired(recipient) {
-                consentRecipient = recipient
                 pendingCorrection = instruction
-                showConsent = true
+                consent.ask(.mealLog(sharesDiet: AIConsentStore().categories(for: recipient).contains(.nutrition)), recipient: recipient)
             } catch { errorMessage = error.localizedDescription }
         }
     }

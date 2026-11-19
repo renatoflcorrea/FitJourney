@@ -14,8 +14,10 @@ struct ImportAnalysisView: View {
             let elapsed = session.analysisStartedAt.map { Duration.seconds(max(0, context.date.timeIntervalSince($0).rounded(.down))) }
             content(elapsed: elapsed)
         }
+        .accessibilityIdentifier("import.analysis")
         .task {
-            providerName = (coordinator?.providerInfo() ?? ImportProviderInfo()).name
+            // "Enviados para a OpenAI": o destino com artigo (o mesmo nome da folha de consentimento).
+            providerName = AIConsentPresentation.destination((coordinator?.providerInfo() ?? ImportProviderInfo()).recipient)
         }
     }
 
@@ -91,6 +93,7 @@ struct ImportGroupsView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             FJPrimaryButton(continueTitle, systemImage: "arrow.right", area: .coach) { ui.groupsConfirmed = true }
                 .disabled(selectedCount == 0)
+                .accessibilityIdentifier("import.groups.continue")
                 .padding(.horizontal, FJSpacing.screenMargin)
                 .padding(.vertical, FJSpacing.s)
                 .background(FJColor.background)

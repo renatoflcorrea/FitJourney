@@ -78,19 +78,20 @@ struct NutritionDayView: View {
             ToolbarItem(placement: .primaryAction) {
                 Button("Registrar comida", systemImage: "plus") { sheet = .log(nil) }
             }
-            ToolbarItem(placement: .secondaryAction) {
-                Button("Plano", systemImage: "list.bullet.clipboard") { showPlans = true }
-            }
-            if aiAvailability.isOn {
-                ToolbarItem(placement: .secondaryAction) {
-                    ImportWithAIMenuItem(kind: .nutrition)
+            // Menu "…" explícito (antes itens `.secondaryAction`): o mesmo menu do sistema, com identificador para o
+            // teste de interface chegar a "Importar com IA".
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button("Plano", systemImage: "list.bullet.clipboard") { showPlans = true }
+                    if aiAvailability.isOn {
+                        ImportWithAIMenuItem(kind: .nutrition, identifier: "nutrition.menu.import")
+                    }
+                    Button("Histórico", systemImage: "calendar") { showHistory = true }
+                    Button("Favoritos", systemImage: "star") { showFavorites = true }
+                } label: {
+                    Label("Mais opções", systemImage: "ellipsis")
                 }
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button("Histórico", systemImage: "calendar") { showHistory = true }
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Button("Favoritos", systemImage: "star") { showFavorites = true }
+                .accessibilityIdentifier("nutrition.menu")
             }
         }
         .navigationDestination(isPresented: $showPlans) { NutritionPlanListView() }
@@ -263,7 +264,7 @@ struct NutritionDayView: View {
                     FJEmptyState("Cadastre sua dieta", systemImage: "fork.knife",
                                  message: "Monte refeições e metas para marcar como feitas com 1 toque. Você pode registrar comidas avulsas mesmo sem plano.",
                                  actionTitle: "Criar dieta", area: .nutrition) { sheet = .newPlan }
-                    if aiAvailability.isOn { ImportWithAIButton(kind: .nutrition, fillsWidth: false) }
+                    if aiAvailability.isOn { ImportWithAIButton(kind: .nutrition, fillsWidth: false, identifier: "nutrition.empty.import") }
                 }
             }
         case .outsideVigency(let name):

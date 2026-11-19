@@ -10,12 +10,17 @@ struct FJDisclosureRow: View {
         case sent, notSent
     }
 
-    private let title: LocalizedStringKey
-    private let detail: LocalizedStringKey?
+    private let title: Text
+    private let detail: Text?
     private let systemImage: String
     private let kind: Kind
 
     init(_ title: LocalizedStringKey, detail: LocalizedStringKey? = nil, systemImage: String, kind: Kind = .sent) {
+        self.init(Text(title), detail: detail.map { Text($0) }, systemImage: systemImage, kind: kind)
+    }
+
+    /// Texto já localizado (cópia montada por uma apresentação pura, com o nome de quem recebe).
+    init(_ title: Text, detail: Text? = nil, systemImage: String, kind: Kind = .sent) {
         self.title = title
         self.detail = detail
         self.systemImage = systemImage
@@ -26,11 +31,11 @@ struct FJDisclosureRow: View {
         HStack(alignment: .top, spacing: FJSpacing.m) {
             FJDisclosureSymbol(systemImage: kind == .sent ? systemImage : "nosign", tint: kind == .sent ? FJColor.coach : FJColor.textSecondary)
             VStack(alignment: .leading, spacing: FJSpacing.xxs) {
-                Text(title)
+                title
                     .font(kind == .sent ? FJFont.body.weight(.semibold) : FJFont.label)
                     .foregroundStyle(kind == .sent ? FJColor.textPrimary : FJColor.textSecondary)
                 if let detail {
-                    Text(detail)
+                    detail
                         .font(FJFont.caption)
                         .foregroundStyle(FJColor.textSecondary)
                 }
@@ -45,12 +50,16 @@ struct FJDisclosureRow: View {
 /// Linha opcional de "O que é enviado" com `Toggle` (categorias do Coach: Perfil, Treinos, Dieta, Saúde).
 /// Desligada por padrão no chamador; o detalhe diz exatamente o que a categoria leva.
 struct FJDisclosureToggleRow: View {
-    private let title: LocalizedStringKey
-    private let detail: LocalizedStringKey
+    private let title: Text
+    private let detail: Text
     private let systemImage: String
     @Binding private var isOn: Bool
 
     init(_ title: LocalizedStringKey, detail: LocalizedStringKey, systemImage: String, isOn: Binding<Bool>) {
+        self.init(Text(title), detail: Text(detail), systemImage: systemImage, isOn: isOn)
+    }
+
+    init(_ title: Text, detail: Text, systemImage: String, isOn: Binding<Bool>) {
         self.title = title
         self.detail = detail
         self.systemImage = systemImage
@@ -62,10 +71,10 @@ struct FJDisclosureToggleRow: View {
             HStack(alignment: .top, spacing: FJSpacing.m) {
                 FJDisclosureSymbol(systemImage: systemImage, tint: FJColor.coach)
                 VStack(alignment: .leading, spacing: FJSpacing.xxs) {
-                    Text(title)
+                    title
                         .font(FJFont.body.weight(.semibold))
                         .foregroundStyle(FJColor.textPrimary)
-                    Text(detail)
+                    detail
                         .font(FJFont.caption)
                         .foregroundStyle(FJColor.textSecondary)
                 }
@@ -95,17 +104,24 @@ private struct FJDisclosureSymbol: View {
 
 /// Link para a política de privacidade (ou página de parceiros) de quem recebe. Abre no Safari.
 struct FJPolicyLink: Identifiable {
-    let title: LocalizedStringKey
+    let title: Text
     let url: URL
     /// `accessibilityIdentifier` do link (ex.: `aiConsent.policyLink.primary`). Também é o `id`.
     let identifier: String
+    /// Rótulo do VoiceOver com o dono da política ("Política de privacidade: OpenAI"); `nil` = o título.
+    let accessibilityLabel: Text?
 
     var id: String { identifier }
 
     init(_ title: LocalizedStringKey, url: URL, identifier: String) {
+        self.init(Text(title), url: url, identifier: identifier)
+    }
+
+    init(_ title: Text, url: URL, identifier: String, accessibilityLabel: Text? = nil) {
         self.title = title
         self.url = url
         self.identifier = identifier
+        self.accessibilityLabel = accessibilityLabel
     }
 }
 
@@ -139,14 +155,18 @@ struct FJRecipientHop: Identifiable {
     /// Nome próprio, mostrado como está (marca ou endereço): "OpenAI", "OpenCode (Anomaly)", "192.168.0.10".
     let name: String
     /// O papel em uma frase: "Executa o modelo gpt-6-luna", "Recebe e repassa ao serviço do modelo".
-    let role: LocalizedStringKey?
+    let role: Text?
     let links: [FJPolicyLink]
 
     init(id: String, kind: Kind, name: String, role: LocalizedStringKey? = nil, links: [FJPolicyLink] = []) {
+        self.init(id: id, kind: kind, name: name, roleText: role.map { Text($0) }, links: links)
+    }
+
+    init(id: String, kind: Kind, name: String, roleText: Text?, links: [FJPolicyLink] = []) {
         self.id = id
         self.kind = kind
         self.name = name
-        self.role = role
+        self.role = roleText
         self.links = links
     }
 }
@@ -155,13 +175,20 @@ struct FJRecipientHop: Identifiable {
 /// ligados por um filete vertical, e uma nota opcional (ex.: "O FitJourney não sabe quem opera este servidor").
 struct FJRecipientCard: View {
     private let hops: [FJRecipientHop]
-    private let note: LocalizedStringKey?
+    private let note: Text?
+    private let identifier: String
 
     @ScaledMetric(relativeTo: .body) private var iconSide: CGFloat = 36
 
     init(hops: [FJRecipientHop], note: LocalizedStringKey? = nil) {
+        self.init(hops: hops, noteText: note.map { Text($0) })
+    }
+
+    /// - Parameter identifier: `aiConsent.recipient` na folha; `privacy.recipient` em Ajustes.
+    init(hops: [FJRecipientHop], noteText: Text?, identifier: String = "aiConsent.recipient") {
         self.hops = hops
-        self.note = note
+        self.note = noteText
+        self.identifier = identifier
     }
 
     var body: some View {
@@ -172,16 +199,22 @@ struct FJRecipientCard: View {
                     hopRow(hop)
                 }
                 if let note {
-                    Text(note)
-                        .font(FJFont.caption)
-                        .foregroundStyle(FJColor.textSecondary)
-                        .padding(.top, FJSpacing.m)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(alignment: .firstTextBaseline, spacing: FJSpacing.s) {
+                        Image(systemName: "info.circle")
+                            .foregroundStyle(FJColor.textSecondary)
+                            .accessibilityHidden(true)
+                        note
+                            .foregroundStyle(FJColor.textSecondary)
+                    }
+                    .font(FJFont.caption)
+                    .padding(.top, FJSpacing.m)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityElement(children: .combine)
                 }
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("aiConsent.recipient")
+        .accessibilityIdentifier(identifier)
     }
 
     private func hopRow(_ hop: FJRecipientHop) -> some View {
@@ -198,7 +231,7 @@ struct FJRecipientCard: View {
                         .font(FJFont.cardTitle)
                         .foregroundStyle(FJColor.textPrimary)
                     if let role = hop.role {
-                        Text(role)
+                        role
                             .font(FJFont.caption)
                             .foregroundStyle(FJColor.textSecondary)
                     }
@@ -207,7 +240,7 @@ struct FJRecipientCard: View {
                 ForEach(hop.links) { link in
                     Link(destination: link.url) {
                         Label {
-                            Text(link.title)
+                            link.title
                         } icon: {
                             Image(systemName: "arrow.up.right.square")
                         }
@@ -215,6 +248,7 @@ struct FJRecipientCard: View {
                         .foregroundStyle(FJColor.coach)
                     }
                     .frame(minHeight: FJSize.minTap, alignment: .leading)
+                    .accessibilityLabel(link.accessibilityLabel ?? link.title)
                     .accessibilityIdentifier(link.identifier)
                 }
             }
@@ -233,20 +267,51 @@ struct FJRecipientCard: View {
     }
 }
 
+/// Frase de aceite logo acima de Permitir / Não permitir ("Ao tocar em Permitir, você concorda com o envio descrito
+/// acima e com a Política de Privacidade do FitJourney."). A frase inteira é um link (alvo grande, um elemento para o
+/// VoiceOver); só o nome da política leva a cor do Coach.
+struct FJConsentAcceptance {
+    /// Frase completa, já localizada, que contém `linkTitle`.
+    let sentence: String
+    /// Trecho destacado (nome da política).
+    let linkTitle: String
+    let url: URL
+    let identifier: String
+
+    init(sentence: String, linkTitle: String, url: URL, identifier: String = "aiConsent.appPolicyLink") {
+        self.sentence = sentence
+        self.linkTitle = linkTitle
+        self.url = url
+        self.identifier = identifier
+    }
+
+    fileprivate var attributed: AttributedString {
+        var text = AttributedString(sentence)
+        text.foregroundColor = FJColor.textSecondary
+        if let range = text.range(of: linkTitle) {
+            text[range].foregroundColor = FJColor.coach
+            text[range].font = FJFont.caption.weight(.semibold)
+        }
+        return text
+    }
+}
+
 /// Tela "Antes de enviar" (folha ou conteúdo da aba Coach): orbe, pergunta com o nome de quem recebe,
 /// "O que é enviado" (linhas e toggles), "Para quem" (`FJRecipientCard`), nota e Permitir / Não permitir.
 ///
 /// - Os dois botões têm o mesmo tamanho e ficam presos à base (na metade inferior); em tamanhos de
 ///   acessibilidade vão para o fim do conteúdo, que rola inteiro.
 /// - Não há "×": fechar a folha (arrastar) equivale a "Não permitir" — nada é enviado.
-/// - Identificadores: `aiConsent.title`, `aiConsent.allow`, `aiConsent.deny`, `aiConsent.recipient`, mais os dos links.
+/// - Identificadores: `aiConsent.title`, `aiConsent.allow`, `aiConsent.deny`, `aiConsent.recipient`,
+///   `aiConsent.appPolicyLink` (aceite), mais os dos links.
 struct FJConsentView<Sent: View, Recipient: View>: View {
-    private let title: LocalizedStringKey
-    private let message: LocalizedStringKey?
-    private let footnote: LocalizedStringKey?
+    private let title: Text
+    private let message: Text?
+    private let footnote: Text?
+    private let acceptance: FJConsentAcceptance?
     private let allowTitle: LocalizedStringKey
     private let denyTitle: LocalizedStringKey
-    private let allowHint: LocalizedStringKey?
+    private let allowHint: Text?
     private let showsOrb: Bool
     private let isWorking: Bool
     private let sent: Sent
@@ -260,6 +325,7 @@ struct FJConsentView<Sent: View, Recipient: View>: View {
         _ title: LocalizedStringKey,
         message: LocalizedStringKey? = nil,
         footnote: LocalizedStringKey? = nil,
+        acceptance: FJConsentAcceptance? = nil,
         allowTitle: LocalizedStringKey = "Permitir",
         denyTitle: LocalizedStringKey = "Não permitir",
         allowHint: LocalizedStringKey? = nil,
@@ -270,9 +336,31 @@ struct FJConsentView<Sent: View, Recipient: View>: View {
         onAllow: @escaping () -> Void,
         onDeny: @escaping () -> Void
     ) {
-        self.title = title
+        self.init(titleText: Text(title), message: message.map { Text($0) }, footnote: footnote.map { Text($0) },
+                  acceptance: acceptance, allowTitle: allowTitle, denyTitle: denyTitle, allowHint: allowHint.map { Text($0) },
+                  showsOrb: showsOrb, isWorking: isWorking, sent: sent, recipient: recipient, onAllow: onAllow, onDeny: onDeny)
+    }
+
+    /// Textos já localizados (cópia montada por uma apresentação pura, com o nome de quem recebe).
+    init(
+        titleText: Text,
+        message: Text? = nil,
+        footnote: Text? = nil,
+        acceptance: FJConsentAcceptance? = nil,
+        allowTitle: LocalizedStringKey = "Permitir",
+        denyTitle: LocalizedStringKey = "Não permitir",
+        allowHint: Text? = nil,
+        showsOrb: Bool = true,
+        isWorking: Bool = false,
+        @ViewBuilder sent: () -> Sent,
+        @ViewBuilder recipient: () -> Recipient,
+        onAllow: @escaping () -> Void,
+        onDeny: @escaping () -> Void
+    ) {
+        self.title = titleText
         self.message = message
         self.footnote = footnote
+        self.acceptance = acceptance
         self.allowTitle = allowTitle
         self.denyTitle = denyTitle
         self.allowHint = allowHint
@@ -299,9 +387,10 @@ struct FJConsentView<Sent: View, Recipient: View>: View {
                 }
                 section("Para quem") { recipient }
                 if let footnote {
-                    Text(footnote)
+                    footnote
                         .font(FJFont.caption)
                         .foregroundStyle(FJColor.textSecondary)
+                        .padding(.horizontal, FJSpacing.l)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if actionsInline { actions }
@@ -311,13 +400,13 @@ struct FJConsentView<Sent: View, Recipient: View>: View {
             .padding(.bottom, FJSpacing.xl)
         }
         .scrollBounceBehavior(.basedOnSize)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        // Barra da base com o efeito de borda do iOS 26: o conteúdo some suavemente sob os botões.
+        .safeAreaBar(edge: .bottom, spacing: 0) {
             if !actionsInline {
                 actions
                     .padding(.horizontal, FJSpacing.screenMargin)
-                    .padding(.top, FJSpacing.s)
+                    .padding(.top, FJSpacing.m)
                     .padding(.bottom, FJSpacing.s)
-                    .background(FJColor.background)
             }
         }
         .fjScreenBackground()
@@ -326,13 +415,13 @@ struct FJConsentView<Sent: View, Recipient: View>: View {
     private var header: some View {
         VStack(spacing: FJSpacing.m) {
             if showsOrb { FJAIOrb() }
-            Text(title)
+            title
                 .font(FJFont.sectionTitle)
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("aiConsent.title")
             if let message {
-                Text(message)
+                message
                     .font(FJFont.label)
                     .foregroundStyle(FJColor.textSecondary)
                     .multilineTextAlignment(.center)
@@ -355,8 +444,19 @@ struct FJConsentView<Sent: View, Recipient: View>: View {
 
     private var actions: some View {
         VStack(spacing: FJSpacing.s) {
+            if let acceptance {
+                Link(destination: acceptance.url) {
+                    Text(acceptance.attributed)
+                        .font(FJFont.caption)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.bottom, FJSpacing.xxs)
+                .accessibilityIdentifier(acceptance.identifier)
+            }
             FJPrimaryButton(allowTitle, area: .coach, isLoading: isWorking, action: onAllow)
-                .accessibilityHint(allowHint.map { Text($0) } ?? Text(""))
+                .accessibilityHint(allowHint ?? Text(""))
                 .accessibilityIdentifier("aiConsent.allow")
             FJSecondaryButton(denyTitle, action: onDeny)
                 .accessibilityIdentifier("aiConsent.deny")
@@ -375,7 +475,11 @@ private struct FJConsentPreview: View {
         FJConsentView(
             routed ? "Enviar a ficha para o OpenCode?" : "Enviar a ficha para a OpenAI?",
             message: "Para ler a ficha, o FitJourney usa um serviço de IA de outra empresa. Nada é enviado sem a sua permissão.",
-            footnote: "O FitJourney não tem servidor: nada passa pelo desenvolvedor. Você pode mudar isso em Ajustes › IA."
+            footnote: "O FitJourney não tem servidor: nada passa pelo desenvolvedor. Você pode mudar isso em Ajustes › IA.",
+            acceptance: FJConsentAcceptance(
+                sentence: "Ao tocar em Permitir, você concorda com o envio descrito acima e com a Política de Privacidade do FitJourney.",
+                linkTitle: "Política de Privacidade do FitJourney",
+                url: URL(string: "https://renatocorrea.com.br/FitJourney/pt/privacy/#ia")!)
         ) {
             FJDisclosureRow("O arquivo que você escolheu",
                             detail: "Tudo o que estiver escrito ou visível nele, inclusive nomes, telefones e observações.",

@@ -323,6 +323,7 @@ struct SettingsRootView: View {
                     Label("Coach e IA", systemImage: "sparkles")
                 }
             }
+            .accessibilityIdentifier("settings.ai")
         }
     }
 
