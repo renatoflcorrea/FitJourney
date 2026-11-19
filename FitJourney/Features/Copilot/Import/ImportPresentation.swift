@@ -47,9 +47,9 @@ enum ImportAnalysisPresentation {
         case (true, nil):
             subtitle = String(localized: "Está demorando mais que o normal. Mantenha o FitJourney aberto.")
         case let (false, clock?):
-            subtitle = String(localized: "Enviados a \(providerName) · \(clock)")
+            subtitle = String(localized: "Enviados para \(providerName) · \(clock)")
         case (false, nil):
-            subtitle = String(localized: "Enviados a \(providerName)")
+            subtitle = String(localized: "Enviados para \(providerName)")
         }
         return Output(title: title, subtitle: subtitle, steps: steps)
     }

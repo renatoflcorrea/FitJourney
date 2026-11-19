@@ -8,6 +8,8 @@ struct ImportWithAIButton: View {
     var title: LocalizedStringKey = "Importar com IA"
     var prominence: FJAIButtonStyle.Prominence = .subtle
     var fillsWidth = true
+    /// `accessibilityIdentifier` do ponto de entrada (ex.: `today.import`), para o teste de interface.
+    var identifier: String?
 
     @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
     @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
@@ -17,6 +19,7 @@ struct ImportWithAIButton: View {
             FJAIButton(title, prominence: prominence, fillsWidth: fillsWidth) {
                 coordinator.start(kind: kind, target: target)
             }
+            .accessibilityIdentifier(identifier ?? "")
             // Sem `fillsWidth` o botão ocupa só o conteúdo: centraliza na largura em vez de ficar à esquerda.
             .frame(maxWidth: .infinity, alignment: .center)
         }
@@ -28,6 +31,7 @@ struct ImportWithAIMenuItem: View {
     let kind: ImportSession.Kind
     var target: ImportSession.Target?
     var title: LocalizedStringKey = "Importar com IA"
+    var identifier: String?
 
     @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
     @Environment(AIAvailability.self) private var aiAvailability: AIAvailability?
@@ -35,6 +39,7 @@ struct ImportWithAIMenuItem: View {
     var body: some View {
         if let coordinator, aiAvailability.isOn {
             Button(title, systemImage: "sparkles") { coordinator.start(kind: kind, target: target) }
+                .accessibilityIdentifier(identifier ?? "")
         }
     }
 }
@@ -96,6 +101,7 @@ struct ImportResultBanner: View {
                  tone: completion.warning == nil ? .success : .attention,
                  actionTitle: completion.canUndo ? "Desfazer" : "Fechar",
                  action: completion.canUndo ? onUndo : onDismiss)
+            .accessibilityIdentifier("import.done")
             .padding(.horizontal, FJSpacing.screenMargin)
             .padding(.top, FJSpacing.s)
             .task {

@@ -12,8 +12,7 @@ struct ImportInterviewView: View {
     @State private var freeText = ""
     @State private var showFreeText = false
     @State private var expandedUnmatched: String?
-    @State private var consentRecipient: AIRecipient?
-    @State private var showConsent = false
+    @State private var consent = AIConsentPromptState()
     @FocusState private var freeFocused: Bool
 
     private var current: ImportQuestion? { session.questions.first }
@@ -50,6 +49,11 @@ struct ImportInterviewView: View {
                         FJBanner("Não foi possível responder", message: LocalizedStringKey(errorMessage), tone: .destructive,
                                  actionTitle: "Fechar") { self.errorMessage = nil }
                     }
+                    if consent.denied {
+                        FJBanner("Nada foi enviado", message: "Sem permissão, a IA não aplica suas respostas. Você ainda pode pular as dúvidas e revisar à mão.",
+                                 tone: .neutral, systemImage: "hand.raised.fill")
+                            .accessibilityIdentifier("import.denied")
+                    }
                     Color.clear.frame(height: 1).id("end")
                 }
                 .padding(FJSpacing.screenMargin)
@@ -79,14 +83,15 @@ struct ImportInterviewView: View {
                     Text("Pular")
                 }
                 .disabled(isRevising)
+                .accessibilityIdentifier("import.interview.skip")
             }
         }
-        .sheet(isPresented: $showConsent) {
-            ImportConsentSheet(providerName: consentRecipient?.displayName ?? "") {
-                let defaults = coordinator?.defaults ?? .standard
-                if let recipient = consentRecipient { AIConsentStore(defaults: defaults).grant(.importFiles, for: recipient) }
-                revise()
-            }
+        .sheet(item: $consent.prompt) { prompt in
+            AIConsentSheet(request: prompt.request, recipient: prompt.recipient, defaults: coordinator?.defaults ?? .standard,
+                           onAllow: {
+                               consent.allow()
+                               revise()
+                           }, onDeny: { consent.deny() })
         }
     }
 
@@ -290,8 +295,7 @@ struct ImportInterviewView: View {
             defer { isRevising = false }
             do { try await session.reviseWithAI() }
             catch let ImportError.consentRequired(recipient) {
-                consentRecipient = recipient
-                showConsent = true
+                consent.ask(.importFiles(kind: session.kind, fileCount: session.attachments.count), recipient: recipient)
             } catch { errorMessage = error.localizedDescription }
         }
     }

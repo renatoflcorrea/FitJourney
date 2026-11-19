@@ -11,6 +11,7 @@ struct MealLogReviewView: View {
     @State private var expandedItem: UUID?
     @State private var answers: [UUID: String] = [:]
     @State private var offerDietSharing = false
+    @State private var dietPrompt: AIConsentPromptState.Prompt?
 
     var body: some View {
         if let review = session.review {
@@ -45,6 +46,13 @@ struct MealLogReviewView: View {
                 .padding(.bottom, FJSpacing.xl)
             }
             .safeAreaInset(edge: .bottom) { footer(review) }
+            .sheet(item: $dietPrompt) { prompt in
+                // Folha de categoria (proposta §3.4): nomeia quem recebe e liga só Dieta, sem conceder uso nenhum.
+                AIConsentSheet(request: prompt.request, recipient: prompt.recipient, onAllow: {
+                    MealLogPreferences().markDietSharingOffered()
+                    offerDietSharing = false
+                }, onDeny: {})
+            }
             .task(id: review.hasPlan) {
                 let prefs = MealLogPreferences()
                 guard !offerDietSharing, prefs.shouldOfferDietSharing(hasPlan: review.hasPlan) else { return }
@@ -432,9 +440,10 @@ struct MealLogReviewView: View {
                      message: "Ligamos o registro às refeições no aparelho, por horário e nome. Permitir que a IA compare com o plano melhora as próximas análises.",
                      tone: .neutral, systemImage: "doc.text.magnifyingglass",
                      actionTitle: "Permitir comparar com o plano") {
-                MealLogPreferences().enableDietSharing()
-                offerDietSharing = false
+                dietPrompt = AIConsentPromptState.Prompt(
+                    recipient: AIRecipientResolver.resolve(settings: ProviderSettingsStore().load()), request: .dietCategory)
             }
+            .accessibilityIdentifier("mealLog.dietOffer.allow")
             Button("Agora não") { offerDietSharing = false }
                 .font(FJFont.label)
                 .frame(minHeight: FJSize.minTap)
@@ -460,6 +469,7 @@ struct MealLogReviewView: View {
             FJPrimaryButton(MealLogPresentation.registerTitle(mealCount: review.includedMeals.count), area: .nutrition,
                             action: onApply)
                 .disabled(!review.canApply)
+                .accessibilityIdentifier("mealLog.review.save")
         }
         .padding(.horizontal, FJSpacing.screenMargin)
         .padding(.bottom, FJSpacing.s)

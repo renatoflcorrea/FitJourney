@@ -69,10 +69,8 @@ struct AISettingsView: View {
     @State private var customURLText: String
     @State private var keyInput = ""
     @State private var hasKey = false
-    @State private var sharing: CoachProfile.Sharing
-    @State private var hasConsented: Bool
+    @State private var privacySummary = ""
     @State private var errorMessage: String?
-    @State private var showRevoke = false
     @State private var chatGPTLogin = ChatGPTLoginModel()
     @State private var chatGPTPlan: String?
     @State private var chatGPTModels: [String]?
@@ -97,10 +95,6 @@ struct AISettingsView: View {
         let loaded = ProviderSettingsStore(defaults: defaults).load()
         _settings = State(initialValue: loaded)
         _customURLText = State(initialValue: loaded.customBaseURL?.absoluteString ?? "")
-        let store = CoachProfileStore(defaults: defaults)
-        let recipient = AIRecipientResolver.resolve(settings: loaded)
-        _sharing = State(initialValue: CoachProfile.Sharing(categories: AIConsentStore(defaults: defaults).categories(for: recipient)))
-        _hasConsented = State(initialValue: store.hasConsented)
     }
 
     private var descriptor: ProviderDescriptor { ProviderCatalog.descriptor(for: settings.provider) }
@@ -114,39 +108,22 @@ struct AISettingsView: View {
             modelSection
             if settings.provider == .custom { customSection }
             if descriptor.usesChatGPTLogin { chatGPTSection } else { keySection }
-            sharingSection
-            consentSection
+            privacySection
         }
         .refreshable { await refreshModels() }
         .navigationTitle("Ajustes de IA")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             reloadKeyState()
-            let store = CoachProfileStore(defaults: defaults)
-            hasConsented = store.hasConsented
-            sharing = CoachProfile.Sharing(categories: AIConsentStore(defaults: defaults).categories(for: AIRecipientResolver.resolve(settings: settings)))
+            reloadPrivacySummary()
         }
         .onChange(of: settings) {
             ProviderSettingsStore(defaults: defaults).save(settings)
-            hasConsented = CoachProfileStore(defaults: defaults).hasConsented
-            sharing = CoachProfile.Sharing(categories: AIConsentStore(defaults: defaults).categories(for: AIRecipientResolver.resolve(settings: settings)))
+            reloadPrivacySummary()
         }
         .task(id: "\(settings.provider)-\(hasKey)-\(keyRevision)-\(customURLText)") { await refreshModels() }
         .onDisappear { chatGPTLogin.cancel() }
-        .onChange(of: sharing) {
-            guard hasConsented else { return }
-            AIConsentStore(defaults: defaults).setCategories(sharing.categories, for: AIRecipientResolver.resolve(settings: settings))
-        }
-        .confirmationDialog("Revogar consentimento?", isPresented: $showRevoke, titleVisibility: .visible) {
-            Button("Revogar", role: .destructive) {
-                CoachProfileStore(defaults: defaults).revokeConsent()
-                sharing = .none
-                hasConsented = false
-                NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
-            }
-        } message: {
-            Text("O Coach para de compartilhar seus dados e volta a pedir consentimento na próxima abertura. Conversas já enviadas ao provedor não podem ser recolhidas por aqui.")
-        }
+        .onReceive(NotificationCenter.default.publisher(for: .aiConsentChanged)) { _ in reloadPrivacySummary() }
     }
 
     // MARK: Seções
@@ -171,6 +148,7 @@ struct AISettingsView: View {
             Picker("Provedor", selection: $settings.provider) {
                 ForEach(ProviderCatalog.all) { Text($0.name).tag($0.id) }
             }
+            .accessibilityIdentifier("settings.ai.provider")
             .onChange(of: settings.provider) {
                 keyInput = ""
                 reloadKeyState()
@@ -286,13 +264,16 @@ struct AISettingsView: View {
                 }
                 Button("Remover chave", role: .destructive, action: removeKey)
                     .frame(minHeight: FJSize.minTap, alignment: .leading)
+                    .accessibilityIdentifier("settings.ai.key.remove")
             }
             SecureField(hasKey ? "Substituir chave" : "Chave de API", text: $keyInput)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
+                .accessibilityIdentifier("settings.ai.key.field")
             Button("Salvar chave", action: saveKey)
                 .disabled(keyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .frame(minHeight: FJSize.minTap, alignment: .leading)
+                .accessibilityIdentifier("settings.ai.key.save")
             if let url = descriptor.keyHelpURL {
                 Link(destination: url) { Label("Onde criar a chave", systemImage: "arrow.up.right.square") }
                     .frame(minHeight: FJSize.minTap, alignment: .leading)
@@ -396,30 +377,32 @@ struct AISettingsView: View {
         }
     }
 
-    private var sharingSection: some View {
+    /// Privacidade (proposta §3.7): uma linha que abre "O que é enviado e para quem" com o resumo do destino atual.
+    private var privacySection: some View {
         Section {
-            SharingToggles(sharing: $sharing)
-                .disabled(!hasConsented)
+            NavigationLink {
+                AIPrivacyView(secrets: secrets, defaults: defaults)
+            } label: {
+                VStack(alignment: .leading, spacing: FJSpacing.xxs) {
+                    Label("O que é enviado e para quem", systemImage: "hand.raised")
+                    Text(verbatim: privacySummary)
+                        .font(FJFont.caption)
+                        .foregroundStyle(FJColor.textSecondary)
+                }
+                .padding(.vertical, FJSpacing.xxs)
+            }
+            .accessibilityIdentifier("settings.ai.privacy")
         } header: {
-            Text("O que o Coach pode ler")
+            Text("Privacidade")
         } footer: {
-            Text(hasConsented
-                 ? "O que você ligar pode ser enviado ao provedor quando o Coach consultar seu histórico. Desligado, o Coach nem enxerga."
-                 : "Sem consentimento, nada é compartilhado. Aceite na aba Coach para escolher o que compartilhar.")
+            Text("O FitJourney não tem servidor. O que você permitir vai direto deste iPhone para quem recebe.")
         }
     }
 
-    private var consentSection: some View {
-        Section {
-            if hasConsented {
-                Button("Revogar consentimento", role: .destructive) { showRevoke = true }
-                    .frame(minHeight: FJSize.minTap, alignment: .leading)
-            } else {
-                Label("Consentimento pendente. O Coach pergunta na próxima abertura.", systemImage: "hand.raised")
-                    .font(FJFont.label)
-                    .foregroundStyle(FJColor.textSecondary)
-            }
-        }
+    private func reloadPrivacySummary() {
+        let recipient = AIRecipientResolver.resolve(settings: settings)
+        privacySummary = AIConsentPresentation.settingsSummary(
+            recipient: recipient, record: AIConsentStore(defaults: defaults).records[recipient.key])
     }
 
     // MARK: Ações

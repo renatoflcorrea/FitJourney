@@ -524,9 +524,9 @@ struct CopilotImportSpeedTests {
     @Test("progresso: tempo decorrido verdadeiro, sem prometer duração nem aviso")
     func honestProgress() {
         let files = [AttachmentMetadata(id: UUID(), filename: "a.pdf", kind: .pdf, mimeType: "application/pdf", pageCount: 2, byteCount: 10)]
-        let normal = ImportAnalysisPresentation.make(kind: .program, attachments: files, providerName: "Anthropic",
+        let normal = ImportAnalysisPresentation.make(kind: .program, attachments: files, providerName: "a Anthropic",
                                                      programImport: nil, nutritionImport: nil, slow: false, elapsed: .seconds(42))
-        #expect(normal.subtitle == "Enviados a Anthropic · 0:42")
+        #expect(normal.subtitle == "Enviados para a Anthropic · 0:42")
         let slow = ImportAnalysisPresentation.make(kind: .program, attachments: files, providerName: "Anthropic",
                                                    programImport: nil, nutritionImport: nil, slow: true, elapsed: .seconds(75))
         #expect(slow.subtitle?.contains("1:15") == true)
