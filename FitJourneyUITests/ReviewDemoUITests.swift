@@ -18,6 +18,15 @@ final class ReviewDemoUITests: XCTestCase {
 
     private func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
 
+    /// Pelo identificador ou, se ele não estiver na árvore de acessibilidade, pelo rótulo do botão.
+    /// O primeiro controle visível com o identificador ou, se ele não chegar à árvore de acessibilidade, com o rótulo.
+    /// "Visível" importa: atrás da folha de importação, a aba Treinos também tem um botão "Create program".
+    private func visible(_ id: String, label: String) -> XCUIElement? {
+        let query = app.descendants(matching: .any).matching(NSPredicate(
+            format: "identifier == %@ OR (elementType == %d AND label == %@)", id, XCUIElement.ElementType.button.rawValue, label))
+        return query.allElementsBoundByIndex.first { $0.exists && $0.isHittable }
+    }
+
     @discardableResult
     private func tap(_ id: String, timeout: TimeInterval = 15, file: StaticString = #filePath, line: UInt = #line) -> XCUIElement {
         let target = element(id)
@@ -55,6 +64,25 @@ final class ReviewDemoUITests: XCTestCase {
         open.tap()
     }
 
+    /// Responde a pergunta da vez da entrevista da importação conforme o controle que aparece.
+    private func answerCurrentQuestion() {
+        if let field = app.textFields.allElementsBoundByIndex.first(where: { $0.isHittable }) {
+            field.tap()
+            field.typeText("Hypertrophy ABCD")
+            pause(0.8)
+            if let confirm = visible("import.interview.confirm", label: "Confirm"), confirm.isEnabled { confirm.tap() }
+            return
+        }
+        if let keep = visible("import.interview.keep", label: "Keep what I read") { keep.tap(); return }
+        let excluded: Set<String> = ["Cancel", "Skip", "Confirm", "Keep what I read"]
+        let chips = app.buttons.allElementsBoundByIndex.filter { $0.isHittable && !excluded.contains($0.label) && !$0.label.isEmpty }
+        let preferred = chips.first { $0.label.hasPrefix("Rotation") } ?? chips.first
+        preferred?.tap()
+        pause(0.8)
+        // Múltipla escolha ou número: confirma.
+        if let confirm = visible("import.interview.confirm", label: "Confirm"), confirm.isEnabled { confirm.tap() }
+    }
+
     @MainActor
     func testReviewDemoFlow() throws {
         let key = ProcessInfo.processInfo.environment["FJ_OPENCODE_KEY"] ?? ""
@@ -75,10 +103,14 @@ final class ReviewDemoUITests: XCTestCase {
         pause()
         let field = tap("settings.ai.key.field")
         field.typeText(key + "\n")
-        pause(0.8)
-        tap("settings.ai.key.save")
-        // Chave gravada no Keychain: aparece "Remover chave".
-        XCTAssertTrue(element("settings.ai.key.remove").waitForExistence(timeout: 10), "the key was not saved")
+        pause(1.5)
+        let save = tap("settings.ai.key.save")
+        // Chave gravada no Keychain: aparece "Remover chave". Um toque durante a animação do teclado pode se perder.
+        if !element("settings.ai.key.remove").waitForExistence(timeout: 4), save.exists, save.isEnabled {
+            save.tap()
+        }
+        XCTAssertTrue(element("settings.ai.key.remove").waitForExistence(timeout: 10),
+                      "the key was not saved (save enabled: \(save.isEnabled))")
         // A lista de modelos da conta carrega com a chave (o padrão gpt-6-luna lê imagens).
         app.swipeDown()
         XCTAssertTrue(element("settings.ai.model.gpt-6-luna").waitForExistence(timeout: 30))
@@ -107,33 +139,51 @@ final class ReviewDemoUITests: XCTestCase {
         XCTAssertTrue(element("aiConsent.title").waitForExistence(timeout: 10))
         pause(2.5)
         app.swipeUp()
-        pause(2.5)
-        tap("aiConsent.allow")
+        pause(3)
+        let allowByID = element("aiConsent.allow")
+        let allow = allowByID.waitForExistence(timeout: 3) ? allowByID : app.buttons["Allow"].firstMatch
+        XCTAssertTrue(allow.waitForExistence(timeout: 5), "missing Allow")
+        allow.tap()
 
-        // 4. Análise, dúvidas e revisão
-        let review = element("import.review.create")
-        let groups = element("import.groups.continue")
-        let skip = element("import.interview.skip")
-        let deadline = Date().addingTimeInterval(240)
-        while Date() < deadline, !review.exists {
-            if groups.exists, groups.isHittable { pause(2); groups.tap(); continue }
-            if skip.exists, skip.isHittable { pause(2); skip.tap(); continue }
-            Thread.sleep(forTimeInterval: 1)
+        // 4. Análise e dúvidas: responde as obrigatórias e, quando der, "Skip all and review".
+        var review: XCUIElement?
+        var answered = 0
+        let deadline = Date().addingTimeInterval(360)
+        while Date() < deadline {
+            if let found = visible("import.review.create", label: "Create program") { review = found; break }
+            if let groups = visible("import.groups.continue", label: "Continue") { pause(3); groups.tap(); pause(1); continue }
+            guard let skipMenu = visible("import.interview.skip", label: "Skip") else { Thread.sleep(forTimeInterval: 1); continue }
+            pause(answered == 0 ? 3 : 1.5)
+            if answered >= 1 {
+                skipMenu.tap()
+                pause(0.8)
+                let skipAll = app.buttons["Skip all and review"].firstMatch
+                if skipAll.waitForExistence(timeout: 2), skipAll.isEnabled { skipAll.tap(); pause(2); continue }
+                // Ainda há obrigatórias: fecha o menu e responde.
+                app.otherElements.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)).tap()
+                pause(0.6)
+            }
+            answerCurrentQuestion()
+            answered += 1
+            pause(2)
         }
-        XCTAssertTrue(review.exists, "the import did not reach the review step")
+        let create = try XCTUnwrap(review, "the import did not reach the review step")
+        pause(2.5)
+        app.swipeUp()
         pause(2)
         app.swipeUp()
-        pause(1.5)
+        pause(2)
+        app.swipeDown()
         app.swipeDown()
         pause(1)
-        review.tap()
+        (visible("import.review.create", label: "Create program") ?? create).tap()
 
         // 5. Programa criado
-        let finished = element("import.done")
-        if finished.waitForExistence(timeout: 20) {
+        pause(2)
+        if let finished = visible("import.done", label: "Done") {
             pause(2)
             finished.tap()
         }
-        pause(3)
+        pause(4)
     }
 }

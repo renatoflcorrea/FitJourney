@@ -210,3 +210,6 @@ schemes:
       targets: [FitJourneyUITests]
       language: en
       region: US
+      # Guarda a gravação de tela também quando o teste passa (é o vídeo da demonstração).
+      captureScreenshotsAutomatically: true
+      deleteScreenshotsWhenEachTestSucceeds: false

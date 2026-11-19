@@ -27,14 +27,14 @@ cp "$pdfs"/*_Workout.pdf "$local_storage/File Provider Storage/"
 
 xcodegen generate --quiet
 xcodebuild -project FitJourney.xcodeproj -scheme FitJourneyUITests -destination "platform=iOS Simulator,id=$sim" \
-  -derivedDataPath "$dd" CODE_SIGNING_ALLOWED=NO -quiet build-for-testing
+  -derivedDataPath "$dd" CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= -quiet build-for-testing
 
 # O Xcode grava a tela de cada teste de UI no .xcresult (um segundo gravador com simctl é interrompido).
 results="$dd/review-demo.xcresult"
 rm -rf "$results"
 set +e
 TEST_RUNNER_FJ_OPENCODE_KEY="$(cat "$keyfile")" xcodebuild -project FitJourney.xcodeproj -scheme FitJourneyUITests \
-  -destination "platform=iOS Simulator,id=$sim" -derivedDataPath "$dd" CODE_SIGNING_ALLOWED=NO -collect-test-diagnostics never \
+  -destination "platform=iOS Simulator,id=$sim" -derivedDataPath "$dd" CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= -collect-test-diagnostics never \
   -resultBundlePath "$results" -only-testing:FitJourneyUITests/ReviewDemoUITests/testReviewDemoFlow test-without-building 2>&1 \
   | grep -v -i 'opencode_key' | grep -E 'Test Case|error:|Executed|failed' | tail -20
 rc=${pipestatus[1]}
