@@ -1,7 +1,7 @@
 import XCTest
 
 /// Fluxo da demonstração para a App Review (proposta ai-consent-review §8, pacote P-S2): configura o OpenCode Go,
-/// importa a ficha de exemplo empacotada no app, passa pela folha "Antes de enviar" e cria o programa.
+/// importa as 4 fichas em PDF escolhidas no app Arquivos, passa pela folha "Antes de enviar" e cria o programa.
 /// Usa a rede e uma chave real: sem `FJ_OPENCODE_KEY` no ambiente do executor (`TEST_RUNNER_FJ_OPENCODE_KEY` no
 /// xcodebuild), o teste é pulado. Gravação: `scripts/record-review-demo.sh`.
 final class ReviewDemoUITests: XCTestCase {
@@ -25,6 +25,25 @@ final class ReviewDemoUITests: XCTestCase {
         if !target.isHittable { app.swipeUp() }
         target.tap()
         return target
+    }
+
+    /// Seletor de documentos do sistema: Procurar › No meu iPhone › Selecionar › arquivos › Abrir.
+    private func pickFiles(_ names: [String], file: StaticString = #filePath, line: UInt = #line) {
+        let browse = app.buttons["Browse"].firstMatch
+        if browse.waitForExistence(timeout: 8) { browse.tap(); pause(0.6) }
+        let onDevice = app.staticTexts["On My iPhone"].firstMatch
+        if onDevice.waitForExistence(timeout: 5) { onDevice.tap(); pause(0.8) }
+        let select = app.buttons["Select"].firstMatch
+        if select.waitForExistence(timeout: 5) { select.tap(); pause(0.6) }
+        for name in names {
+            let item = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+            XCTAssertTrue(item.waitForExistence(timeout: 10), "missing file \(name)", file: file, line: line)
+            item.tap()
+            pause(0.5)
+        }
+        let open = app.buttons["Open"].firstMatch
+        XCTAssertTrue(open.waitForExistence(timeout: 5), "missing Open", file: file, line: line)
+        open.tap()
     }
 
     @MainActor
@@ -58,20 +77,17 @@ final class ReviewDemoUITests: XCTestCase {
         if done.waitForExistence(timeout: 3) { done.tap() } else { app.swipeDown(velocity: .fast) }
         pause()
 
-        // 2. Treinos › + › Importar com IA › Experimentar com um exemplo
+        // 2. Treinos › + › Importar com IA › PDF ou arquivo › as 4 fichas em "No meu iPhone"
+        //    (o script copia os PDFs para o armazenamento local do app Arquivos do simulador).
         app.tabBars.buttons.element(boundBy: 1).tap()
         pause()
         tap("training.add")
         pause(0.8)
         tap("training.add.import")
         pause()
-        tap("import.sample")
+        tap("import.source.files")
+        pickFiles(["Chest_and_Biceps_Workout", "Back_and_Triceps_Workout", "Leg_Workout", "Shoulder_Workout"])
         pause(1.5)
-        let addMore = element("import.sample.addMore")
-        if addMore.waitForExistence(timeout: 3) {
-            addMore.tap()
-            pause(1.5)
-        }
         tap("import.analyze")
 
         // 3. Antes de enviar: o que vai, para quem, Permitir
