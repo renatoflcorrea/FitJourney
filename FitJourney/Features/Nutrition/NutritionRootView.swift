@@ -8,6 +8,10 @@ struct NutritionRootView: View {
     var body: some View {
         NavigationStack {
             NutritionDayView()
+                // Na raiz da pilha (como em Treinos): declarado dentro de "Plano", que é empurrado por
+                // `navigationDestination(isPresented:)`, o destino às vezes não era achado — o toque no plano mostrava o
+                // aviso amarelo do SwiftUI e a volta quebrava (visto ao abrir "Plano" logo depois de importar com IA).
+                .navigationDestination(for: NutritionPlan.self) { PlanEditorView(plan: $0) }
         }
     }
 }

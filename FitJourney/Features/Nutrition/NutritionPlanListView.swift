@@ -103,7 +103,6 @@ struct NutritionPlanListView: View {
             if phase == .active { Task { await refreshReminderState() } }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .navigationDestination(for: NutritionPlan.self) { PlanEditorView(plan: $0) }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -281,6 +280,9 @@ struct NewPlanSheet: View {
 }
 
 #Preview("Planos") {
-    NavigationStack { NutritionPlanListView() }
+    NavigationStack {
+        NutritionPlanListView()
+            .navigationDestination(for: NutritionPlan.self) { PlanEditorView(plan: $0) }
+    }
         .modelContainer(PersistenceController.preview)
 }
