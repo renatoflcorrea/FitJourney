@@ -106,7 +106,13 @@ struct CoachRootView: View {
             service = CoachConversationService(
                 context: context,
                 toolbox: FitnessToolbox(context: context, profile: { CoachProfileStore(defaults: defaults).load() },
+                                        sharing: {
+                                            let recipient = AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load())
+                                            return CoachProfile.Sharing(categories: AIConsentStore(defaults: defaults).categories(for: recipient))
+                                        },
                                         health: HealthQueries.live, healthAccess: healthAccess),
+                recipient: { AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load()) },
+                requireConsent: { try AIConsentGate(store: AIConsentStore(defaults: defaults)).require(.coach, recipient: $0) },
                 resolveChat: {
                     try ProviderFactory.makeChat(settingsStore: ProviderSettingsStore(defaults: defaults), secrets: secrets)
                 })

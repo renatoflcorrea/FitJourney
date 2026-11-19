@@ -77,7 +77,7 @@ final class ImportCoordinator {
 
     /// Mesma resolução do Coach: provedor das preferências + chave do Keychain.
     func makeSession(kind: ImportSession.Kind, id: UUID = UUID()) -> ImportSession {
-        ImportSession(kind: kind, context: context, resolveChat: resolver(), hasConsented: consentCheck(), store: store, id: id)
+        ImportSession(kind: kind, context: context, resolveChat: resolver(), recipient: recipient(), consentStore: AIConsentStore(defaults: defaults), store: store, id: id)
     }
 
     private func resolver() -> @MainActor () throws -> ResolvedChat {
@@ -86,9 +86,9 @@ final class ImportCoordinator {
         return { try ProviderFactory.makeChat(settingsStore: ProviderSettingsStore(defaults: defaults), secrets: secrets) }
     }
 
-    private func consentCheck() -> @MainActor () -> Bool {
+    private func recipient() -> @MainActor () -> AIRecipient {
         let defaults = defaults
-        return { CoachProfileStore(defaults: defaults).hasConsented }
+        return { AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load()) }
     }
 
     // MARK: Ciclo de vida
@@ -111,7 +111,7 @@ final class ImportCoordinator {
             return
         }
         guard let state = store.load(id: id) else { refreshStored(); return }
-        let session = ImportSession.resume(state, context: context, resolveChat: resolver(), hasConsented: consentCheck(), store: store)
+        let session = ImportSession.resume(state, context: context, resolveChat: resolver(), recipient: recipient(), consentStore: AIConsentStore(defaults: defaults), store: store)
         sessions[id] = session
         uiState(for: session).target = Self.loadTarget(id: id, kind: state.kind, defaults: defaults)
         presented = session

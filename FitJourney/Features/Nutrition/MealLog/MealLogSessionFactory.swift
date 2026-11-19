@@ -11,9 +11,15 @@ enum MealLogSessionFactory {
         let isAvailable: @MainActor () -> Bool = { availability?.isAvailable == true }
         #if DEBUG
         if StoreDemo.isEnabled {
+            // Só o gateway fictício recebe esta concessão, num domínio isolado de demonstração.
+            let defaults = UserDefaults(suiteName: "coach.mealDemo.\(UUID().uuidString)")!
+            let recipient = AIRecipientResolver.resolve(settings: ProviderSettings(provider: .openAI))
+            let consent = AIConsentStore(defaults: defaults)
+            consent.grant(.mealLog, for: recipient)
             let session = MealLogSession(day: day, context: context,
                                          resolveChat: { ResolvedChat(gateway: DemoMealLogGateway(), model: "gpt-6-luna") },
-                                         isAIAvailable: isAvailable, hasConsented: { true }, isOnline: isOnline)
+                                         isAIAvailable: isAvailable, recipient: { recipient }, consentStore: consent,
+                                         sharesNutrition: { false }, isOnline: isOnline)
             session.text = text
             return session
         }

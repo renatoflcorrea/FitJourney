@@ -1,7 +1,7 @@
 import Foundation
 
 /// Preferências do registro com IA: "Dieta" compartilhada (o plano do dia vai ao provedor) e a oferta única de
-/// liberá-la (SPEC §7.x: oferece uma vez, sem insistir). O consentimento e o compartilhamento são os do Coach.
+/// liberá-la (SPEC §7.x: oferece uma vez, sem insistir). Dieta é uma categoria do destino atual.
 struct MealLogPreferences {
     /// Já mostramos "Permitir comparar com o plano" (persistido; não volta a aparecer).
     static let dietSharingOfferedKey = "fj.mealLog.dietSharingOffered"
@@ -10,10 +10,9 @@ struct MealLogPreferences {
 
     init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
-    private var profiles: CoachProfileStore { CoachProfileStore(defaults: defaults) }
-
     /// "Dieta" ligada em Coach e IA (com consentimento): o plano do dia vai ao provedor.
-    var sharesNutrition: Bool { profiles.hasConsented && profiles.load().sharing.nutrition }
+    private var recipient: AIRecipient { AIRecipientResolver.resolve(settings: ProviderSettingsStore(defaults: defaults).load()) }
+    var sharesNutrition: Bool { AIConsentStore(defaults: defaults).categories(for: recipient).contains(.nutrition) }
 
     var hasOfferedDietSharing: Bool { defaults.bool(forKey: Self.dietSharingOfferedKey) }
 
@@ -23,26 +22,19 @@ struct MealLogPreferences {
     /// O usuário viu a oferta (aceitando ou não): não volta a aparecer.
     func markDietSharingOffered() { defaults.set(true, forKey: Self.dietSharingOfferedKey) }
 
-    /// Liga "Dieta" (registra o consentimento se ainda não houver, sem ligar os outros compartilhamentos).
+    /// Liga somente a categoria Dieta, sem conceder qualquer uso.
     func enableDietSharing(at date: Date = .now) {
-        var sharing = profiles.hasConsented ? profiles.load().sharing : .none
-        sharing.nutrition = true
-        if profiles.hasConsented {
-            var profile = profiles.load()
-            profile.sharing = sharing
-            profiles.save(profile)
-        } else {
-            profiles.grantConsent(sharing: sharing, at: date)
-        }
+        let store = AIConsentStore(defaults: defaults)
+        var categories = store.categories(for: recipient)
+        categories.insert(.nutrition)
+        store.setCategories(categories, for: recipient, at: date)
         markDietSharingOffered()
         NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
     }
 
-    /// Aceite do aviso "o texto e as fotos vão ao provedor" no primeiro envio: vale como consentimento do Coach com
-    /// os quatro compartilhamentos desligados (como a decisão 33).
+    /// Aceite do aviso de envio do registro, apenas para esse uso e destino.
     func grantConsent(at date: Date = .now) {
-        guard !profiles.hasConsented else { return }
-        profiles.grantConsent(sharing: .none, at: date)
+        AIConsentStore(defaults: defaults).grant(.mealLog, for: recipient, at: date)
         NotificationCenter.default.post(name: .coachConsentChanged, object: nil)
     }
 }

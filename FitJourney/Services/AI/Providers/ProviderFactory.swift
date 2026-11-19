@@ -33,7 +33,7 @@ enum ProviderFactory {
             return EndpointConfiguration(
                 provider: .openRouter, baseURL: url, auth: .bearer(key),
                 extraHeaders: ["X-Title": "FitJourney"],
-                quirks: ProviderQuirks(tokenParameter: "max_tokens"))
+                quirks: ProviderQuirks(tokenParameter: "max_tokens", errorDialect: .openRouter, denyDataCollection: true))
         case .openCode:
             guard !OpenCodeGo.isFreeModel(settings.model) else {
                 throw AIError.notConfigured(reason: String(localized: "modelos “-free” só funcionam dentro do OpenCode; escolha outro modelo"))

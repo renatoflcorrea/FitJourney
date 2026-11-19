@@ -59,6 +59,8 @@ struct ProviderQuirks: Sendable, Hashable {
     /// Envia `strict: true` nas ferramentas.
     var strictTools: Bool = true
     var errorDialect: HTTPClient.ErrorDialect = .standard
+    /// Restringe o roteamento a serviços que não coletam os dados enviados.
+    var denyDataCollection: Bool = false
 }
 
 /// Diferenças por família de modelo, independentes do provedor que hospeda.

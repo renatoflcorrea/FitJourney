@@ -4,8 +4,8 @@ import SwiftData
 
 /// Erros de pré-condição do import (a UI trata cada um; falhas do provedor viram `phase = .failed`).
 enum ImportError: Error, Sendable, Hashable {
-    /// Consentimento do Coach ausente (`CoachProfileStore.hasConsented`): mostrar o aviso "o arquivo inteiro vai ao provedor".
-    case consentRequired
+    /// O uso de importação ainda não foi permitido para este destino.
+    case consentRequired(AIRecipient)
     case noAttachments
     case wrongPhase
     /// Ainda há perguntas obrigatórias sem resposta.
@@ -110,7 +110,10 @@ final class ImportSession: Identifiable {
     @ObservationIgnored private var analysisTask: Task<Void, Never>?
     @ObservationIgnored private let context: ModelContext
     @ObservationIgnored private let resolveChat: @MainActor () throws -> ResolvedChat
-    @ObservationIgnored private let hasConsented: @MainActor () -> Bool
+    @ObservationIgnored private let hasConsented: (@MainActor () -> Bool)?
+    @ObservationIgnored private let recipient: @MainActor () -> AIRecipient
+    @ObservationIgnored private let consentStore: AIConsentStore
+    @ObservationIgnored private var activeRecipient: AIRecipient?
     @ObservationIgnored private let store: any ImportSessionStoring
     @ObservationIgnored private let now: @MainActor () -> Date
     @ObservationIgnored private let preparer: AttachmentPreparer
@@ -124,9 +127,11 @@ final class ImportSession: Identifiable {
 
     /// - Parameters:
     ///   - resolveChat: em produção `{ try ProviderFactory.makeChat(secrets: KeychainSecretStore()) }`.
-    ///   - hasConsented: em produção `{ CoachProfileStore().hasConsented }`.
+    ///   - hasConsented: substituição para testes; em produção usa o gate por destino.
     init(kind: Kind, context: ModelContext, resolveChat: @escaping @MainActor () throws -> ResolvedChat,
-         hasConsented: @escaping @MainActor () -> Bool = { CoachProfileStore().hasConsented },
+         hasConsented: (@MainActor () -> Bool)? = nil,
+         recipient: @escaping @MainActor () -> AIRecipient = { AIRecipientResolver.resolve(settings: ProviderSettingsStore().load()) },
+         consentStore: AIConsentStore = AIConsentStore(),
          store: any ImportSessionStoring = FileImportSessionStore(), now: @escaping @MainActor () -> Date = { .now },
          preparer: AttachmentPreparer = AttachmentPreparer(), rasterizer: PDFRasterizer = PDFRasterizer(), id: UUID = UUID(),
          beginBackground: @escaping @MainActor (String, @escaping @MainActor () -> Void) -> @MainActor () -> Void = ImportSession.backgroundTask) {
@@ -136,6 +141,8 @@ final class ImportSession: Identifiable {
         self.context = context
         self.resolveChat = resolveChat
         self.hasConsented = hasConsented
+        self.recipient = recipient
+        self.consentStore = consentStore
         self.store = store
         self.now = now
         self.preparer = preparer
@@ -147,10 +154,12 @@ final class ImportSession: Identifiable {
     /// (os arquivos não são guardados); `applying` volta para `reviewing`.
     static func resume(_ state: ImportSessionState, context: ModelContext,
                        resolveChat: @escaping @MainActor () throws -> ResolvedChat,
-                       hasConsented: @escaping @MainActor () -> Bool = { CoachProfileStore().hasConsented },
+                       hasConsented: (@MainActor () -> Bool)? = nil,
+                       recipient: @escaping @MainActor () -> AIRecipient = { AIRecipientResolver.resolve(settings: ProviderSettingsStore().load()) },
+                       consentStore: AIConsentStore = AIConsentStore(),
                        store: any ImportSessionStoring = FileImportSessionStore(),
                        now: @escaping @MainActor () -> Date = { .now }) -> ImportSession {
-        let session = ImportSession(kind: state.kind, context: context, resolveChat: resolveChat, hasConsented: hasConsented,
+        let session = ImportSession(kind: state.kind, context: context, resolveChat: resolveChat, hasConsented: hasConsented, recipient: recipient, consentStore: consentStore,
                                     store: store, now: now, id: state.id)
         session.restoring = true
         session.createdAt = state.createdAt
@@ -239,12 +248,23 @@ final class ImportSession: Identifiable {
 
     // MARK: - Análise
 
+    private func requireConsent() throws {
+        let destination = recipient()
+        if let hasConsented {
+            guard hasConsented() else { throw ImportError.consentRequired(destination) }
+        } else {
+            do { try AIConsentGate(store: consentStore).require(.importFiles, recipient: destination) }
+            catch { throw ImportError.consentRequired(destination) }
+        }
+    }
+
     /// Envia os arquivos e extrai. Lança só pré-condições (consentimento, sem arquivos, provedor não
     /// configurado, modelo sem imagens); erros do provedor/validação viram `phase = .failed` com `failureMessage`.
     func analyze() async throws {
         guard phase == .selecting else { throw ImportError.wrongPhase }
-        guard hasConsented() else { throw ImportError.consentRequired }
+        try requireConsent()
         guard !prepared.isEmpty else { throw ImportError.noAttachments }
+        let destination = recipient()
         let chat = try resolveChat()
         let capabilities = AttachmentCapabilities.resolve(provider: chat.gateway.provider, model: chat.model)
         let attachmentsToSend = prepared
@@ -257,6 +277,9 @@ final class ImportSession: Identifiable {
         } catch let error as AttachmentError {
             throw ImportError.attachment(error)
         }
+        try requireConsent()
+        guard recipient().key == destination.key else { throw ImportError.consentRequired(recipient()) }
+        activeRecipient = destination
         let catalog = (try? catalogEntries()) ?? []
         let user = LLMMessage.user(CopilotPrompt.importUserMessage(kind, files: attachments, note: note, catalog: catalog),
                                    parts: encoded.parts)
@@ -493,6 +516,8 @@ final class ImportSession: Identifiable {
     /// Com mais de uma ferramenta, o modelo escolhe (`required`); a resposta de qualquer uma é aceita.
     private func call(chat: ResolvedChat, stage: ImportCallMetrics.Stage, conversation: [LLMMessage],
                       tools: [ToolSpec]) async throws -> String {
+        try requireConsent()
+        guard activeRecipient?.key == recipient().key else { throw ImportError.consentRequired(recipient()) }
         guard let tool = tools.first else { throw ExtractionFailure.noExtraction }
         let system = LLMMessage.system(CopilotPrompt.importSystem(kind))
         // Esforço baixo: extrair é transcrever. Sem `maxTokens` (o padrão do gateway não corta a resposta) e sem
@@ -766,8 +791,9 @@ final class ImportSession: Identifiable {
     /// Aplica as respostas às dúvidas da IA numa chamada só de texto (os arquivos não são reenviados).
     func reviseWithAI() async throws {
         guard phase == .interviewing || phase == .reviewing else { throw ImportError.wrongPhase }
-        guard hasConsented() else { throw ImportError.consentRequired }
+        try requireConsent()
         guard !ambiguityAnswers.isEmpty else { return }
+        activeRecipient = recipient()
         let chat = try resolveChat()
         let base: Extracted
         let ambiguities: [ImportAmbiguity]
