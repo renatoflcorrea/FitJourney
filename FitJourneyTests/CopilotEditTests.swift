@@ -342,7 +342,7 @@ struct CopilotEditTests {
             [.delta("Preparei a alteração para você aplicar."), .finished(reason: .stop)],
         ])
         let service = CoachConversationService(context: f.context, toolbox: f.toolbox.toolbox(),
-                                               resolveChat: { ResolvedChat(gateway: gateway, model: "m") }, changeStore: f.changes)
+                                               requireConsent: { _ in }, resolveChat: { ResolvedChat(gateway: gateway, model: "m") }, changeStore: f.changes)
         let conversation = try service.createConversation()
         #expect(await service.send("sobe o supino para 34 kg", in: conversation))
         let tool = try #require(conversation.sortedMessages.first { $0.role == .tool })

@@ -6,9 +6,8 @@ import SwiftData
 enum MealLogError: Error, Sendable, Hashable {
     /// IA não configurada (`AIAvailability`): a tela não deveria nem mostrar a entrada.
     case aiUnavailable
-    /// Consentimento do Coach ausente: mostrar o aviso "o texto e as fotos vão ao provedor"
-    /// (`MealLogPreferences.grantConsent()` aceita com os compartilhamentos desligados).
-    case consentRequired
+    /// O uso de registro ainda não foi permitido para este destino.
+    case consentRequired(AIRecipient)
     case emptyInput
     case textTooLong(max: Int)
     case tooManyPhotos(max: Int)
@@ -112,7 +111,9 @@ final class MealLogSession: Identifiable {
     @ObservationIgnored private let context: ModelContext
     @ObservationIgnored private let resolveChat: @MainActor () throws -> ResolvedChat
     @ObservationIgnored private let isAIAvailable: @MainActor () -> Bool
-    @ObservationIgnored private let hasConsented: @MainActor () -> Bool
+    @ObservationIgnored private let hasConsented: (@MainActor () -> Bool)?
+    @ObservationIgnored private let recipient: @MainActor () -> AIRecipient
+    @ObservationIgnored private let consentStore: AIConsentStore
     @ObservationIgnored private let sharesNutrition: @MainActor () -> Bool
     @ObservationIgnored private let isOnline: @MainActor () -> Bool
     @ObservationIgnored private let now: @MainActor () -> Date
@@ -125,12 +126,14 @@ final class MealLogSession: Identifiable {
     ///   - day: dia do registro (padrão na tela: o dia aberto na Dieta).
     ///   - resolveChat: em produção `{ try ProviderFactory.makeChat(secrets: KeychainSecretStore()) }`.
     ///   - isAIAvailable: em produção `{ availability.isAvailable }` (`AIAvailability`).
-    ///   - hasConsented: em produção `{ CoachProfileStore().hasConsented }`.
+    ///   - hasConsented: substituição para testes; em produção usa o gate por destino.
     ///   - sharesNutrition: em produção `{ MealLogPreferences().sharesNutrition }` — "Dieta" em Coach e IA.
     ///   - isOnline: em produção `{ network.isOnline }` (`ImportNetworkMonitor`).
     init(day: Date, context: ModelContext, resolveChat: @escaping @MainActor () throws -> ResolvedChat,
          isAIAvailable: @escaping @MainActor () -> Bool,
-         hasConsented: @escaping @MainActor () -> Bool = { CoachProfileStore().hasConsented },
+         hasConsented: (@MainActor () -> Bool)? = nil,
+         recipient: @escaping @MainActor () -> AIRecipient = { AIRecipientResolver.resolve(settings: ProviderSettingsStore().load()) },
+         consentStore: AIConsentStore = AIConsentStore(),
          sharesNutrition: @escaping @MainActor () -> Bool = { MealLogPreferences().sharesNutrition },
          isOnline: @escaping @MainActor () -> Bool = { true },
          now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar = .autoupdatingCurrent,
@@ -143,6 +146,8 @@ final class MealLogSession: Identifiable {
         self.resolveChat = resolveChat
         self.isAIAvailable = isAIAvailable
         self.hasConsented = hasConsented
+        self.recipient = recipient
+        self.consentStore = consentStore
         self.sharesNutrition = sharesNutrition
         self.isOnline = isOnline
         self.now = now
@@ -184,12 +189,24 @@ final class MealLogSession: Identifiable {
 
     // MARK: Análise
 
+    private func requireConsent(expected: AIRecipient? = nil) throws {
+        let current = recipient()
+        if let expected, expected.key != current.key { throw MealLogError.consentRequired(current) }
+        if let hasConsented {
+            guard hasConsented() else { throw MealLogError.consentRequired(current) }
+        } else {
+            do { try AIConsentGate(store: consentStore).require(.mealLog, recipient: current) }
+            catch { throw MealLogError.consentRequired(current) }
+        }
+    }
+
     /// Envia texto e fotos e monta o rascunho. Lança só pré-condições (`MealLogError`, ou `AIError` da configuração do
     /// provedor); sem internet, demora, erro do provedor, foto ilegível e baixa confiança viram `phase`.
     func analyze() async throws {
         guard phase != .analyzing else { throw MealLogError.wrongPhase }
         guard isAIAvailable() else { throw MealLogError.aiUnavailable }
-        guard hasConsented() else { throw MealLogError.consentRequired }
+        try requireConsent()
+        let destination = recipient()
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !prepared.isEmpty else { throw MealLogError.emptyInput }
         guard trimmed.count <= Self.maxTextLength else { throw MealLogError.textTooLong(max: Self.maxTextLength) }
@@ -225,12 +242,18 @@ final class MealLogSession: Identifiable {
         }
         guard generation == self.generation else { return } // descartada enquanto preparava as fotos
 
+        do { try requireConsent(expected: destination) } catch {
+            phase = previous
+            analysisStartedAt = nil
+            throw error
+        }
+
         let planned = (try? plannedMeals()) ?? []
         let shared = sharesNutrition()
         let userText = userMessage(text: trimmed, photoCount: toSend.count, plan: shared ? planned : nil)
         lastInput = (trimmed, toSend.count)
         await run(chat: chat, messages: [.user(userText, parts: parts)], planned: planned, shared: shared,
-                  referenceMinutes: referenceMinutes(), previous: previous, isCorrection: false)
+                  referenceMinutes: referenceMinutes(), previous: previous, isCorrection: false, destination: destination)
     }
 
     /// Refaz só o rascunho a partir de uma correção por texto ("o arroz era integral, sem feijão"), sem reenviar fotos.
@@ -240,6 +263,8 @@ final class MealLogSession: Identifiable {
         guard !trimmed.isEmpty else { throw MealLogError.emptyInput }
         guard trimmed.count <= Self.maxTextLength else { throw MealLogError.textTooLong(max: Self.maxTextLength) }
         guard isAIAvailable() else { throw MealLogError.aiUnavailable }
+        try requireConsent()
+        let destination = recipient()
         let chat = try resolveChat()
         guard isOnline() else {
             phase = .offline
@@ -257,7 +282,7 @@ final class MealLogSession: Identifiable {
         let message = userMessage(text: input.text, photoCount: input.photoCount, plan: shared ? planned : nil) + "\n\n"
             + MealLogPrompt.correctionMessage(draftJSON: Self.encode(draft), instruction: trimmed, language: language)
         await run(chat: chat, messages: [.user(message)], planned: planned, shared: shared,
-                  referenceMinutes: referenceMinutes(), previous: phase, isCorrection: true)
+                  referenceMinutes: referenceMinutes(), previous: phase, isCorrection: true, destination: destination)
     }
 
     private func userMessage(text: String, photoCount: Int, plan: [MealLogPlannedMeal]?) -> String {
@@ -297,7 +322,7 @@ final class MealLogSession: Identifiable {
     }
 
     private func run(chat: ResolvedChat, messages: [LLMMessage], planned: [MealLogPlannedMeal], shared: Bool,
-                     referenceMinutes: Int?, previous: Phase, isCorrection: Bool) async {
+                     referenceMinutes: Int?, previous: Phase, isCorrection: Bool, destination: AIRecipient) async {
         phase = .analyzing
         if analysisStartedAt == nil { analysisStartedAt = now() }
         let language = language
@@ -306,7 +331,9 @@ final class MealLogSession: Identifiable {
         let task = Task { @MainActor in
             do {
                 let draft = try await Self.withTimeout(timeout) {
-                    try await Self.extract(chat: chat, messages: messages, language: language)
+                    try await Self.extract(chat: chat, messages: messages, language: language) {
+                        try await MainActor.run { try self.requireConsent(expected: destination) }
+                    }
                 }
                 try Task.checkCancellation()
                 guard generation == self.generation else { return }
@@ -386,11 +413,13 @@ final class MealLogSession: Identifiable {
     }
 
     /// Uma chamada + no máximo um reparo (sem reenviar as fotos). Devolve o rascunho validado.
-    nonisolated private static func extract(chat: ResolvedChat, messages: [LLMMessage], language: String) async throws -> FoodLogDraft {
+    nonisolated private static func extract(chat: ResolvedChat, messages: [LLMMessage], language: String,
+                                           requireConsent: @escaping @Sendable () async throws -> Void) async throws -> FoodLogDraft {
         let tool = ToolSpec(name: MealLogPrompt.submitTool, description: MealLogPrompt.toolDescription(language: language),
                             parametersSchema: DraftValidation.toolParameters(fromContract: DraftSchemas.foodLogDraftV1))
         let system = LLMMessage.system(MealLogPrompt.system(language: language))
         func call(_ conversation: [LLMMessage]) async throws -> String {
+            try await requireConsent()
             let request = ChatRequest(model: chat.model, messages: [system] + conversation, tools: [tool],
                                       toolChoice: .tool(tool.name), metadata: ["module": "meal-log"])
             let completion = try await ChatStreamCollector.collect(chat.gateway.stream(request), model: chat.model)

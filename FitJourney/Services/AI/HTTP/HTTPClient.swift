@@ -7,7 +7,7 @@ import Foundation
 /// pedido (Authorization, x-api-key e os cabeçalhos marcados como sensíveis) e do `Redactor`
 /// antes de virarem mensagem.
 struct HTTPClient: Sendable {
-    enum ErrorDialect: Sendable, Hashable { case standard, openCode }
+    enum ErrorDialect: Sendable, Hashable { case standard, openCode, openRouter }
     struct Timeouts: Sendable, Hashable {
         var chat: TimeInterval
         static let standard = Timeouts(chat: 120)
@@ -164,6 +164,15 @@ struct HTTPClient: Sendable {
         }
     }
 
+    static func isOpenRouterNoHost(_ message: String) -> Bool {
+        let lower = message.lowercased()
+        return lower.contains("no endpoints found") || lower.contains("no available providers")
+    }
+
+    static var openRouterNoHostMessage: String {
+        String(localized: "Nenhum serviço que executa este modelo atende à exigência de não guardar seus dados. Escolha outro modelo.")
+    }
+
     static func validate(_ response: HTTPURLResponse, data: Data, request: URLRequest? = nil,
                          sensitiveHeaders: Set<String> = [], forbiddenKeepsStatus: Bool = false, errorDialect: ErrorDialect = .standard) throws {
         let status = response.statusCode
@@ -179,6 +188,9 @@ struct HTTPClient: Sendable {
             if !credential.isEmpty { safeBody = safeBody.replacingOccurrences(of: credential, with: "<redacted>") }
         }
         let message = errorMessage(from: Data(safeBody.utf8))
+        if errorDialect == .openRouter, isOpenRouterNoHost(safeBody) {
+            throw AIError.badRequest(status: status, message: openRouterNoHostMessage)
+        }
         if errorDialect == .openCode {
             let lower = safeBody.lowercased()
             if status == 403 && (lower.contains("free tier") || lower.contains("within opencode")) {

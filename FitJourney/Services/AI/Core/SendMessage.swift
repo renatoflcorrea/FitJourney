@@ -37,12 +37,15 @@ final class CoachConversationService {
     var lastError: AIError?
     /// Conversa em que `lastError` aconteceu: a UI só mostra o erro nela.
     private(set) var lastErrorConversationID: UUID?
+    private(set) var lastConsentRequired: AIConsentRequired?
 
     var isRunning: Bool { runningConversationID != nil }
 
     @ObservationIgnored private let context: ModelContext
     @ObservationIgnored private let toolbox: FitnessToolbox
     @ObservationIgnored private let resolveChat: @MainActor () throws -> ResolvedChat
+    @ObservationIgnored private let recipient: @MainActor () -> AIRecipient
+    @ObservationIgnored private let requireConsent: @MainActor (AIRecipient) throws -> Void
     @ObservationIgnored private let systemPrompt: String
     /// Onde os cartões de alteração do copiloto (`propose_*_changes`, `propose_food_log`) ficam.
     @ObservationIgnored private let changeStore: CopilotChangeStore
@@ -51,11 +54,15 @@ final class CoachConversationService {
     /// - Parameter resolveChat: monta o gateway a cada envio (pega mudanças de provedor/chave);
     ///   em produção, `{ try ProviderFactory.makeChat(secrets: KeychainSecretStore()) }`.
     init(context: ModelContext, toolbox: FitnessToolbox,
+         recipient: @escaping @MainActor () -> AIRecipient = { AIRecipientResolver.resolve(settings: ProviderSettingsStore().load()) },
+         requireConsent: @escaping @MainActor (AIRecipient) throws -> Void = { try AIConsentGate().require(.coach, recipient: $0) },
          resolveChat: @escaping @MainActor () throws -> ResolvedChat,
          systemPrompt: String = CoachPrompt.system, changeStore: CopilotChangeStore? = nil) {
         self.context = context
         self.toolbox = toolbox
         self.resolveChat = resolveChat
+        self.recipient = recipient
+        self.requireConsent = requireConsent
         self.systemPrompt = systemPrompt
         self.changeStore = changeStore ?? .shared
     }
@@ -86,6 +93,7 @@ final class CoachConversationService {
 
     func clearError() {
         lastError = nil
+        lastConsentRequired = nil
         lastErrorConversationID = nil
     }
 
@@ -125,6 +133,7 @@ final class CoachConversationService {
                 return true
             } catch {
                 if !Self.isCancellation(error) {
+                    self.lastConsentRequired = error as? AIConsentRequired
                     self.lastError = (error as? AIError) ?? .decoding(context: "coach", message: Redactor.redact("\(error)"))
                     self.lastErrorConversationID = conversation.id
                 }
@@ -163,6 +172,8 @@ final class CoachConversationService {
     /// - Parameter existingUser: ao refazer um turno, a mensagem do usuário que já existe (nada é inserido);
     ///   tudo que veio depois dela é apagado, só depois de o provedor ter sido resolvido com sucesso.
     private func run(_ text: String, in conversation: ChatConversation, reusing existingUser: ChatMessage?) async throws {
+        let destination = recipient()
+        try requireConsent(destination)
         let chat = try resolveChat()
 
         let user: ChatMessage
@@ -186,7 +197,12 @@ final class CoachConversationService {
         // Fixos durante todo o envio: system, tools e o prefixo encaixado na janela.
         let tools = toolbox.specs
         let system = systemPrompt
-        let prefix = conversation.sortedMessages.filter { $0.sortIndex < user.sortIndex }.compactMap(Self.historyMessage)
+        let prefix = conversation.sortedMessages.filter { $0.sortIndex < user.sortIndex }.compactMap(Self.historyMessage).map { message in
+            var safe = message
+            // Resultados antigos podem ter sido lidos sob permissões de outro destino ou categoria.
+            if safe.role == .tool { safe.content = Self.compactedToolResult }
+            return safe
+        }
         let budget = chat.contextBudgetTokens * ContextWindow.charactersPerToken
         let overhead = system.count + ContextWindow.toolsCost(tools)
         var window = ContextWindow.fitPrefix(prefix, current: [user.llmMessage], budgetCharacters: budget - overhead)
@@ -194,9 +210,14 @@ final class CoachConversationService {
             ? "[Nota do app: \(window.droppedCount) mensagens anteriores desta conversa não foram incluídas.]\n\n" : nil
         if let note, !window.messages.isEmpty { window.messages[0].content = note + window.messages[0].content }
         let frozenPrefix = window.messages
+        let initialSharing = toolbox.currentSharing
 
         for round in 0 ..< Self.maxToolRounds {
             try Task.checkCancellation()
+            let currentRecipient = recipient()
+            guard currentRecipient.key == destination.key else { throw AIConsentRequired(feature: .coach, recipient: currentRecipient) }
+            try requireConsent(destination)
+            guard toolbox.currentSharing == initialSharing else { throw AIConsentRequired(feature: .coach, recipient: currentRecipient) }
             let finalRound = round == Self.maxToolRounds - 1
             var current = conversation.sortedMessages.filter { $0.sortIndex >= user.sortIndex }.compactMap(Self.historyMessage)
             if let note, frozenPrefix.isEmpty, !current.isEmpty { current[0].content = note + current[0].content }
@@ -224,9 +245,16 @@ final class CoachConversationService {
 
             for call in calls {
                 try Task.checkCancellation()
+                let current = recipient()
+                guard current.key == destination.key else { throw AIConsentRequired(feature: .coach, recipient: current) }
+                try requireConsent(destination)
                 let outcome = await toolbox.execute(call)
                 // Parado durante a ferramenta (ex.: leitura do Saúde): nada de "cancelled" gravado.
                 try Task.checkCancellation()
+                guard recipient().key == destination.key, toolbox.currentSharing == initialSharing else {
+                    throw AIConsentRequired(feature: .coach, recipient: recipient())
+                }
+                try requireConsent(destination)
                 let result = ChatMessage(role: .tool, content: Self.limitToolResult(outcome.content),
                                          sortIndex: conversation.nextSortIndex)
                 result.toolCallID = call.id

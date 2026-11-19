@@ -5,12 +5,15 @@ import SwiftUI
 struct ImportInterviewView: View {
     let session: ImportSession
     let ui: ImportUIState
+    @Environment(ImportCoordinator.self) private var coordinator: ImportCoordinator?
 
     @State private var errorMessage: String?
     @State private var isRevising = false
     @State private var freeText = ""
     @State private var showFreeText = false
     @State private var expandedUnmatched: String?
+    @State private var consentRecipient: AIRecipient?
+    @State private var showConsent = false
     @FocusState private var freeFocused: Bool
 
     private var current: ImportQuestion? { session.questions.first }
@@ -76,6 +79,13 @@ struct ImportInterviewView: View {
                     Text("Pular")
                 }
                 .disabled(isRevising)
+            }
+        }
+        .sheet(isPresented: $showConsent) {
+            ImportConsentSheet(providerName: consentRecipient?.displayName ?? "") {
+                let defaults = coordinator?.defaults ?? .standard
+                if let recipient = consentRecipient { AIConsentStore(defaults: defaults).grant(.importFiles, for: recipient) }
+                revise()
             }
         }
     }
@@ -278,7 +288,11 @@ struct ImportInterviewView: View {
         isRevising = true
         Task {
             defer { isRevising = false }
-            do { try await session.reviseWithAI() } catch { errorMessage = error.localizedDescription }
+            do { try await session.reviseWithAI() }
+            catch let ImportError.consentRequired(recipient) {
+                consentRecipient = recipient
+                showConsent = true
+            } catch { errorMessage = error.localizedDescription }
         }
     }
 

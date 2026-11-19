@@ -98,7 +98,8 @@ struct AISettingsView: View {
         _settings = State(initialValue: loaded)
         _customURLText = State(initialValue: loaded.customBaseURL?.absoluteString ?? "")
         let store = CoachProfileStore(defaults: defaults)
-        _sharing = State(initialValue: store.load().sharing)
+        let recipient = AIRecipientResolver.resolve(settings: loaded)
+        _sharing = State(initialValue: CoachProfile.Sharing(categories: AIConsentStore(defaults: defaults).categories(for: recipient)))
         _hasConsented = State(initialValue: store.hasConsented)
     }
 
@@ -123,16 +124,18 @@ struct AISettingsView: View {
             reloadKeyState()
             let store = CoachProfileStore(defaults: defaults)
             hasConsented = store.hasConsented
-            sharing = store.load().sharing
+            sharing = CoachProfile.Sharing(categories: AIConsentStore(defaults: defaults).categories(for: AIRecipientResolver.resolve(settings: settings)))
         }
-        .onChange(of: settings) { ProviderSettingsStore(defaults: defaults).save(settings) }
+        .onChange(of: settings) {
+            ProviderSettingsStore(defaults: defaults).save(settings)
+            hasConsented = CoachProfileStore(defaults: defaults).hasConsented
+            sharing = CoachProfile.Sharing(categories: AIConsentStore(defaults: defaults).categories(for: AIRecipientResolver.resolve(settings: settings)))
+        }
         .task(id: "\(settings.provider)-\(hasKey)-\(keyRevision)-\(customURLText)") { await refreshModels() }
         .onDisappear { chatGPTLogin.cancel() }
         .onChange(of: sharing) {
-            let store = CoachProfileStore(defaults: defaults)
-            var profile = store.load()
-            profile.sharing = sharing
-            store.save(profile)
+            guard hasConsented else { return }
+            AIConsentStore(defaults: defaults).setCategories(sharing.categories, for: AIRecipientResolver.resolve(settings: settings))
         }
         .confirmationDialog("Revogar consentimento?", isPresented: $showRevoke, titleVisibility: .visible) {
             Button("Revogar", role: .destructive) {

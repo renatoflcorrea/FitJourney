@@ -18,7 +18,7 @@ struct ToolOutcome: Sendable, Hashable {
 /// - Schemas estritos (todas as chaves obrigatórias, `null` para "sem valor").
 /// - Limites: histórico de treino ≤ 90 dias / 50 sessões; registro alimentar ≤ 31 dias;
 ///   listas ≤ 50 itens. Pedidos acima do limite são cortados e o resultado diz `clamped`.
-/// - Respeita `CoachProfile.sharing`: o que o usuário não compartilha nem aparece nas ferramentas.
+/// - Respeita as categorias do destino atual: o que não foi compartilhado nem aparece nas ferramentas.
 @MainActor
 final class FitnessToolbox {
     static let maxHistoryDays = 90
@@ -50,6 +50,7 @@ final class FitnessToolbox {
 
     let context: ModelContext
     private let profile: @MainActor () -> CoachProfile
+    private let sharing: @MainActor () -> CoachProfile.Sharing
     let now: @MainActor () -> Date
     private let fixedCalendar: Calendar?
     /// Calendário do app resolvido a cada uso (`AppCalendar.current`: a preferência de início da semana
@@ -65,11 +66,16 @@ final class FitnessToolbox {
     ///   - healthAccess: conexão/aparelho; o padrão lê `HKHealthStore` e a preferência "Conectar ao Saúde".
     ///     No app, prefira `HealthToolAccess.from(_:)` com a `HealthAuthorization` compartilhada.
     init(context: ModelContext, profile: @escaping @MainActor () -> CoachProfile = { CoachProfileStore().load() },
+         sharing: @escaping @MainActor () -> CoachProfile.Sharing = {
+             let recipient = AIRecipientResolver.resolve(settings: ProviderSettingsStore().load())
+             return CoachProfile.Sharing(categories: AIConsentStore().categories(for: recipient))
+         },
          now: @escaping @MainActor () -> Date = { .now }, calendar: Calendar? = nil,
          health: (any HealthDataReading)? = nil,
          healthAccess: @escaping @MainActor () -> HealthToolAccess = HealthToolAccess.system) {
         self.context = context
         self.profile = profile
+        self.sharing = sharing
         self.now = now
         self.fixedCalendar = calendar
         self.health = health ?? HealthQueries.live
@@ -77,13 +83,14 @@ final class FitnessToolbox {
     }
 
     /// O usuário compartilha treinos (nomes de fichas podem aparecer no resumo de saúde).
-    var sharesWorkouts: Bool { profile().sharing.workouts }
+    var sharesWorkouts: Bool { sharing().workouts }
+    var currentSharing: CoachProfile.Sharing { sharing() }
 
     // MARK: - Especificações
 
     /// Ferramentas oferecidas ao modelo, filtradas pelo que o usuário compartilha.
     var specs: [ToolSpec] {
-        let sharing = profile().sharing
+        let sharing = sharing()
         return Name.allCases.filter { isShared($0, sharing) }.map(Self.spec)
     }
 
@@ -169,7 +176,7 @@ final class FitnessToolbox {
         guard let name = Name(rawValue: call.name) else {
             return error("unknown_tool", "Ferramenta desconhecida: \(call.name)")
         }
-        guard isShared(name, profile().sharing) else {
+        guard isShared(name, sharing()) else {
             return error("not_shared", "O usuário não compartilha estes dados com o Coach.")
         }
         // Propostas validam o JSON bruto (schema + Codable); as demais leem argumentos simples.

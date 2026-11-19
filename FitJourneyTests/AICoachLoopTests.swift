@@ -74,7 +74,7 @@ private final class HangingHealthReader: HealthDataReading, @unchecked Sendable 
 
 @MainActor
 private func makeService(_ fixture: ToolboxFixture, chat: @escaping @MainActor () throws -> ResolvedChat) -> CoachConversationService {
-    CoachConversationService(context: fixture.context, toolbox: fixture.toolbox(), resolveChat: chat)
+    CoachConversationService(context: fixture.context, toolbox: fixture.toolbox(), requireConsent: { _ in }, resolveChat: chat)
 }
 
 private func toolCallFrames(id: String, name: String, arguments: String, chunk: Int = 40) -> [String] {

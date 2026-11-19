@@ -48,6 +48,12 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
                     state.finish(into: continuation)
                     continuation.finish()
                 } catch {
+                    if configuration.provider == .openRouter,
+                       case let AIError.server(status, message) = error,
+                       HTTPClient.isOpenRouterNoHost(message) {
+                        continuation.finish(throwing: AIError.badRequest(status: status, message: HTTPClient.openRouterNoHostMessage))
+                        return
+                    }
                     continuation.finish(throwing: HTTPClient.normalize(error))
                 }
             }
@@ -126,6 +132,13 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
         } catch {
             throw AIError.decoding(context: "chat completion", message: "\(error)")
         }
+        if let error = decoded.error {
+            let message = Redactor.redact(error.message ?? "stream error")
+            if configuration.provider == .openRouter, HTTPClient.isOpenRouterNoHost(message) {
+                throw AIError.badRequest(status: 200, message: HTTPClient.openRouterNoHostMessage)
+            }
+            throw AIError.server(status: 200, message: message)
+        }
         let choice = decoded.choices?.first
         var tools = ToolCallAccumulator()
         for (offset, call) in (choice?.message?.toolCalls ?? []).enumerated() {
@@ -198,6 +211,9 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
             streamOptions: stream && configuration.quirks.includeStreamUsage ? OAIStreamOptions(includeUsage: true) : nil,
             temperature: ModelCapabilities.acceptsTemperature(request.model) ? request.temperature : nil,
             responseFormat: try Self.responseFormat(request.responseFormat))
+        if configuration.quirks.denyDataCollection {
+            wire.provider = OAIProviderPreferences(dataCollection: "deny")
+        }
         if let limit = request.maxTokens {
             let parameter = configuration.quirks.tokenParameter ?? ModelCapabilities.tokenParameter(for: request.model)
             if parameter == "max_completion_tokens" { wire.maxCompletionTokens = limit } else { wire.maxTokens = limit }

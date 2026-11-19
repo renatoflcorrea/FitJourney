@@ -21231,6 +21231,36 @@
         }
       }
     },
+    "OpenAI (sua conta ChatGPT)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenAI (your ChatGPT account)"
+          }
+        }
+      }
+    },
+    "Nenhum serviço que executa este modelo atende à exigência de não guardar seus dados. Escolha outro modelo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No service running this model meets the requirement not to store your data. Choose another model."
+          }
+        }
+      }
+    },
+    "Suas mensagens, o histórico da conversa e os dados que você escolher são enviados para %@. Nada vai a servidor do FitJourney. A chave fica só no Keychain deste aparelho.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your messages, conversation history and the data you choose are sent to %@. Nothing goes to a FitJourney server. Your key stays in this device’s Keychain."
+          }
+        }
+      }
+    },
     "Padrão · mais leve e rápido": {
       "localizations": {
         "en": {
