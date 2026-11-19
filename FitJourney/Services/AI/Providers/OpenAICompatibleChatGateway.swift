@@ -198,6 +198,9 @@ struct OpenAICompatibleChatGateway: ChatGateway, StructuredCompleting {
             streamOptions: stream && configuration.quirks.includeStreamUsage ? OAIStreamOptions(includeUsage: true) : nil,
             temperature: ModelCapabilities.acceptsTemperature(request.model) ? request.temperature : nil,
             responseFormat: try Self.responseFormat(request.responseFormat))
+        if configuration.quirks.denyDataCollection {
+            wire.provider = OAIProviderPreferences(dataCollection: "deny")
+        }
         if let limit = request.maxTokens {
             let parameter = configuration.quirks.tokenParameter ?? ModelCapabilities.tokenParameter(for: request.model)
             if parameter == "max_completion_tokens" { wire.maxCompletionTokens = limit } else { wire.maxTokens = limit }
