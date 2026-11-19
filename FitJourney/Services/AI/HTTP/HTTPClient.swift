@@ -189,8 +189,8 @@ struct HTTPClient: Sendable {
             }
             if status == 429 {
                 let wait = response.value(forHTTPHeaderField: "Retry-After").flatMap { TimeInterval($0.trimmingCharacters(in: .whitespaces)) }
-                if let wait, wait >= 0, wait <= 20 { throw AIError.rateLimited(retryAfter: wait) }
-                throw AIError.usageLimitReached(retryAfter: wait)
+                if let wait, wait.isFinite, wait >= 0, wait <= 20 { throw AIError.rateLimited(retryAfter: wait) }
+                throw AIError.usageLimitReached(retryAfter: wait.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil })
             }
         }
         switch status {

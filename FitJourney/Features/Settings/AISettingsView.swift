@@ -255,7 +255,7 @@ struct AISettingsView: View {
             SecureField(hasKey ? "Substituir chave" : "Chave de API", text: $keyInput)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                            Button("Salvar chave", action: saveKey)
+            Button("Salvar chave", action: saveKey)
                 .disabled(keyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .frame(minHeight: FJSize.minTap, alignment: .leading)
             if let url = descriptor.keyHelpURL {
@@ -421,6 +421,8 @@ struct AISettingsView: View {
         do {
             try secrets.set(keyInput, for: descriptor.secretKey)
             keyInput = ""
+            // Chave nova: a lista em cache (24 h) foi obtida com a anterior — busca de novo para validar esta.
+            if settings.provider == .openCode { defaults.removeObject(forKey: OpenCodeModelCache.key) }
             reloadKeyState()
             keyRevision += 1
         } catch {
@@ -431,8 +433,8 @@ struct AISettingsView: View {
     private func discoverOpenCodeModels() async {
         guard settings.provider == .openCode, hasKey else { openCodeModels = nil; openCodeKeyRejected = false; return }
         let key: String
-        do { key = try secrets.string(for: .apiKey(.openCode)) ?? "" } catch { return }
-        guard !key.isEmpty else { return }
+        do { key = try secrets.string(for: .apiKey(.openCode)) ?? "" } catch { key = "" }
+        guard !key.isEmpty else { openCodeModels = nil; openCodeKeyRejected = false; return }
         let transferredDefaults = SettingsDefaultsTransfer(value: defaults)
         let result = await OpenCodeModelLister(apiKey: key, defaults: transferredDefaults.value).discover()
         guard !Task.isCancelled else { return }
@@ -445,6 +447,7 @@ struct AISettingsView: View {
     private func removeKey() {
         do {
             try secrets.set(nil, for: descriptor.secretKey)
+            if settings.provider == .openCode { defaults.removeObject(forKey: OpenCodeModelCache.key) }
             reloadKeyState()
         } catch {
             errorMessage = String(localized: "Não foi possível remover do Keychain.")
