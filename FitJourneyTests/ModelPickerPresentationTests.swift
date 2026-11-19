@@ -5,7 +5,7 @@ struct ModelPickerPresentationTests {
     @Test func ordersAsProvidedAndLimitsToEight() {
         let names = (1...10).map { "model-\($0)" }
         let value = ModelPickerPresentation(models: names, preferredModel: "model-9", chosenModel: nil)
-        #expect(value.visibleModels == Array(names.prefix(8)))
+        #expect(value.visibleModels == ["model-9"] + Array(names.prefix(7)))
         #expect(value.remainingCount == 2)
     }
 
