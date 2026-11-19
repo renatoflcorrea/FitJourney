@@ -81,14 +81,14 @@ extension AttachmentError: LocalizedError {
 }
 
 /// O que o provedor/modelo aceita como anexo. Sem PDF nativo → `PDFRasterizer` (páginas em JPEG, só para envio).
-struct AttachmentCapabilities: Sendable, Hashable {
+struct AttachmentCapabilities: Codable, Sendable, Hashable {
     var supportsImages: Bool
     var supportsPDF: Bool
 
     /// Tabela conservadora:
     /// - Anthropic: imagem e PDF (`image`/`document`) em todos os modelos atuais.
-    /// - OpenAI: imagem nos modelos com visão; PDF (`file`) em gpt-4o/4.1/5 e séries o*.
-    /// - OpenRouter: imagem e PDF (`file`, o OpenRouter converte quando o modelo não lê PDF).
+    /// - OpenAI: usa metadados conhecidos do cache; sem eles, a tabela de famílias é conservadora.
+    /// - OpenRouter: usa modalidades do cache; PDF é convertido pelo roteador para modelos com visão.
     /// - Compatível (URL própria): imagem sim (o usuário escolheu o modelo), PDF não.
     /// - ChatGPT (login): imagem sim; PDF **não verificado** no endpoint não oficial → rasteriza.
     static func resolve(provider: AIProviderID, model: String, openCodeModels: OpenCodeModelCache.Snapshot? = nil, modelCache: ModelCache.Snapshot? = nil) -> AttachmentCapabilities {
@@ -97,13 +97,18 @@ struct AttachmentCapabilities: Sendable, Hashable {
         case .anthropic:
             return AttachmentCapabilities(supportsImages: true, supportsPDF: true)
         case .openAI:
+            if let capabilities = (modelCache ?? ModelCache().load(.openAI))?.capabilities?[model.lowercased()] {
+                return capabilities
+            }
             let vision = !slug.hasPrefix("gpt-3.5")
             let pdf = ["gpt-4o", "gpt-4.1", "gpt-5", "gpt-6", "o1", "o3", "o4"].contains { slug.hasPrefix($0) }
             return AttachmentCapabilities(supportsImages: vision, supportsPDF: pdf)
         case .openRouter:
-            let snapshot = modelCache ?? ModelCache().load(.openRouter)
-            let vision = snapshot.map { $0.models.contains(model) } ?? true
-            return AttachmentCapabilities(supportsImages: vision, supportsPDF: vision)
+            if let capabilities = (modelCache ?? ModelCache().load(.openRouter))?.capabilities?[model.lowercased()] {
+                return capabilities
+            }
+            // Uma escolha digitada ou ausente da lista não tem metadados: não inferir incapacidade.
+            return AttachmentCapabilities(supportsImages: true, supportsPDF: true)
         case .custom:
             return AttachmentCapabilities(supportsImages: true, supportsPDF: false)
         case .chatGPT:

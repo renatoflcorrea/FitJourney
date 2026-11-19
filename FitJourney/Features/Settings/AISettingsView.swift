@@ -99,6 +99,7 @@ struct AISettingsView: View {
     }
 
     private var descriptor: ProviderDescriptor { ProviderCatalog.descriptor(for: settings.provider) }
+    private var currentModel: String { settings.model(for: settings.provider, defaults: defaults) }
     private var readiness: ProviderReadiness { .evaluate(settings, hasAPIKey: hasKey) }
 
     var body: some View {
@@ -187,19 +188,19 @@ struct AISettingsView: View {
                     HStack {
                         Text(model).foregroundStyle(FJColor.textPrimary)
                         Spacer()
-                        if settings.model == model { Image(systemName: "checkmark").foregroundStyle(FJArea.coach.color) }
+                        if currentModel == model { Image(systemName: "checkmark").foregroundStyle(FJArea.coach.color) }
                     }
                     .frame(minHeight: FJSize.minTap)
                 }
-                .accessibilityAddTraits(settings.model == model ? .isSelected : [])
+                .accessibilityAddTraits(currentModel == model ? .isSelected : [])
             }
             TextField("Outro modelo", text: Binding(
-                get: { modelSuggestions.contains(settings.model) ? "" : settings.model },
+                get: { modelSuggestions.contains(currentModel) ? "" : currentModel },
                 set: { settings.model = $0 }
             ))
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            if settings.provider == .openCode, let warning = AISettingsText.openCodeModelWarning(model: settings.model, cache: OpenCodeModelCache(defaults: defaults).load()) {
+            if settings.provider == .openCode, let warning = AISettingsText.openCodeModelWarning(model: currentModel, cache: OpenCodeModelCache(defaults: defaults).load()) {
                 Label(warning.text, systemImage: warning.symbol).font(FJFont.caption).foregroundStyle(FJTone.attention.color).accessibilityIdentifier(warning.identifier)
             }
         } header: { Text("Modelo") } footer: {
@@ -406,14 +407,12 @@ struct AISettingsView: View {
     /// Lista de modelos da conta (backend não oficial); sem login ou com falha, fica a lista do catálogo.
     private func discoverChatGPTModels() async {
         guard descriptor.usesChatGPTLogin, hasKey else { return }
-        let lister = ChatGPTModelLister(session: ChatGPTAuthSession(store: SecretChatGPTStore(secrets: secrets)))
-        let models = await lister.models()
+        let transferredDefaults = SettingsDefaultsTransfer(value: defaults)
+        let lister = ChatGPTModelLister(session: ChatGPTAuthSession(store: SecretChatGPTStore(secrets: secrets)), defaults: transferredDefaults.value)
+        let models = await lister.models(refresh: true)
         guard !Task.isCancelled else { return }
         chatGPTModels = models
-        // Modelo salvo que a conta não oferece: vira o primeiro da lista (como no fireplaice).
-        if let first = models.first, !models.contains(settings.model), settings.models[.chatGPT] == nil {
-            settings.model = first
-        }
+        // Não gravar o padrão como escolha: ele deve acompanhar a descoberta seguinte.
         reloadKeyState() // um refresh permanente recusado apaga o login
     }
 
@@ -436,12 +435,10 @@ struct AISettingsView: View {
         do { key = try secrets.string(for: .apiKey(.openCode)) ?? "" } catch { key = "" }
         guard !key.isEmpty else { openCodeModels = nil; openCodeKeyRejected = false; return }
         let transferredDefaults = SettingsDefaultsTransfer(value: defaults)
-        let result = await OpenCodeModelLister(apiKey: key, defaults: transferredDefaults.value).discover()
+        let result = await OpenCodeModelLister(apiKey: key, defaults: transferredDefaults.value).discover(refresh: true)
         guard !Task.isCancelled else { return }
         openCodeModels = result.models
         openCodeKeyRejected = result.keyRejected
-        let choices = OpenCodeModelCatalog.pickerModels(discovered: result.models, suggested: descriptor.suggestedModels)
-        if settings.models[.openCode] == nil, let first = choices.first, !choices.contains(settings.model) { settings.model = first }
     }
 
     private func removeKey() {

@@ -72,10 +72,11 @@ final class AIAvailability {
         let settings = ProviderSettingsStore(defaults: defaults).load()
         let descriptor = ProviderCatalog.descriptor(for: settings.provider)
         let readiness = ProviderReadiness.evaluate(settings, hasAPIKey: descriptor.hasCredential(in: secrets))
+        let model = settings.model(for: settings.provider, defaults: defaults)
         return Snapshot(readiness: readiness, provider: settings.provider, providerName: descriptor.displayShortName,
-                        model: settings.model, modelSupportsImages: settings.provider == .openCode
-                            ? OpenCodeModelCatalog.capabilities(model: settings.model, cache: OpenCodeModelCache(defaults: defaults).load()).supportsImages
-                            : AttachmentCapabilities.resolve(provider: settings.provider, model: settings.model, modelCache: ModelCache(defaults: defaults).load(settings.provider)).supportsImages)
+                        model: model, modelSupportsImages: settings.provider == .openCode
+                            ? OpenCodeModelCatalog.capabilities(model: model, cache: OpenCodeModelCache(defaults: defaults).load()).supportsImages
+                            : AttachmentCapabilities.resolve(provider: settings.provider, model: model, modelCache: ModelCache(defaults: defaults).load(settings.provider)).supportsImages)
     }
 
     /// Avisa que a configuração de IA mudou (de qualquer thread).

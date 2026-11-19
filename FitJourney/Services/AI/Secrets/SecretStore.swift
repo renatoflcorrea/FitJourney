@@ -65,7 +65,7 @@ struct KeychainSecretStore: SecretStore {
                 throw SecretStoreError.keychain(status: status)
             }
             if status == errSecSuccess {
-                if changed { clearModelCache(for: key) }
+                if changed { clearModelCache(for: key, previous: previous, current: nil) }
                 AIAvailability.postChange()
             }
             return
@@ -83,11 +83,15 @@ struct KeychainSecretStore: SecretStore {
         }
         guard status == errSecSuccess else { throw SecretStoreError.keychain(status: status) }
         // A lista anterior pertence à credencial anterior, não à conta recém-configurada.
-        if changed { clearModelCache(for: key) }
+        if changed { clearModelCache(for: key, previous: previous, current: value) }
         AIAvailability.postChange()
     }
 
-    private func clearModelCache(for key: SecretKey) {
+    private func clearModelCache(for key: SecretKey, previous: String?, current: String?) {
+        if key == .chatGPTAuth,
+           previous.flatMap(ChatGPTCredentials.decode)?.accountID != current.flatMap(ChatGPTCredentials.decode)?.accountID {
+            ModelCache().clear(.chatGPT)
+        }
         for provider in AIProviderID.allCases where key == .apiKey(provider) {
             ModelCache().clear(provider)
             if provider == .openCode { UserDefaults.standard.removeObject(forKey: OpenCodeModelCache.key) }

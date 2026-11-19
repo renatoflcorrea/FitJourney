@@ -15,6 +15,7 @@ struct OpenCodeModelCache {
     struct Snapshot: Codable, Sendable, Equatable {
         var fetchedAt: Date
         var models: [OpenCodeModel]
+        var credentialHash: String? = nil
     }
     static let key = "coach.openCodeModels.v1"
     static let ttl: TimeInterval = 24 * 3600
@@ -32,6 +33,9 @@ struct OpenCodeModelCache {
 }
 
 enum OpenCodeModelCatalog {
+    static func eligible(_ models: [OpenCodeModel]) -> [OpenCodeModel] {
+        models.filter { $0.readsImages && !$0.trainsOnData && !OpenCodeGo.isFreeModel($0.id) }
+    }
     static func parse(_ data: Data) -> [OpenCodeModel] {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let items = root["data"] as? [Any] else { return [] }
@@ -57,7 +61,7 @@ enum OpenCodeModelCatalog {
     }
     static func pickerModels(discovered: [OpenCodeModel]?, suggested: [String] = OpenCodeGo.suggestedModels, limit: Int = 8) -> [String] {
         guard let discovered else { return Array(suggested.prefix(max(0, limit))) }
-        let eligible = discovered.filter { $0.readsImages && !$0.trainsOnData && !OpenCodeGo.isFreeModel($0.id) }
+        let eligible = eligible(discovered)
         let first = suggested.filter { id in eligible.contains { $0.id == id } }
         let rest = eligible.filter { !first.contains($0.id) }.sorted {
             let a = ($0.inputPrice ?? .infinity, $0.outputPrice ?? .infinity, $0.id)
@@ -65,7 +69,9 @@ enum OpenCodeModelCatalog {
             return a < b
         }.map(\.id)
         var choices = first + rest
-        if let preferred = ModelDefaults.preferred(in: choices, provider: .openCode),
+        // A ordenação por preço não deve desempatar Lunas: usar a ordem original do catálogo.
+        let lunas = eligible.map(\.id).filter { $0.lowercased().contains("luna") }
+        if let preferred = ModelDefaults.preferred(in: lunas, provider: .openCode),
            let index = choices.firstIndex(of: preferred) { choices.remove(at: index); choices.insert(preferred, at: 0) }
         return Array(choices.prefix(max(0, limit)))
     }
@@ -88,22 +94,34 @@ actor OpenCodeModelLister {
     private let cache: OpenCodeModelCache
     private let clock: @Sendable () -> Date
     private let sessionID: String
+    private let modelsURL: URL
+    private let generationCache: ModelCache
     init(apiKey: String, client: HTTPClient = HTTPClient(), defaults: UserDefaults = .standard,
-         clock: @escaping @Sendable () -> Date = { Date() }) {
+         clock: @escaping @Sendable () -> Date = { Date() }, modelsURL: URL = OpenCodeGo.modelsURL) {
         self.apiKey = apiKey
         self.client = client.withRetryPolicy(.none).withErrorDialect(.openCode).addingSensitiveHeaders(["User-Agent", "x-opencode-session"])
         self.cache = OpenCodeModelCache(defaults: defaults)
+        self.generationCache = ModelCache(defaults: defaults)
         self.clock = clock
+        self.modelsURL = modelsURL
         self.sessionID = OpenCodeGo.sessionID(installationID: OpenCodeGo.installationID(defaults: defaults))
     }
     func discover(refresh: Bool = false) async -> OpenCodeDiscovery {
-        let cached = cache.load()
+        let fingerprint = ModelCache.fingerprint(apiKey)
+        var cached = cache.load()
+        if let existing = cached, existing.credentialHash != fingerprint {
+            cache.defaults.removeObject(forKey: OpenCodeModelCache.key)
+            generationCache.clear(.openCode)
+            cached = nil
+        }
+        if cached?.models.isEmpty == true { cached = nil }
+        let generation = generationCache.activate(.openCode, identity: fingerprint)
         let age = cached.map { clock().timeIntervalSince($0.fetchedAt) }
         if !refresh, let cached, let age, age >= 0, age < OpenCodeModelCache.ttl { return (cached.models, false) }
         let fallback = cached?.models ?? OpenCodeGo.suggestedModels.map {
             OpenCodeModel(id: $0, name: $0, readsImages: true, structuredOutput: false, inputPrice: nil, outputPrice: nil, trainsOnData: false, zeroDataRetention: false)
         }
-        var request = URLRequest(url: OpenCodeGo.modelsURL)
+        var request = URLRequest(url: modelsURL)
         request.httpMethod = "GET"
         request.timeoutInterval = 15
         request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
@@ -112,12 +130,24 @@ actor OpenCodeModelLister {
         request.setValue(sessionID, forHTTPHeaderField: "x-opencode-session")
         do {
             let (data, response) = try await client.dataAllowingErrorStatus(for: request)
+            guard generationCache.isCurrent(generation, provider: .openCode) else {
+                return (OpenCodeGo.suggestedModels.map {
+                    OpenCodeModel(id: $0, name: $0, readsImages: true, structuredOutput: false, inputPrice: nil, outputPrice: nil, trainsOnData: false, zeroDataRetention: false)
+                }, false)
+            }
             if response.statusCode == 401 { return (fallback, true) }
             guard (200 ..< 300).contains(response.statusCode) else { return (fallback, false) }
             let models = OpenCodeModelCatalog.parse(data)
             guard !models.isEmpty else { return (fallback, false) }
-            cache.save(.init(fetchedAt: clock(), models: models))
+            cache.save(.init(fetchedAt: clock(), models: models, credentialHash: fingerprint))
             return (models, false)
-        } catch { return (fallback, false) }
+        } catch {
+            guard generationCache.isCurrent(generation, provider: .openCode) else {
+                return (OpenCodeGo.suggestedModels.map {
+                    OpenCodeModel(id: $0, name: $0, readsImages: true, structuredOutput: false, inputPrice: nil, outputPrice: nil, trainsOnData: false, zeroDataRetention: false)
+                }, false)
+            }
+            return (fallback, false)
+        }
     }
 }

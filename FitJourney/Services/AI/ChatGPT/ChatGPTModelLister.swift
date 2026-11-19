@@ -2,7 +2,7 @@ import Foundation
 
 /// Modelos que a conta ChatGPT logada pode usar, do backend não oficial
 /// (`GET /backend-api/codex/models?client_version=`) — porta simplificada de `ChatGPTModelLister` do fireplaice
-/// (cache só em memória). **Nunca lança**: qualquer falha devolve o último cache e depois a lista estática.
+/// (cache por conta). **Nunca lança**: qualquer falha devolve o último cache e depois a lista estática.
 actor ChatGPTModelLister {
     /// O backend esconde modelos cujo `minimal_client_version` passa da versão enviada.
     static let defaultClientVersion = "0.155.0"
@@ -20,12 +20,14 @@ actor ChatGPTModelLister {
     private let clientVersion: String
     private let ttl: TimeInterval
     private let clock: @Sendable () -> Date
+    private let modelCache: ModelCache
     private var cache: (accountID: String, models: [String], fetchedAt: Date)?
 
     init(baseURL: URL = ChatGPTResponsesGateway.defaultBaseURL, session: ChatGPTAuthSession,
          client: HTTPClient = HTTPClient(), originator: String = ChatGPTOAuthConfiguration.default.originator,
          version: String = ChatGPTResponsesGateway.appVersion,
-         clientVersion: String = ChatGPTModelLister.defaultClientVersion, ttl: TimeInterval = 3600,
+         clientVersion: String = ChatGPTModelLister.defaultClientVersion, ttl: TimeInterval = ModelCache.ttl,
+         defaults: UserDefaults = .standard,
          clock: @escaping @Sendable () -> Date = { Date() }) {
         self.baseURL = baseURL
         self.session = session
@@ -34,24 +36,35 @@ actor ChatGPTModelLister {
         userAgent = "FitJourney/\(version)"
         self.clientVersion = clientVersion
         self.ttl = ttl
+        self.modelCache = ModelCache(defaults: defaults)
         self.clock = clock
     }
 
     /// Cache fresco, depois a rede, depois cache vencido, depois a lista estática. Nunca vazia.
     func models(refresh: Bool = false) async -> [String] {
         guard let credentials = try? await session.credentials() else { return Self.fallbackModels }
-        let cached = cache?.accountID == credentials.accountID ? cache : nil
+        let accountHash = ModelCache.fingerprint(credentials.accountID)
+        let persisted = modelCache.load(.chatGPT)
+        if let persisted, persisted.credentialHash != accountHash { modelCache.clear(.chatGPT) }
+        let generation = modelCache.activate(.chatGPT, identity: accountHash)
+        let matching = persisted?.credentialHash == accountHash && persisted?.models.isEmpty == false ? persisted : nil
+        let cached = cache?.accountID == credentials.accountID ? cache : matching.map {
+            (accountID: credentials.accountID, models: $0.models, fetchedAt: $0.fetchedAt)
+        }
         if !refresh, let cached, case let age = clock().timeIntervalSince(cached.fetchedAt), age >= 0, age < ttl {
             return cached.models
         }
         do {
             var listed = Self.parse(try await fetch(credentials))
+            guard modelCache.isCurrent(generation, provider: .chatGPT) else { return Self.fallbackModels }
             if let preferred = ModelDefaults.preferred(in: listed, provider: .chatGPT),
                let index = listed.firstIndex(of: preferred) { listed.remove(at: index); listed.insert(preferred, at: 0) }
             guard !listed.isEmpty else { return cached?.models ?? Self.fallbackModels }
             cache = (credentials.accountID, listed, clock())
+            modelCache.save(.init(models: listed, fetchedAt: clock(), credentialHash: accountHash, baseURL: nil), provider: .chatGPT)
             return listed
         } catch {
+            guard modelCache.isCurrent(generation, provider: .chatGPT) else { return Self.fallbackModels }
             return cached?.models ?? Self.fallbackModels
         }
     }
