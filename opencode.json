@@ -12,8 +12,8 @@
     "task": "deny"
   },
   "agent": {
-    "core-implementation": { "description": "Implementa o núcleo Swift do FitJourney (Domain, Persistence, Services) com testes.", "mode": "primary", "model": "openai/gpt-6-luna-fast", "steps": 70, "prompt": "{file:./.opencode/prompts/core-implementation.md}", "permission": { "task": "deny", "todowrite": "deny" } },
-    "ios-implementation": { "description": "Implementa telas SwiftUI do FitJourney (Features, App) com testes.", "mode": "primary", "model": "openai/gpt-6-luna-fast", "steps": 60, "prompt": "{file:./.opencode/prompts/ios-implementation.md}", "permission": { "task": "deny", "todowrite": "deny" } },
+    "core-implementation": { "description": "Implementa o núcleo Swift do FitJourney (Domain, Persistence, Services) com testes.", "mode": "primary", "model": "openai/gpt-6-luna-fast", "steps": 250, "prompt": "{file:./.opencode/prompts/core-implementation.md}", "permission": { "task": "deny", "todowrite": "deny" } },
+    "ios-implementation": { "description": "Implementa telas SwiftUI do FitJourney (Features, App) com testes.", "mode": "primary", "model": "openai/gpt-6-luna-fast", "steps": 250, "prompt": "{file:./.opencode/prompts/ios-implementation.md}", "permission": { "task": "deny", "todowrite": "deny" } },
     "review-code": { "description": "Revisa código Swift do FitJourney sem editar arquivos.", "mode": "primary", "model": "openai/gpt-6.1-terra", "steps": 30, "prompt": "{file:./.opencode/prompts/review-code.md}", "permission": { "edit": "deny", "task": "deny", "todowrite": "deny" } }
   }
 }
