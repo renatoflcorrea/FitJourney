@@ -77,6 +77,10 @@ struct AISettingsView: View {
     @State private var chatGPTPlan: String?
     @State private var chatGPTModels: [String]?
     @State private var openCodeModels: [OpenCodeModel]?
+    @State private var discoveredModels: [String]?
+    @State private var modelRefreshing = false
+    @State private var modelsFromCache = false
+    @State private var modelListPresented = false
     @State private var openCodeKeyRejected = false
     @State private var keyRevision = 0
     @State private var pastedCallback = ""
@@ -112,6 +116,7 @@ struct AISettingsView: View {
             sharingSection
             consentSection
         }
+        .refreshable { await refreshModels() }
         .navigationTitle("Ajustes de IA")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -121,8 +126,7 @@ struct AISettingsView: View {
             sharing = store.load().sharing
         }
         .onChange(of: settings) { ProviderSettingsStore(defaults: defaults).save(settings) }
-        .task(id: descriptor.usesChatGPTLogin && hasKey) { await discoverChatGPTModels() }
-        .task(id: "\(settings.provider)-\(hasKey)-\(keyRevision)") { await discoverOpenCodeModels() }
+        .task(id: "\(settings.provider)-\(hasKey)-\(keyRevision)-\(customURLText)") { await refreshModels() }
         .onDisappear { chatGPTLogin.cancel() }
         .onChange(of: sharing) {
             let store = CoachProfileStore(defaults: defaults)
@@ -160,7 +164,7 @@ struct AISettingsView: View {
     }
 
     private var providerSection: some View {
-        Section {
+        return Section {
             Picker("Provedor", selection: $settings.provider) {
                 ForEach(ProviderCatalog.all) { Text($0.name).tag($0.id) }
             }
@@ -180,19 +184,41 @@ struct AISettingsView: View {
     }
 
     private var modelSection: some View {
-        Section {
-            ForEach(modelSuggestions, id: \.self) { model in
+        let preferred = ModelDefaults.preferred(in: modelSuggestions, provider: settings.provider)
+        let presentation = ModelPickerPresentation(models: modelSuggestions, preferredModel: preferred,
+                                                   chosenModel: settings.models[settings.provider])
+        return Section {
+            if let missing = presentation.missingModel {
+                VStack(alignment: .leading, spacing: FJSpacing.xs) {
+                    Text(String(localized: "\(missing) não aparece mais na lista de \(descriptor.name)."))
+                        .font(FJFont.label).foregroundStyle(FJTone.attention.color)
+                    Button(String(localized: "Usar \(preferred ?? descriptor.defaultModel)")) {
+                        settings.model = preferred ?? descriptor.defaultModel
+                    }.frame(minHeight: FJSize.minTap, alignment: .leading)
+                        .accessibilityIdentifier("settings.ai.model.useDefault")
+                }.accessibilityIdentifier("settings.ai.model.missing")
+            }
+            ForEach(presentation.visibleModels, id: \.self) { model in
                 Button {
                     settings.model = model
                 } label: {
-                    HStack {
-                        Text(model).foregroundStyle(FJColor.textPrimary)
-                        Spacer()
-                        if currentModel == model { Image(systemName: "checkmark").foregroundStyle(FJArea.coach.color) }
-                    }
-                    .frame(minHeight: FJSize.minTap)
+                    VStack(alignment: .leading, spacing: FJSpacing.xxs) {
+                        HStack {
+                            Text(model).foregroundStyle(FJColor.textPrimary)
+                            Spacer()
+                            if currentModel == model { Image(systemName: "checkmark").foregroundStyle(FJArea.coach.color) }
+                        }
+                        if model == preferred { Text("Padrão · mais leve e rápido").font(FJFont.caption).foregroundStyle(FJColor.textSecondary) }
+                    }.frame(minHeight: FJSize.minTap)
                 }
+                .accessibilityIdentifier("settings.ai.model.\(model)")
                 .accessibilityAddTraits(currentModel == model ? .isSelected : [])
+            }
+            if presentation.remainingCount > 0 {
+                NavigationLink(destination: ModelListView(models: modelSuggestions, selectedModel: currentModel, preferredModel: preferred) { settings.model = $0 }) {
+                    Text(String(localized: "Ver todos os modelos (\(modelSuggestions.count))"))
+                        .frame(minHeight: FJSize.minTap, alignment: .leading)
+                }.accessibilityIdentifier("settings.ai.model.all")
             }
             TextField("Outro modelo", text: Binding(
                 get: { modelSuggestions.contains(currentModel) ? "" : currentModel },
@@ -203,8 +229,12 @@ struct AISettingsView: View {
             if settings.provider == .openCode, let warning = AISettingsText.openCodeModelWarning(model: currentModel, cache: OpenCodeModelCache(defaults: defaults).load()) {
                 Label(warning.text, systemImage: warning.symbol).font(FJFont.caption).foregroundStyle(FJTone.attention.color).accessibilityIdentifier(warning.identifier)
             }
-        } header: { Text("Modelo") } footer: {
-            if settings.provider == .openCode { Text("Só modelos que leem imagens e não usam seus dados para treinar, do que menos gasta o limite do Go ao que mais gasta.") }
+        } header: { HStack { Text("Modelo"); if modelRefreshing { ProgressView().controlSize(.small).accessibilityLabel("Atualizando a lista de modelos").accessibilityIdentifier("settings.ai.model.refreshing") } } } footer: {
+            if settings.provider == .openRouter { Text("Só modelos que leem imagens e usam ferramentas. O OpenRouter só repassa a serviços que não guardam seus dados.") }
+            else if settings.provider == .openCode { Text("Só modelos que leem imagens e não usam seus dados para treinar, do que menos gasta o limite do Go ao que mais gasta.") }
+            else if let snapshot = ModelCache(defaults: defaults).load(settings.provider), isOfflineList {
+                Text(String(localized: "Lista salva em \(snapshot.fetchedAt.formatted(date: .abbreviated, time: .omitted)). Puxe para atualizar."))
+            }
         }
     }
 
@@ -275,9 +305,12 @@ struct AISettingsView: View {
 
     /// Lista descoberta da conta ChatGPT (quando logado) ou as sugestões do catálogo.
     private var modelSuggestions: [String] {
+        if let discoveredModels { return discoveredModels }
         if settings.provider == .openCode { return OpenCodeModelCatalog.pickerModels(discovered: openCodeModels, suggested: descriptor.suggestedModels) }
         return descriptor.usesChatGPTLogin ? (chatGPTModels ?? descriptor.suggestedModels) : descriptor.suggestedModels
     }
+
+    private var isOfflineList: Bool { modelsFromCache }
 
     private var chatGPTSection: some View {
         Section {
@@ -414,6 +447,44 @@ struct AISettingsView: View {
         chatGPTModels = models
         // Não gravar o padrão como escolha: ele deve acompanhar a descoberta seguinte.
         reloadKeyState() // um refresh permanente recusado apaga o login
+    }
+
+    private func refreshModels() async {
+        modelRefreshing = true
+        defer { modelRefreshing = false }
+        let provider = settings.provider
+        if provider == .chatGPT {
+            guard hasKey else { discoveredModels = ChatGPTModelLister.fallbackModels; return }
+            let transferredDefaults = SettingsDefaultsTransfer(value: defaults)
+            let lister = ChatGPTModelLister(session: ChatGPTAuthSession(store: SecretChatGPTStore(secrets: secrets)), defaults: transferredDefaults.value)
+            let models = await lister.models(refresh: true)
+            guard !Task.isCancelled, settings.provider == provider else { return }
+            chatGPTModels = models
+            discoveredModels = models
+            modelsFromCache = false
+            reloadKeyState()
+            return
+        }
+        if provider == .openCode {
+            guard hasKey, let key = try? secrets.string(for: .apiKey(.openCode)), !key.isEmpty else {
+                openCodeModels = nil
+                discoveredModels = descriptor.suggestedModels
+                return
+            }
+            let transferredDefaults = SettingsDefaultsTransfer(value: defaults)
+            let result = await OpenCodeModelLister(apiKey: key, defaults: transferredDefaults.value).discover(refresh: true)
+            guard !Task.isCancelled, settings.provider == provider else { return }
+            openCodeModels = result.models
+            openCodeKeyRejected = result.keyRejected
+            discoveredModels = OpenCodeModelCatalog.pickerModels(discovered: result.models, suggested: descriptor.suggestedModels, limit: .max)
+            modelsFromCache = false
+            return
+        }
+        let apiKey: String? = try? secrets.string(for: descriptor.secretKey)
+        let result = await ModelDiscovery().models(for: provider, apiKey: apiKey, baseURL: settings.customBaseURL, refresh: true)
+        guard !Task.isCancelled, settings.provider == provider else { return }
+        discoveredModels = result.models
+        modelsFromCache = result.fromCache
     }
 
     private func saveKey() {
