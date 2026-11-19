@@ -1,0 +1,17 @@
+Hello,
+
+Thank you for your review. As requested, here is a demo video of FitJourney recorded on a physical iPhone and Apple Watch:
+
+https://www.icloud.com/iclouddrive/00bxcacfLISzBobqftgZGmFTg
+
+What the app does:
+- Plans and logs gym workouts: programs with routines, sets, reps, load and rest. Sets are completed with one tap, the rest timer starts automatically and shows in the Live Activity / Dynamic Island, and each session ends with a summary (volume, records, effort).
+- Apple Watch app: when a workout starts on iPhone, the watch can control it (complete sets, adjust load with the Digital Crown, rest, pause, finish) and shows live heart rate and active energy.
+- Apple Health: with the user's permission, workouts are saved to Health, and heart rate, resting heart rate, active energy, steps and body mass are read to show a heart rate chart per exercise and daily/weekly trends. Health data is not used for advertising or shared with third parties.
+- Diet: meal plan with times, items and macros, meal check-off, water and optional local reminders.
+- Optional AI features (Coach, import of routines/meal plans from PDF, photo or text, AI meal logging) stay hidden until the user configures their own AI provider in Settings > AI. Requests go directly from the device to that provider; there is no FitJourney server.
+
+No account or sign-in is required, and all data is stored on the device. I also added these details to the App Review Information notes for this version. This version is now on build 7.
+
+Best regards,
+Renato Correa

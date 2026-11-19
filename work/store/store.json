@@ -40,5 +40,9 @@
         "search": "creatives/search-pt.png"
       }
     }
+  },
+  "review": {
+    "notesFile": "review/notes-en.txt",
+    "demoAccountRequired": false
   }
 }

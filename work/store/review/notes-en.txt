@@ -1,0 +1,22 @@
+Demo video (recorded on a physical iPhone and Apple Watch): https://www.icloud.com/iclouddrive/00bxcacfLISzBobqftgZGmFTg
+
+WHAT THE APP DOES
+FitJourney plans and logs gym workouts and a diet plan, on iPhone and Apple Watch. No sign-in or account is required; all data is stored on the device.
+
+HOW TO REVIEW
+1. Today tab (first launch): tap "Start with an example (ABC)" to create a sample program, or build your own in the Training tab (routines, exercises, sets, reps, load, rest).
+2. Today tab: tap Start workout. Complete sets with one tap; the rest timer starts automatically and shows in the Live Activity / Dynamic Island. Finish to see the summary (volume, records, effort) and update the routine's loads.
+3. Apple Watch: with the watch app installed, starting a workout on iPhone opens it on the watch, where sets, load (Digital Crown), rest, pause and finish can be controlled. Heart rate and active energy are shown live.
+4. Diet tab: create meals with times, items and macros; mark meals as done, adjusted or skipped; log water. Optional meal reminders use local notifications.
+5. Health tab: after the user grants permission, the app reads heart rate, resting heart rate, workouts, active energy, steps and body mass, and writes workouts and their active energy to Apple Health. Each session shows a heart rate chart per exercise.
+
+PERMISSIONS
+- HealthKit: to save workouts and show heart rate, energy and trends. Not used for advertising and not shared with third parties.
+- Notifications: rest timer end and optional meal reminders (local only).
+- Camera / Photos: only when the user chooses to add exercise photos or videos, photograph a meal, or import a plan from an image. Meal photos taken in the app are saved to Photos.
+- Local network: only if the user configures an AI server on their own network (e.g. Ollama).
+
+OPTIONAL AI FEATURES
+The AI Coach, "Import with AI" (routines or meal plans from PDF, photo or text) and AI meal logging are optional and hidden until the user configures an AI provider in Settings > AI. They use the user's own credentials: an API key from OpenAI, Anthropic or OpenRouter, a compatible server on the user's network, or an experimental ChatGPT sign-in. Requests go directly from the device to the chosen provider; there is no FitJourney server. History is shared with the provider only for categories the user enables (all off by default). The Coach does not give medical advice. To test these features, enter any valid API key from one of these providers in Settings > AI.
+
+The app works fully without AI, without an Apple Watch and without network access (except external exercise videos and AI requests).
