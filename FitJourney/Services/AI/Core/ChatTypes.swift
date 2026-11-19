@@ -8,7 +8,7 @@ import Foundation
 /// Provedores suportados (SPEC §7). O `rawValue` é persistido em `ProviderSettings` — não renomeie.
 /// `chatGPT` = login da assinatura ChatGPT (experimental, não oficial; `Services/AI/ChatGPT/`).
 enum AIProviderID: String, Codable, Sendable, Hashable, CaseIterable {
-    case openAI, anthropic, openRouter, custom, chatGPT
+    case openAI, anthropic, openRouter, custom, chatGPT, openCode
 }
 
 /// Papel de uma mensagem no fio.

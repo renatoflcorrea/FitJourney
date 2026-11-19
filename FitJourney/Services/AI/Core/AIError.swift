@@ -83,6 +83,7 @@ extension AIError.IncompleteReason {
 /// Remove padrões de credenciais conhecidos de textos que podem ir para log/UI.
 enum Redactor {
     private static let patterns: [String] = [
+        #"oc_sk_[A-Za-z0-9_-]{8,}"#,
         #"sk-ant-[A-Za-z0-9._-]{8,}"#,
         #"sk-or-[A-Za-z0-9._-]{8,}"#,
         #"sk-[A-Za-z0-9._-]{8,}"#,

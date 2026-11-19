@@ -106,6 +106,9 @@ struct AttachmentCapabilities: Sendable, Hashable {
             return AttachmentCapabilities(supportsImages: true, supportsPDF: false)
         case .chatGPT:
             return AttachmentCapabilities(supportsImages: true, supportsPDF: false)
+        case .openCode:
+            let vision = OpenCodeGo.staticVisionModels.contains(slug) || OpenCodeGo.visionPrefixes.contains { slug.hasPrefix($0) }
+            return AttachmentCapabilities(supportsImages: vision && !OpenCodeGo.textOnlyModels.contains(slug), supportsPDF: false)
         }
     }
 }

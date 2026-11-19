@@ -47,6 +47,12 @@ enum ProviderCatalog {
             suggestedModels: ["openai/gpt-5-mini", "anthropic/claude-sonnet-5.5", "google/gemini-2.5-pro"],
             keyHelpURL: URL(string: "https://openrouter.ai/keys")),
         ProviderDescriptor(
+            id: .openCode, name: "OpenCode Go",
+            defaultBaseURL: OpenCodeGo.baseURL,
+            requiresAPIKey: true,
+            suggestedModels: OpenCodeGo.suggestedModels,
+            keyHelpURL: URL(string: "https://opencode.ai/auth")),
+        ProviderDescriptor(
             id: .custom, name: String(localized: "Compatível com OpenAI (URL própria)"),
             defaultBaseURL: nil,
             requiresAPIKey: false,

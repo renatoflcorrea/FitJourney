@@ -360,7 +360,8 @@ enum BackupSchema {
             "anthropic",
             "openRouter",
             "custom",
-            "chatGPT"
+            "chatGPT",
+            "openCode"
           ]
         },
         "videoProvider": {
