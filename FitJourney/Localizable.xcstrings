@@ -21134,6 +21134,102 @@
           }
         }
       }
+    },
+    "Use a chave da sua assinatura OpenCode Go. As requisições vão direto do aparelho ao OpenCode, que as repassa a quem hospeda o modelo escolhido. Conta no limite de uso do seu plano.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use your OpenCode Go subscription key. Requests go straight from this device to OpenCode, which forwards them to whoever hosts the chosen model. Counts toward your plan's usage limit."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use a chave da sua assinatura OpenCode Go. As requisições vão direto do aparelho ao OpenCode, que as repassa a quem hospeda o modelo escolhido. Conta no limite de uso do seu plano."
+          }
+        }
+      }
+    },
+    "Só modelos que leem imagens e não usam seus dados para treinar, do que menos gasta o limite do Go ao que mais gasta.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only models that read images and don't train on your data, from the one that uses the least of your Go limit to the most."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Só modelos que leem imagens e não usam seus dados para treinar, do que menos gasta o limite do Go ao que mais gasta."
+          }
+        }
+      }
+    },
+    "Modelos “-free” só funcionam dentro do OpenCode. Escolha outro.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "“-free” models only work inside OpenCode. Pick another."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modelos “-free” só funcionam dentro do OpenCode. Escolha outro."
+          }
+        }
+      }
+    },
+    "Este modelo pode usar o que você envia para treinar a IA. O FitJourney não o usa com seus dados de saúde: escolha outro.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This model may use what you send to train AI. FitJourney won't use it with your health data: pick another."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este modelo pode usar o que você envia para treinar a IA. O FitJourney não o usa com seus dados de saúde: escolha outro."
+          }
+        }
+      }
+    },
+    "Este modelo não lê imagens: importar PDF ou foto e a foto da refeição ficam indisponíveis.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This model can't read images: importing PDFs or photos and meal photos are unavailable."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este modelo não lê imagens: importar PDF ou foto e a foto da refeição ficam indisponíveis."
+          }
+        }
+      }
+    },
+    "O OpenCode recusou esta chave. Confira se é a chave do Go em opencode.ai/auth.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OpenCode rejected this key. Make sure it's your Go key from opencode.ai/auth."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O OpenCode recusou esta chave. Confira se é a chave do Go em opencode.ai/auth."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

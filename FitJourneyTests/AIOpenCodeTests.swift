@@ -17,6 +17,18 @@ struct AIOpenCodeTests {
         #expect(OpenCodeModelCatalog.capabilities(model: "gpt-unknown", cache: cache).supportsImages)
         #expect(!OpenCodeModelCatalog.capabilities(model: "gpt-6-luna", cache: cache).supportsPDF)
         #expect(OpenCodeModelCatalog.trainsOnData(model: "muse-spark-1.3-contributor", cache: cache))
+        let generated = (0..<12).map { OpenCodeModel(id: "m\($0)", name: "m\($0)", readsImages: true, structuredOutput: false, inputPrice: Double(12 - $0), outputPrice: 0, trainsOnData: false, zeroDataRetention: false) }
+        #expect(OpenCodeModelCatalog.pickerModels(discovered: generated).count == 8)
+        #expect(OpenCodeModelCatalog.pickerModels(discovered: generated).first == "m11")
+        #expect(OpenCodeModelCatalog.pickerModels(discovered: nil) == OpenCodeGo.suggestedModels)
+    }
+    @Test func settingsWarnings() {
+        let training = OpenCodeModel(id: "training", name: "training", readsImages: true, structuredOutput: false, inputPrice: nil, outputPrice: nil, trainsOnData: true, zeroDataRetention: false)
+        let cache = OpenCodeModelCache.Snapshot(fetchedAt: .now, models: [training])
+        #expect(AISettingsText.openCodeModelWarning(model: "abc-free", cache: cache)?.identifier == "settings.opencode.free")
+        #expect(AISettingsText.openCodeModelWarning(model: "training", cache: cache)?.identifier == "settings.opencode.training")
+        #expect(AISettingsText.openCodeModelWarning(model: "glm-5.3", cache: nil)?.identifier == "settings.opencode.textOnly")
+        #expect(AISettingsText.openCodeModelWarning(model: "gpt-6-luna", cache: nil) == nil)
     }
     @Test func errorDialect() throws {
         let url = URL(string: "https://example.com")!
@@ -53,5 +65,8 @@ struct AIOpenCodeTests {
         let rejected = await lister.discover()
         #expect(rejected.keyRejected && rejected.models == first.models)
         #expect(cache.load()?.fetchedAt == .distantPast)
+        StubURLProtocol.enqueue([.json("{}", status: 500)], host: host)
+        let staleFallback = await lister.discover()
+        #expect(staleFallback.models == first.models && !staleFallback.keyRejected)
     }
 }

@@ -51,6 +51,14 @@ Exceção à regra acima, a pedido do usuário: `Services/AI/ChatGPT/` porta o l
 - Tokens num único blob no Keychain (`SecretKey.chatGPTAuth`); o `id_token` (com e-mail) não é guardado. Renovação com folga de 2 min, serializada no processo (`ChatGPTRefreshCoordinator`); recusa permanente apaga o blob e vira `AIError.signInRequired`.
 - `ChatGPTResponsesGateway`: `chatgpt.com/backend-api/codex/responses` (SSE, `store:false`, `stream:true`, `instructions`), ferramentas no formato da Responses API (`function_call`/`function_call_output` por `call_id`), resumos de raciocínio, 401/403 → renova e repete uma vez. `ChatGPTModelLister` descobre os modelos da conta.
 
+## OpenCode Go
+
+Provedor BYOK da assinatura OpenCode Go. Endpoint Chat Completions: `https://opencode.ai/inference/go/openai/v1`; descoberta: `https://opencode.ai/inference/go/v1/models`. As chamadas usam Bearer, `User-Agent: FitJourney/<versão>` e `x-opencode-session` estável por instalação. As requisições vão do aparelho ao OpenCode, que as encaminha ao hospedeiro do modelo; a chave permanece no Keychain.
+
+O seletor usa `OpenCodeModelLister` e o cache `coach.openCodeModels.v1` (24 h), excluindo modelos `-free`, sem visão e que treinam com os dados. Sugestões aparecem primeiro; os demais modelos de visão vêm por custo crescente de entrada, depois saída e id. Modelos text-only podem ser digitados em “Outro modelo” e exibem aviso; modelos `-free` e marcados `go.training` são recusados pela fábrica. PDF é sempre rasterizado em imagens, nunca enviado como PDF nativo. Capacidades descobertas prevalecem sobre a tabela estática.
+
+Erros: 401/403 genérico → chave recusada; 403 free tier e 402 → configuração/assinatura; 429 com `Retry-After` até 20 s → limite temporário com repetição; ausente ou maior → limite de uso da assinatura sem repetição. Modelos de visão verificados: `gpt-6-luna`, `claude-haiku-5-5`, `glm-5.3-flash`, `qwen3.8-flash`, `mimo-v2.6-flash` e `deepseek-v4.1-flash` (mais prefixos `gpt-` e `claude-`).
+
 ## Copiloto — importar e editar (C7.2, SPEC §7A)
 
 `Services/AI/Attachments/` e `Services/AI/Copilot/`.

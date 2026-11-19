@@ -1,7 +1,16 @@
 import SwiftUI
 
+private struct SettingsDefaultsTransfer: @unchecked Sendable { let value: UserDefaults }
+
 /// Texto do estado de prontidão e validação da URL (puro, testável).
 enum AISettingsText {
+    struct Warning: Equatable { let text: String; let symbol: String; let identifier: String }
+    static func openCodeModelWarning(model: String, cache: OpenCodeModelCache.Snapshot?) -> Warning? {
+        if OpenCodeGo.isFreeModel(model) { return Warning(text: String(localized: "Modelos “-free” só funcionam dentro do OpenCode. Escolha outro."), symbol: "exclamationmark.triangle.fill", identifier: "settings.opencode.free") }
+        if OpenCodeModelCatalog.trainsOnData(model: model, cache: cache) { return Warning(text: String(localized: "Este modelo pode usar o que você envia para treinar a IA. O FitJourney não o usa com seus dados de saúde: escolha outro."), symbol: "hand.raised.fill", identifier: "settings.opencode.training") }
+        if !OpenCodeModelCatalog.capabilities(model: model, cache: cache).supportsImages { return Warning(text: String(localized: "Este modelo não lê imagens: importar PDF ou foto e a foto da refeição ficam indisponíveis."), symbol: "eye.slash", identifier: "settings.opencode.textOnly") }
+        return nil
+    }
     static func readiness(_ value: ProviderReadiness) -> (title: String, detail: String, tone: FJTone) {
         switch value {
         case .ready:
@@ -67,6 +76,9 @@ struct AISettingsView: View {
     @State private var chatGPTLogin = ChatGPTLoginModel()
     @State private var chatGPTPlan: String?
     @State private var chatGPTModels: [String]?
+    @State private var openCodeModels: [OpenCodeModel]?
+    @State private var openCodeKeyRejected = false
+    @State private var keyRevision = 0
     @State private var pastedCallback = ""
     @Environment(\.openURL) private var openURL
 
@@ -109,6 +121,7 @@ struct AISettingsView: View {
         }
         .onChange(of: settings) { ProviderSettingsStore(defaults: defaults).save(settings) }
         .task(id: descriptor.usesChatGPTLogin && hasKey) { await discoverChatGPTModels() }
+        .task(id: "\(settings.provider)-\(hasKey)-\(keyRevision)") { await discoverOpenCodeModels() }
         .onDisappear { chatGPTLogin.cancel() }
         .onChange(of: sharing) {
             let store = CoachProfileStore(defaults: defaults)
@@ -157,14 +170,16 @@ struct AISettingsView: View {
         } footer: {
             if descriptor.usesChatGPTLogin {
                 Text("Sem chave de API: entra com a sua conta ChatGPT. As requisições vão direto do aparelho ao ChatGPT.")
-            } else {
+        } else if settings.provider == .openCode {
+            Text("Use a chave da sua assinatura OpenCode Go. As requisições vão direto do aparelho ao OpenCode, que as repassa a quem hospeda o modelo escolhido. Conta no limite de uso do seu plano.")
+        } else {
                 Text("A chave é sua (BYOK). As requisições vão direto do aparelho ao provedor escolhido.")
             }
         }
     }
 
     private var modelSection: some View {
-        Section("Modelo") {
+        Section {
             ForEach(modelSuggestions, id: \.self) { model in
                 Button {
                     settings.model = model
@@ -184,6 +199,11 @@ struct AISettingsView: View {
             ))
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            if settings.provider == .openCode, let warning = AISettingsText.openCodeModelWarning(model: settings.model, cache: OpenCodeModelCache(defaults: defaults).load()) {
+                Label(warning.text, systemImage: warning.symbol).font(FJFont.caption).foregroundStyle(FJTone.attention.color).accessibilityIdentifier(warning.identifier)
+            }
+        } header: { Text("Modelo") } footer: {
+            if settings.provider == .openCode { Text("Só modelos que leem imagens e não usam seus dados para treinar, do que menos gasta o limite do Go ao que mais gasta.") }
         }
     }
 
@@ -242,6 +262,9 @@ struct AISettingsView: View {
                 Link(destination: url) { Label("Onde criar a chave", systemImage: "arrow.up.right.square") }
                     .frame(minHeight: FJSize.minTap, alignment: .leading)
             }
+            if settings.provider == .openCode, openCodeKeyRejected {
+                Label("O OpenCode recusou esta chave. Confira se é a chave do Go em opencode.ai/auth.", systemImage: "exclamationmark.triangle.fill").font(FJFont.caption).foregroundStyle(FJTone.attention.color).accessibilityIdentifier("settings.opencode.keyRejected")
+            }
         } header: {
             Text(descriptor.requiresAPIKey ? "Chave de API" : "Chave de API (opcional)")
         } footer: {
@@ -251,7 +274,8 @@ struct AISettingsView: View {
 
     /// Lista descoberta da conta ChatGPT (quando logado) ou as sugestões do catálogo.
     private var modelSuggestions: [String] {
-        descriptor.usesChatGPTLogin ? (chatGPTModels ?? descriptor.suggestedModels) : descriptor.suggestedModels
+        if settings.provider == .openCode { return OpenCodeModelCatalog.pickerModels(discovered: openCodeModels, suggested: descriptor.suggestedModels) }
+        return descriptor.usesChatGPTLogin ? (chatGPTModels ?? descriptor.suggestedModels) : descriptor.suggestedModels
     }
 
     private var chatGPTSection: some View {
@@ -398,9 +422,24 @@ struct AISettingsView: View {
             try secrets.set(keyInput, for: descriptor.secretKey)
             keyInput = ""
             reloadKeyState()
+            keyRevision += 1
         } catch {
             errorMessage = String(localized: "Não foi possível gravar no Keychain.")
         }
+    }
+
+    private func discoverOpenCodeModels() async {
+        guard settings.provider == .openCode, hasKey else { openCodeModels = nil; openCodeKeyRejected = false; return }
+        let key: String
+        do { key = try secrets.string(for: .apiKey(.openCode)) ?? "" } catch { return }
+        guard !key.isEmpty else { return }
+        let transferredDefaults = SettingsDefaultsTransfer(value: defaults)
+        let result = await OpenCodeModelLister(apiKey: key, defaults: transferredDefaults.value).discover()
+        guard !Task.isCancelled else { return }
+        openCodeModels = result.models
+        openCodeKeyRejected = result.keyRejected
+        let choices = OpenCodeModelCatalog.pickerModels(discovered: result.models, suggested: descriptor.suggestedModels)
+        if settings.models[.openCode] == nil, let first = choices.first, !choices.contains(settings.model) { settings.model = first }
     }
 
     private func removeKey() {
