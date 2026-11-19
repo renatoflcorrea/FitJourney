@@ -1,17 +1,21 @@
 Hello,
 
-Thank you for your review. As requested, here is a demo video of FitJourney recorded on a physical iPhone and Apple Watch:
+Thank you for the detailed feedback. Build {{BUILD}} addresses each point:
 
-https://www.icloud.com/iclouddrive/00bxcacfLISzBobqftgZGmFTg
+Guideline 2.1(a) - Demo access
+- A demo API key (OpenCode Go) and setup steps are now in the App Review Information notes.
+- The app now includes sample content: in Import with AI, "Try with a sample" adds a fictional workout sheet image bundled in the app (and a 7-page sample meal plan in the Diet tab), so every AI feature can be tested without your own files.
 
-What the app does:
-- Plans and logs gym workouts: programs with routines, sets, reps, load and rest. Sets are completed with one tap, the rest timer starts automatically and shows in the Live Activity / Dynamic Island, and each session ends with a summary (volume, records, effort).
-- Apple Watch app: when a workout starts on iPhone, the watch can control it (complete sets, adjust load with the Digital Crown, rest, pause, finish) and shows live heart rate and active energy.
-- Apple Health: with the user's permission, workouts are saved to Health, and heart rate, resting heart rate, active energy, steps and body mass are read to show a heart rate chart per exercise and daily/weekly trends. Health data is not used for advertising or shared with third parties.
-- Diet: meal plan with times, items and macros, meal check-off, water and optional local reminders.
-- Optional AI features (Coach, import of routines/meal plans from PDF, photo or text, AI meal logging) stay hidden until the user configures their own AI provider in Settings > AI. Requests go directly from the device to that provider; there is no FitJourney server.
+Guidelines 5.1.1(i) and 5.1.2(i) - Data shared with third-party AI
+- Before any data is sent, the app shows a "Before sending" screen that explains exactly what will be sent for that feature, names who receives it (the configured provider, and for routers like OpenCode or OpenRouter also the company that created the model) with links to their privacy policies, and asks for permission with Allow / Don't Allow.
+- Permission is per feature and per recipient. Switching providers or model creators asks again. Don't Allow sends nothing and the app remains fully usable.
+- Settings > Coach & AI > "What's shared and with whom" shows what is allowed and lets the user turn off any feature or data category, or revoke everything.
+- The privacy policy now has a dedicated AI section listing what is collected for each feature, how it is used, every recipient with its privacy policy, and the equal-protection statement: https://renatocorrea.com.br/FitJourney/en/privacy/#ai
 
-No account or sign-in is required, and all data is stored on the device. I also added these details to the App Review Information notes for this version. This version is now on build 7.
+Guideline 5 - China
+- The app is no longer distributed in China mainland; we removed that storefront in Availability.
+
+The App Review Information notes describe the steps to review these features.
 
 Best regards,
 Renato Correa
