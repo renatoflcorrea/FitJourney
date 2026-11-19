@@ -16,6 +16,7 @@ struct DesignSystemGallery: View {
     @State private var routineColor: FJRoutineColor = .orange
     @State private var changeState: FJChangeCardState = .proposed
     @State private var quickReply: Set<String> = []
+    @State private var shareWorkouts = false
 
     private let sessionStart = Date.now.addingTimeInterval(-1934)
     private let groups = ["Peito", "Costas", "Pernas", "Ombros", "Braços"]
@@ -36,6 +37,7 @@ struct DesignSystemGallery: View {
                     heartRate
                     states
                     copilot
+                    consent
                 }
                 .padding(.horizontal, FJSpacing.screenMargin)
                 .padding(.bottom, FJSpacing.xxl)
@@ -304,6 +306,36 @@ struct DesignSystemGallery: View {
     private var zoneBadges: some View {
         ForEach(FJHeartRateZone.allCases, id: \.self) { zone in
             FJHeartRateZoneBadge(zone, showsName: false)
+        }
+    }
+
+    private var consent: some View {
+        section("Consentimento de IA") {
+            VStack(alignment: .leading, spacing: FJSpacing.cardGap) {
+                VStack(alignment: .leading, spacing: 0) {
+                    FJDisclosureRow("O arquivo que você escolheu",
+                                    detail: "Tudo o que estiver escrito ou visível nele, inclusive nomes, telefones e observações.",
+                                    systemImage: "doc.text")
+                    Divider()
+                    FJDisclosureToggleRow("Treinos", detail: "Programas, fichas e treinos feitos, com séries e cargas.",
+                                          systemImage: "dumbbell", isOn: $shareWorkouts)
+                    Divider()
+                    FJDisclosureRow("Não vão: seu histórico, sua dieta e dados do Saúde.", systemImage: "nosign", kind: .notSent)
+                }
+                .padding(.horizontal, FJSpacing.l)
+                .background(FJColor.surface, in: FJRadius.shape(FJRadius.card))
+                FJRecipientCard(hops: [
+                    FJRecipientHop(id: "router", kind: .router, name: "OpenRouter",
+                                   role: "Recebe e repassa a um serviço que executa o modelo e não guarda seus dados.",
+                                   links: [FJPolicyLink("Política de privacidade do OpenRouter",
+                                                        url: URL(string: "https://openrouter.ai/privacy")!,
+                                                        identifier: "gallery.policy")]),
+                    FJRecipientHop(id: "host", kind: .modelHost, name: "Google", role: "Criou o modelo google/gemini-3-flash."),
+                ])
+                FJRecipientCard(hops: [
+                    FJRecipientHop(id: "local", kind: .localServer, name: "192.168.0.10", role: "Servidor na sua rede local, configurado por você."),
+                ], note: "O FitJourney não sabe quem opera este servidor nem como ele trata os dados.")
+            }
         }
     }
 

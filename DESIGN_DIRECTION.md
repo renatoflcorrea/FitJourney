@@ -794,6 +794,8 @@ Aba **Coach** (quinta aba, símbolo `sparkles`, tint azul da área). Tudo sólid
 
 #### 4.13.1 Boas-vindas e consentimento
 
+> **Substituído pelo §4.16 (decisões 41–44):** o consentimento passa a vir depois de configurar o provedor, nomeia o destino e usa `FJConsentView`. A etapa 1 abaixo continua como referência de tom.
+
 Primeira vez na aba (e enquanto não houver consentimento), no lugar da lista — é a própria tela da aba, não um modal. Duas etapas com a ação principal fixa na base.
 
 **Etapa 1 — o que é e o que sai do aparelho**
@@ -955,7 +957,7 @@ Quando a resposta traz um `ProgramDraft` ou `NutritionPlanDraft`, ele aparece de
 3. **Modelo** — menu com os sugeridos do provedor + "Outro…" (campo de texto).
 4. **Endereço** (só no compatível): URL base e tamanho do contexto. Rodapé: "Aceita endereços https ou da sua rede local (ex.: Ollama no seu computador)."
 5. **Testar conexão** — botão na própria seção; resultado na linha: "Conectado · respondeu em 0,8 s" (sucesso) ou o erro em texto (chave recusada, modelo não encontrado, sem conexão, endereço inválido).
-6. **Compartilhar com o Coach** — os quatro toggles da boas-vindas, com as mesmas descrições. Rodapé: "Vale para as próximas mensagens. O que já foi enviado continua com o provedor."
+6. ~~**Compartilhar com o Coach**~~ (substituído pela tela "O que é enviado e para quem", §4.16) — os quatro toggles da boas-vindas, com as mesmas descrições. Rodapé: "Vale para as próximas mensagens. O que já foi enviado continua com o provedor."
 7. **Conversas** — "Apagar todas as conversas" (destrutivo, confirmação) · "Desativar o Coach" (desliga os compartilhamentos e volta à boas-vindas; a chave fica até ser removida).
 
 Estados: sem chave (rodapé de atenção "Falta a chave para usar o Coach"), sem modelo, endereço inválido (campo marcado + motivo), testando (indicador na linha, cancelável), Keychain indisponível (alerta "Não foi possível guardar a chave").
@@ -1192,7 +1194,7 @@ A importação inteira vive numa **sheet `.large`** com `NavigationStack` própr
 | PDF longo (> 20 páginas) | `FJBanner` de atenção: "Este PDF tem 48 páginas. Arquivos longos demoram mais e custam mais no seu provedor." · **Escolher páginas** (abre a grade de páginas, marcáveis) |
 | Limite atingido | Fontes desabilitadas + "Limite de 10 arquivos" |
 | **Sem provedor configurado** | No lugar do botão principal: `FJBanner` de atenção "Falta configurar a IA" · **Configurar** (empurra "Coach e IA", §4.13.5, dentro da folha); os arquivos escolhidos ficam |
-| **Sem consentimento do Coach** | Ao tocar em Analisar, sobe uma folha `.medium` com a etapa 1 do §4.13.1 resumida + o aviso específico em destaque: "**O arquivo inteiro vai ao provedor.** Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado." · `FJPrimaryButton("Concordar e analisar", area: .coach)` · "Agora não". Aceitar vale como consentimento do Coach (os quatro compartilhamentos continuam desligados: importar não lê seu histórico) |
+| **Sem permissão para o destino** (§4.16; substitui o texto a seguir) | Abre a folha "Antes de enviar" do §4.16. *Antes:* ao tocar em Analisar, sobe uma folha `.medium` com a etapa 1 do §4.13.1 resumida + o aviso específico em destaque: "**O arquivo inteiro vai ao provedor.** Tudo o que estiver escrito nele (nome, telefone, observações do seu personal) será enviado." · `FJPrimaryButton("Concordar e analisar", area: .coach)` · "Agora não". Aceitar vale como consentimento do Coach (os quatro compartilhamentos continuam desligados: importar não lê seu histórico) |
 | Offline | `FJBanner` neutro com `wifi.slash`: "Sem conexão. Os arquivos ficam aqui; analise quando voltar." Botão principal desabilitado |
 | Câmera negada | Tocar em Câmera mostra alerta com "Abrir Ajustes"; as outras fontes seguem |
 
@@ -1496,6 +1498,17 @@ O cartão de **proposta** do §4.13.4 (rascunho de programa/dieta inteiro) conti
 
 ---
 
+### 4.16 Consentimento de envio à IA (revisão da App Store, 19/11)
+
+Substitui o consentimento global do Coach (§4.13.1, §4.13.5 itens 6–7, linha "Sem consentimento do Coach" do §4.15.3 e as folhas de consentimento do registro de refeições). Proposta completa, com auditoria, toda a cópia pt-BR/en-US, mocks, demonstração, modelos e pacotes: `design/proposals/ai-consent-review.md`. Componentes: `FJConsentView`, `FJDisclosureRow`, `FJDisclosureToggleRow`, `FJRecipientCard`, `FJRecipientHop`, `FJPolicyLink` (`Components/FJConsent.swift`).
+
+- **Destino com nome**: a empresa que recebe de fato (OpenAI, Anthropic; OpenRouter/OpenCode e o criador do modelo para onde repassam; "o servidor em {host}"; OpenAI pela conta ChatGPT). Permissão por destino × uso (Importar com IA, Registrar refeições, Coach). As categorias Perfil, Treinos, Dieta e Saúde também são por destino e começam desligadas. Trocar de destino pede de novo.
+- **Folha "Antes de enviar"** (`.large`, sem "×"; arrastar = Não permitir): orbe, "Enviar {o quê} para {destino}?", **O que é enviado** (linhas; a última diz o que **não** vai), **Para quem** (cadeia de elos com links de política), rodapé ("sua escolha vale para {destino}; trocar de provedor pergunta de novo · o FitJourney não tem servidor"), **Permitir** (azul do Coach) e **Não permitir** (vidro neutro), do mesmo tamanho, presos à base (no fim do conteúdo em AX). Permitir segue direto para o envio.
+- **Aba Coach**: sem provedor, a boas-vindas com "Configurar"; com provedor, o mesmo conteúdo como tela da aba, com os quatro toggles. Negado: "O Coach está desligado" + Rever. Na conversa, se o destino mudou, a folha aparece ao enviar, com a linha "o histórico desta conversa, que começou com {outro}".
+- **Não permitir**: nada vai; arquivos, texto e fotos ficam; banner "Nada foi enviado" com o caminho manual. A escolha negada não é gravada: a folha volta só por ação do usuário.
+- **Ajustes › Coach e IA › O que é enviado e para quem**: cartão "Para quem", toggles dos três usos e das quatro categorias, "Revogar tudo para {destino}" e outros provedores já autorizados (remover/esquecer).
+- **Demonstração**: "Experimentar com um exemplo" na folha de importação (ficha fictícia empacotada; "Adicionar as outras 3 fichas"; plano de dieta em PDF) e no registro (texto de exemplo). Passa pelo mesmo consentimento.
+
 ## 5. Fluxos
 
 ### 5.1 Primeiro uso
@@ -1679,7 +1692,7 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 28ar. VoiceOver lê cada linha como um elemento com o traço *selecionado* e o botão como "Adicionar 2 fichas"; em AX5 nenhum nome, rodapé ou dia é cortado; nenhuma linha das duas folhas usa vidro.
 
 **Coach**
-28i. Nenhuma mensagem é enviada antes do consentimento; os quatro compartilhamentos começam desligados.
+28i. Nenhuma mensagem é enviada antes da permissão do Coach **para o destino atual** (§4.16); as quatro categorias começam desligadas.
 28j. Toda consulta a dados locais aparece na conversa como linha "Leu …"; categoria desligada aparece como "… não compartilhada", e o dado não é enviado.
 28k. Durante o streaming: o botão de enviar vira Parar; rolar para cima não é desfeito pela chegada de texto; VoiceOver não é interrompido e anuncia o fim.
 28l. Nada é salvo a partir de uma proposta sem passar pelo editor e pelo "Salvar"; o cartão mostra "Salvo" depois.
@@ -1689,7 +1702,7 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 **Copiloto de IA**
 28w. O gradiente de IA só aparece via `FJAI`/`fjAIBorder`/`FJAIBadge`/`FJAIOrb`/`.fjAI` (busca por `aiViolet`/`aiPink` fora de `DesignSystem/` não retorna nada); nenhuma tela tem dois botões de IA em destaque; todo uso vem com `sparkles` ou rótulo.
 28x. Com Reduzir Movimento não há brilho, giro nem pulso em nenhuma etapa; sem ele, o brilho do botão acontece uma única vez e o orbe só gira com a análise em curso.
-28y. Nenhum arquivo é enviado antes do aviso de privacidade (com o nome do provedor) e do consentimento; sem provedor, a folha oferece "Configurar" sem perder os arquivos escolhidos.
+28y. Nenhum arquivo é enviado antes do aviso de privacidade (com o nome do destino) e da permissão de Importar com IA para esse destino (§4.16); sem provedor, a folha oferece "Configurar" sem perder os arquivos escolhidos.
 28z. Seleção: 10 arquivos no máximo; arquivo > 20 MB ou de tipo não aceito aparece marcado com o motivo e não é enviado; cada miniatura mostra páginas, nome e tamanho e remove em um toque (alvo ≥ 44 pt).
 28aa. A análise nunca mostra só um indicador: há sempre uma frase do que está sendo lido e, ao surgir, cada achado ("Encontrei 4 fichas") aparece na lista e é anunciado pelo VoiceOver; Cancelar volta à seleção com os arquivos.
 28ab. A entrevista pergunta só campos obrigatórios ausentes, de confiança baixa/média ou sem casamento; toda pergunta tem resposta rápida, texto livre e origem (arquivo/página); "Pular" leva à revisão com o campo sinalizado; o progresso mostra "n de N dúvidas".
@@ -1701,6 +1714,17 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 28ah. VoiceOver lê cada linha do diff como frase ("…: de 32 quilos para 34 quilos") e a confiança como "Confiança alta/média/baixa"; mudanças de estado do cartão são anunciadas.
 28ai. Fechar o app em qualquer etapa e reabrir mostra "Continuar importação" no ponto de entrada e retoma na mesma etapa, com respostas e edições preservadas.
 28aj. AX5: fontes em 1 coluna, chips e botões do cartão empilhados, diff em duas linhas; nada cortado.
+
+**Consentimento de IA (§4.16)**
+28as. Nos três usos (importar, registrar refeição, Coach), nada sai do aparelho antes de Permitir na folha/tela que nomeia o destino. Verificar com proxy ou gateway falso, inclusive "Tentar de novo", a revisão da importação e a correção do registro.
+28at. A folha mostra: o que vai (com a linha do que não vai), quem recebe (cadeia de elos com nome; para OpenRouter/OpenCode o criador do modelo; para URL própria o host e a nota "não sabemos quem opera") e o link da política de privacidade (abre no Safari).
+28au. Trocar de provedor, de criador do modelo num roteador ou de host pede de novo; trocar de modelo do mesmo criador não pede; voltar a um destino já autorizado não pede.
+28av. Não permitir (ou arrastar para fechar) não envia nada, mantém arquivos, texto e fotos e deixa o caminho manual à vista; a aba Coach mostra "O Coach está desligado" + Rever; o resto do app funciona sem IA.
+28aw. Ajustes › Coach e IA › O que é enviado e para quem reflete exatamente o estado (usos e categorias por destino); desligar vale no envio seguinte; "Revogar tudo" pede confirmação e faz o próximo envio perguntar de novo.
+28ax. A cópia de cada categoria bate com o que as ferramentas enviam (Saúde: treinos, minutos, FC média e em repouso, energia ativa, passos; sem "sono").
+28ay. Permitir e Não permitir têm o mesmo tamanho e ficam na metade inferior; em AX5 ficam no fim do conteúdo e nada corta; VoiceOver lê título, cada linha e cada elo como um elemento e os links como "Política de privacidade: {Empresa}".
+28az. "Experimentar com um exemplo" adiciona a ficha empacotada sem rede nem permissão de Fotos e passa pela mesma folha antes de enviar.
+28ba. Ajustes de IA busca a lista de modelos de novo ao abrir; offline mostra o cache sem erro; o padrão sem escolha é o modelo leve mais novo; nenhuma reserva estática traz `gpt-4.1-mini` ou `gpt-5-mini`.
 
 **Ajustes e dados**
 28o. Trocar kg ↔ lb muda a exibição em todo o app na hora e não altera valores gravados (trocar e voltar mostra os mesmos números).
@@ -1747,6 +1771,7 @@ Verificáveis por `qa-accessibility` no simulador (iPhone 17 Pro e o menor iPhon
 | `FJQuickReply`, `FJQuickReplyChips`, `FJQuestionProgress` | `Components/FJQuickReplyChips.swift` | Respostas rápidas da entrevista (com "Outra resposta"); "3 de 5 dúvidas" |
 | `FJAttachmentThumb`, `FJAttachmentAddTile`, `FJSourceLabel`, `FJAttachmentKind`, `FJAttachmentState` | `Components/FJAttachmentThumb.swift` | Miniatura de arquivo/página com remover; quadro "Adicionar"; origem "arquivo · p. n" |
 | `FJAnalysisStep`, `FJAnalysisProgress` | `Components/FJAnalysisProgress.swift` | Análise: orbe, frase, barra real, etapas e achados, Cancelar |
+| `FJConsentView`, `FJDisclosureRow`, `FJDisclosureToggleRow`, `FJRecipientCard`, `FJRecipientHop`, `FJPolicyLink` | `Components/FJConsent.swift` | Consentimento de envio à IA (§4.16): o que vai, para quem (cadeia com links de política), Permitir / Não permitir presos à base (no fim em AX); ids `aiConsent.*` |
 | `DesignSystemGallery` | `DesignSystemGallery.swift` | Todos, para preview e QA |
 
 Componentes de tela (linha de série, cartão de exercício, linha do tempo da dieta, gráfico de FC) ficam em `Features/` e são montados com estes.
@@ -2020,6 +2045,15 @@ Decididas neste documento:
 39. **Programas anteriores e arquivados recebem cópias**, como já recebem fichas da importação com IA; o detalhe deles continua somente leitura para todo o resto. Cor e letra da cópia nunca são trocadas; só o nome ganha "(2)".
 40. **OpenCode Go: o seletor de modelo lista só modelos que leem imagens e não treinam com os dados**, sugeridos primeiro e depois do que menos gasta o limite do plano; sem selo por linha nem preço (o rodapé explica a ordem). Modelo só de texto continua possível em "Outro modelo", com uma linha de aviso na seção; modelo "-free" ou que treina com os dados é recusado (dados de saúde). Plano em `design/proposals/opencode-go.md`.
 
+41. **Consentimento por destino com nome, não global** (revisão da App Store, 5.1.1(i)/5.1.2(i)). O destino é quem recebe de fato: a empresa, o roteador **e** o criador do modelo, ou o host da URL própria; a conta ChatGPT é um destino separado da API da OpenAI. Trocar de destino pede de novo; voltar a um já autorizado restaura. Substitui as decisões 21 e 33 e a Q-CP6.
+42. **Permissão por uso** (Importar com IA, Registrar refeições, Coach), cada um com a sua lista exata do que vai; **categorias do histórico por destino** (Perfil, Treinos, Dieta, Saúde), desligadas por padrão e compartilhadas entre o Coach e o registro (Dieta).
+43. **Uma folha só, "Antes de enviar"** (`FJConsentView`), com "O que é enviado" (inclusive o que não vai), "Para quem" (cadeia de elos + políticas) e **Permitir / Não permitir** de mesmo peso. Na aba Coach é a própria tela; no resto, folha `.large`. Arrastar = Não permitir. Permitir segue direto para o envio, sem segundo toque.
+44. **A checagem fica na fronteira da rede** (sessões de importação, registro e Coach, a cada envio e a cada volta de ferramenta), não só na UI. Negar não é gravado; a folha só volta por ação do usuário. O consentimento antigo (`coach.consent.v1`) deixa de valer, e os toggles antigos viram só a pré-seleção.
+45. **OpenRouter só para hosts que não guardam dados** (`provider.data_collection: "deny"`), como o OpenCode Go só com modelos que não treinam (decisão 40). É isso que sustenta a declaração de proteção equivalente da política.
+46. **Demonstração dentro do app**: "Experimentar com um exemplo" na importação (ficha fictícia empacotada + "as outras 3 fichas"; plano em PDF) e no registro (texto). Sempre pelo mesmo consentimento.
+47. **Modelos da conta, atualizados ao abrir Ajustes de IA** (e ao puxar a tela), pelo endpoint de cada provedor; o padrão sem escolha é o modelo **leve mais novo** (regra do luna do Fireplaice; Haiku no Anthropic); a escolha do usuário nunca é desfeita, e um modelo que sumiu ganha aviso com "Usar {padrão}".
+48. **A cópia diz exatamente o que as ferramentas enviam** (Saúde: agregados diários de até 31 dias; sem "sono"), e a política de privacidade usa as mesmas listas e nomes do app.
+
 Perguntas em aberto:
 
 - Q-CF1. Programas arquivados aparecem como **destino** da cópia (como origem foi pedido). Deixar só ativo e anteriores?
@@ -2031,7 +2065,14 @@ Perguntas em aberto:
 - Q-CP3. Fechar a folha durante a análise continua em segundo plano e avisa por notificação local. Ou deve cancelar?
 - Q-CP4. Importação pendente guarda os arquivos no aparelho por até 7 dias para poder retomar. Prazo aceitável?
 - Q-CP5. "Aplicar as 3" (aplicar várias alterações de uma vez) entra no C7.3 ou fica para depois?
-- Q-CP6. Aceitar o consentimento na importação vale como consentimento do Coach (com os quatro compartilhamentos desligados). Ou devem ser consentimentos separados?
+- ~~Q-CP6~~ Respondida pela decisão 42: permissões separadas por uso e por destino.
+- Q-AC1. Esconder o ChatGPT (login) experimental no Release? (recomendado)
+- Q-AC2. Padrão = modelo leve em todos os provedores (Haiku em vez de Opus)?
+- Q-AC3. Exemplos só em inglês, ou gerar versões pt-BR?
+- Q-AC4. Foto de prato de exemplo fornecida pelo dono, ou só o texto?
+- Q-AC5. Rótulos de privacidade da loja: declarar Saúde e fitness, Conteúdo do usuário e Outros como não vinculados (recomendado)?
+- Q-AC6. URL própria fora da rede local no Release: manter com aviso ou limitar à rede local?
+- Q-AC7. Pedir de novo ao trocar o criador do modelo num roteador (proposto), ou só ao trocar de provedor?
 - Q-CP7. A confiança alta não mostra selo por item (só no cabeçalho). Prefere selo em todos os itens?
 
 - Q4. A doca volta sozinha de "Descanso concluído" para "Concluir série" após 10 s — ou deve ficar até um toque? (Com o alerta insistente ligado o cartão fica até um toque — decisão 34; a pergunta vale só para o alerta desligado.)
