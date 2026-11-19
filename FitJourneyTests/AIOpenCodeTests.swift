@@ -60,7 +60,7 @@ struct AIOpenCodeTests {
         _ = await lister.discover()
         #expect(StubURLProtocol.requests(host: host).count == 1)
         let cache = OpenCodeModelCache(defaults: defaults)
-        cache.save(.init(fetchedAt: .distantPast, models: first.models))
+        cache.save(.init(fetchedAt: .distantPast, models: first.models, credentialHash: ModelCache.fingerprint("test")))
         StubURLProtocol.enqueue([.json("{}", status: 401)], host: host)
         let rejected = await lister.discover()
         #expect(rejected.keyRejected && rejected.models == first.models)

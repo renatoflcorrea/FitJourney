@@ -701,7 +701,8 @@ struct ChatGPTGatewayTests {
         StubURLProtocol.enqueue([.json(String(decoding: data, as: UTF8.self))], host: host)
         let live = ChatGPTModelLister(baseURL: try #require(URL(string: "https://\(host)/backend-api/codex")),
                                       session: ChatGPTAuthSession(store: signedIn()),
-                                      client: HTTPClient(session: StubURLProtocol.makeSession()))
+                                      client: HTTPClient(session: StubURLProtocol.makeSession()),
+                                      defaults: UserDefaults(suiteName: UUID().uuidString)!)
         #expect(await live.models() == ["a", "b", "c"])
         #expect(await live.models() == ["a", "b", "c"]) // cache: um pedido só
         let request = try #require(StubURLProtocol.requests(host: host).first)

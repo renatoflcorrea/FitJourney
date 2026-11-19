@@ -12,7 +12,7 @@ enum MealLogSessionFactory {
         #if DEBUG
         if StoreDemo.isEnabled {
             let session = MealLogSession(day: day, context: context,
-                                         resolveChat: { ResolvedChat(gateway: DemoMealLogGateway(), model: "gpt-5") },
+                                         resolveChat: { ResolvedChat(gateway: DemoMealLogGateway(), model: "gpt-6-luna") },
                                          isAIAvailable: isAvailable, hasConsented: { true }, isOnline: isOnline)
             session.text = text
             return session

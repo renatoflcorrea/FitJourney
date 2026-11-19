@@ -31,15 +31,22 @@ struct ProviderSettings: Codable, Sendable, Hashable {
         return max(2_000, min(customContextTokens ?? Self.customDefaultContextTokens, 200_000))
     }
 
-    /// Modelo escolhido para o provedor atual, ou o primeiro sugerido do catálogo.
+    /// Modelo escolhido para o provedor atual, ou o padrão calculado a partir do último catálogo.
     var model: String {
         get { model(for: provider) }
         set { models[provider] = newValue.trimmingCharacters(in: .whitespacesAndNewlines) }
     }
 
-    func model(for provider: AIProviderID) -> String {
+    func model(for provider: AIProviderID, defaults: UserDefaults = .standard) -> String {
         let chosen = models[provider]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return chosen.isEmpty ? ProviderCatalog.descriptor(for: provider).defaultModel : chosen
+        if !chosen.isEmpty { return chosen }
+        if provider == .openCode, let snapshot = OpenCodeModelCache(defaults: defaults).load() {
+            let choices = OpenCodeModelCatalog.eligible(snapshot.models).map(\.id)
+            if let preferred = ModelDefaults.preferred(in: choices, provider: provider) { return preferred }
+        }
+        let snapshot = ModelCache(defaults: defaults).load(provider)
+        let cached = provider == .custom && snapshot?.baseURL != customBaseURL?.absoluteString ? [] : (snapshot?.models ?? [])
+        return ModelDefaults.preferred(in: cached, provider: provider) ?? ProviderCatalog.descriptor(for: provider).defaultModel
     }
 
     func baseURL(for provider: AIProviderID) -> URL? {

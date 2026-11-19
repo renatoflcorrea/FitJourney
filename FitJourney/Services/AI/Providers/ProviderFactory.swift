@@ -77,7 +77,13 @@ enum ProviderFactory {
     /// Lê configurações e chave e monta o gateway. Lança `AIError.notConfigured` (ou `.signInRequired`) se faltar algo.
     static func makeChat(settingsStore: ProviderSettingsStore = ProviderSettingsStore(),
                          secrets: any SecretStore, client: HTTPClient = HTTPClient()) throws -> ResolvedChat {
-        try makeChat(settings: settingsStore.load(), secrets: secrets, client: client)
+        var settings = settingsStore.load()
+        // Resolver no domínio de UserDefaults da loja, sem persistir o padrão como escolha explícita.
+        let resolved = settings.model(for: settings.provider, defaults: settingsStore.defaults)
+        if settings.models[settings.provider]?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty != false {
+            settings.model = resolved
+        }
+        return try makeChat(settings: settings, secrets: secrets, client: client)
     }
 
     static func makeChat(settings: ProviderSettings, secrets: any SecretStore,

@@ -32,19 +32,19 @@ enum ProviderCatalog {
             id: .openAI, name: "OpenAI",
             defaultBaseURL: URL(string: "https://api.openai.com/v1"),
             requiresAPIKey: true,
-            suggestedModels: ["gpt-5-mini", "gpt-5", "gpt-4.1-mini"],
+            suggestedModels: ["gpt-6-luna", "gpt-6.1-terra", "gpt-6.1-sol"],
             keyHelpURL: URL(string: "https://platform.openai.com/api-keys")),
         ProviderDescriptor(
             id: .anthropic, name: "Anthropic",
             defaultBaseURL: URL(string: "https://api.anthropic.com/v1"),
             requiresAPIKey: true,
-            suggestedModels: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
+            suggestedModels: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
             keyHelpURL: URL(string: "https://console.anthropic.com/settings/keys")),
         ProviderDescriptor(
             id: .openRouter, name: "OpenRouter",
             defaultBaseURL: URL(string: "https://openrouter.ai/api/v1"),
             requiresAPIKey: true,
-            suggestedModels: ["openai/gpt-5-mini", "anthropic/claude-sonnet-5.5", "google/gemini-2.5-pro"],
+            suggestedModels: ["openai/gpt-6-luna", "anthropic/claude-haiku-5.5", "google/gemini-4-argon"],
             keyHelpURL: URL(string: "https://openrouter.ai/keys")),
         ProviderDescriptor(
             id: .openCode, name: "OpenCode Go",
