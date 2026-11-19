@@ -29,6 +29,8 @@ struct ImportSessionState: Codable, Sendable, Hashable {
     var exerciseAnswers: [String: ImportAnswer]? = nil
     /// Dúvidas da IA já respondidas e aplicadas (`ImportStableKey.ambiguity`: pergunta + caminho): não voltam se a IA as reabrir.
     var answeredAmbiguities: [String]? = nil
+    /// Metas estimadas pela IA na revisão da dieta. Opcional: estados gravados antes não têm o campo.
+    var estimatedTargets: NutrientValues? = nil
 }
 
 /// Onde as importações em andamento ficam.

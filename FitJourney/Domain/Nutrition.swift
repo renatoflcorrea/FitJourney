@@ -48,6 +48,9 @@ struct NutrientValues: Codable, Sendable, Hashable {
         self.fiber = fiber
     }
 
+    /// Algum valor conhecido.
+    var hasAny: Bool { kcal != nil || protein != nil || carbs != nil || fat != nil || fiber != nil }
+
     /// Escala todos os valores conhecidos (ex.: porção × quantidade).
     func scaled(by factor: Double) -> NutrientValues {
         NutrientValues(kcal: kcal.map { $0 * factor }, protein: protein.map { $0 * factor },
@@ -198,5 +201,26 @@ enum NutritionDayResolver {
         let ordered = days.sorted { $0.sortIndex < $1.sortIndex }
         return ordered.first(where: { $0.weekdays.contains(weekday) })?.id
             ?? ordered.first(where: { $0.weekdays.isEmpty })?.id
+    }
+}
+
+/// Metas diárias somadas dos alimentos do plano, no aparelho e sem IA (os valores já escritos no plano).
+/// Um nutriente só entra quando **todos** os itens de um dia o têm; com várias variações, a média dos dias completos.
+/// Arredondado ao inteiro. Dia sem itens não conta.
+enum PlannedTargetsSum {
+    static func targets(days: [[NutrientValues]]) -> NutrientValues {
+        let days = days.filter { !$0.isEmpty }
+        func average(_ value: KeyPath<NutrientValues, Double?>) -> Double? {
+            let totals = days.compactMap { items -> Double? in
+                let values = items.map { $0[keyPath: value] }
+                guard values.allSatisfy({ $0 != nil }) else { return nil }
+                return values.reduce(0) { $0 + ($1 ?? 0) }
+            }
+            guard !totals.isEmpty else { return nil }
+            let mean = totals.reduce(0, +) / Double(totals.count)
+            return mean > 0 ? mean.rounded() : nil
+        }
+        return NutrientValues(kcal: average(\.kcal), protein: average(\.protein), carbs: average(\.carbs),
+                              fat: average(\.fat), fiber: average(\.fiber))
     }
 }

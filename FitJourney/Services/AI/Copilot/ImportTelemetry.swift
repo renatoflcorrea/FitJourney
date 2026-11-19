@@ -6,7 +6,7 @@ private let importLog = Logger(subsystem: "br.com.renatocorrea.fitjourney", cate
 
 /// Medição por chamada da importação (T0): só números e o nome do modelo, nunca conteúdo do usuário.
 struct ImportCallMetrics: Sendable, Hashable {
-    enum Stage: String, Sendable, Hashable { case extract, repair, revise }
+    enum Stage: String, Sendable, Hashable { case extract, repair, revise, targets }
 
     var stage: Stage
     var model: String

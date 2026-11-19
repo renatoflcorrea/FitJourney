@@ -17,6 +17,7 @@ struct ImportReviewView: View {
     @State private var didSetupExpansion = false
     @State private var attentionCursor = 0
     @State private var confirmActivate = false
+    @State private var targetsError: String?
 
     private var isApplying: Bool { session.phase == .applying }
     private var sessionInProgress: Bool { (try? SessionStore(context: context).inProgressSession()) != nil }
@@ -169,14 +170,63 @@ struct ImportReviewView: View {
         }
     }
 
+    /// Metas diárias: o escrito no arquivo; o que faltar, somado dos alimentos (no aparelho) ou estimado pela IA
+    /// sob pedido. A origem fica escrita embaixo.
     private func targetsGrid(_ targets: NutritionPlanDraft.TargetsDraft) -> some View {
-        FJMetricGrid {
-            FJMetricCell("Calorias", value: targets.kcal.map { FJFormat.number($0, maxFractionDigits: 0) }, unit: "kcal")
-            FJMetricCell("Proteína", value: targets.protein.map { FJFormat.number($0, maxFractionDigits: 0) }, unit: "g")
-            FJMetricCell("Carboidrato", value: targets.carbs.map { FJFormat.number($0, maxFractionDigits: 0) }, unit: "g")
-            FJMetricCell("Gordura", value: targets.fat.map { FJFormat.number($0, maxFractionDigits: 0) }, unit: "g")
+        let origin = session.nutritionTargetsOrigin() ?? ImportSession.TargetsOrigin()
+        return VStack(alignment: .leading, spacing: FJSpacing.m) {
+            Text("Metas diárias").font(FJFont.cardTitle).foregroundStyle(FJColor.textPrimary)
+            FJMetricGrid {
+                FJMetricCell("Calorias", value: targets.kcal.map { FJFormat.number($0, maxFractionDigits: 0) }, unit: "kcal")
+                FJMetricCell("Proteína", value: targets.protein.map { FJFormat.number($0, maxFractionDigits: 0) }, unit: "g")
+                FJMetricCell("Carboidrato", value: targets.carbs.map { FJFormat.number($0, maxFractionDigits: 0) }, unit: "g")
+                FJMetricCell("Gordura", value: targets.fat.map { FJFormat.number($0, maxFractionDigits: 0) }, unit: "g")
+            }
+            if origin.summed {
+                Label("Somadas dos alimentos do plano", systemImage: "plus.forwardslash.minus")
+                    .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+            }
+            if origin.estimated {
+                HStack(alignment: .firstTextBaseline, spacing: FJSpacing.s) {
+                    FJAIBadge("Estimadas pela IA")
+                    Spacer(minLength: 0)
+                    Button("Remover") { withAnimation(FJMotion.structure) { session.clearEstimatedTargets() } }
+                        .font(FJFont.label)
+                        .accessibilityIdentifier("import.targets.clear")
+                }
+                Text("Valores aproximados a partir dos alimentos e quantidades. Confira com quem montou a dieta; dá para mudar no plano depois.")
+                    .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if origin.missing {
+                Text(origin.summed ? "O arquivo não traz todas as metas e nem todos os alimentos têm valores."
+                                   : "O arquivo não traz metas diárias.")
+                    .font(FJFont.caption).foregroundStyle(FJColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                FJAIButton(session.isEstimatingTargets ? "Estimando…" : "Estimar metas com IA", prominence: .subtle) { estimateTargets() }
+                    .disabled(session.isEstimatingTargets || isApplying)
+                    .accessibilityIdentifier("import.targets.estimate")
+                Text("Envia só a lista de refeições, alimentos e quantidades ao mesmo provedor da importação. Os arquivos não vão de novo.")
+                    .font(FJFont.caption).foregroundStyle(FJColor.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let targetsError {
+                FJBanner("Não foi possível estimar", message: LocalizedStringKey(targetsError), tone: .destructive,
+                         actionTitle: "Fechar") { self.targetsError = nil }
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .fjCard()
+        .fjAnimation(FJMotion.structure, value: origin)
+    }
+
+    private func estimateTargets() {
+        targetsError = nil
+        Task {
+            do { try await session.estimateTargets() } catch {
+                if ChatCancellation.isCancellation(error) { return }
+                targetsError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+        }
     }
 
     private func mealCard(_ meal: ReviewMealCard) -> some View {

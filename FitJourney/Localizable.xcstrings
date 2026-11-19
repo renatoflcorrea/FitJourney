@@ -22480,6 +22480,156 @@
           }
         }
       }
+    },
+    "Somadas dos alimentos do plano": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added up from the plan's foods"
+          }
+        }
+      }
+    },
+    "Estimadas pela IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated by AI"
+          }
+        }
+      }
+    },
+    "Valores aproximados a partir dos alimentos e quantidades. Confira com quem montou a dieta; dá para mudar no plano depois.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approximate values based on the foods and amounts. Check them with whoever wrote the plan; you can change them in the plan later."
+          }
+        }
+      }
+    },
+    "O arquivo não traz todas as metas e nem todos os alimentos têm valores.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file doesn't list every goal, and not every food has values."
+          }
+        }
+      }
+    },
+    "O arquivo não traz metas diárias.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file doesn't list daily goals."
+          }
+        }
+      }
+    },
+    "Estimando…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimating…"
+          }
+        }
+      }
+    },
+    "Estimar metas com IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimate goals with AI"
+          }
+        }
+      }
+    },
+    "Envia só a lista de refeições, alimentos e quantidades ao mesmo provedor da importação. Os arquivos não vão de novo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sends only the list of meals, foods and amounts to the same provider used for the import. The files aren't sent again."
+          }
+        }
+      }
+    },
+    "Não foi possível estimar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't estimate"
+          }
+        }
+      }
+    },
+    "Não foi possível estimar as metas. Tente de novo ou preencha no plano depois.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't estimate the goals. Try again, or fill them in on the plan later."
+          }
+        }
+      }
+    },
+    "Somar dos alimentos do plano": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add up from the plan's foods"
+          }
+        }
+      }
+    },
+    "Estimar com o Coach": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimate with Coach"
+          }
+        }
+      }
+    },
+    "Metas da dieta %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goals for diet %@"
+          }
+        }
+      }
+    },
+    "Na dieta “%@”: estime as metas diárias (calorias, proteína, carboidrato, gordura e fibra) a partir dos alimentos e quantidades do plano e proponha preencher as metas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the diet “%@”: estimate the daily goals (calories, protein, carbs, fat and fiber) from the plan's foods and amounts, and propose filling in the goals."
+          }
+        }
+      }
+    },
+    "Todas opcionais. Vazio ou 0 = sem meta. A soma usa só os valores já escritos nos alimentos; o Coach estima e mostra a proposta antes de mudar.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All optional. Empty or 0 = no goal. Adding up uses only values already written on the foods; Coach estimates and shows the proposal before changing anything."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

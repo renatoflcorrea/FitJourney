@@ -15,6 +15,8 @@ enum ImportError: Error, Sendable, Hashable {
     case targetMismatch
     case programNotFound
     case attachment(AttachmentError)
+    /// A IA não devolveu metas utilizáveis.
+    case targetsUnavailable
 }
 
 extension ImportError: LocalizedError {
@@ -28,6 +30,7 @@ extension ImportError: LocalizedError {
         case .targetMismatch: String(localized: "Este destino não combina com o tipo de importação.")
         case .programNotFound: String(localized: "Programa não encontrado.")
         case let .attachment(error): error.localizedDescription
+        case .targetsUnavailable: String(localized: "Não foi possível estimar as metas. Tente de novo ou preencha no plano depois.")
         }
     }
 }
@@ -91,6 +94,10 @@ final class ImportSession: Identifiable {
     /// Início da chamada em andamento (análise ou revisão), para o tempo decorrido na tela. Derivado de data, não de
     /// timer; `nil` fora de `analyzing`.
     private(set) var analysisStartedAt: Date?
+    /// Metas diárias estimadas pela IA a partir dos alimentos do plano: só preenchem o que o arquivo e a soma dos
+    /// alimentos não deram (`nutritionDraft()`). `nil` = não pedidas ou removidas.
+    private(set) var estimatedTargets: NutrientValues?
+    private(set) var isEstimatingTargets = false
     /// Medições das chamadas desta sessão (T0: tempo até o primeiro evento, total, tamanho da saída). Sem conteúdo.
     @ObservationIgnored private(set) var callMetrics: [ImportCallMetrics] = []
 
@@ -179,6 +186,7 @@ final class ImportSession: Identifiable {
         session.exerciseDecisions = state.exerciseDecisions ?? [:]
         session.exerciseAnswers = state.exerciseAnswers ?? [:]
         session.answeredAmbiguities = Set(state.answeredAmbiguities ?? [])
+        session.estimatedTargets = state.estimatedTargets
         switch state.phase {
         case .selecting, .analyzing:
             session.phase = .selecting
@@ -208,7 +216,8 @@ final class ImportSession: Identifiable {
                                : Dictionary(uniqueKeysWithValues: ambiguityAnswers.map { (String($0.key), $0.value) }),
                            exerciseDecisions: exerciseDecisions.isEmpty ? nil : exerciseDecisions,
                            exerciseAnswers: exerciseAnswers.isEmpty ? nil : exerciseAnswers,
-                           answeredAmbiguities: answeredAmbiguities.isEmpty ? nil : answeredAmbiguities.sorted())
+                           answeredAmbiguities: answeredAmbiguities.isEmpty ? nil : answeredAmbiguities.sorted(),
+                           estimatedTargets: estimatedTargets)
     }
 
     // MARK: - Seleção de arquivos
@@ -515,11 +524,11 @@ final class ImportSession: Identifiable {
 
     /// Com mais de uma ferramenta, o modelo escolhe (`required`); a resposta de qualquer uma é aceita.
     private func call(chat: ResolvedChat, stage: ImportCallMetrics.Stage, conversation: [LLMMessage],
-                      tools: [ToolSpec]) async throws -> String {
+                      tools: [ToolSpec], system systemText: String? = nil) async throws -> String {
         try requireConsent()
         guard activeRecipient?.key == recipient().key else { throw ImportError.consentRequired(recipient()) }
         guard let tool = tools.first else { throw ExtractionFailure.noExtraction }
-        let system = LLMMessage.system(CopilotPrompt.importSystem(kind))
+        let system = LLMMessage.system(systemText ?? CopilotPrompt.importSystem(kind))
         // Esforço baixo: extrair é transcrever. Sem `maxTokens` (o padrão do gateway não corta a resposta) e sem
         // trocar o modelo escolhido.
         let request = ChatRequest(model: chat.model, messages: [system] + conversation, tools: tools,
@@ -886,10 +895,101 @@ final class ImportSession: Identifiable {
     func nutritionDraft() throws -> NutritionPlanDraft {
         guard kind == .nutrition, let extraction = nutritionImport else { throw ImportError.targetMismatch }
         guard !selected.isEmpty else { throw ImportError.draftInvalid([String(localized: "escolha ao menos uma variação")]) }
-        let draft = extraction.makeDraft(selected: selected)
+        var draft = extraction.makeDraft(selected: selected)
+        _ = completeTargets(&draft)
         let issues = draft.validationIssues()
         guard issues.isEmpty else { throw ImportError.draftInvalid(issues) }
         return draft
+    }
+
+    // MARK: - Metas diárias (soma no aparelho e estimativa da IA)
+
+    /// De onde vieram as metas que o rascunho mostra (além das escritas no arquivo).
+    struct TargetsOrigin: Equatable, Sendable {
+        /// Algum valor foi somado dos alimentos do plano (no aparelho).
+        var summed = false
+        /// Algum valor veio da estimativa da IA.
+        var estimated = false
+        /// Ainda falta kcal, proteína, carboidrato ou gordura.
+        var missing = false
+    }
+
+    /// Origem das metas do rascunho atual; `nil` fora da dieta ou sem extração.
+    func nutritionTargetsOrigin() -> TargetsOrigin? {
+        guard kind == .nutrition, let extraction = nutritionImport, !selected.isEmpty else { return nil }
+        var draft = extraction.makeDraft(selected: selected)
+        return completeTargets(&draft)
+    }
+
+    /// Completa as metas: o escrito no arquivo vale; o que faltar vem da soma dos alimentos e, depois, da estimativa.
+    /// Água fica só com o que estiver escrito.
+    private func completeTargets(_ draft: inout NutritionPlanDraft) -> TargetsOrigin {
+        let sum = PlannedTargetsSum.targets(days: draft.days.map { $0.meals.flatMap(\.items).map(\.values) })
+        var origin = TargetsOrigin()
+        func fill(_ target: WritableKeyPath<NutritionPlanDraft.TargetsDraft, Double?>, _ value: KeyPath<NutrientValues, Double?>) {
+            if let written = draft.targets[keyPath: target], written > 0 { return }
+            if let summed = sum[keyPath: value] {
+                draft.targets[keyPath: target] = summed
+                origin.summed = true
+            } else if let estimated = estimatedTargets?[keyPath: value] {
+                draft.targets[keyPath: target] = estimated
+                origin.estimated = true
+            } else {
+                draft.targets[keyPath: target] = nil
+            }
+        }
+        fill(\.kcal, \.kcal)
+        fill(\.protein, \.protein)
+        fill(\.carbs, \.carbs)
+        fill(\.fat, \.fat)
+        fill(\.fiber, \.fiber)
+        let t = draft.targets
+        origin.missing = t.kcal == nil || t.protein == nil || t.carbs == nil || t.fat == nil
+        return origin
+    }
+
+    /// Pede à IA metas diárias a partir dos alimentos e quantidades do plano (mesmo destino e consentimento da
+    /// importação; nenhum arquivo é reenviado). Só preenche o que falta; o usuário vê "Estimadas pela IA" na revisão.
+    func estimateTargets() async throws {
+        guard kind == .nutrition, !isEstimatingTargets else { return }
+        try requireConsent()
+        let draft = try nutritionDraft()
+        let chat = try resolveChat()
+        activeRecipient = recipient()
+        isEstimatingTargets = true
+        defer { isEstimatingTargets = false }
+        let json = try await call(chat: chat, stage: .targets, conversation: [.user(CopilotPrompt.targetsEstimateMessage(draft))],
+                                  tools: [Self.targetsTool], system: CopilotPrompt.targetsEstimateSystem)
+        guard let values = Self.decodeTargets(json) else { throw ImportError.targetsUnavailable }
+        estimatedTargets = values
+        persist()
+    }
+
+    /// Tira a estimativa da IA (volta ao escrito e ao somado).
+    func clearEstimatedTargets() {
+        estimatedTargets = nil
+        persist()
+    }
+
+    static let targetsTool = ToolSpec(
+        name: CopilotPrompt.submitTargetsTool,
+        description: "Entrega as metas diárias estimadas do plano alimentar.",
+        parametersSchema: ##"{"type":"object","additionalProperties":false,"required":["kcal","protein","carbs","fat","fiber"],"properties":{"kcal":{"type":["number","null"],"minimum":0,"maximum":10000},"protein":{"type":["number","null"],"minimum":0,"maximum":1000},"carbs":{"type":["number","null"],"minimum":0,"maximum":1500},"fat":{"type":["number","null"],"minimum":0,"maximum":600},"fiber":{"type":["number","null"],"minimum":0,"maximum":200}}}"##)
+
+    /// Lê e confere a resposta (faixas plausíveis por dia, arredondado). `nil` sem kcal nem macros utilizáveis.
+    static func decodeTargets(_ json: String) -> NutrientValues? {
+        struct Payload: Decodable { var kcal, protein, carbs, fat, fiber: Double? }
+        let object = StructuredDecoder.extractJSONObject(from: json) ?? json
+        guard let data = object.data(using: .utf8), let payload = try? JSONDecoder().decode(Payload.self, from: data) else { return nil }
+        func plausible(_ value: Double?, _ range: ClosedRange<Double>) -> Double? {
+            guard let value, range.contains(value) else { return nil }
+            return value.rounded()
+        }
+        let values = NutrientValues(kcal: plausible(payload.kcal, 500 ... 8000), protein: plausible(payload.protein, 10 ... 500),
+                                    carbs: plausible(payload.carbs, 10 ... 1000), fat: plausible(payload.fat, 5 ... 400),
+                                    fiber: plausible(payload.fiber, 1 ... 150))
+        guard values.kcal != nil || values.protein != nil || values.carbs != nil || values.fat != nil else { return nil }
+        return values
     }
 
     /// Prévia do casamento com o catálogo (por ficha/exercício; `nil` = exercício novo).
