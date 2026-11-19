@@ -186,7 +186,8 @@ struct AISettingsView: View {
     private var modelSection: some View {
         let preferred = ModelDefaults.preferred(in: modelSuggestions, provider: settings.provider)
         let presentation = ModelPickerPresentation(models: modelSuggestions, preferredModel: preferred,
-                                                   chosenModel: settings.models[settings.provider])
+                                                   chosenModel: settings.models[settings.provider],
+                                                   sortByVersion: [.openAI, .anthropic, .openRouter].contains(settings.provider))
         return Section {
             if let missing = presentation.missingModel {
                 VStack(alignment: .leading, spacing: FJSpacing.xs) {
