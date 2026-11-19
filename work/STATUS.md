@@ -83,6 +83,12 @@
 - Build 6 (`6381ef3`): relógio — `WatchButtonStyle` (largura total exata; `.glass`/`.glassProminent` recuavam a forma) em todas as telas; descanso com "+ reps"/"+15 s" a 2/3 da altura e alinhados ao "Pular", "Próxima: carga" maior e em largura total; nota do treino (RPE) pela Coroa e por − / + (sem ScrollView). Conferido no simulador; testes do relógio verdes.
 - Build 6 processado e **anexado** à versão 1.0.0 (PREPARE_FOR_SUBMISSION). Não reenviado.
 
+## OpenCode Go (19/11)
+- Provedor "OpenCode Go" (assinatura) integrado (`2bcccf5`): plano em `design/proposals/opencode-go.md`, DESIGN decisão 40. Endpoint `opencode.ai/inference/go/openai/v1` (Bearer, `User-Agent: FitJourney/…`, `x-opencode-session` estável), descoberta em `/inference/go/v1/models` com cache de 24 h, seletor só com modelos que leem imagens e não treinam com os dados (padrão `gpt-6-luna`, o mais barato por uso nos testes), PDF sempre rasterizado, erros 402/403 free/429 limite do Go.
+- Teste ao vivo (chave de teste do dono, só no scratchpad): importação real dos PDFs da revisão da Apple (`~/Downloads/FitJourney Files`) — 4 fichas/37 exercícios em 57 s; plano de 7 páginas em 34 s; chave inválida detectada.
+- Implementação pelo OpenCode (`opencode.json`, `.opencode/prompts/`): Luna para pacotes simples, `-m openai/gpt-6.1-terra` para complexos e revisão. Luna tende a pular testes: pedir lista explícita e conferir.
+- A 1.0.0 segue com problemas na revisão da Apple (texto não legível pela API). Build com o OpenCode Go ainda não gerado.
+
 ## Retomar aqui (nova sessão)
 - **Do dono**: instalar o build 6 pelo TestFlight, gravar o vídeo pedido pela Apple, responder na revisão e clicar "Enviar para revisão" (nunca enviar por ele).
 - Commits locais ainda sem push: `7afcd9b`, `64f5c81`, `6381ef3` e este status.

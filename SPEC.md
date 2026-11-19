@@ -195,7 +195,7 @@ Objetivo: durante o treino o iPhone pode ficar no bolso/armário; **todo o contr
 ## 7. Coach de IA (fase 2)
 
 - Aba **Coach**: chat com streaming, histórico de conversas, sugestões de prompt ("Monte um ABC de hipertrofia, 4x/semana, 60 min", "Ajuste minha dieta para 2.200 kcal").
-- Provedores via camada de abstração (mesmo desenho do fireplaice; detalhes em `docs/ia.md`): OpenAI (padrão), Anthropic, Gemini, OpenAI-compatível (ex.: Ollama/OpenRouter). Chave do usuário (BYOK) guardada no **Keychain**; modelo escolhível.
+- Provedores via camada de abstração (mesmo desenho do fireplaice; detalhes em `docs/ia.md`): OpenAI (padrão), Anthropic, OpenRouter, OpenCode Go (assinatura; modelos que leem imagens e não treinam com os dados, ordenados pelo gasto do limite), compatível com OpenAI (URL própria, ex.: Ollama) e ChatGPT por login (experimental). Chave do usuário (BYOK) guardada no **Keychain**; modelo escolhível.
 - **Ferramentas (function calling)** que o app executa localmente, só leitura por padrão: `get_profile`, `list_programs`, `get_program(id)`, `get_workout_history(range, exercise?)`, `get_exercise_progress(exercise)`, `list_nutrition_plans`, `get_nutrition_log(range)`, `get_health_summary(range)`. Limites de período/quantidade em cada uma.
 - **Propostas**: a IA responde com saída estruturada (JSON Schema estrito) `ProgramDraft` ou `NutritionPlanDraft`; o app mostra um cartão de pré-visualização (fichas, exercícios, séries / refeições, metas) → "Revisar e salvar" abre o editor normal com o rascunho. Nada é salvo sem confirmação.
 - Perfil do usuário para contexto (opcional): idade, sexo, altura, peso, nível, objetivo, restrições/lesões, equipamentos disponíveis, dias/tempo por semana, preferências alimentares/alergias.
