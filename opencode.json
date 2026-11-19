@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "openai/gpt-6-luna-fast",
+  "small_model": "openai/gpt-6-luna-fast",
+  "subagent_depth": 1,
+  "share": "disabled",
+  "permission": {
+    "read": { "*": "allow", "*.env": "deny", "*.env.*": "deny", "*.pem": "deny", "*.key": "deny", "*.p8": "deny", "**/auth.json": "deny", "**/.ssh/**": "deny", "**/.appstoreconnect/**": "deny" },
+    "edit": { "*": "allow", ".claude/**": "deny", "opencode.json": "deny", ".opencode/**": "deny", "SPEC.md": "deny", "CLAUDE.md": "deny", "AGENTS.md": "deny", "DESIGN_DIRECTION.md": "deny", "work/STATUS.md": "deny" },
+    "bash": { "*": "allow", "curl*": "deny", "wget*": "deny", "ssh*": "deny", "scp*": "deny", "git push*": "deny", "git reset --hard*": "deny", "git clean*": "deny", "git checkout main*": "deny", "git merge*": "deny", "rm -rf*": "deny", "claude*": "deny", "opencode*": "deny", "*.env*": "deny", "*auth.json*": "deny", "xcrun simctl shutdown all*": "deny", "xcrun simctl erase*": "deny" },
+    "external_directory": "ask",
+    "task": "deny"
+  },
+  "agent": {
+    "core-implementation": { "description": "Implementa o núcleo Swift do FitJourney (Domain, Persistence, Services) com testes.", "mode": "primary", "model": "openai/gpt-6-luna-fast", "steps": 70, "prompt": "{file:./.opencode/prompts/core-implementation.md}", "permission": { "task": "deny", "todowrite": "deny" } },
+    "ios-implementation": { "description": "Implementa telas SwiftUI do FitJourney (Features, App) com testes.", "mode": "primary", "model": "openai/gpt-6-luna-fast", "steps": 60, "prompt": "{file:./.opencode/prompts/ios-implementation.md}", "permission": { "task": "deny", "todowrite": "deny" } },
+    "review-code": { "description": "Revisa código Swift do FitJourney sem editar arquivos.", "mode": "primary", "model": "openai/gpt-6.1-terra", "steps": 30, "prompt": "{file:./.opencode/prompts/review-code.md}", "permission": { "edit": "deny", "task": "deny", "todowrite": "deny" } }
+  }
+}

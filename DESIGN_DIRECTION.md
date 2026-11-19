@@ -2018,6 +2018,7 @@ Decididas neste documento:
 37. **A entrada do destino fica onde as fichas aparecem** (Treinos › "+", estado sem fichas, "…" do detalhe do programa), não na folha "Editar programa": lá a edição é pendente (Cancelar/Salvar) e a cópia grava na hora.
 38. **Confirmação só quando o usuário está longe do destino**: a cópia pela ficha termina em "Ficha copiada" + "Ver programa" dentro da própria folha; a cópia pelo destino só fecha a folha, porque as fichas aparecem na tela de baixo. Sem "Desfazer".
 39. **Programas anteriores e arquivados recebem cópias**, como já recebem fichas da importação com IA; o detalhe deles continua somente leitura para todo o resto. Cor e letra da cópia nunca são trocadas; só o nome ganha "(2)".
+40. **OpenCode Go: o seletor de modelo lista só modelos que leem imagens e não treinam com os dados**, sugeridos primeiro e depois do que menos gasta o limite do plano; sem selo por linha nem preço (o rodapé explica a ordem). Modelo só de texto continua possível em "Outro modelo", com uma linha de aviso na seção; modelo "-free" ou que treina com os dados é recusado (dados de saúde). Plano em `design/proposals/opencode-go.md`.
 
 Perguntas em aberto:
 
