@@ -21260,6 +21260,96 @@
           }
         }
       }
+    },
+    "Padrão · mais leve e rápido": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default · lightest and fastest"
+          }
+        }
+      }
+    },
+    "Atualizando a lista de modelos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Updating the model list"
+          }
+        }
+      }
+    },
+    "Ver todos os modelos (%lld)": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See All Models (%lld)"
+          }
+        }
+      }
+    },
+    "Buscar modelos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search models"
+          }
+        }
+      }
+    },
+    "Modelos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Models"
+          }
+        }
+      }
+    },
+    "Só modelos que leem imagens e usam ferramentas. O OpenRouter só repassa a serviços que não guardam seus dados.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only models that read images and use tools. OpenRouter only forwards to services that don’t store your data."
+          }
+        }
+      }
+    },
+    "Lista salva em %@. Puxe para atualizar.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "List saved on %@. Pull to refresh."
+          }
+        }
+      }
+    },
+    "%@ não aparece mais na lista de %@.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ is no longer listed by %@."
+          }
+        }
+      }
+    },
+    "Usar %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use %@"
+          }
+        }
+      }
     }
   },
   "version": "1.0"
