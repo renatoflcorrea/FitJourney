@@ -208,9 +208,20 @@ struct MealLogSheet: View {
                         .accessibilityHidden(true)
                 }
             }
-            Text("\(session.text.count.formatted()) / \(MealLogSession.maxTextLength.formatted())")
-                .font(FJFont.numberCaption)
-                .foregroundStyle(FJColor.textSecondary)
+            HStack {
+                if session.text.isEmpty, session.photos.isEmpty {
+                    // Demonstração: preenche o texto, não envia sozinho (App Review 2.1(a)).
+                    Button("Experimentar com um exemplo") { session.text = ImportSamples.mealLogText }
+                        .font(FJFont.label.weight(.semibold))
+                        .foregroundStyle(FJColor.coach)
+                        .frame(minHeight: FJSize.minTap)
+                        .accessibilityIdentifier("mealLog.sample")
+                }
+                Spacer()
+                Text("\(session.text.count.formatted()) / \(MealLogSession.maxTextLength.formatted())")
+                    .font(FJFont.numberCaption)
+                    .foregroundStyle(FJColor.textSecondary)
+            }
         }
         .padding(FJSpacing.m)
         .background(FJColor.surface, in: FJRadius.shape(FJRadius.card))

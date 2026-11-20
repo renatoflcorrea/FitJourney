@@ -133,6 +133,12 @@ struct ImportFilesView: View {
                     .accessibilityIdentifier("import.source.paste")
             }
             .disabled(isFull)
+            if count == 0, preparing == 0 {
+                // Demonstração para quem não tem um arquivo à mão (App Review 2.1(a)).
+                FJSecondaryButton("Experimentar com um exemplo", systemImage: "doc.text.image") { addSample() }
+                    .accessibilityIdentifier("import.sample")
+                    .padding(.top, FJSpacing.xs)
+            }
             if isFull {
                 Text("Limite de \(maxFiles) arquivos")
                     .font(FJFont.caption)
@@ -178,6 +184,20 @@ struct ImportFilesView: View {
                     }
                     if !isFull {
                         FJAttachmentAddTile { showFileImporter = true }
+                    }
+                }
+                if hasSample {
+                    Text("Ficha fictícia, criada para demonstração.")
+                        .font(FJFont.caption)
+                        .foregroundStyle(FJColor.textSecondary)
+                    if session.kind == .program, count == 1, !isFull {
+                        Button("Adicionar as outras 3 fichas do exemplo") {
+                            add(ImportSamples.otherWorkouts.compactMap { ImportSamples.workout($0) })
+                        }
+                        .font(FJFont.label.weight(.semibold))
+                        .foregroundStyle(FJColor.coach)
+                        .frame(minHeight: FJSize.minTap, alignment: .leading)
+                        .accessibilityIdentifier("import.sample.addMore")
                     }
                 }
             }
@@ -240,6 +260,14 @@ struct ImportFilesView: View {
                 errorMessage = error.localizedDescription
             }
         }
+    }
+
+    private var hasSample: Bool { session.attachments.contains { ImportSamples.sampleFilenames.contains($0.filename) } }
+
+    private func addSample() {
+        let sample = session.kind == .program ? ImportSamples.workout(ImportSamples.mainWorkout) : ImportSamples.mealPlanAttachment()
+        guard let sample else { return }
+        add([sample])
     }
 
     private func add(_ raws: [RawAttachment], priorError: String? = nil) {

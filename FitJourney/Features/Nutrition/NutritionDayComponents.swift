@@ -364,21 +364,51 @@ struct MealCard: View {
         .accessibilityElement(children: .combine)
     }
 
+    private var doneControl: some View {
+        HStack(spacing: FJSpacing.s) {
+            FJCheckButton(state: .pending, area: .nutrition,
+                          accessibilityLabel: String(localized: "Marcar \(row.meal.name) como feita"),
+                          action: onDone)
+                .disabled(!row.canMarkDone)
+                .opacity(row.canMarkDone ? 1 : 0.4)
+                .accessibilityHint(row.canMarkDone ? "" : String(localized: "Indisponível: a refeição não tem itens. Use Ajustar para registrar o que comeu."))
+            Text("Feita").font(FJFont.label.weight(.semibold))
+                .lineLimit(1)
+                .fixedSize()
+        }
+    }
+
+    private var adjustButton: some View {
+        FJSecondaryButton("Ajustar", systemImage: "pencil", fillsWidth: false, action: onAdjust)
+    }
+
+    private var skipButton: some View {
+        FJSecondaryButton("Pular", systemImage: "forward.fill", fillsWidth: false, action: onSkip)
+    }
+
     @ViewBuilder private var actions: some View {
         switch row.status {
         case .pending:
-            FJAdaptiveStack(spacing: FJSpacing.m) {
-                HStack(spacing: FJSpacing.s) {
-                    FJCheckButton(state: .pending, area: .nutrition,
-                                  accessibilityLabel: String(localized: "Marcar \(row.meal.name) como feita"),
-                                  action: onDone)
-                        .disabled(!row.canMarkDone)
-                        .opacity(row.canMarkDone ? 1 : 0.4)
-                        .accessibilityHint(row.canMarkDone ? "" : String(localized: "Indisponível: a refeição não tem itens. Use Ajustar para registrar o que comeu."))
-                    Text("Feita").font(FJFont.label.weight(.semibold))
+            // Os rótulos nunca quebram no meio da palavra: numa linha se couberem; senão "Feita" em cima e os outros
+            // dois embaixo; senão um por linha.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: FJSpacing.m) {
+                    doneControl
+                    adjustButton.fixedSize()
+                    skipButton.fixedSize()
                 }
-                FJSecondaryButton("Ajustar", systemImage: "pencil", fillsWidth: false, action: onAdjust)
-                FJSecondaryButton("Pular", systemImage: "forward.fill", fillsWidth: false, action: onSkip)
+                VStack(alignment: .leading, spacing: FJSpacing.s) {
+                    doneControl
+                    HStack(spacing: FJSpacing.m) {
+                        adjustButton.fixedSize()
+                        skipButton.fixedSize()
+                    }
+                }
+                VStack(alignment: .leading, spacing: FJSpacing.s) {
+                    doneControl
+                    adjustButton
+                    skipButton
+                }
             }
         case .done, .adjusted:
             FJAdaptiveStack(spacing: FJSpacing.m) {

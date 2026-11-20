@@ -9547,7 +9547,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Chart of %@ for %@"
+            "value": "F %lld g"
           }
         }
       }
@@ -9667,7 +9667,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Stored in this device's Keychain, outside backups. The app never shows the saved key."
+            "value": "Chart of %@ for %@"
           }
         }
       }
@@ -9677,7 +9677,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "G %lld g"
+            "value": "Stored in this device's Keychain, outside backups. The app never shows the saved key."
           }
         }
       }
@@ -16366,7 +16366,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "No access to save to Health"
+            "value": "Selection"
           }
         }
       }
@@ -16386,7 +16386,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Selection"
+            "value": "No access to save to Health"
           }
         }
       }
@@ -22387,6 +22387,246 @@
           "stringUnit": {
             "state": "translated",
             "value": "Use %@"
+          }
+        }
+      }
+    },
+    "Experimentar com um exemplo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try with a sample"
+          }
+        }
+      }
+    },
+    "Ficha fictícia, criada para demonstração.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A fictional sheet made for demonstration."
+          }
+        }
+      }
+    },
+    "Adicionar as outras 3 fichas do exemplo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add the other 3 sample sheets"
+          }
+        }
+      }
+    },
+    "Plano alimentar de exemplo.pdf": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample meal plan.pdf"
+          }
+        }
+      }
+    },
+    "Ficha de exemplo.jpg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample workout sheet.jpg"
+          }
+        }
+      }
+    },
+    "Ficha de exemplo · costas.jpg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample workout sheet · back.jpg"
+          }
+        }
+      }
+    },
+    "Ficha de exemplo · pernas.jpg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample workout sheet · legs.jpg"
+          }
+        }
+      }
+    },
+    "Ficha de exemplo · ombros.jpg": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sample workout sheet · shoulders.jpg"
+          }
+        }
+      }
+    },
+    "Café da manhã: 2 ovos mexidos, 1 pão francês com manteiga e café com leite. À tarde, um açaí de 300 ml com granola.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Breakfast: 2 scrambled eggs, a bread roll with butter and coffee with milk. In the afternoon, a 300 ml açaí bowl with granola."
+          }
+        }
+      }
+    },
+    "Somadas dos alimentos do plano": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Added up from the plan's foods"
+          }
+        }
+      }
+    },
+    "Estimadas pela IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimated by AI"
+          }
+        }
+      }
+    },
+    "Valores aproximados a partir dos alimentos e quantidades. Confira com quem montou a dieta; dá para mudar no plano depois.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Approximate values based on the foods and amounts. Check them with whoever wrote the plan; you can change them in the plan later."
+          }
+        }
+      }
+    },
+    "O arquivo não traz todas as metas e nem todos os alimentos têm valores.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file doesn't list every goal, and not every food has values."
+          }
+        }
+      }
+    },
+    "O arquivo não traz metas diárias.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The file doesn't list daily goals."
+          }
+        }
+      }
+    },
+    "Estimando…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimating…"
+          }
+        }
+      }
+    },
+    "Estimar metas com IA": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimate goals with AI"
+          }
+        }
+      }
+    },
+    "Envia só a lista de refeições, alimentos e quantidades ao mesmo provedor da importação. Os arquivos não vão de novo.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sends only the list of meals, foods and amounts to the same provider used for the import. The files aren't sent again."
+          }
+        }
+      }
+    },
+    "Não foi possível estimar": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't estimate"
+          }
+        }
+      }
+    },
+    "Não foi possível estimar as metas. Tente de novo ou preencha no plano depois.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't estimate the goals. Try again, or fill them in on the plan later."
+          }
+        }
+      }
+    },
+    "Somar dos alimentos do plano": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add up from the plan's foods"
+          }
+        }
+      }
+    },
+    "Estimar com o Coach": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estimate with Coach"
+          }
+        }
+      }
+    },
+    "Metas da dieta %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goals for diet %@"
+          }
+        }
+      }
+    },
+    "Na dieta “%@”: estime as metas diárias (calorias, proteína, carboidrato, gordura e fibra) a partir dos alimentos e quantidades do plano e proponha preencher as metas.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In the diet “%@”: estimate the daily goals (calories, protein, carbs, fat and fiber) from the plan's foods and amounts, and propose filling in the goals."
+          }
+        }
+      }
+    },
+    "Todas opcionais. Vazio ou 0 = sem meta. A soma usa só os valores já escritos nos alimentos; o Coach estima e mostra a proposta antes de mudar.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All optional. Empty or 0 = no goal. Adding up uses only values already written on the foods; Coach estimates and shows the proposal before changing anything."
           }
         }
       }

@@ -143,11 +143,53 @@ private struct PlanEditorForm: View {
             OptionalDoubleField("Gordura", value: $plan.targetFat, unit: "g", zeroIsNil: true)
             OptionalDoubleField("Fibra", value: $plan.targetFiber, unit: "g", zeroIsNil: true)
             OptionalDoubleField("Água", value: $plan.targetWaterMilliliters, unit: "ml", field: .milliliters, zeroIsNil: true)
+            if !readOnly, hasEmptyMacroTarget {
+                if summedTargets.hasAny {
+                    Button("Somar dos alimentos do plano", systemImage: "plus.forwardslash.minus", action: fillFromSum)
+                        .accessibilityIdentifier("plan.targets.sum")
+                }
+                if !isNew, aiAvailability.isOn, let coachHandoff {
+                    Button {
+                        coachHandoff.open(title: String(localized: "Metas da dieta \(plan.name)"),
+                                          draft: String(localized: "Na dieta “\(plan.name)”: estime as metas diárias (calorias, proteína, carboidrato, gordura e fibra) a partir dos alimentos e quantidades do plano e proponha preencher as metas."))
+                    } label: {
+                        Label { Text("Estimar com o Coach") } icon: { FJAIBadge(style: .symbol) }
+                    }
+                    .accessibilityIdentifier("plan.targets.coach")
+                }
+            }
         } header: {
             Text("Metas diárias")
         } footer: {
-            Text("Todas opcionais. Vazio ou 0 = sem meta.")
+            if !readOnly, hasEmptyMacroTarget, summedTargets.hasAny || (!isNew && aiAvailability.isOn && coachHandoff != nil) {
+                Text("Todas opcionais. Vazio ou 0 = sem meta. A soma usa só os valores já escritos nos alimentos; o Coach estima e mostra a proposta antes de mudar.")
+            } else {
+                Text("Todas opcionais. Vazio ou 0 = sem meta.")
+            }
         }
+    }
+
+    private var hasEmptyMacroTarget: Bool {
+        [plan.targetKcal, plan.targetProtein, plan.targetCarbs, plan.targetFat].contains { ($0 ?? 0) <= 0 }
+    }
+
+    /// Soma dos alimentos do plano (só o que já tem valores; ver `PlannedTargetsSum`).
+    private var summedTargets: NutrientValues {
+        PlannedTargetsSum.targets(days: plan.sortedDays.map { $0.sortedMeals.flatMap(\.sortedItems).map(\.values) })
+    }
+
+    /// Preenche só as metas vazias com a soma.
+    private func fillFromSum() {
+        let sum = summedTargets
+        func fill(_ target: ReferenceWritableKeyPath<NutritionPlan, Double?>, _ value: Double?) {
+            if (plan[keyPath: target] ?? 0) <= 0, let value { plan[keyPath: target] = value }
+        }
+        fill(\.targetKcal, sum.kcal)
+        fill(\.targetProtein, sum.protein)
+        fill(\.targetCarbs, sum.carbs)
+        fill(\.targetFat, sum.fat)
+        fill(\.targetFiber, sum.fiber)
+        commit()
     }
 
     @ViewBuilder private var variationSection: some View {

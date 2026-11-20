@@ -5,11 +5,21 @@ import SwiftUI
 struct NutritionRootView: View {
     init() {}
 
+    /// Uma pilha só, com caminho (como em Treinos). Misturar `navigationDestination(isPresented:)` ("Plano") com
+    /// links por valor (o plano) fazia o SwiftUI recolocar "Plano" por cima do editor: o plano abria e saía sozinho.
+    @State private var path = NavigationPath()
+
     var body: some View {
-        NavigationStack {
-            NutritionDayView()
+        NavigationStack(path: $path) {
+            NutritionDayView(path: $path)
+                .navigationDestination(for: NutritionPlan.self) { PlanEditorView(plan: $0) }
         }
     }
+}
+
+/// Telas da aba Dieta empurradas pelo menu.
+enum NutritionRoute: Hashable {
+    case plans, history, favorites
 }
 
 private enum DaySheet: Identifiable {
@@ -40,9 +50,7 @@ struct NutritionDayView: View {
     @State private var model = NutritionDayModel()
     @AppStorage(AppPreferenceKeys.weekStart) private var weekStartRaw = WeekStart.monday.rawValue
     @State private var sheet: DaySheet?
-    @State private var showPlans = false
-    @State private var showHistory = false
-    @State private var showFavorites = false
+    @Binding var path: NavigationPath
     @State private var toggledMeals: Set<UUID> = []
     @State private var entryToDelete: FoodEntry?
     /// Registro com IA: a sessão sobrevive ao "Continuar depois"; o Desfazer vale até sair da tela ou por 12 s.
@@ -82,21 +90,25 @@ struct NutritionDayView: View {
             // teste de interface chegar a "Importar com IA".
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button("Plano", systemImage: "list.bullet.clipboard") { showPlans = true }
+                    Button("Plano", systemImage: "list.bullet.clipboard") { path.append(NutritionRoute.plans) }
                     if aiAvailability.isOn {
                         ImportWithAIMenuItem(kind: .nutrition, identifier: "nutrition.menu.import")
                     }
-                    Button("Histórico", systemImage: "calendar") { showHistory = true }
-                    Button("Favoritos", systemImage: "star") { showFavorites = true }
+                    Button("Histórico", systemImage: "calendar") { path.append(NutritionRoute.history) }
+                    Button("Favoritos", systemImage: "star") { path.append(NutritionRoute.favorites) }
                 } label: {
                     Label("Mais opções", systemImage: "ellipsis")
                 }
                 .accessibilityIdentifier("nutrition.menu")
             }
         }
-        .navigationDestination(isPresented: $showPlans) { NutritionPlanListView() }
-        .navigationDestination(isPresented: $showHistory) { NutritionHistoryView { model.jump(to: $0) } }
-        .navigationDestination(isPresented: $showFavorites) { NutritionFavoritesView(day: model.registrationDate) }
+        .navigationDestination(for: NutritionRoute.self) { route in
+            switch route {
+            case .plans: NutritionPlanListView()
+            case .history: NutritionHistoryView { model.jump(to: $0) }
+            case .favorites: NutritionFavoritesView(day: model.registrationDate)
+            }
+        }
         .sheet(item: $sheet, onDismiss: { model.reload(); model.afterChange?() }) { sheet in
             switch sheet {
             case .log(let entry):
@@ -133,7 +145,7 @@ struct NutritionDayView: View {
         .onChange(of: weekStartRaw) { _, _ in model.reload() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { model.reload() } }
         .onChange(of: importCoordinator?.route) { openImportedPlan() }
-        .onReceive(NotificationCenter.default.publisher(for: .fjImportWillUndo)) { _ in showPlans = false }
+        .onReceive(NotificationCenter.default.publisher(for: .fjImportWillUndo)) { _ in path = NavigationPath() }
         .onChange(of: coachHandoff?.request) { _, request in if request != nil { sheet = nil } }
         .task { openImportedPlan() }
         #if DEBUG
@@ -226,7 +238,9 @@ struct NutritionDayView: View {
     private func openImportedPlan() {
         guard let route = importCoordinator?.route, route.kind == .nutrition else { return }
         importCoordinator?.consumeRoute()
-        showPlans = true
+        var fresh = NavigationPath()
+        fresh.append(NutritionRoute.plans)
+        path = fresh
     }
 
     // MARK: Navegação de dia
@@ -269,7 +283,7 @@ struct NutritionDayView: View {
             }
         case .outsideVigency(let name):
             FJBanner("Fora da vigência do plano", message: "\(name) não cobre este dia. Registros avulsos continuam funcionando.",
-                     systemImage: "calendar.badge.exclamationmark", actionTitle: "Ver plano") { showPlans = true }
+                     systemImage: "calendar.badge.exclamationmark", actionTitle: "Ver plano") { path.append(NutritionRoute.plans) }
         case .covered:
             if !model.hasMealsPlanned {
                 Text(model.phase == .today ? "Nenhuma refeição planejada para hoje" : "Nenhuma refeição planejada para este dia")
