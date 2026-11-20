@@ -1,21 +1,25 @@
 Hello,
 
-Thank you for the detailed feedback. Build {{BUILD}} addresses each point:
+Thank you for the detailed feedback. Build {{BUILD}} addresses each point.
+
+Demo video (physical iPhone, full flow):
+https://www.icloud.com/iclouddrive/070su__jKlRic0S-8nb41TLPg
 
 Guideline 2.1(a) - Demo access
-- A demo API key (OpenCode Go) and setup steps are now in the App Review Information notes.
-- The app now includes sample content: in Import with AI, "Try with a sample" adds a fictional workout sheet image bundled in the app (and a 7-page sample meal plan in the Diet tab), so every AI feature can be tested without your own files.
+- A demo API key (OpenCode Go) and setup steps are in the App Review Information notes.
+- The app now includes sample content, so every AI feature can be tested without your own files: "Try with a sample" in Import with AI adds a fictional workout sheet image (Workouts) or a 7-page sample meal plan (Diet), and the meal log has a sample description.
 
 Guidelines 5.1.1(i) and 5.1.2(i) - Data shared with third-party AI
-- Before any data is sent, the app shows a "Before sending" screen that explains exactly what will be sent for that feature, names who receives it (the configured provider, and for routers like OpenCode or OpenRouter also the company that created the model) with links to their privacy policies, and asks for permission with Allow / Don't Allow.
-- Permission is per feature and per recipient. Switching providers or model creators asks again. Don't Allow sends nothing and the app remains fully usable.
+- Before any data is sent, the app shows a permission sheet that explains what will be sent for that feature and what will not, names who receives it (the configured provider and, for routers like OpenCode or OpenRouter, also the company that created the model), links to their privacy policies, and asks Allow / Don't Allow.
+- Permission is per feature and per recipient; changing provider or model creator asks again. Don't Allow sends nothing and the app remains fully usable.
 - Settings > Coach & AI > "What's shared and with whom" shows what is allowed and lets the user turn off any feature or data category, or revoke everything.
-- The privacy policy now has a dedicated AI section listing what is collected for each feature, how it is used, every recipient with its privacy policy, and the equal-protection statement: https://renatocorrea.com.br/FitJourney/en/privacy/#ai
+- Requests go directly from the device to the provider the user chose. We run no server and receive no user data.
+- The privacy policy has a dedicated AI section listing what is sent for each feature, how it is used, every recipient with its privacy policy, and the equal-protection statement: https://renatocorrea.com.br/FitJourney/en/privacy/#ai
 
-Guideline 5 - China
-- The app is no longer distributed in China mainland; we removed that storefront in Availability.
+Guideline 5 - China mainland
+- We removed China mainland in Pricing and Availability. The app is no longer distributed there.
 
-The App Review Information notes describe the steps to review these features.
+We also updated the model list to show the current models from the provider account. The App Review Information notes describe each step.
 
 Best regards,
 Renato Correa

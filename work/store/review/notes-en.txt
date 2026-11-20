@@ -1,28 +1,39 @@
 WHAT THE APP DOES
-FitJourney plans and logs gym workouts and a diet plan, on iPhone and Apple Watch. No sign-in or account is required; all data is stored on the device.
+FitJourney plans and logs gym workouts and a diet plan, on iPhone and Apple Watch. No sign-in or account is required; all data stays on the device. Every AI feature is optional.
 
-DEMO AI KEY (for the optional AI features)
+DEMO VIDEO (recorded on a physical iPhone)
+https://www.icloud.com/iclouddrive/070su__jKlRic0S-8nb41TLPg
+
+DEMO AI KEY
 Provider: OpenCode Go
 API key: {{OPENCODE_DEMO_KEY}}
-Setup: Today tab > profile button (top right) > Coach & AI > Provider: OpenCode Go > paste the key > Save. The model list loads from the account; the default model (gpt-6-luna) reads images.
+Setup: Today tab > Settings (person icon, top right) > Coach & AI > Provider: OpenCode Go > paste the key > Save. The model list loads from the account; the default model (gpt-6-luna) reads images.
 
-HOW TO REVIEW THE AI FEATURES (sample content is built into the app)
-1. Training tab > + > Import with AI > "Try with a sample". This adds a fictional workout sheet image bundled in the app ("Add the other 3 sample sheets" adds a full 4-routine program). Tap Analyze.
-2. Before anything is sent, a "Before sending" screen states exactly what will be sent, names who receives it (OpenCode, and the company that created the selected model) with links to their privacy policies and to FitJourney's privacy policy, and asks for permission: Allow / Don't Allow. Don't Allow sends nothing and keeps the app fully usable without AI.
-3. After Allow, the app reads the sheet, asks only what is unclear and shows the routines for review before creating the program.
-4. Diet tab > Import with AI > "Try with a sample" imports a bundled 7-page sample meal plan (PDF). Diet tab > log a meal > "Try with a sample" fills a sample meal description.
-5. Coach tab: the same consent, naming the recipient, with optional data categories (Profile, Workouts, Diet, Health), all off by default.
-6. Settings > Coach & AI > "What's shared and with whom" shows what is allowed and for whom, and lets the user turn off any feature or category or revoke everything. Switching provider or model creator asks for permission again.
+SAMPLE CONTENT (built into the app, no files needed)
+1. Workouts tab > + > Import with AI > PDF or file > "Try with a sample" adds a fictional workout sheet image ("Add the other 3 sample sheets" adds a 4-routine program). Tap Analyze.
+2. Diet tab > ... > Import with AI > "Try with a sample" adds a 7-page sample meal plan (PDF).
+3. Diet tab > "What did you eat?" > "Try with a sample" fills a sample meal description.
 
-DATA SHARING (Guidelines 5.1.1(i) and 5.1.2(i))
-AI requests go directly from the device to the provider the user configured; there is no FitJourney server and the developer receives nothing. Permission is asked per feature and per recipient before the first request. The privacy policy (https://renatocorrea.com.br/FitJourney/en/privacy/#ai) lists what is sent for each feature, how it is used, every possible recipient with its privacy policy, and the equal-protection statement.
+PERMISSION BEFORE SENDING (Guidelines 5.1.1(i) and 5.1.2(i))
+- Before the first request of each feature, a sheet (e.g. "Send the workout sheet to OpenCode?") lists what is sent and what is not, names who receives it (the provider and, for routers like OpenCode or OpenRouter, the company that created the selected model), links to their privacy policies and to FitJourney's, and asks Allow / Don't Allow. Don't Allow sends nothing; the app stays fully usable.
+- Permission is per feature (Import, Meal log, Coach) and per recipient. Changing provider or model creator asks again.
+- Coach: data categories (Profile, Workouts, Diet, Health) are optional and off by default.
+- Settings > Coach & AI > "What's shared and with whom" shows what is allowed and for whom, and turns off any feature or category, or revokes everything.
+- Requests go straight from the device to the configured provider. There is no FitJourney server; the developer receives nothing.
+- Privacy policy, AI section (what is sent per feature, how it is used, every recipient and its policy): https://renatocorrea.com.br/FitJourney/en/privacy/#ai
+
+DAILY DIET GOALS
+When an imported plan lists no daily goals, the review shows "Estimate goals with AI". It sends only the list of meals, foods and amounts (no files) to the same provider already allowed, and shows the result marked "Estimated by AI" with Remove. If the foods already list calories and macros, the app adds them up on the device, without AI. In the plan editor, "Add up from the plan's foods" and "Estimate with Coach" (a proposal you approve) fill missing goals.
+
+MODELS
+The model picker lists the current models from the provider account (refreshed every 24 h, with a manual refresh), with the newest small model as default.
 
 CHINA (Guideline 5)
-The app is no longer distributed in China mainland (removed in Availability).
+China mainland was removed in Pricing and Availability. The app is no longer distributed there.
 
 OTHER FEATURES
-- Today tab: "Start with an example (ABC)" creates a sample program. Start workout, complete sets with one tap; the rest timer runs in the Live Activity / Dynamic Island.
+- Today tab: "Start with an example (ABC)" creates a sample program. Start a workout, complete sets with one tap; the rest timer runs in the Live Activity / Dynamic Island.
 - Apple Watch: a workout started on iPhone can be controlled on the watch (sets, load with the Digital Crown, rest, pause, finish) with live heart rate.
 - Health tab: with permission, reads heart rate, resting heart rate, workouts, active energy, steps and body mass, and writes workouts to Apple Health.
 
-The app works fully without AI, without an Apple Watch and without network access (except external exercise videos and AI requests).
+The app works fully without AI, without an Apple Watch and offline (except AI requests and external exercise videos).
